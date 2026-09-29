@@ -218,7 +218,7 @@ try {
     console.log(`\n${size.toLocaleString('en-US')} traces, ${size.toLocaleString('en-US')} evaluations${SPANS ? `, ${(size * 5).toLocaleString('en-US')} spans` : ''} — driver ${store.driver}, file ${mb(statSync(path).size).toFixed(0)} MB`);
 
     const config = { ...defaultConfig, dashboard: { ...defaultConfig.dashboard, port: 0 }, security: { ...defaultConfig.security, rateLimit: { ...defaultConfig.security.rateLimit, api: 100_000 } } };
-    const quiet = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
+    const quiet = { debug: () => {}, info: () => {}, warn: () => {}, error: (...a: unknown[]) => console.error('[server]', ...a) };
     const server: Server = createDashboardServer(store, config, quiet).start();
     await new Promise((r) => server.once('listening', r));
     const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
@@ -237,22 +237,28 @@ try {
       ['traces, CSV (first read)', '/api/v1/traces/export?format=csv'],
       ['traces, CSV', '/api/v1/traces/export?format=csv'],
       ['traces, JSON Lines', '/api/v1/traces/export?format=jsonl'],
+      // The first search of a process starts the search thread (search-worker-client.ts), as the list's first search does.
+      ['search 50%, JSONL (1st search)', '/api/v1/traces/export?format=jsonl&q=refund+approved'],
       ['search in 50%, JSON Lines', '/api/v1/traces/export?format=jsonl&q=refund+approved'],
       ['evaluations, CSV', '/api/v1/evaluations/export?format=csv'],
     ];
     const runs: Measure[] = [];
     for (const [label, url] of EXPORTS) runs.push({ ...(await measure(base, label, url)), liveMb: await liveHeap(base, url) });
 
-    console.log(`  ${'export'.padEnd(28)} ${'records'.padStart(8)} ${'MB'.padStart(6)} ${'seconds'.padStart(8)} ${'live heap +MB'.padStart(14)} ${'heap +MB'.padStart(9)} ${'RSS +MB'.padStart(8)} ${'loop max ms'.padStart(12)} ${'other request max ms'.padStart(21)}`);
+    console.log(`  ${'export'.padEnd(30)} ${'records'.padStart(8)} ${'MB'.padStart(6)} ${'seconds'.padStart(8)} ${'live heap +MB'.padStart(14)} ${'heap +MB'.padStart(9)} ${'RSS +MB'.padStart(8)} ${'loop max ms'.padStart(12)} ${'other request max ms'.padStart(21)}`);
     for (const r of runs) {
       console.log(
-        `  ${r.label.padEnd(28)} ${(r.records < 0 ? '-' : r.records.toLocaleString('en-US')).padStart(8)} ${mb(r.bytes).toFixed(0).padStart(6)} ${(r.ms / 1000).toFixed(1).padStart(8)} ${(r.liveMb === undefined || r.liveMb < 0 ? '-' : r.liveMb.toFixed(0)).padStart(14)} ${r.heapGrowthMb.toFixed(0).padStart(9)} ${r.rssGrowthMb.toFixed(0).padStart(8)} ${r.loopMaxMs.toFixed(0).padStart(12)} ${`${r.healthMaxMs.toFixed(0)} (${r.healthChecks} sent)`.padStart(21)}`,
+        `  ${r.label.padEnd(30)} ${(r.records < 0 ? '-' : r.records.toLocaleString('en-US')).padStart(8)} ${mb(r.bytes).toFixed(0).padStart(6)} ${(r.ms / 1000).toFixed(1).padStart(8)} ${(r.liveMb === undefined || r.liveMb < 0 ? '-' : r.liveMb.toFixed(0)).padStart(14)} ${r.heapGrowthMb.toFixed(0).padStart(9)} ${r.rssGrowthMb.toFixed(0).padStart(8)} ${r.loopMaxMs.toFixed(0).padStart(12)} ${`${r.healthMaxMs.toFixed(0)} (${r.healthChecks} sent)`.padStart(21)}`,
       );
     }
     server.closeAllConnections?.();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await store.close();
   }
+} catch (err) {
+  console.error(err);
+  process.exitCode = 1;
 } finally {
-  rmSync(dir, { recursive: true, force: true });
+  // The search thread may still hold the file for a moment after close on Windows.
+  rmSync(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
 }

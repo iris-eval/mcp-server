@@ -5,6 +5,9 @@
  * tenant's; a batch at a time; and fixed at the moment it starts.
  */
 import { afterEach, describe, expect, it } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { LOCAL_TENANT, asTenantId, type TenantId } from '../../../src/types/tenant.js';
 import type { TraceExportOptions, TraceRecord } from '../../../src/types/query.js';
@@ -124,6 +127,39 @@ describe('exportTraces', () => {
       expect(rows).toHaveLength(17);
     }
   });
+
+  it('on a file, matches a search on the search thread with no time budget, and holds every match', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'iris-export-worker-'));
+    const s = new SqliteAdapter(join(dir, 'iris.db'), { driver: SEARCH_DRIVER });
+    try {
+      await s.initialize();
+      await s.whenSearchIndexReady();
+      await s.insertTraces(LOCAL_TENANT, Array.from({ length: 700 }, (_, i) => ({ trace_id: `w${i}`, agent_name: 'bot', output: i % 7 === 0 ? 'nothing here' : `refund number ${i}`, timestamp: at(i % 50) })));
+      const { rows } = await collect(s.exportTraces(LOCAL_TENANT, { search: 'refund' }, 64));
+      expect(s.searchWorkerStatus().status, 'the ranked read ran on the search thread, not the server’s').toBe('ready');
+      expect(rows).toHaveLength(600);
+      expect(rows.map((r) => r.trace.trace_id)).toEqual(await listed(s, { search: 'refund' }));
+    } finally {
+      await s.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
+  it('exports a search that matches more traces than SQLite can bind to one statement', async () => {
+    const s = await adapter();
+    // 33,000 matches: past the 32,766 values one statement may bind, which the page's id lookup used to put in one IN list.
+    for (let i = 0; i < 33_000; i += 3000) {
+      await s.insertTraces(LOCAL_TENANT, Array.from({ length: 3000 }, (_, k) => ({ trace_id: `m${i + k}`, agent_name: 'bot', output: 'refund', timestamp: at((i + k) % 60) })));
+    }
+    let n = 0;
+    const seen = new Set<string>();
+    for await (const batch of s.exportTraces(LOCAL_TENANT, { search: 'refund' })) {
+      n += batch.length;
+      for (const r of batch) seen.add(r.trace.trace_id);
+    }
+    expect(n).toBe(33_000);
+    expect(seen.size).toBe(33_000);
+  }, 120_000);
 
   it('searches the same without the full-text index', async () => {
     const indexed = await adapter();

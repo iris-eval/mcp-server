@@ -1100,7 +1100,7 @@ Every trace the [trace list](#get-apiv1traces) would page through with the same 
 
 #### Query Parameters
 
-`format` (`csv` or `jsonl`, required), plus every parameter of [`GET /api/v1/traces`](#get-apiv1traces) except `limit` and `offset`: `agent_name`, `framework`, `session`, `q`, `since`, `until`, `min_score`, `max_score`, `sort_by`, `sort_order`. They are validated by the same schema, so a value the list refuses is refused here with the same `400`, and so is `limit` or `offset` (an export is every page). The rows come in the list's order: newest first, or best match first with `q`.
+`format` (`csv` or `jsonl`, required), plus every parameter of [`GET /api/v1/traces`](#get-apiv1traces) except `limit` and `offset`: `agent_name`, `framework`, `session`, `q`, `since`, `until`, `min_score`, `max_score`, `sort_by`, `sort_order`. They are validated by the same schema, so a value the list refuses is refused here with the same `400`, and so is `limit` or `offset` (an export is every page). The rows come in the list's order: newest first, or best match first with `q`. With `q`, the search is ranked as the list's is but with no time budget, so an export always holds every match; if the search cannot finish (its thread failed), the request fails with an error rather than sending a partial file.
 
 #### Response (200)
 
