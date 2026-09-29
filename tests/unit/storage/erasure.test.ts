@@ -258,3 +258,75 @@ describe('delete_trace leaves no text on disk while the store works in the backg
     expect(left).toEqual([]);
   }, 180_000);
 });
+
+/*
+ * The same guarantee while another client keeps writing. The worker's
+ * TRUNCATE takes the write lock without waiting, so a write of the server's
+ * connection that lands in that instant turns it away; every write now waits
+ * for a TRUNCATE in flight first (sqlite-adapter.ts, insertTraces). The
+ * adapter's own attempt is made to find the file held, as it does while the
+ * worker copies, so each erasure goes to the worker, with writes arriving on
+ * every turn of the event loop. Without the writes waiting, 8 to 11 of 20
+ * deletes left the text on disk on both drivers, and with nothing forced 2
+ * runs in 3 left one on Node's built-in SQLite.
+ */
+describe('delete_trace leaves no text on disk while another client writes', () => {
+  const dirs: string[] = [];
+  afterAll(() => {
+    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  });
+  const holds = (file: string, needle: string) => existsSync(file) && readFileSync(file).includes(Buffer.from(needle, 'utf8'));
+
+  it('20 deletes under steady writes, each erased on the worker: every secret is gone from iris.db and its WAL when the call returns', async () => {
+    const proto = SqliteAdapter.prototype as unknown as { truncateCheckpointHere: () => boolean };
+    const here = proto.truncateCheckpointHere;
+    let heldHere = false;
+    vi.spyOn(proto, 'truncateCheckpointHere').mockImplementation(function (this: unknown) {
+      return heldHere ? false : (here.call(this) as boolean);
+    });
+    let turnedAway = 0;
+    const onWorker = Checkpointer.prototype.truncate;
+    vi.spyOn(Checkpointer.prototype, 'truncate').mockImplementation(async function (this: Checkpointer) {
+      const done = await onWorker.call(this);
+      if (!done) turnedAway += 1;
+      return done;
+    });
+    const dir = mkdtempSync(join(tmpdir(), 'iris-erasure-writes-'));
+    dirs.push(dir);
+    const path = join(dir, 'iris.db');
+    const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
+    await s.initialize();
+    await s.insertTraces(LOCAL_TENANT, [{ trace_id: 'first', agent_name: 'writer', input: 'q', output: 'first', timestamp: new Date().toISOString() }]);
+    let stop = false;
+    let written = 0;
+    const writer = (async () => {
+      while (!stop) {
+        await s.insertTraces(LOCAL_TENANT, [{ trace_id: `w-${written}`, agent_name: 'writer', input: 'q', output: `an ordinary answer ${written} ${'with some words '.repeat(10)}`, timestamp: new Date().toISOString() }]);
+        written += 1;
+        await new Promise((r) => setImmediate(r));
+      }
+    })();
+    const left: string[] = [];
+    try {
+      for (let d = 0; d < 20; d += 1) {
+        const secret = `WRITESSECRET${d}Q${'Z'.repeat(8)}`;
+        heldHere = false;
+        await s.insertTraces(LOCAL_TENANT, [{ trace_id: `secret-${d}`, agent_name: 'erasure', input: 'q', output: `the code is ${secret}`, timestamp: new Date().toISOString() }]);
+        heldHere = true;
+        expect(await s.deleteTrace(LOCAL_TENANT, `secret-${d}`)).toBe(true);
+        if (holds(path, secret) || holds(`${path}-wal`, secret)) left.push(`${secret} (iris.db ${holds(path, secret)}, WAL ${holds(`${path}-wal`, secret)})`);
+        await new Promise((r) => setTimeout(r, 15));
+      }
+    } finally {
+      stop = true;
+      await writer;
+      heldHere = false;
+      vi.restoreAllMocks();
+      await s.close();
+    }
+    // The writes ran throughout, and no erasure on the worker was turned away by them.
+    expect(written).toBeGreaterThan(20);
+    expect(turnedAway).toBe(0);
+    expect(left).toEqual([]);
+  }, 60_000);
+});

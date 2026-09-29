@@ -779,10 +779,12 @@ export class SqliteAdapter implements IStorageAdapter {
         try {
           await worker.exec(CREATE_FILTER_INDEX);
         } catch {
-          // Refused there (the write lock held past the busy timeout, or the worker stopped): here instead.
+          // Refused there (the write lock held past the busy timeout, or the worker stopped): here instead, after any TRUNCATE in flight (insertTraces says why).
+          while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
           this.db.exec(CREATE_FILTER_INDEX);
         }
       } else {
+        while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
         this.db.exec(CREATE_FILTER_INDEX);
       }
       this.log('info', `Search index: the covering index for search filters was built after the start, in ${((performance.now() - began) / 1000).toFixed(1)} s`);
@@ -1010,6 +1012,20 @@ export class SqliteAdapter implements IStorageAdapter {
   async insertTraces(tenantId: TenantId, traces: Trace[]): Promise<void> {
     assertTenant(tenantId);
     this.ensureCheckpointer();
+    /*
+     * After any TRUNCATE in flight on the checkpoint worker, off the event
+     * loop, as deleteTrace and the background steps do. A TRUNCATE takes the
+     * write lock without waiting, so a write of this connection's that lands
+     * in that instant turns it away. Under steady writes it was turned away
+     * at every try: with the adapter's own attempt held off by the worker's
+     * copy, 8 to 11 of 20 deletes returned with the deleted text still in
+     * the file, on both drivers. So every write of this connection waits
+     * here, and only a reader or another process can hold a delete's
+     * erasure off. Nothing is in flight almost always, and then the write
+     * runs at once, in this turn; the check and the write run in the same
+     * turn, so nothing can start a TRUNCATE between them.
+     */
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     const insertTraceStmt = this.db.prepare(`
       INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key, source, session_id, cost_source, cost_estimate)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1112,6 +1128,8 @@ export class SqliteAdapter implements IStorageAdapter {
   async updateTraceMetadata(tenantId: TenantId, traceId: string, patch: Record<string, unknown>): Promise<boolean> {
     assertTenant(tenantId);
     this.ensureCheckpointer();
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     // Read-then-write under IMMEDIATE, so a concurrent writer waits instead of failing the snapshot.
     const write = this.db.transaction((): boolean => {
       const row = this.db.prepare('SELECT metadata FROM traces WHERE tenant_id = ? AND trace_id = ?').get(tenantId, traceId) as { metadata?: string | null } | undefined;
@@ -1411,6 +1429,8 @@ export class SqliteAdapter implements IStorageAdapter {
   async insertSpan(tenantId: TenantId, span: Span): Promise<void> {
     assertTenant(tenantId);
     this.ensureCheckpointer();
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     const insert = this.db.prepare(`
       INSERT INTO spans (tenant_id, span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1464,6 +1484,8 @@ export class SqliteAdapter implements IStorageAdapter {
   async insertEvalResult(tenantId: TenantId, result: EvalResult): Promise<void> {
     assertTenant(tenantId);
     this.ensureCheckpointer();
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     /*
      * created_at is written EXPLICITLY as ISO-8601. Leaving it to the
      * column DEFAULT (datetime('now')) stored "2026-08-09 15:00:00", which
@@ -1598,6 +1620,8 @@ export class SqliteAdapter implements IStorageAdapter {
     run: { runId: string; label?: string | null; agentName?: string | null; reevaluationOf?: string | null },
   ): Promise<void> {
     assertTenant(tenantId);
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     this.db
       .prepare(
         `INSERT INTO runs (run_id, tenant_id, label, agent_name, reevaluation_of)
@@ -1624,6 +1648,8 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async createDataset(tenantId: TenantId, input: { label: string; cases: DatasetCase[] }): Promise<DatasetDetail> {
     assertTenant(tenantId);
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     const label = input.label.trim();
     const taken = this.db.prepare('SELECT id FROM datasets WHERE tenant_id = ? AND label = ?').get(tenantId, label);
     if (taken) throw new DatasetExistsError(label);
@@ -1770,6 +1796,8 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async setRunBaseline(tenantId: TenantId, runId: string, baseline: boolean): Promise<void> {
     assertTenant(tenantId);
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     const write = this.db.transaction(() => {
       // A run that exists only because traces carried its id gets its row here; the label stays whatever it was.
       this.db.prepare('INSERT OR IGNORE INTO runs (run_id, tenant_id) VALUES (?, ?)').run(runId, tenantId);
@@ -2410,6 +2438,8 @@ export class SqliteAdapter implements IStorageAdapter {
    */
   async insertVerdictLabel(tenantId: TenantId, label: Omit<VerdictLabel, 'labelledAt'> & { labelledAt?: string }): Promise<VerdictLabel> {
     assertTenant(tenantId);
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     const labelledAt = label.labelledAt ?? new Date().toISOString();
     const write = this.db.transaction(() => {
       this.db.prepare('DELETE FROM verdict_labels WHERE tenant_id = ? AND eval_id = ? AND rule_name IS ?').run(tenantId, label.evalId, label.ruleName);
@@ -2728,6 +2758,8 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async purge(tenantId: TenantId): Promise<{ traces: number; evalResults: number }> {
     assertTenant(tenantId);
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     const deleteAll = this.db.transaction(() => {
       const evalResults = this.db.prepare('DELETE FROM eval_results WHERE tenant_id = ?').run(tenantId).changes;
       // spans cascade (FK ON DELETE CASCADE).
