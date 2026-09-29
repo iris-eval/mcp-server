@@ -3,19 +3,24 @@
  * (src/storage/checkpointer.ts).
  *
  * The worker starts at the store's first write, not at open. Once it is
- * up, the adapter's own connection stops checkpointing (wal_autocheckpoint
- * 0) and the worker copies the log into the file on its own; checkpoint()
- * truncates the log there and answers when it is done; if the worker
- * stops, the adapter's connection checkpoints by itself again and says so,
- * and the next write starts a new one; and close() lets it end on its own.
+ * up, the adapter's own connection keeps only a tail checkpoint
+ * (wal_autocheckpoint TAIL_CHECKPOINT_PAGES) and the worker copies the log
+ * into the file on its own; the log still starts over under writes that
+ * never pause; a background step that finds the log past
+ * STEP_TRUNCATE_PAGES has the worker empty it first, so the adapter's own
+ * checkpoint stays out of the steps; checkpoint() truncates the log there
+ * and answers when it is done; if the worker stops, the adapter's connection checkpoints by
+ * itself again and says so, and the next write starts a new one; and
+ * close() lets it end on its own.
  * Run on this cell's driver, so the CI matrix covers both.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mkdtempSync, rmSync, statSync } from 'node:fs';
+import { closeSync, copyFileSync, mkdtempSync, openSync, readSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
-import type { Checkpointer } from '../../../src/storage/checkpointer.js';
+import { Checkpointer, STEP_TRUNCATE_PAGES, TAIL_CHECKPOINT_PAGES } from '../../../src/storage/checkpointer.js';
+import { EvalEngine } from '../../../src/eval/engine.js';
 import type { Driver } from '../../../src/storage/driver.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import { CELL_DRIVER } from './fts5-here.js';
@@ -25,6 +30,7 @@ vi.setConfig({ testTimeout: 30_000 });
 const dirs: string[] = [];
 const open: SqliteAdapter[] = [];
 afterEach(async () => {
+  vi.restoreAllMocks();
   for (const s of open.splice(0)) await s.close().catch(() => undefined);
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
 });
@@ -66,20 +72,20 @@ describe('WAL checkpoints on a worker thread', () => {
     expect(await worker(s)!.started).toBe(true);
   });
 
-  it('takes checkpointing off the adapter’s connection, and copies the log into the file by itself', async () => {
+  it('leaves the adapter’s connection only the tail checkpoint, and copies the log into the file by itself', async () => {
     const { s, path } = await store();
     await s.insertTraces(LOCAL_TENANT, traces(1, 100_000));
     expect(await worker(s)!.started).toBe(true);
-    expect(autocheckpoint(s)).toBe(0);
+    expect(autocheckpoint(s)).toBe(TAIL_CHECKPOINT_PAGES);
     const before = size(path);
-    // Well past 1,000 pages (4 MB) with or without FTS5: a connection checkpointing by itself would have copied some of it inside a commit.
+    // Past 1,000 pages (4 MB) with or without FTS5, under TAIL_CHECKPOINT_PAGES (64 MB): the adapter's connection copies none of it.
     for (let i = 0; i < 8; i += 1) await s.insertTraces(LOCAL_TENANT, traces(500, i * 500));
     expect(size(`${path}-wal`)).toBeGreaterThan(4 * 1024 * 1024);
     const deadline = Date.now() + 10_000;
     while (size(path) <= before + 2 * 1024 * 1024 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
-    // The file holds the traces: the worker checkpointed while this connection never did.
+    // The file holds the traces: the worker copied them.
     expect(size(path)).toBeGreaterThan(before + 2 * 1024 * 1024);
-    expect(autocheckpoint(s)).toBe(0);
+    expect(autocheckpoint(s)).toBe(TAIL_CHECKPOINT_PAGES);
   });
 
   it('checkpoint() truncates the log on the worker and answers when it is done', async () => {
@@ -110,7 +116,7 @@ describe('WAL checkpoints on a worker thread', () => {
     const next = worker(s)!;
     expect(next).not.toBe(w);
     expect(await next.started).toBe(true);
-    expect(autocheckpoint(s)).toBe(0);
+    expect(autocheckpoint(s)).toBe(TAIL_CHECKPOINT_PAGES);
     await s.checkpoint();
     expect(size(`${path}-wal`)).toBe(0);
   });
@@ -126,6 +132,106 @@ describe('WAL checkpoints on a worker thread', () => {
     open.splice(open.indexOf(s), 1);
     // Ended by itself: a terminated thread exits with code 1.
     expect(await exited).toBe(0);
+  });
+
+  it('lets the log start over under writes that never pause', async () => {
+    /** The write-ahead log header's checkpoint sequence number: SQLite adds one each time the log starts over. */
+    const restarts = (path: string): number => {
+      const fd = openSync(`${path}-wal`, 'r');
+      try {
+        const header = Buffer.alloc(16);
+        readSync(fd, header, 0, 16, 0);
+        return header.readUInt32BE(12);
+      } finally {
+        closeSync(fd);
+      }
+    };
+    /** One trace per write, back to back, as a client that never pauses sends them. */
+    const write = async (s: SqliteAdapter, i: number) => {
+      await s.insertTrace(LOCAL_TENANT, traces(1, 1_000_000 + i)[0]);
+      await new Promise((r) => setImmediate(r));
+    };
+    const tailBytes = TAIL_CHECKPOINT_PAGES * 4096;
+    // Anti-theater, and the yardstick: with nothing checkpointing, the writes that take the log to twice the tail threshold never start it over.
+    const idle = await store();
+    (idle.s as unknown as { ensureCheckpointer: () => void }).ensureCheckpointer = () => undefined;
+    dbOf(idle.s).pragma('wal_autocheckpoint = 0');
+    await write(idle.s, 0);
+    const before = restarts(idle.path);
+    let n = 1;
+    while (size(`${idle.path}-wal`) < 2 * tailBytes) await write(idle.s, n++);
+    expect(restarts(idle.path)).toBe(before);
+    // With the worker and the tail checkpoint, writes like those start the log over: the log restarts only at a write that finds every frame copied, which the worker's copy alone never guarantees while writes keep coming.
+    const tail = await store();
+    await write(tail.s, 0);
+    expect(await worker(tail.s)!.started).toBe(true);
+    const first = restarts(tail.path);
+    let i = 1;
+    for (; i < n; i += 1) await write(tail.s, i);
+    // On a slow disk one copy by the worker can outlast those writes, holding the checkpoint lock throughout: the writes go on until it lets go, for at most 30 s.
+    const deadline = Date.now() + 30_000;
+    while (restarts(tail.path) === first && Date.now() < deadline) await write(tail.s, i++);
+    const seen = { writes: i, restarts: restarts(tail.path) - first, logMb: size(`${tail.path}-wal`) / 2 ** 20, uncheckedMb: size(`${idle.path}-wal`) / 2 ** 20, autocheckpoint: autocheckpoint(tail.s), worker: worker(tail.s)?.active };
+    expect(seen.restarts, JSON.stringify(seen)).toBeGreaterThan(0);
+  }, 90_000);
+
+  it('has the worker empty the log before a background step that finds it past STEP_TRUNCATE_PAGES, so the adapter’s own checkpoint stays out of the steps', async () => {
+    // 8,000 evaluations with no stored risk estimate, as 0.19.0 left them: the fill after the start rewrites every row, more log than TAIL_CHECKPOINT_PAGES (the anti-theater half shows it).
+    const seed = await store();
+    const result = await new EvalEngine().evaluateAll({ output: 'The order shipped on Monday and should arrive by Thursday.', input: 'Where is my order?' });
+    await seed.s.insertEvalResult(LOCAL_TENANT, { ...result, id: 'e-0', trace_id: undefined });
+    const db = dbOf(seed.s);
+    const cols = (db.prepare("SELECT name FROM pragma_table_info('eval_results') WHERE name <> 'id'").all() as Array<{ name: string }>).map((c) => c.name).join(', ');
+    db.exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 7999) INSERT INTO eval_results (id, ${cols}) SELECT 'e-' || i, ${cols} FROM n, (SELECT * FROM eval_results WHERE id = 'e-0')`);
+    db.exec('UPDATE eval_results SET risk_estimate = NULL, risk_version = NULL');
+    const pageBytes = Number((db.pragma('page_size') as Array<{ page_size: number }>)[0]?.page_size ?? (db.pragma('page_size') as { page_size: number }).page_size);
+    // Everything in iris.db itself before it is copied: the copy below takes that file alone.
+    await seed.s.checkpoint();
+    await seed.s.close();
+    expect(size(`${seed.path}-wal`)).toBe(0);
+    /** The fill on a copy of that file: the log's largest size on disk while it ran, in pages, and the TRUNCATEs asked of the worker. */
+    const fill = async (): Promise<{ maxPages: number; truncates: number }> => {
+      const dir = mkdtempSync(join(tmpdir(), 'iris-ckpt-'));
+      dirs.push(dir);
+      const path = join(dir, 'iris.db');
+      copyFileSync(seed.path, path);
+      const truncate = vi.spyOn(Checkpointer.prototype, 'truncate');
+      const s = new SqliteAdapter(path, { driver: CELL_DRIVER });
+      open.push(s);
+      let max = 0;
+      const sample = setInterval(() => void (max = Math.max(max, size(`${path}-wal`))), 1);
+      await s.initialize();
+      await s.whenRiskEstimatesStored();
+      clearInterval(sample);
+      max = Math.max(max, size(`${path}-wal`));
+      const truncates = truncate.mock.calls.length;
+      truncate.mockRestore();
+      return { maxPages: max / pageBytes, truncates };
+    };
+    const stepped = await fill();
+    expect(stepped.truncates).toBeGreaterThan(0);
+    // The adapter's own checkpoint runs only once the log holds TAIL_CHECKPOINT_PAGES: the log never got there.
+    expect(stepped.maxPages).toBeGreaterThan(STEP_TRUNCATE_PAGES);
+    expect(stepped.maxPages).toBeLessThan(TAIL_CHECKPOINT_PAGES);
+    // Anti-theater: the same fill with the steps blind to the log's size. Only the adapter's own checkpoint bounds it, inside whichever step takes it past TAIL_CHECKPOINT_PAGES.
+    const blind = vi.spyOn(Checkpointer.prototype, 'logBytes').mockReturnValue(0);
+    const unstepped = await fill();
+    blind.mockRestore();
+    expect(unstepped.truncates).toBe(0);
+    expect(unstepped.maxPages).toBeGreaterThanOrEqual(TAIL_CHECKPOINT_PAGES);
+  }, 90_000);
+
+  it('says whether a TRUNCATE is in flight, and when it is done', async () => {
+    const { s } = await store();
+    await s.insertTraces(LOCAL_TENANT, traces(10));
+    const w = worker(s)!;
+    expect(await w.started).toBe(true);
+    expect(w.truncateInProgress).toBe(false);
+    const run = w.truncate();
+    expect(w.truncateInProgress).toBe(true);
+    await w.whenTruncated();
+    expect(w.truncateInProgress).toBe(false);
+    expect(await run).toBe(true);
   });
 
   it('a database in memory has no worker', async () => {

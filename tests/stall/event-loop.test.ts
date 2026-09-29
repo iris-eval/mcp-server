@@ -4,8 +4,8 @@
  *
  * A stdio MCP client waits on the server, and a Node process answers
  * nothing while a SQLite statement runs. The retention sweep, the merge it
- * owes, the erasure of a retired search index and the index build each run
- * in steps of about 50 ms of work with the event loop free between them
+ * owes, the erasure of a retired search index, the index build and the
+ * fill of stored risk estimates each run in steps of under 50 ms of work with the event loop free between them
  * (src/storage/search-index.ts, never holding the event loop). This runs
  * each on a store of agent-loop traces (three model calls and two tool calls
  * each, sent the way OTLP stores them: the heaviest shape the benchmark
@@ -28,13 +28,14 @@
  * (tests/stall/vitest.config.ts), never inside the parallel suite.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { retiredRemain } from '../../src/storage/search-index.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
+import { EvalEngine } from '../../src/eval/engine.js';
 import type { Driver } from '../../src/storage/driver.js';
 import type { Trace } from '../../src/types/trace.js';
 import { SEARCH_DRIVER } from '../unit/storage/fts5-here.js';
@@ -43,6 +44,19 @@ import { SEARCH_DRIVER } from '../unit/storage/fts5-here.js';
 const TRACES = 10_000;
 /** The share past the retention window: large enough for the sweep's merge path. */
 const OLD = 0.3;
+/** Evaluations without a stored risk estimate, as 0.19.0 left them: a fill in one transaction would hold the loop for seconds. */
+const EVALS = 10_000;
+/**
+ * The ceiling on iris.db-wal while writes never pause and while the index
+ * is built. The server's own connection checkpoints at
+ * TAIL_CHECKPOINT_PAGES (64 MB) and background steps have the worker empty
+ * the log at STEP_TRUNCATE_PAGES (32 MB); twice the first is room for the
+ * worker's own copy holding the checkpoint lock a while. With the worker
+ * alone, as 0.20.0's first checkpoint worker had it, the log grew with
+ * every write: 2.6 GB by the end of an index build at 100,000 traces, and
+ * in these two cases 1.1 GB and 149 MB (67 and 35 MB now).
+ */
+const WAL_CEILING_MB = 128;
 /** Steps aim at 50 ms of work; the rest is room for a slower runner and a garbage collection. */
 const STALL_LIMIT_MS = 250;
 
@@ -207,6 +221,32 @@ describe(`no background step holds the event loop over ${STALL_LIMIT_MS} ms (${T
     await s.close();
   });
 
+  it('storing risk estimates for evaluations written before migration 018', async () => {
+    const path = copy(indexed, 'risk.db');
+    const seeded = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
+    await seeded.initialize();
+    const engine = new EvalEngine();
+    for (let i = 0; i < 4; i += 1) {
+      const result = await engine.evaluateAll({ output: `${filler(60)}.`, input: `${filler(15)}?` });
+      await seeded.insertEvalResult(LOCAL_TENANT, { ...result, id: `seed-${i}`, trace_id: undefined });
+    }
+    const db = dbOf(seeded);
+    const cols = (db.prepare("SELECT name FROM pragma_table_info('eval_results') WHERE name <> 'id'").all() as Array<{ name: string }>).map((c) => c.name);
+    db.exec(
+      `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ${EVALS / 4 - 1}) INSERT INTO eval_results (id, ${cols.join(', ')}) SELECT 'e-' || n.i || '-' || e.id, ${cols.map((c) => `e.${c}`).join(', ')} FROM n, (SELECT * FROM eval_results) e`,
+    );
+    db.exec('UPDATE eval_results SET risk_estimate = NULL, risk_version = NULL');
+    await seeded.close();
+    const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
+    await s.initialize();
+    const stall = await longestStall(() => s.whenIdle());
+    report(`risk estimates stored for ${EVALS} evaluations`, stall);
+    expect(count(s, 'SELECT COUNT(*) AS n FROM eval_results')).toBe(EVALS);
+    expect(count(s, 'SELECT COUNT(*) AS n FROM eval_results WHERE risk_version IS NULL')).toBe(0);
+    expect(stall.held).toBeLessThan(STALL_LIMIT_MS);
+    await s.close();
+  });
+
   it('building the index after an upgrade', async () => {
     const s = new SqliteAdapter(copy(unindexed, 'upgrade.db'), { driver: SEARCH_DRIVER });
     await s.initialize();
@@ -215,6 +255,55 @@ describe(`no background step holds the event loop over ${STALL_LIMIT_MS} ms (${T
     expect(await s.whenSearchIndexReady()).toBe('ready');
     expect(count(s, 'SELECT COUNT(*) AS n FROM trace_search_docs')).toBe(TRACES);
     expect(stall.held).toBeLessThan(STALL_LIMIT_MS);
+    await s.close();
+  });
+
+  /** The log's size on disk, in MB, sampled every few milliseconds while `work` runs: its largest. */
+  async function largestLog(path: string, work: () => Promise<unknown>): Promise<number> {
+    const size = () => {
+      try {
+        return statSync(`${path}-wal`).size / 2 ** 20;
+      } catch {
+        return 0;
+      }
+    };
+    let largest = size();
+    const timer = setInterval(() => (largest = Math.max(largest, size())), 5);
+    try {
+      await work();
+    } finally {
+      clearInterval(timer);
+    }
+    return Math.max(largest, size());
+  }
+
+  it(`the log stays under ${WAL_CEILING_MB} MB while agent-loop traces are written back to back`, async () => {
+    const path = copy(indexed, 'wal-writes.db');
+    const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
+    await s.initialize();
+    const now = Date.now();
+    // Each trace one write, as log_trace stores them, with no pause. With the worker alone the log reached 1.1 GB here; now about 67 MB.
+    const largest = await largestLog(path, async () => {
+      for (let i = 0; i < 6_000; i += 1) {
+        await s.insertTrace(LOCAL_TENANT, trace(TRACES + i, now));
+        await new Promise((r) => setImmediate(r));
+      }
+    });
+    process.stdout.write(`[wal] 6,000 agent-loop traces written back to back: largest log ${largest.toFixed(1)} MB\n`);
+    expect(largest).toBeLessThan(WAL_CEILING_MB);
+    await s.close();
+  });
+
+  it(`the log stays under ${WAL_CEILING_MB} MB while the index is built after an upgrade`, async () => {
+    const path = copy(unindexed, 'wal-build.db');
+    const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
+    const largest = await largestLog(path, async () => {
+      await s.initialize();
+      await s.whenIdle();
+    });
+    process.stdout.write(`[wal] index built for ${TRACES} traces: largest log ${largest.toFixed(1)} MB\n`);
+    expect(await s.whenSearchIndexReady()).toBe('ready');
+    expect(largest).toBeLessThan(WAL_CEILING_MB);
     await s.close();
   });
 });

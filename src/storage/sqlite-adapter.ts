@@ -62,8 +62,8 @@ import { randomBytes } from 'node:crypto';
 import { runMigrations, migrationState, inspectMigrations, assertCompatible, DOWNGRADING_URL, type MigrationState } from './migrations/index.js';
 import { backupDatabase, type BackupResult } from './backup.js';
 import { PKG_VERSION } from '../config/defaults.js';
-import { Checkpointer, AUTOCHECKPOINT_PAGES } from './checkpointer.js';
-import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, nextStepSize, eraseRetiredStep, isShadowWriteRefused, retiredRemain, ERASE_ROWS, ERASE_ROWS_RANGE, sweepEraseMode, deleteOwingMerge, mergeOwed, mergeOwedStep, levelMergeStep, filterIndexMissing, CREATE_FILTER_INDEX, MERGE_PAGES, MERGE_PAGES_RANGE, searchIndexProgress, type SearchIndexStatus, BUILD_BATCH, BUILD_STEP_MS, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
+import { Checkpointer, AUTOCHECKPOINT_PAGES, TAIL_CHECKPOINT_PAGES, STEP_TRUNCATE_PAGES } from './checkpointer.js';
+import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, nextStepSize, eraseRetiredStep, isShadowWriteRefused, retiredRemain, ERASE_ROWS, ERASE_ROWS_RANGE, sweepEraseMode, deleteOwingMerge, mergeOwed, mergeOwedStep, levelMergeStep, filterIndexMissing, CREATE_FILTER_INDEX, MERGE_PAGES, MERGE_PAGES_RANGE, searchIndexProgress, type SearchIndexStatus, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
 import { parseSearch, searchRefusal, describeTerm, mayHoldCjk, type ParsedSearch, type TraceMatch } from './search.js';
 import { installSearchFunctions, matchSearch, type MatchRequest, type MatchResult, type SearchPlan } from './search-match.js';
 import { SearchWorkerClient, SearchWorkerUnavailable, warnSearchWorkerUnavailable } from './search-worker-client.js';
@@ -194,6 +194,8 @@ export type SynchronousMode = 'normal' | 'full';
 export const SEARCH_BUDGET_MS = 1000;
 /** How often a delete's checkpoint is tried again while a reader holds it off (eraseFromFile). */
 const ERASE_RETRY_MS = 20;
+/** How long a delete waits for its erasure on the checkpoint worker, off the event loop, before it leaves it to the retry (eraseFromFile). */
+const ERASE_WAIT_MS = 250;
 
 /** The retention sweep's step, in traces: from one, because erasing one trace row by row can take 120 ms by itself. */
 const SWEEP_BATCH = 1;
@@ -314,13 +316,24 @@ function composeConfigOf(provenance: Provenance): ComposeConfig {
 }
 
 /**
+ * The risk fill's step, in evaluations, sized like the other background
+ * steps (search-index.ts, nextStepSize) and timed with its commit: the
+ * commit rewrites every row the step touched and took about as long as the
+ * estimates. A fill that stopped at STEP_TARGET_MS of estimates, before the
+ * commit, held the event loop 47 ms at the median and 79 ms at the most
+ * (20,000 evaluations from 0.19.0).
+ */
+const RISK_FILL_ROWS = 32;
+const RISK_FILL_ROWS_RANGE = [8, 2048] as const;
+/** A fill this large starts the checkpoint worker and waits for it first (fillRiskEstimates). */
+const RISK_FILL_WORKER_ROWS = 2048;
+/**
  * The two risk columns for an evaluation (migration 018): the estimate and
  * its key as JSON, and this build's key version. An evaluation without
  * provenance is never composed on read, and one with no detector to
  * estimate from has nothing to store: both store no estimate and are
  * marked as done, so the background fill does not visit them again.
  */
-const RISK_FILL_BATCH = 8;
 /**
  * The rows the background fill has still to visit: no version, or another
  * build's. Three queries rather than one with OR: SQLite answers an OR over
@@ -391,6 +404,9 @@ export class SqliteAdapter implements IStorageAdapter {
   /** The worker thread that checkpoints the WAL off the event loop (checkpointer.ts); none for a database in memory. */
   private checkpointer: Checkpointer | undefined;
   private closing = false;
+  private markClosing: () => void = () => undefined;
+  /** Resolves when close() begins: a wait that must not hold a close up races it. Declared after markClosing, whose initializer would otherwise replace the resolver. */
+  private readonly closingNow: Promise<void> = new Promise((resolve) => (this.markClosing = resolve));
   private readonly fts5Override: boolean | undefined;
   private readonly log: (level: 'info' | 'warn', line: string) => void;
   /** storage.searchBudgetMs — see SEARCH_BUDGET_MS. */
@@ -583,7 +599,7 @@ export class SqliteAdapter implements IStorageAdapter {
         driver: this.db.name,
         busyMs: BUSY_TIMEOUT_MS,
         onReady: () => {
-          if (!this.closing) this.db.pragma('wal_autocheckpoint = 0');
+          if (!this.closing) this.db.pragma(`wal_autocheckpoint = ${TAIL_CHECKPOINT_PAGES}`);
         },
         onFailed: (reason) => {
           if (this.closing) return;
@@ -599,6 +615,7 @@ export class SqliteAdapter implements IStorageAdapter {
   async close(): Promise<void> {
     // Background work in progress stops at its next step; each is resumable, and the next start carries on.
     this.closing = true;
+    this.markClosing();
     await Promise.all([this.filterIndex, this.searchBuild, this.merging, this.riskFill, ...this.sweeps]);
     // The search thread closes its own connection before this one closes.
     await this.searchWorker?.close();
@@ -674,9 +691,9 @@ export class SqliteAdapter implements IStorageAdapter {
   /**
    * Fill the search index from the traces already stored, after the start
    * rather than during it (search-index.ts, installSearchIndex, says why).
-   * One step at a time, each under its own write lock and sized to about
-   * BUILD_STEP_MS of work from the last step's time, yielding to the event
-   * loop between steps so requests are answered while it runs. An index
+   * One step at a time, each under its own write lock and sized to
+   * stay under BUILD_STEP_MS from the last step's work and time, yielding
+   * to the event loop between steps so requests are answered while it runs. An index
    * retired at the start is erased first, in steps of the same size rule.
    * Another process writing the same file only makes a step wait
    * (busy_timeout); a step that still fails leaves the index building and
@@ -702,6 +719,7 @@ export class SqliteAdapter implements IStorageAdapter {
       let after = 0;
       let batch = BUILD_BATCH;
       while (!this.closing) {
+        await this.beforeWriteStep();
         const started = performance.now();
         const last = indexNextBatch(this.db, after, batch);
         batch = nextBuildBatch(batch, performance.now() - started);
@@ -711,6 +729,7 @@ export class SqliteAdapter implements IStorageAdapter {
           // Every trace is in the index: stream the ones queued for CJK, in steps of the same size rule.
           let queued = BUILD_BATCH;
           while (!this.closing) {
+            await this.beforeWriteStep();
             const began = performance.now();
             if (indexCjkPending(this.db, queued) === null) break;
             queued = nextBuildBatch(queued, performance.now() - began);
@@ -760,10 +779,12 @@ export class SqliteAdapter implements IStorageAdapter {
         try {
           await worker.exec(CREATE_FILTER_INDEX);
         } catch {
-          // Refused there (the write lock held past the busy timeout, or the worker stopped): here instead.
+          // Refused there (the write lock held past the busy timeout, or the worker stopped): here instead, after any TRUNCATE in flight (insertTraces says why).
+          while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
           this.db.exec(CREATE_FILTER_INDEX);
         }
       } else {
+        while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
         this.db.exec(CREATE_FILTER_INDEX);
       }
       this.log('info', `Search index: the covering index for search filters was built after the start, in ${((performance.now() - began) / 1000).toFixed(1)} s`);
@@ -774,6 +795,39 @@ export class SqliteAdapter implements IStorageAdapter {
     }
   }
 
+  /**
+   * Before a background write step: once the log holds STEP_TRUNCATE_PAGES,
+   * have the checkpoint worker copy and empty it (TRUNCATE), and wait for
+   * that here, off the event loop. Otherwise the adapter's own checkpoint
+   * (TAIL_CHECKPOINT_PAGES) lands in one step's commit in every few that
+   * rewrite many rows, and holds the event loop with it (checkpointer.ts).
+   * Also waits out a TRUNCATE someone else started, which holds the write
+   * lock while it runs: a step started meanwhile would wait for it in the
+   * busy handler, on the event loop. Checked in the turn the step runs in,
+   * after its yield: the erasure's retry (eraseFromFile) can start a
+   * TRUNCATE between the two.
+   */
+  private async beforeWriteStep(): Promise<void> {
+    const worker = this.checkpointer;
+    if (worker?.active && !worker.truncateInProgress && worker.logBytes() >= STEP_TRUNCATE_PAGES * this.pageBytes()) void worker.truncate().catch(() => undefined);
+    // Checked again after each yield: the erasure's retry can start a TRUNCATE while this waits, and the step must start in the turn that saw none.
+    while (this.checkpointer?.truncateInProgress) {
+      await this.checkpointer.whenTruncated();
+      // The worker's answer arrives as an I/O event: a step run from it would run in the same turn of the event loop as the next one, back to back.
+      await yieldToRequests();
+    }
+  }
+
+  private pageSize: number | undefined;
+  /** The file's page size, read once. */
+  private pageBytes(): number {
+    if (this.pageSize === undefined) {
+      const out = this.db.pragma('page_size') as Array<{ page_size: number }> | { page_size: number };
+      this.pageSize = Number((Array.isArray(out) ? out[0] : out).page_size);
+    }
+    return this.pageSize;
+  }
+
   /** The build's merge-page budget, carried from one round of merges to the next. */
   private mergePages = MERGE_PAGES;
 
@@ -781,6 +835,7 @@ export class SqliteAdapter implements IStorageAdapter {
   private async levelMerges(): Promise<void> {
     while (!this.closing) {
       await yieldToRequests();
+      await this.beforeWriteStep();
       const started = performance.now();
       const written = levelMergeStep(this.db, this.mergePages);
       if (written === 0) return;
@@ -792,8 +847,8 @@ export class SqliteAdapter implements IStorageAdapter {
    * Store a risk estimate for every evaluation that has none under this
    * build's key version (migration 018 says why it is stored), after the
    * start and never during it. The same steps as the index build: each
-   * about BUILD_STEP_MS of work under one write lock, yielding between
-   * them. A read never waits for it: an evaluation the
+   * sized to about STEP_TARGET_MS under one write lock, its commit
+   * included, yielding between them. A read never waits for it: an evaluation the
    * fill has not reached is computed on read, as before. A step that fails
    * stops the fill until the next start, which is only slower reads.
    */
@@ -804,33 +859,56 @@ export class SqliteAdapter implements IStorageAdapter {
     try {
       // The rows still to fill, found through idx_eval_results_risk_version: once every row is filled, a start reads nothing.
       const [unversioned, below, above] = RISK_FILL_QUERIES.map((sql) => this.db.prepare(sql));
-      const next = (): Array<Record<string, unknown>> => {
-        for (const [query, params] of [[unversioned, [RISK_FILL_BATCH]], [below, [RISK_KEY_VERSION, RISK_FILL_BATCH]], [above, [RISK_KEY_VERSION, RISK_FILL_BATCH]]] as const) {
+      const next = (limit: number): Array<Record<string, unknown>> => {
+        for (const [query, params] of [[unversioned, [limit]], [below, [RISK_KEY_VERSION, limit]], [above, [RISK_KEY_VERSION, limit]]] as const) {
           const rows = query.all(...params) as Array<Record<string, unknown>>;
           if (rows.length > 0) return rows;
         }
         return [];
       };
       const store = this.db.prepare('UPDATE eval_results SET risk_estimate = ?, risk_version = ? WHERE rowid = ?');
-      let done = false;
-      while (!this.closing && !done) {
-        // One write lock per step, read in small batches until BUILD_STEP_MS of work: an estimate that is not cached costs milliseconds.
-        const started = performance.now();
-        this.db.transaction(() => {
-          while (performance.now() - started < BUILD_STEP_MS) {
-            const rows = next();
-            if (rows.length === 0) {
-              done = true;
-              return;
-            }
-            for (const row of rows) {
-              const [estimate, version] = riskColumns(this.rowToEvalResult(row));
-              store.run(estimate, version, row.rid);
-              // The rows not reached stay unvisited and come first in the next step.
-              if (performance.now() - started >= BUILD_STEP_MS) return;
-            }
+      const step = this.db.transaction((max: number): number => {
+        let written = 0;
+        while (written < max) {
+          const rows = next(max - written);
+          if (rows.length === 0) break;
+          for (const row of rows) {
+            const [estimate, version] = riskColumns(this.rowToEvalResult(row));
+            store.run(estimate, version, row.rid);
+            written += 1;
           }
-        })();
+        }
+        return written;
+      });
+      if (next(1).length === 0) return;
+      /*
+       * Its steps rewrite every row they fill: on a large backlog, without
+       * the worker, this connection's own checkpoints land in them. So a
+       * fill of RISK_FILL_WORKER_ROWS or more starts the worker and begins
+       * once it is up (or could not start, or the store is closing). A small
+       * one does neither: a start that has a few rows to fill and nothing to
+       * write starts no thread, as before.
+       */
+      const backlog = RISK_FILL_QUERIES.reduce((n, sql, i) => {
+        if (n >= RISK_FILL_WORKER_ROWS) return n;
+        const count = `SELECT COUNT(*) AS n FROM (${sql.replace('SELECT rowid AS rid, *', 'SELECT 1')})`;
+        const params = i === 0 ? [RISK_FILL_WORKER_ROWS] : [RISK_KEY_VERSION, RISK_FILL_WORKER_ROWS];
+        return n + Number((this.db.prepare(count).get(...params) as { n: number }).n);
+      }, 0);
+      if (backlog >= RISK_FILL_WORKER_ROWS) {
+        this.ensureCheckpointer();
+        if (this.checkpointer) await Promise.race([this.checkpointer.whenStarted(), this.closingNow]);
+        if (this.closing) return;
+      }
+      let rows = RISK_FILL_ROWS;
+      while (!this.closing) {
+        await this.beforeWriteStep();
+        const started = performance.now();
+        // IMMEDIATE: it reads the rows it rewrites, and the write lock is taken before that read.
+        const written = step.immediate(rows);
+        // Fewer than asked for: none are left.
+        if (written < rows) break;
+        rows = nextStepSize(written, performance.now() - started, RISK_FILL_ROWS_RANGE);
         await yieldToRequests();
       }
     } catch (err) {
@@ -850,6 +928,7 @@ export class SqliteAdapter implements IStorageAdapter {
     let rows = ERASE_ROWS;
     let oneStatement = false;
     while (!this.closing && retiredRemain(this.db)) {
+      await this.beforeWriteStep();
       const started = performance.now();
       try {
         if (!eraseRetiredStep(this.db, rows, oneStatement)) return;
@@ -877,6 +956,7 @@ export class SqliteAdapter implements IStorageAdapter {
       try {
         let pages = MERGE_PAGES;
         while (!this.closing) {
+          await this.beforeWriteStep();
           const started = performance.now();
           const { owed, written } = mergeOwedStep(this.db, pages);
           if (!owed) break;
@@ -932,6 +1012,20 @@ export class SqliteAdapter implements IStorageAdapter {
   async insertTraces(tenantId: TenantId, traces: Trace[]): Promise<void> {
     assertTenant(tenantId);
     this.ensureCheckpointer();
+    /*
+     * After any TRUNCATE in flight on the checkpoint worker, off the event
+     * loop, as deleteTrace and the background steps do. A TRUNCATE takes the
+     * write lock without waiting, so a write of this connection's that lands
+     * in that instant turns it away. Under steady writes it was turned away
+     * at every try: with the adapter's own attempt held off by the worker's
+     * copy, 8 to 11 of 20 deletes returned with the deleted text still in
+     * the file, on both drivers. So every write of this connection waits
+     * here, and only a reader or another process can hold a delete's
+     * erasure off. Nothing is in flight almost always, and then the write
+     * runs at once, in this turn; the check and the write run in the same
+     * turn, so nothing can start a TRUNCATE between them.
+     */
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     const insertTraceStmt = this.db.prepare(`
       INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key, source, session_id, cost_source, cost_estimate)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1034,6 +1128,8 @@ export class SqliteAdapter implements IStorageAdapter {
   async updateTraceMetadata(tenantId: TenantId, traceId: string, patch: Record<string, unknown>): Promise<boolean> {
     assertTenant(tenantId);
     this.ensureCheckpointer();
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     // Read-then-write under IMMEDIATE, so a concurrent writer waits instead of failing the snapshot.
     const write = this.db.transaction((): boolean => {
       const row = this.db.prepare('SELECT metadata FROM traces WHERE tenant_id = ? AND trace_id = ?').get(tenantId, traceId) as { metadata?: string | null } | undefined;
@@ -1333,6 +1429,8 @@ export class SqliteAdapter implements IStorageAdapter {
   async insertSpan(tenantId: TenantId, span: Span): Promise<void> {
     assertTenant(tenantId);
     this.ensureCheckpointer();
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     const insert = this.db.prepare(`
       INSERT INTO spans (tenant_id, span_id, trace_id, parent_span_id, name, kind, status_code, status_message, start_time, end_time, attributes, events)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1386,6 +1484,8 @@ export class SqliteAdapter implements IStorageAdapter {
   async insertEvalResult(tenantId: TenantId, result: EvalResult): Promise<void> {
     assertTenant(tenantId);
     this.ensureCheckpointer();
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     /*
      * created_at is written EXPLICITLY as ISO-8601. Leaving it to the
      * column DEFAULT (datetime('now')) stored "2026-08-09 15:00:00", which
@@ -1520,6 +1620,8 @@ export class SqliteAdapter implements IStorageAdapter {
     run: { runId: string; label?: string | null; agentName?: string | null; reevaluationOf?: string | null },
   ): Promise<void> {
     assertTenant(tenantId);
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     this.db
       .prepare(
         `INSERT INTO runs (run_id, tenant_id, label, agent_name, reevaluation_of)
@@ -1546,6 +1648,8 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async createDataset(tenantId: TenantId, input: { label: string; cases: DatasetCase[] }): Promise<DatasetDetail> {
     assertTenant(tenantId);
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     const label = input.label.trim();
     const taken = this.db.prepare('SELECT id FROM datasets WHERE tenant_id = ? AND label = ?').get(tenantId, label);
     if (taken) throw new DatasetExistsError(label);
@@ -1692,6 +1796,8 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async setRunBaseline(tenantId: TenantId, runId: string, baseline: boolean): Promise<void> {
     assertTenant(tenantId);
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     const write = this.db.transaction(() => {
       // A run that exists only because traces carried its id gets its row here; the label stays whatever it was.
       this.db.prepare('INSERT OR IGNORE INTO runs (run_id, tenant_id) VALUES (?, ?)').run(runId, tenantId);
@@ -2332,6 +2438,8 @@ export class SqliteAdapter implements IStorageAdapter {
    */
   async insertVerdictLabel(tenantId: TenantId, label: Omit<VerdictLabel, 'labelledAt'> & { labelledAt?: string }): Promise<VerdictLabel> {
     assertTenant(tenantId);
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     const labelledAt = label.labelledAt ?? new Date().toISOString();
     const write = this.db.transaction(() => {
       this.db.prepare('DELETE FROM verdict_labels WHERE tenant_id = ? AND eval_id = ? AND rule_name IS ?').run(tenantId, label.evalId, label.ruleName);
@@ -2567,7 +2675,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   /**
    * The retention sweep of traces, in steps: a few traces per transaction,
-   * sized to about BUILD_STEP_MS of work from the last step's time, with the
+   * sized to stay under BUILD_STEP_MS from the last step's work and time, with the
    * event loop free between steps, so the server answers while it runs. It
    * was one transaction, and at 100,000 agent-loop traces a sweep of 3% held
    * the event loop for seconds (search-index.ts, the retention sweep, says
@@ -2606,6 +2714,7 @@ export class SqliteAdapter implements IStorageAdapter {
     let deleted = 0;
     let batch = SWEEP_BATCH;
     while (!this.closing) {
+      await this.beforeWriteStep();
       const started = performance.now();
       const n = step.immediate(batch);
       if (n === 0) break;
@@ -2636,6 +2745,7 @@ export class SqliteAdapter implements IStorageAdapter {
     let deleted = 0;
     let batch = EVAL_SWEEP_BATCH;
     while (!this.closing) {
+      await this.beforeWriteStep();
       const started = performance.now();
       const n = remove.run(tid, cut, batch).changes;
       if (n === 0) break;
@@ -2648,6 +2758,8 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async purge(tenantId: TenantId): Promise<{ traces: number; evalResults: number }> {
     assertTenant(tenantId);
+    // After any TRUNCATE in flight (insertTraces says why).
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     const deleteAll = this.db.transaction(() => {
       const evalResults = this.db.prepare('DELETE FROM eval_results WHERE tenant_id = ?').run(tenantId).changes;
       // spans cascade (FK ON DELETE CASCADE).
@@ -2701,7 +2813,17 @@ export class SqliteAdapter implements IStorageAdapter {
       this.eraseEvaluationsOfTraces(tid, [id]);
       return this.db.prepare('DELETE FROM traces WHERE tenant_id = ? AND trace_id = ?').run(tid, id).changes;
     });
-    const deleted = run(tenantId, traceId) > 0;
+    /*
+     * Read-then-write under IMMEDIATE, so the write lock is taken before the
+     * read. Deferred, a TRUNCATE the checkpoint worker ran between the read
+     * and the write (an erasure it was just asked for) moved the log under
+     * the read's snapshot, and the delete failed with "database is locked"
+     * at once, without waiting: the stress test hit it 3 times in 26
+     * runs. A TRUNCATE already in flight is waited out here, off the event
+     * loop, rather than in the busy handler, on it.
+     */
+    while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
+    const deleted = run.immediate(tenantId, traceId) > 0;
     /*
      * secure_delete zeroes the freed pages, but in WAL mode the zeroed
      * pages go to the WAL and iris.db keeps the old ones, with the trace's
@@ -2727,6 +2849,34 @@ export class SqliteAdapter implements IStorageAdapter {
    */
   private async eraseFromFile(onWorker = false): Promise<void> {
     if (this.dbPath === ':memory:' || this.closing || (await this.truncateCheckpointNow(onWorker))) return;
+    /*
+     * Held off. The checkpoint worker's own work can do that: its
+     * connection opening (it starts at the store's first write, so a delete
+     * straight after that write meets it) or a copy in progress. Both are
+     * short, and a TRUNCATE sent to the worker runs as soon as they end, so
+     * the worker is waited for and asked before anything is treated as a
+     * reader to wait out. On a Windows CI runner with the built-in driver,
+     * two erasures met the worker still opening its connection.
+     */
+    const worker = this.checkpointer;
+    if (worker && !this.closing && (await worker.whenStarted())) {
+      /*
+       * And for up to ERASE_WAIT_MS more, tried again on the worker every
+       * ERASE_RETRY_MS, with the event loop free: under the stress test a
+       * hold on the file that neither connection's attempt names outlasted
+       * the first try by tens of milliseconds (both TRUNCATEs busy, 10 ms
+       * apart, and the retry succeeding later), on Linux with the built-in
+       * driver. A reader that holds the file longer, a search, is left to
+       * the retry below, as before.
+       */
+      const until = performance.now() + ERASE_WAIT_MS;
+      for (;;) {
+        if (this.closing) break;
+        if (await this.truncateCheckpointNow(true)) return;
+        if (performance.now() + ERASE_RETRY_MS > until) break;
+        await new Promise((r) => setTimeout(r, ERASE_RETRY_MS));
+      }
+    }
     let trying = false;
     this.eraseRetry ??= setInterval(() => {
       if (trying) return;
@@ -2744,9 +2894,10 @@ export class SqliteAdapter implements IStorageAdapter {
    * A TRUNCATE checkpoint that gives up at once rather than wait for a
    * reader; whether it emptied the WAL. `onWorker`: on the checkpoint
    * worker's connection when it runs (checkpointer.ts), so copying a large
-   * log never holds the event loop. A delete's own erasure stays on this
-   * connection: its log is a few pages, and it must not wait behind the
-   * worker's periodic checkpoint for its answer.
+   * log never holds the event loop. A delete's own erasure is tried on this
+   * connection first: its log is a few pages, and it should not wait behind
+   * the worker's periodic checkpoint for its answer unless this connection
+   * was held off (eraseFromFile).
    */
   private async truncateCheckpointNow(onWorker = false): Promise<boolean> {
     if (onWorker && this.checkpointer?.active) {

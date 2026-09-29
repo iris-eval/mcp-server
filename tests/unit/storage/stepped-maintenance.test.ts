@@ -58,6 +58,12 @@ async function closed(s: SqliteAdapter): Promise<void> {
 }
 
 const dbOf = (s: SqliteAdapter) => (s as unknown as { db: Driver }).db;
+/** Where a word left on disk is, and the checkpoint worker's state: the message when an erasure assertion fails. */
+const residue = (s: SqliteAdapter, path: string, word: string): string => {
+  const w = (s as unknown as { checkpointer?: { active: boolean; stopped: string; truncateInProgress: boolean } }).checkpointer;
+  const has = (file: string) => existsSync(file) && readFileSync(file).includes(Buffer.from(word));
+  return JSON.stringify({ inDb: has(path), inWal: has(`${path}-wal`), walBytes: existsSync(`${path}-wal`) ? readFileSync(`${path}-wal`).length : -1, worker: w ? { active: w.active, stopped: w.stopped, truncating: w.truncateInProgress } : null, retrying: (s as unknown as { eraseRetry?: unknown }).eraseRetry !== undefined, passive: dbOf(s).pragma('wal_checkpoint(PASSIVE)') });
+};
 const fileHolds = (path: string, needle: string): boolean => existsSync(path) && readFileSync(path).includes(needle);
 /** Whether the word is in iris.db or its WAL. FTS5 stores a term after the prefix it shares with the term before it, so look for its tail. */
 const onDisk = (path: string, word: string) => fileHolds(path, word.slice(4)) || fileHolds(`${path}-wal`, word.slice(4));
@@ -117,7 +123,7 @@ describe('the retention sweep runs in steps', () => {
     expect(turns).toBeGreaterThanOrEqual(8);
     expect(owed(s)).toBe(0);
     await s.checkpoint();
-    expect(onDisk(path, word)).toBe(false);
+    expect(onDisk(path, word), residue(s, path, word)).toBe(false);
     integrity(s);
     expect((await s.queryTraces(LOCAL_TENANT, { search: word })).total).toBe(0);
     expect((await s.queryTraces(LOCAL_TENANT, { search: 'ordinary' })).total).toBe(300);
@@ -136,7 +142,7 @@ describe('the retention sweep runs in steps', () => {
     expect(await s.deleteTracesOlderThan(LOCAL_TENANT, 30)).toBe(2);
     expect(owed(s)).toBe(0);
     await s.checkpoint();
-    expect(onDisk(path, word)).toBe(false);
+    expect(onDisk(path, word), residue(s, path, word)).toBe(false);
     integrity(s);
   });
 
@@ -164,7 +170,7 @@ describe('the retention sweep runs in steps', () => {
     expect(owed(next)).toBe(0);
     expect(await next.deleteTracesOlderThan(LOCAL_TENANT, 30)).toBe(299);
     await next.checkpoint();
-    expect(onDisk(path, word)).toBe(false);
+    expect(onDisk(path, word), residue(next, path, word)).toBe(false);
     integrity(next);
   });
 
@@ -186,7 +192,7 @@ describe('the retention sweep runs in steps', () => {
     const next = await started(path);
     expect(owed(next)).toBe(0);
     await next.checkpoint();
-    expect(onDisk(path, word)).toBe(false);
+    expect(onDisk(path, word), residue(next, path, word)).toBe(false);
     integrity(next);
   });
 
@@ -279,7 +285,7 @@ describe('an index retired at the start is erased in steps (#695)', () => {
     expect(turns).toBeGreaterThan(3);
     expect(retiredRemain(dbOf(s))).toBe(false);
     await s.checkpoint();
-    expect(onDisk(path, word)).toBe(false);
+    expect(onDisk(path, word), residue(s, path, word)).toBe(false);
     integrity(s);
     expect((await s.queryTraces(LOCAL_TENANT, { search: 'ordinary' })).total).toBe(800);
     expect((await s.queryTraces(LOCAL_TENANT, { search: '批准' })).traces.map((t) => t.trace_id)).toEqual(['cjk']);
@@ -301,7 +307,7 @@ describe('an index retired at the start is erased in steps (#695)', () => {
     expect(log).toContainEqual(['warn', expect.stringMatching(/dropped in one statement/)]);
     expect(retiredRemain(dbOf(s))).toBe(false);
     await s.checkpoint();
-    expect(onDisk(path, word)).toBe(false);
+    expect(onDisk(path, word), residue(s, path, word)).toBe(false);
     integrity(s);
   });
 });
