@@ -399,15 +399,19 @@ All hot-path indexes are composite with `tenant_id` as the leading column so eve
 
 | Index | Table | Column(s) | Purpose |
 |-------|-------|-----------|---------|
-| `idx_traces_tenant_timestamp` | traces | (tenant_id, timestamp) | Tenant-scoped time-range queries |
-| `idx_traces_tenant_agent` | traces | (tenant_id, agent_name) | Tenant-scoped agent filtering |
-| `idx_traces_tenant_framework` | traces | (tenant_id, framework) | Tenant-scoped framework filtering |
+| `idx_traces_tenant_timestamp_cover` | traces | (tenant_id, timestamp, agent_name, latency_ms, cost_usd, cost_source, trace_id) | Time windows and pages in time order; the dashboard summary and eval stats read it without a trace row |
+| `idx_traces_tenant_agent_timestamp` | traces | (tenant_id, agent_name, timestamp, trace_id, cost_usd) | One agent's traces newest first: the failure log, get_traces for an agent, the agent filter list |
+| `idx_traces_tenant_framework` | traces | (tenant_id, framework) | Tenant-scoped framework filtering, the framework filter list, and counts |
+| `idx_traces_tenant_session` | traces | (tenant_id, session_id, timestamp) | The turns of one session, in time order |
 | `idx_spans_tenant_trace` | spans | (tenant_id, trace_id) | Tenant-scoped span lookup |
+| `idx_spans_tenant_error` | spans | (tenant_id, trace_id, status_code) where status_code is ERROR | The failed spans only: the summary's error rate |
 | `idx_spans_parent` | spans | parent_span_id | Span tree traversal |
 | `idx_eval_results_tenant_trace` | eval_results | (tenant_id, trace_id) | Tenant-scoped eval lookup |
 | `idx_eval_results_tenant_type` | eval_results | (tenant_id, eval_type) | Tenant-scoped eval type filter |
 | `idx_eval_results_tenant_created` | eval_results | (tenant_id, created_at) | Tenant-scoped trend queries |
 | `idx_eval_results_risk_version` | eval_results | risk_version | The rows whose stored risk estimate is missing or from another build, for the background fill (migration 018) |
+
+The reads that run on every evaluation or every dashboard render name their index (`INDEXED BY`) and fix their join order (`CROSS JOIN`), so their plans cannot change when the data, the set of indexes or SQLite's statistics do. Iris never runs `ANALYZE`: with statistics, SQLite chose slower plans for the failure log and the 30-day summary on a store of 100,000 traces (#711). `tests/unit/storage/query-plans.test.ts` holds each plan on both drivers, with and without FTS5, with no statistics and under three sets of them. The agent failure log chooses between two pinned queries from index counts (`agentLogRows` in `sqlite-adapter.ts` explains how). Each connection keeps the statements it prepares, up to 256, least recently used first out (`statementCache` in `driver.ts`).
 
 ### Retention
 

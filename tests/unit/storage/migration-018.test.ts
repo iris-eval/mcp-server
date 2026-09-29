@@ -6,7 +6,7 @@
  * write time with the key of its inputs, and a background step fills the
  * rows written before. What this file holds to:
  *
- *   - the columns exist once, and this is the newest migration;
+ *   - the columns exist once, and this is the eighteenth migration;
  *   - a written evaluation stores its estimate under this build's key, and
  *     reads back with exactly the verdict composing it again gives;
  *   - a read USES the stored estimate: a stored estimate with the right key
@@ -74,8 +74,8 @@ function recomposed(result: EvalResult) {
 }
 
 describe('migration 018 — the stored risk estimate', () => {
-  it('is the eighteenth known migration, and the last, and the ids run in order', () => {
-    expect(KNOWN_MIGRATION_IDS).toHaveLength(18);
+  it('is the eighteenth known migration, and the ids run in order', () => {
+    // The newest migration's test owns the count; this one owns the position.
     expect(KNOWN_MIGRATION_IDS[17]).toBe('018-eval-risk-estimate');
     expect(KNOWN_MIGRATION_IDS[16]).toBe('017-relevance-judge-spend');
     expect([...KNOWN_MIGRATION_IDS].sort()).toEqual([...KNOWN_MIGRATION_IDS]);

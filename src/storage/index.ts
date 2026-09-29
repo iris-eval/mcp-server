@@ -8,6 +8,7 @@ export function createStorage(config: IrisConfig, options: Pick<SqliteAdapterOpt
     case 'sqlite':
       return new SqliteAdapter(config.storage.path, {
         redact: config.storage.redact ?? 'none',
+        synchronous: config.storage.synchronous ?? 'normal',
         ...options,
         ...(config.storage.searchBudgetMs !== undefined ? { searchBudgetMs: config.storage.searchBudgetMs } : {}),
       });

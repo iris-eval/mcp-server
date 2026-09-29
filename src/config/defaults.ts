@@ -20,6 +20,7 @@ export const defaultConfig: IrisConfig = {
   storage: {
     type: 'sqlite',
     redact: 'none',
+    synchronous: 'normal',
     path: join(irisHome(), 'iris.db'),
   },
   server: {
