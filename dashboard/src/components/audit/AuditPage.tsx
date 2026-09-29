@@ -24,6 +24,7 @@ import { formatTimeAgo, formatTimestamp } from '../../utils/formatters';
 import { PageHeader } from '../layout/PageHeader';
 import { PageToolbar } from '../layout/PageToolbar';
 import { PageEmptyState } from '../layout/PageEmptyState';
+import { toCsv } from '../../utils/csv';
 
 const ACTION_OPTIONS: Array<{ value: AuditAction | ''; label: string }> = [
   { value: '', label: 'All actions' },
@@ -208,21 +209,17 @@ function formatDetails(details?: Record<string, unknown>): string {
     .join(' · ');
 }
 
+/*
+ * The audit log is read in one page (at most 500 entries here), so its CSV
+ * is built in the browser from the entries on screen. A rule name is text
+ * whoever deployed the rule chose, so the cells go through the same
+ * formula-injection guard as the server's exports (utils/csv.ts).
+ */
 function downloadCsv(entries: AuditLogEntry[]): void {
-  const escape = (s: string): string => `"${s.replace(/"/g, '""')}"`;
-  const header = ['ts', 'action', 'user', 'ruleId', 'ruleName', 'traceId', 'details'].join(',');
-  const lines = entries.map((e) =>
-    [
-      escape(e.ts),
-      escape(e.action),
-      escape(e.user),
-      escape(e.ruleId ?? ''),
-      escape(e.ruleName ?? ''),
-      escape(e.traceId ?? ''),
-      escape(formatDetails(e.details)),
-    ].join(','),
+  const csv = toCsv(
+    ['ts', 'action', 'user', 'ruleId', 'ruleName', 'traceId', 'details'],
+    entries.map((e) => [e.ts, e.action, e.user, e.ruleId, e.ruleName, e.traceId, formatDetails(e.details)]),
   );
-  const csv = [header, ...lines].join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

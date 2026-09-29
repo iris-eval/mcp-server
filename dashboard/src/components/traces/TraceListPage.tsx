@@ -8,6 +8,7 @@ import { TraceTable } from './TraceTable';
 import { Pagination } from '../shared/Pagination';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { QueryError } from '../shared/QueryError';
+import { ExportMenu } from '../shared/ExportMenu';
 
 const styles = {
   toolbar: {
@@ -15,6 +16,9 @@ const styles = {
     gap: 'var(--space-3)',
     flexWrap: 'wrap',
     alignItems: 'flex-start',
+  } as const,
+  toolbarEnd: {
+    marginLeft: 'auto',
   } as const,
   status: {
     color: 'var(--text-secondary)',
@@ -62,15 +66,17 @@ export function TraceListPage() {
   const [offset, setOffset] = useState(0);
   const limit = 50;
 
-  const params = useMemo(() => {
-    const p: Record<string, string> = { limit: String(limit), offset: String(offset) };
+  // What the list is filtered by: sent with each page, and what the export carries (#4).
+  const filterParams = useMemo(() => {
+    const p: Record<string, string> = {};
     if (filters.agent_name) p.agent_name = filters.agent_name;
     if (filters.framework) p.framework = filters.framework;
     if (filters.since) p.since = new Date(filters.since).toISOString();
     if (filters.until) p.until = new Date(filters.until).toISOString();
     if (searchable) p.q = q.trim();
     return p;
-  }, [filters, offset, q, searchable]);
+  }, [filters, q, searchable]);
+  const params = useMemo(() => ({ limit: String(limit), offset: String(offset), ...filterParams }), [filterParams, offset]);
 
   const { data, loading, error, refetch, rateLimitedUntil } = useTraces(params);
   const searching = searchable && data?.search !== undefined;
@@ -88,6 +94,9 @@ export function TraceListPage() {
       <div style={styles.toolbar}>
         <TraceSearch value={q} onCommit={onSearch} />
         <TraceFilters values={filters} onChange={(v) => { setFilters(v); setOffset(0); }} />
+        <div style={styles.toolbarEnd}>
+          <ExportMenu kind="traces" filters={filterParams} total={data?.total} />
+        </div>
       </div>
       <div role="status" aria-live="polite" style={styles.status}>
         {searchStatus(q, hasSearchableWord(q), short, searchable && data?.search ? data.total : undefined, data?.search)}

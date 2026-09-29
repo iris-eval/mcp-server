@@ -95,6 +95,13 @@ function cliFlags(): Set<string> {
   const install = read('src/cli/install/command.ts').match(/parseArgs\(\{\s*args: argv,\s*options:\s*\{([\s\S]*?)\n\s*\},\s*allowPositionals/);
   if (!install) throw new Error('docs-contract: the parseArgs options block in src/cli/install/command.ts was not found');
   for (const m of install[1].matchAll(/^\s*'?([a-z][a-z0-9-]*)'?:\s*\{/gm)) flags.add(m[1]);
+  // `export` too (src/cli/export.ts): its own options, and its filter flags, listed once in FILTERS.
+  const exportSrc = read('src/cli/export.ts');
+  const exportOptions = exportSrc.match(/parseArgs\(\{\s*args: argv,\s*options:\s*\{([\s\S]*?)\n\s*\},\s*strict:/);
+  const exportFilters = exportSrc.match(/const FILTERS = \{([\s\S]*?)\n\} as const;/);
+  if (!exportOptions || !exportFilters) throw new Error('docs-contract: the export options or FILTERS block in src/cli/export.ts was not found');
+  for (const m of exportOptions[1].matchAll(/^\s*'?([a-z][a-z0-9-]*)'?:\s*\{/gm)) flags.add(m[1]);
+  for (const m of exportFilters[1].matchAll(/'([a-z][a-z0-9-]*)'/g)) flags.add(m[1]);
   return flags;
 }
 
