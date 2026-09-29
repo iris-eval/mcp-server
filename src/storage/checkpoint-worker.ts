@@ -5,8 +5,9 @@
  * the same checks before any native code loads (#720), and it copies the
  * write-ahead log into the file so the adapter's commits never do.
  *
- * Every intervalMs it runs a PASSIVE checkpoint, which copies what it can
- * and never waits on a writer. It does not keep the log short by itself:
+ * intervalMs after the last one ended, it runs a PASSIVE checkpoint, which
+ * copies what it can and never waits on a writer. It does not keep the log
+ * short by itself:
  * SQLite starts the log over only at a write that finds every frame
  * already copied, and a copy made on another connection always trails the
  * writes made while it ran. checkpointer.ts says how the adapter's
@@ -47,19 +48,30 @@ function checkpoint(mode: 'PASSIVE' | 'TRUNCATE', waitMs: number): { busy: numbe
   }
 }
 
-const timer = setInterval(() => {
+/*
+ * The next copy is scheduled intervalMs after this one ends, not on a fixed
+ * beat: a copy that takes longer than the interval (a large backlog on a
+ * slow disk) would otherwise start the next one at once and hold SQLite's
+ * checkpoint lock nearly all the time, and the adapter's own tail
+ * checkpoint, which is what lets the log start over, would find it taken
+ * at every commit.
+ */
+let timer: NodeJS.Timeout | undefined;
+const tick = () => {
   try {
     checkpoint('PASSIVE', data.busyMs);
   } catch {
     // A checkpoint that failed is tried again at the next tick.
   }
-}, data.intervalMs);
+  timer = setTimeout(tick, data.intervalMs);
+};
+timer = setTimeout(tick, data.intervalMs);
 
 let open = true;
 port.on('message', (m: { id: number; type: 'checkpoint'; mode: 'TRUNCATE' } | { id: number; type: 'exec'; sql: string } | { type: 'close' }) => {
   if (m.type === 'close') {
     // Close the connection here, on its own thread, then let the thread end with nothing left to run.
-    clearInterval(timer);
+    clearTimeout(timer);
     if (open) {
       open = false;
       db.close();

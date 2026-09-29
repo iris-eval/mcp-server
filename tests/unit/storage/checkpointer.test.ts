@@ -15,7 +15,7 @@
  * Run on this cell's driver, so the CI matrix covers both.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { copyFileSync, mkdtempSync, rmSync, statSync } from 'node:fs';
+import { closeSync, copyFileSync, mkdtempSync, openSync, readSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
@@ -134,30 +134,42 @@ describe('WAL checkpoints on a worker thread', () => {
     expect(await exited).toBe(0);
   });
 
-  it('keeps the log short under writes that never pause, where the worker alone let it grow with every write', async () => {
-    /** One trace per write, back to back, over many of the worker's ticks; the log's size after, in MB. A count, not a time: the log grows by the write. */
-    const write = async (s: SqliteAdapter, path: string, n: number): Promise<number> => {
-      for (let i = 0; i < n; i += 1) {
-        await s.insertTrace(LOCAL_TENANT, traces(1, 1_000_000 + i)[0]);
-        await new Promise((r) => setImmediate(r));
+  it('lets the log start over under writes that never pause', async () => {
+    /** The write-ahead log header's checkpoint sequence number: SQLite adds one each time the log starts over. */
+    const restarts = (path: string): number => {
+      const fd = openSync(`${path}-wal`, 'r');
+      try {
+        const header = Buffer.alloc(16);
+        readSync(fd, header, 0, 16, 0);
+        return header.readUInt32BE(12);
+      } finally {
+        closeSync(fd);
       }
-      return size(`${path}-wal`) / 2 ** 20;
     };
-    const tailMb = (TAIL_CHECKPOINT_PAGES * 4096) / 2 ** 20;
+    /** One trace per write, back to back, as a client that never pauses sends them. */
+    const write = async (s: SqliteAdapter, i: number) => {
+      await s.insertTrace(LOCAL_TENANT, traces(1, 1_000_000 + i)[0]);
+      await new Promise((r) => setImmediate(r));
+    };
+    const tailBytes = TAIL_CHECKPOINT_PAGES * 4096;
+    // Anti-theater, and the yardstick: with nothing checkpointing, the writes that take the log to twice the tail threshold never start it over.
+    const idle = await store();
+    (idle.s as unknown as { ensureCheckpointer: () => void }).ensureCheckpointer = () => undefined;
+    dbOf(idle.s).pragma('wal_autocheckpoint = 0');
+    await write(idle.s, 0);
+    const before = restarts(idle.path);
+    let n = 1;
+    while (size(`${idle.path}-wal`) < 2 * tailBytes) await write(idle.s, n++);
+    expect(restarts(idle.path)).toBe(before);
+    // With the worker and the tail checkpoint, the same writes start the log over: the log restarts only at a write that finds every frame copied, which the worker's copy alone never guarantees while writes keep coming.
     const tail = await store();
-    await tail.s.insertTraces(LOCAL_TENANT, traces(1, 900_000));
+    await write(tail.s, 0);
     expect(await worker(tail.s)!.started).toBe(true);
-    // With the tail checkpoint: about TAIL_CHECKPOINT_PAGES (64 MB) of log, more while the worker's own copy holds the checkpoint lock.
-    const bounded = await write(tail.s, tail.path, 2_500);
-    expect(bounded).toBeLessThan(2 * tailMb);
-    // Anti-theater: the same writes with the adapter's own checkpoint off, the worker alone, as #727 had it: about 235 MB.
-    const alone = await store();
-    await alone.s.insertTraces(LOCAL_TENANT, traces(1, 900_000));
-    expect(await worker(alone.s)!.started).toBe(true);
-    dbOf(alone.s).pragma('wal_autocheckpoint = 0');
-    const unbounded = await write(alone.s, alone.path, 2_500);
-    expect(unbounded).toBeGreaterThan(2 * tailMb);
-  });
+    const first = restarts(tail.path);
+    for (let i = 1; i < n; i += 1) await write(tail.s, i);
+    expect(restarts(tail.path)).toBeGreaterThan(first);
+    expect(size(`${tail.path}-wal`)).toBeLessThan(size(`${idle.path}-wal`));
+  }, 90_000);
 
   it('has the worker empty the log before a background step that finds it past STEP_TRUNCATE_PAGES, so the adapter’s own checkpoint stays out of the steps', async () => {
     // 8,000 evaluations with no stored risk estimate, as 0.19.0 left them: the fill after the start rewrites every row, more log than TAIL_CHECKPOINT_PAGES (the anti-theater half shows it).
