@@ -39,6 +39,7 @@ import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
 import type { PreferenceStore } from '../preferences.js';
 import { requestSizeLimitBytes } from '../utils/size-limit.js';
+import { compressJsonResponses, findPrecompressed, precompressedFile, servePrecompressed } from './compression.js';
 
 export interface DashboardServer {
   app: express.Application;
@@ -139,6 +140,9 @@ export function createDashboardServer(
 
   // CORS
   app.use(createCorsMiddleware(config.security.allowedOrigins));
+
+  // JSON responses of 1 KB or more go out compressed when the client accepts it (./compression.ts says what never is, and why).
+  app.use(compressJsonResponses());
 
   /*
    * Health first: the one contract src/health.ts builds, on
@@ -264,10 +268,13 @@ export function createDashboardServer(
      * rate limit the polling shares. index.html is not hashed and stays
      * revalidated, so an upgraded server is picked up on the next load.
      */
+    // The .br and .gz files the dashboard build writes beside each file, served to a client that accepts them.
+    const variants = findPrecompressed(staticDir);
+    app.use(servePrecompressed(variants, { index: 'index.html' }));
     app.use('/assets', express.static(join(staticDir, 'assets'), { immutable: true, maxAge: '365d', fallthrough: false }));
     app.use(express.static(staticDir));
-    app.get('/{*path}', (_req, res) => {
-      res.sendFile(indexHtml);
+    app.get('/{*path}', (req, res) => {
+      res.sendFile(precompressedFile(req, res, indexHtml, variants.get('/index.html')));
     });
   } else {
     // Without this warning the server logs "Dashboard available at ..."

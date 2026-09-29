@@ -143,8 +143,8 @@ describe('the SQLite ledger', () => {
     return a;
   };
 
-  it('is the seventeenth known migration, and the last', () => {
-    expect(KNOWN_MIGRATION_IDS).toHaveLength(17);
+  it('is the seventeenth known migration', () => {
+    // The newest migration's test owns the count; this one owns the position.
     expect(KNOWN_MIGRATION_IDS[16]).toBe('017-relevance-judge-spend');
     expect(KNOWN_MIGRATION_IDS[15]).toBe('016-trace-cost-source');
   });

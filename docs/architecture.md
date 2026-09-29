@@ -407,6 +407,7 @@ All hot-path indexes are composite with `tenant_id` as the leading column so eve
 | `idx_eval_results_tenant_trace` | eval_results | (tenant_id, trace_id) | Tenant-scoped eval lookup |
 | `idx_eval_results_tenant_type` | eval_results | (tenant_id, eval_type) | Tenant-scoped eval type filter |
 | `idx_eval_results_tenant_created` | eval_results | (tenant_id, created_at) | Tenant-scoped trend queries |
+| `idx_eval_results_risk_version` | eval_results | risk_version | The rows whose stored risk estimate is missing or from another build, for the background fill (migration 018) |
 
 ### Retention
 
