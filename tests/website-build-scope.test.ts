@@ -73,7 +73,8 @@ describe('the website build scope', () => {
         if (!target.startsWith(website + sep)) escapes.push(relative(root, target).split(sep).join('/'));
       }
       // Filesystem paths built from the site's directory: join(process.cwd(), '..', 'a', 'b').
-      for (const m of text.matchAll(/process\.cwd\(\)\s*,\s*((?:['"][^'"]+['"]\s*,?\s*)+)\)/g)) {
+      // Each repetition starts with its own comma, so the pattern has one way to match (no backtracking blow-up).
+      for (const m of text.matchAll(/process\.cwd\(\)((?:\s*,\s*['"][^'"\n]*['"])+)\s*\)/g)) {
         const parts = [...m[1].matchAll(/['"]([^'"]+)['"]/g)].map((p) => p[1]);
         const target = resolve(website, ...parts);
         if (!target.startsWith(website + sep)) escapes.push(relative(root, target).split(sep).join('/'));
