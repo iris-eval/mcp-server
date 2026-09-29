@@ -1,10 +1,12 @@
 /*
  * The reads name the indexes they walk (INDEXED BY, #711), and a statement
  * that names a missing index fails instead of choosing another plan. So
- * every index the adapter names must exist once the migrations have run,
- * with or without FTS5: a migration that drops or renames one fails here,
- * in the release that makes the change, and sets its compatFloor to that
- * release (migration 019's header).
+ * every index the adapter names must exist once the migrations have run on
+ * a new file, with or without FTS5 (on a file with traces, migration 019's
+ * are built after the start, and the reads name them only once they exist:
+ * read-paths.ts): a migration that drops or renames one fails here, in the
+ * release that makes the change, and sets its compatFloor to that release
+ * (migration 019's header).
  */
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';

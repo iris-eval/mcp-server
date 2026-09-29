@@ -17,6 +17,7 @@ import type { Environment } from '../../src/cli/install/clients.js';
 import type { MigrationPlan } from '../../src/storage/migrations/index.js';
 import { PKG_VERSION } from '../../src/config/defaults.js';
 import { KNOWN_MIGRATION_IDS } from '../../src/storage/migrations/index.js';
+import { LOCAL_TENANT } from '../../src/types/tenant.js';
 
 const N = KNOWN_MIGRATION_IDS.length;
 const FIXTURE_019 = resolve(import.meta.dirname, '../fixtures/db/iris-0.19.0.db');
@@ -64,9 +65,21 @@ describe('the self-test reads the configured database', () => {
     copyFileSync(FIXTURE_019, path);
     const before = sha256(path);
     expect(probeDatabaseSchema(path).detail).toBe(
-      `schema 14 of ${N}: the next start applies ${KNOWN_MIGRATION_IDS.slice(14).join(', ')}, after copying the file next to it; from then on Iris before 0.20.0 cannot open it`,
+      `schema 14 of ${N}: the next start applies ${KNOWN_MIGRATION_IDS.slice(14).join(', ')}, after copying the file next to it; from then on Iris before 0.20.0 cannot open it; indexes building: 4 of the indexes the dashboard and the failure log read are built in the background after the server starts, and those reads are slower until they are`,
     );
     expect(sha256(path)).toBe(before);
+  });
+
+  it('a file whose read indexes are not built yet says they are building', async () => {
+    const path = join(dir, 'iris.db');
+    const s = new SqliteAdapter(path);
+    await s.initialize();
+    await s.insertTraces(LOCAL_TENANT, [{ trace_id: 't1', agent_name: 'a', output: 'x', timestamp: new Date().toISOString() }]);
+    await s.close();
+    edit(path, 'DROP INDEX idx_traces_tenant_framework; DROP INDEX idx_spans_tenant_error; PRAGMA wal_checkpoint(TRUNCATE);');
+    expect(probeDatabaseSchema(path).detail).toBe(
+      `up to date (schema ${N} of ${N}); Iris 0.20.0 and later can open it; indexes building: 2 of the indexes the dashboard and the failure log read are built in the background after the server starts, and those reads are slower until they are`,
+    );
   });
 
   it('a file a newer release migrated past this version fails, with both ways out and the newest copy, and is not changed', async () => {

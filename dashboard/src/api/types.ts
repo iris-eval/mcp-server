@@ -847,6 +847,8 @@ export interface HealthResponse {
   };
   /** The trace search index (0.20.0): its state, what a search reads now, and while it is built the share of traces it holds. */
   search?: { state: 'ready' | 'building' | 'unavailable'; index: 'fts5' | 'scan'; progress: number | null } | null;
+  /** The indexes the dashboard and the failure log read: `building` after an upgrade, until they are built in the background. */
+  indexes?: 'ready' | 'building' | null;
   storage?: 'connected' | 'disconnected';
   judge: { enabled: boolean; provider?: string | null };
   mode?: 'real' | 'demo';

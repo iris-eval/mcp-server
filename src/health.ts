@@ -73,6 +73,13 @@ export interface HealthReport {
    * reports nothing.
    */
   search: { state: SearchIndexStatus['state']; index: SearchIndexStatus['index']; progress: number | null } | null;
+  /**
+   * The indexes the dashboard and the failure log read: `building` after an
+   * upgrade, while they are built in the background (those reads answer
+   * meanwhile, more slowly), then `ready`. Informational: never degrades
+   * `status`. Null when there is no storage or it reports nothing.
+   */
+  indexes: 'ready' | 'building' | null;
   /** The word the pre-0.15.0 contract used; kept for readers of it. */
   storage?: 'connected' | 'disconnected';
   judge: {
@@ -123,6 +130,7 @@ export async function buildHealth(deps: HealthDeps): Promise<{ status: number; b
       migrations: { status: 'absent', applied: 0, known: 0 },
     },
     search: null,
+    indexes: deps.storage?.readIndexesState?.() ?? null,
     judge: { enabled: judge.enabled, provider: judge.provider },
     mode: deps.mode ?? 'real',
   };
