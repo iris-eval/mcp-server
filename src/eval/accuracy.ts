@@ -15,8 +15,9 @@
  * different number from the same rule. Both the point and its interval are
  * computed here — the interval by seeded Monte Carlo over the Beta posteriors
  * of sensitivity and specificity (Jeffreys prior, ½ pseudo-count per cell),
- * two thousand draws, memoised per (rule, prevalence to three decimals) so
- * the draws run once per process.
+ * two thousand draws. The draws depend on the rule alone, so they run once
+ * per rule per process; an interval is then remembered per rule and exact
+ * prevalence.
  *
  * Every number carries its provenance: the corpus version, the release it
  * was generated for, and the labelling ('same-model' until a human
@@ -68,8 +69,55 @@ export function publishedRuleNames(): string[] {
   return Object.keys(PUBLISHED_ACCURACY);
 }
 
+/*
+ * Keyed on the EXACT prevalence (0.20.0). Until then the key carried it to
+ * three decimals while the interval was computed at the exact value, so
+ * the first prevalence asked for answered for every other that rounded the
+ * same: after an interval at 0.0101, one at 0.0104 came back as 0.0101's.
+ * An estimated prior is a continuous number, so that was reachable. The map
+ * is bounded, least recently used out, because an estimated prior moves as
+ * a deployment labels.
+ */
+const MEMO_MAX = 4096;
 const memo = new Map<string, Interval | null>();
-const key = (ruleName: string, prevalence: number, which: 'ppv' | 'miss'): string => `${which}:${ruleName}:${prevalence.toFixed(3)}`;
+const key = (ruleName: string, prevalence: number, which: 'ppv' | 'miss'): string => `${which}:${ruleName}:${String(prevalence)}`;
+
+function remember(k: string, value: Interval | null): Interval | null {
+  memo.set(k, value);
+  if (memo.size > MEMO_MAX) memo.delete(memo.keys().next().value!);
+  return value;
+}
+
+function recall(k: string): Interval | null | undefined {
+  if (!memo.has(k)) return undefined;
+  const value = memo.get(k) ?? null;
+  memo.delete(k);
+  memo.set(k, value);
+  return value;
+}
+
+/*
+ * The posterior draws of sensitivity and specificity. The seed names the
+ * rule and never the prevalence, so the same 2,000 pairs serve every
+ * prevalence: they are drawn once per seed and each interval only applies
+ * its formula to them.
+ */
+const posteriorDraws = new Map<string, { sens: Float64Array; spec: Float64Array }>();
+
+function drawsFor(counts: Confusion, seed: string): { sens: Float64Array; spec: Float64Array } {
+  const cached = posteriorDraws.get(seed);
+  if (cached) return cached;
+  const rng = mulberry32(fnv1a(seed));
+  const sens = new Float64Array(INTERVAL_DRAWS);
+  const spec = new Float64Array(INTERVAL_DRAWS);
+  for (let i = 0; i < INTERVAL_DRAWS; i++) {
+    sens[i] = beta(counts.tp + 0.5, counts.fn + 0.5, rng);
+    spec[i] = beta(counts.tn + 0.5, counts.fp + 0.5, rng);
+  }
+  const drawn = { sens, spec };
+  posteriorDraws.set(seed, drawn);
+  return drawn;
+}
 
 function sampleInterval(
   counts: Confusion,
@@ -80,13 +128,9 @@ function sampleInterval(
   const sens = sensitivity(counts);
   const spec = specificity(counts);
   if (sens === null || spec === null) return null;
-  const rng = mulberry32(fnv1a(seed));
+  const drawn = drawsFor(counts, seed);
   const draws: number[] = [];
-  for (let i = 0; i < INTERVAL_DRAWS; i++) {
-    const s = beta(counts.tp + 0.5, counts.fn + 0.5, rng);
-    const p = beta(counts.tn + 0.5, counts.fp + 0.5, rng);
-    draws.push(fn(s, p, prevalence));
-  }
+  for (let i = 0; i < INTERVAL_DRAWS; i++) draws.push(fn(drawn.sens[i], drawn.spec[i], prevalence));
   const [lo, hi] = percentile95(draws);
   return { point: round4(fn(sens, spec, prevalence)), lo: round4(lo), hi: round4(hi) };
 }
@@ -98,21 +142,19 @@ function sampleInterval(
  */
 export function ppvInterval(ruleName: string, prevalence: number = DEFAULT_PREVALENCE): Interval | null {
   const k = key(ruleName, prevalence, 'ppv');
-  if (memo.has(k)) return memo.get(k) ?? null;
+  const known = recall(k);
+  if (known !== undefined) return known;
   const counts = publishedAccuracyFor(ruleName);
-  const result = counts ? sampleInterval(counts, prevalence, `ppv:${ruleName}:${PUBLISHED_ACCURACY_CORPUS_VERSION}`, ppv) : null;
-  memo.set(k, result);
-  return result;
+  return remember(k, counts ? sampleInterval(counts, prevalence, `ppv:${ruleName}:${PUBLISHED_ACCURACY_CORPUS_VERSION}`, ppv) : null);
 }
 
 /** P(violation | the rule did not fire) at a prevalence with a 95% credible interval, for a rule that did NOT fire. */
 export function missRateInterval(ruleName: string, prevalence: number = DEFAULT_PREVALENCE): Interval | null {
   const k = key(ruleName, prevalence, 'miss');
-  if (memo.has(k)) return memo.get(k) ?? null;
+  const known = recall(k);
+  if (known !== undefined) return known;
   const counts = publishedAccuracyFor(ruleName);
-  const result = counts ? sampleInterval(counts, prevalence, `miss:${ruleName}:${PUBLISHED_ACCURACY_CORPUS_VERSION}`, missRate) : null;
-  memo.set(k, result);
-  return result;
+  return remember(k, counts ? sampleInterval(counts, prevalence, `miss:${ruleName}:${PUBLISHED_ACCURACY_CORPUS_VERSION}`, missRate) : null);
 }
 
 /** PPV at several prevalences — the field-prevalence table a reader needs beside a published precision. */
@@ -130,4 +172,5 @@ export function ppvAt(ruleName: string, prevalences: readonly number[] = [0.01, 
 /** Test hook: clear the memo so a seeded interval can be recomputed. */
 export function resetAccuracyMemo(): void {
   memo.clear();
+  posteriorDraws.clear();
 }

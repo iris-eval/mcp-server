@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { brotliCompressSync, constants, gzipSync } from 'node:zlib';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -31,8 +33,41 @@ function claimsHtml(): Plugin {
   };
 }
 
+/*
+ * A .br and a .gz beside every text file this build emits, compressed once
+ * at the strongest settings, so the server sends the smallest bytes without
+ * spending CPU per request (src/dashboard/compression.ts serves them). A
+ * variant is written only where it is smaller than the file; any variant
+ * left from an earlier build is removed first, so none can outlive the file
+ * it was made from. Dot-paths (.vite/manifest.json) are never served, so
+ * they get none.
+ */
+const PRECOMPRESS = /\.(?:js|mjs|css|html|svg|json|txt)$/;
+function precompress(): Plugin {
+  return {
+    name: 'iris-precompress',
+    apply: 'build',
+    writeBundle(options, bundle) {
+      const dir = options.dir ?? '../dist/dashboard';
+      for (const [fileName, output] of Object.entries(bundle)) {
+        if (!PRECOMPRESS.test(fileName) || fileName.split('/').some((part) => part.startsWith('.'))) continue;
+        const file = join(dir, fileName);
+        for (const ext of ['.br', '.gz']) rmSync(file + ext, { force: true });
+        const bytes = Buffer.from(output.type === 'chunk' ? output.code : output.source);
+        if (bytes.length < 1024) continue;
+        const br = brotliCompressSync(bytes, {
+          params: { [constants.BROTLI_PARAM_QUALITY]: constants.BROTLI_MAX_QUALITY, [constants.BROTLI_PARAM_MODE]: constants.BROTLI_MODE_TEXT, [constants.BROTLI_PARAM_SIZE_HINT]: bytes.length },
+        });
+        const gz = gzipSync(bytes, { level: constants.Z_BEST_COMPRESSION });
+        if (br.length < bytes.length) writeFileSync(`${file}.br`, br);
+        if (gz.length < bytes.length) writeFileSync(`${file}.gz`, gz);
+      }
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), claimsHtml()],
+  plugins: [react(), claimsHtml(), precompress()],
   define: {
     __IRIS_VERSION__: JSON.stringify(pkg.version),
     __IRIS_RULE_COUNT__: JSON.stringify(claims.evalRules.builtInCount),

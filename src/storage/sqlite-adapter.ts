@@ -51,13 +51,14 @@ import type {
 import type { Trace, Span } from '../types/trace.js';
 import type { EvalResult, QuestionId, Provenance, EvalRuleResult, Evidence } from '../types/eval.js';
 import { deriveCoverage, deriveCriticalSkipped } from '../eval/verdict.js';
-import { compose, interpretations, DEFAULT_COMPOSE } from '../eval/compose.js';
+import { compose, interpretations, DEFAULT_COMPOSE, type ComposeConfig } from '../eval/compose.js';
+import { rememberRiskEstimate, storedRiskEstimate, RISK_KEY_VERSION } from '../eval/risk.js';
 import type { TenantId } from '../types/tenant.js';
 import { TenantContextRequiredError } from '../types/tenant.js';
 import { randomBytes } from 'node:crypto';
 import { runMigrations, migrationState, type MigrationState } from './migrations/index.js';
 import { Checkpointer, AUTOCHECKPOINT_PAGES } from './checkpointer.js';
-import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, nextStepSize, eraseRetiredStep, isShadowWriteRefused, retiredRemain, ERASE_ROWS, ERASE_ROWS_RANGE, sweepEraseMode, deleteOwingMerge, mergeOwed, mergeOwedStep, levelMergeStep, filterIndexMissing, CREATE_FILTER_INDEX, MERGE_PAGES, MERGE_PAGES_RANGE, searchIndexProgress, type SearchIndexStatus, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
+import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, nextStepSize, eraseRetiredStep, isShadowWriteRefused, retiredRemain, ERASE_ROWS, ERASE_ROWS_RANGE, sweepEraseMode, deleteOwingMerge, mergeOwed, mergeOwedStep, levelMergeStep, filterIndexMissing, CREATE_FILTER_INDEX, MERGE_PAGES, MERGE_PAGES_RANGE, searchIndexProgress, type SearchIndexStatus, BUILD_BATCH, BUILD_STEP_MS, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
 import { parseSearch, searchRefusal, describeTerm, mayHoldCjk, type ParsedSearch, type TraceMatch } from './search.js';
 import { installSearchFunctions, matchSearch, type MatchRequest, type MatchResult, type SearchPlan } from './search-match.js';
 import { SearchWorkerClient, SearchWorkerUnavailable, warnSearchWorkerUnavailable } from './search-worker-client.js';
@@ -246,6 +247,39 @@ export interface CaseResultRow {
 /** The native driver's name — the default, and what the proof was measured on. */
 export const SQLITE_DRIVER: DriverName = 'better-sqlite3';
 
+/** The composer facts a stored evaluation is read back under (rowToEvalResult says why), so the write can store its risk estimate under the same. */
+function composeConfigOf(provenance: Provenance): ComposeConfig {
+  const composer = provenance.composer;
+  return { ...DEFAULT_COMPOSE, ...(composer ?? {}), calibration: composer?.calibration ?? null };
+}
+
+/**
+ * The two risk columns for an evaluation (migration 018): the estimate and
+ * its key as JSON, and this build's key version. An evaluation without
+ * provenance is never composed on read, and one with no detector to
+ * estimate from has nothing to store: both store no estimate and are
+ * marked as done, so the background fill does not visit them again.
+ */
+const RISK_FILL_BATCH = 8;
+/**
+ * The rows the background fill has still to visit: no version, or another
+ * build's. Three queries rather than one with OR: SQLite answers an OR over
+ * one index by collecting every matching rowid before the LIMIT applies,
+ * which made each step cost as much as the whole backlog. Each of these is
+ * one range of idx_eval_results_risk_version, read only as far as the LIMIT.
+ */
+export const RISK_FILL_QUERIES = [
+  'SELECT rowid AS rid, * FROM eval_results WHERE risk_version IS NULL LIMIT ?',
+  'SELECT rowid AS rid, * FROM eval_results WHERE risk_version < ? LIMIT ?',
+  'SELECT rowid AS rid, * FROM eval_results WHERE risk_version > ? LIMIT ?',
+] as const;
+function riskColumns(result: EvalResult): [string | null, string | null] {
+  if (!result.provenance) return [null, RISK_KEY_VERSION];
+  const cfg = composeConfigOf(result.provenance);
+  const stored = storedRiskEstimate(result, cfg.prior, cfg.priorMode);
+  return [stored ? JSON.stringify(stored) : null, RISK_KEY_VERSION];
+}
+
 export class SqliteAdapter implements IStorageAdapter {
   /** After-insert listeners for evaluations; see IStorageAdapter.onEvalResultInserted. */
   private readonly evalListeners = new Set<(tenantId: TenantId, result: EvalResult) => void>();
@@ -278,6 +312,7 @@ export class SqliteAdapter implements IStorageAdapter {
   private searchBuild: Promise<SearchIndexState> | undefined;
   /** The covering index being built after the start, while it is; see createFilterIndex. */
   private filterIndex: Promise<void> | undefined;
+  private riskFill: Promise<void> | undefined;
   /** The merge a sweep owes, while one runs; see settleOwedMerge. */
   private merging: Promise<void> | undefined;
   /** Retention sweeps in progress: close() waits for each to stop at its next step. */
@@ -402,13 +437,15 @@ export class SqliteAdapter implements IStorageAdapter {
     if (this.dbPath !== ':memory:') {
       ensureOwnerOnly(this.dbPath, `${this.dbPath}-wal`, `${this.dbPath}-shm`);
     }
-    // Traces stored before the index existed are indexed after the start, not during it.
     // The covering index a search's filters read (search-index.ts, CREATE_FILTER_INDEX): at once on a store with no traces, where there is nothing to read; after the start on one with traces.
     if (this.searchIndex !== 'unavailable' && filterIndexMissing(this.db)) {
       if (this.db.prepare('SELECT 1 FROM traces LIMIT 1').get() === undefined) this.db.exec(CREATE_FILTER_INDEX);
       else this.filterIndex = this.createFilterIndex();
     }
+    // Traces stored before the index existed are indexed after the start, not during it.
     if (this.searchIndex === 'building') this.searchBuild = this.buildSearchIndex();
+    // Evaluations with no stored risk estimate (written before migration 018, or by an older corpus) get one, behind the start.
+    this.riskFill = this.fillRiskEstimates();
     // A merge a sweep owed when the last server closed: carried on after the start, too.
     if (this.searchIndex !== 'unavailable' && mergeOwed(this.db)) void this.settleOwedMerge();
   }
@@ -445,7 +482,7 @@ export class SqliteAdapter implements IStorageAdapter {
   async close(): Promise<void> {
     // Background work in progress stops at its next step; each is resumable, and the next start carries on.
     this.closing = true;
-    await Promise.all([this.filterIndex, this.searchBuild, this.merging, ...this.sweeps]);
+    await Promise.all([this.filterIndex, this.searchBuild, this.merging, this.riskFill, ...this.sweeps]);
     // The search thread closes its own connection before this one closes.
     await this.searchWorker?.close();
     this.searchWorker = undefined;
@@ -504,7 +541,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   /** Resolves when no background work runs: the build, a merge a sweep owes, a sweep. For tests and the benchmark. */
   async whenIdle(): Promise<void> {
-    while (this.filterIndex || this.searchBuild || this.merging || this.sweeps.size > 0) await Promise.all([this.filterIndex, this.searchBuild, this.merging, ...this.sweeps]);
+    while (this.filterIndex || this.searchBuild || this.merging || this.riskFill || this.sweeps.size > 0) await Promise.all([this.filterIndex, this.searchBuild, this.merging, this.riskFill, ...this.sweeps]);
   }
 
   /**
@@ -630,6 +667,63 @@ export class SqliteAdapter implements IStorageAdapter {
       if (written === 0) return;
       this.mergePages = nextStepSize(Math.min(this.mergePages, written), performance.now() - started, MERGE_PAGES_RANGE);
     }
+  }
+
+  /**
+   * Store a risk estimate for every evaluation that has none under this
+   * build's key version (migration 018 says why it is stored), after the
+   * start and never during it. The same steps as the index build: each
+   * about BUILD_STEP_MS of work under one write lock, yielding between
+   * them. A read never waits for it: an evaluation the
+   * fill has not reached is computed on read, as before. A step that fails
+   * stops the fill until the next start, which is only slower reads.
+   */
+  private async fillRiskEstimates(): Promise<void> {
+    await yieldToRequests();
+    // No write step while the covering index is built: it holds the write lock, and a step would wait for it on the event loop.
+    if (this.filterIndex) await this.filterIndex;
+    try {
+      // The rows still to fill, found through idx_eval_results_risk_version: once every row is filled, a start reads nothing.
+      const [unversioned, below, above] = RISK_FILL_QUERIES.map((sql) => this.db.prepare(sql));
+      const next = (): Array<Record<string, unknown>> => {
+        for (const [query, params] of [[unversioned, [RISK_FILL_BATCH]], [below, [RISK_KEY_VERSION, RISK_FILL_BATCH]], [above, [RISK_KEY_VERSION, RISK_FILL_BATCH]]] as const) {
+          const rows = query.all(...params) as Array<Record<string, unknown>>;
+          if (rows.length > 0) return rows;
+        }
+        return [];
+      };
+      const store = this.db.prepare('UPDATE eval_results SET risk_estimate = ?, risk_version = ? WHERE rowid = ?');
+      let done = false;
+      while (!this.closing && !done) {
+        // One write lock per step, read in small batches until BUILD_STEP_MS of work: an estimate that is not cached costs milliseconds.
+        const started = performance.now();
+        this.db.transaction(() => {
+          while (performance.now() - started < BUILD_STEP_MS) {
+            const rows = next();
+            if (rows.length === 0) {
+              done = true;
+              return;
+            }
+            for (const row of rows) {
+              const [estimate, version] = riskColumns(this.rowToEvalResult(row));
+              store.run(estimate, version, row.rid);
+              // The rows not reached stay unvisited and come first in the next step.
+              if (performance.now() - started >= BUILD_STEP_MS) return;
+            }
+          }
+        })();
+        await yieldToRequests();
+      }
+    } catch (err) {
+      this.log('warn', `Storing risk estimates for older evaluations stopped (${err instanceof Error ? err.message : String(err)}); those evaluations compute theirs on read until the next start.`);
+    } finally {
+      this.riskFill = undefined;
+    }
+  }
+
+  /** Resolves when the background fill of risk estimates has finished; for tests and the benchmark. */
+  whenRiskEstimatesStored(): Promise<void> {
+    return this.riskFill ?? Promise.resolve();
   }
 
   /** Erase the index retired at the start, if there is one, in steps (search-index.ts, retiring an index). */
@@ -1019,8 +1113,8 @@ export class SqliteAdapter implements IStorageAdapter {
      * rule_results plus that threshold, so they are not columns.
      */
     this.db.prepare(`
-      INSERT INTO eval_results (tenant_id, id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data, critical_failures, created_at, provenance, engine_version, ruleset_hash, config_hash, threshold, eval_cost_usd, eval_tokens, run_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO eval_results (tenant_id, id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data, critical_failures, created_at, provenance, engine_version, ruleset_hash, config_hash, threshold, eval_cost_usd, eval_tokens, run_id, risk_estimate, risk_version)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       tenantId,
       result.id,
@@ -1058,6 +1152,8 @@ export class SqliteAdapter implements IStorageAdapter {
       // Set only by a re-evaluation. Left null, the evaluation belongs to
       // whatever run its trace does — which is right for every normal call.
       result.run_id ?? null,
+      // The risk estimate the verdict was composed from, so reading the row back does not run the draws again (migration 018).
+      ...riskColumns(result),
     );
     // The row is durable; tell whoever asked. A listener's failure is its own.
     for (const listener of this.evalListeners) {
@@ -2441,8 +2537,15 @@ export class SqliteAdapter implements IStorageAdapter {
      * taking the label today's table would give.
      */
     if (result.provenance) {
-      const composer = result.provenance.composer;
-      const cfg = { ...DEFAULT_COMPOSE, ...(composer ?? {}), calibration: composer?.calibration ?? null };
+      const cfg = composeConfigOf(result.provenance);
+      // The estimate stored with the row (migration 018): used only if this row's inputs give the key it was stored under.
+      if (typeof row.risk_estimate === 'string') {
+        try {
+          rememberRiskEstimate(JSON.parse(row.risk_estimate));
+        } catch {
+          // Unreadable: the estimate is computed instead.
+        }
+      }
       result.verdict = compose(result, cfg);
       if (result.provenance.composer) {
         const notes = interpretations(result, result.verdict, cfg);
