@@ -186,7 +186,8 @@ const ALL_TRIGGERS = [...TRIGGERS, ...RETIRED_TRIGGERS];
 export const SEARCH_FILTER_INDEX = 'idx_traces_search_filter';
 
 /*
- * It is created after the start, not by the migration (sqlite-adapter.ts,
+ * It is created by the adapter, not by the migration: at once on a store
+ * with no traces, after the start on one with traces (sqlite-adapter.ts,
  * createFilterIndex). Building it reads every trace row, past the text
  * before its columns, in one statement: 0.65 s at 100,000 agent-loop
  * traces, which the migration spent before the server answered anyone.

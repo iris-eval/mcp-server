@@ -394,8 +394,11 @@ export class SqliteAdapter implements IStorageAdapter {
       ensureOwnerOnly(this.dbPath, `${this.dbPath}-wal`, `${this.dbPath}-shm`);
     }
     // Traces stored before the index existed are indexed after the start, not during it.
-    // The covering index a search's filters read, created after the start (search-index.ts, CREATE_FILTER_INDEX).
-    if (this.searchIndex !== 'unavailable' && filterIndexMissing(this.db)) this.filterIndex = this.createFilterIndex();
+    // The covering index a search's filters read (search-index.ts, CREATE_FILTER_INDEX): at once on a store with no traces, where there is nothing to read; after the start on one with traces.
+    if (this.searchIndex !== 'unavailable' && filterIndexMissing(this.db)) {
+      if (this.db.prepare('SELECT 1 FROM traces LIMIT 1').get() === undefined) this.db.exec(CREATE_FILTER_INDEX);
+      else this.filterIndex = this.createFilterIndex();
+    }
     if (this.searchIndex === 'building') this.searchBuild = this.buildSearchIndex();
     // A merge a sweep owed when the last server closed: carried on after the start, too.
     if (this.searchIndex !== 'unavailable' && mergeOwed(this.db)) void this.settleOwedMerge();
