@@ -194,6 +194,8 @@ export type SynchronousMode = 'normal' | 'full';
 export const SEARCH_BUDGET_MS = 1000;
 /** How often a delete's checkpoint is tried again while a reader holds it off (eraseFromFile). */
 const ERASE_RETRY_MS = 20;
+/** How long a delete waits for its erasure on the checkpoint worker, off the event loop, before it leaves it to the retry (eraseFromFile). */
+const ERASE_WAIT_MS = 250;
 
 /** The retention sweep's step, in traces: from one, because erasing one trace row by row can take 120 ms by itself. */
 const SWEEP_BATCH = 1;
@@ -323,6 +325,8 @@ function composeConfigOf(provenance: Provenance): ComposeConfig {
  */
 const RISK_FILL_ROWS = 32;
 const RISK_FILL_ROWS_RANGE = [8, 2048] as const;
+/** A fill this large starts the checkpoint worker and waits for it first (fillRiskEstimates). */
+const RISK_FILL_WORKER_ROWS = 2048;
 /**
  * The two risk columns for an evaluation (migration 018): the estimate and
  * its key as JSON, and this build's key version. An evaluation without
@@ -400,6 +404,9 @@ export class SqliteAdapter implements IStorageAdapter {
   /** The worker thread that checkpoints the WAL off the event loop (checkpointer.ts); none for a database in memory. */
   private checkpointer: Checkpointer | undefined;
   private closing = false;
+  private markClosing: () => void = () => undefined;
+  /** Resolves when close() begins: a wait that must not hold a close up races it. Declared after markClosing, whose initializer would otherwise replace the resolver. */
+  private readonly closingNow: Promise<void> = new Promise((resolve) => (this.markClosing = resolve));
   private readonly fts5Override: boolean | undefined;
   private readonly log: (level: 'info' | 'warn', line: string) => void;
   /** storage.searchBudgetMs — see SEARCH_BUDGET_MS. */
@@ -608,6 +615,7 @@ export class SqliteAdapter implements IStorageAdapter {
   async close(): Promise<void> {
     // Background work in progress stops at its next step; each is resumable, and the next start carries on.
     this.closing = true;
+    this.markClosing();
     await Promise.all([this.filterIndex, this.searchBuild, this.merging, this.riskFill, ...this.sweeps]);
     // The search thread closes its own connection before this one closes.
     await this.searchWorker?.close();
@@ -871,9 +879,25 @@ export class SqliteAdapter implements IStorageAdapter {
         return written;
       });
       if (next(1).length === 0) return;
-      // Its steps rewrite every row they fill: without the worker, this connection's own checkpoints land in them. So the fill starts once the worker is up (or could not start).
-      this.ensureCheckpointer();
-      await this.checkpointer?.whenStarted();
+      /*
+       * Its steps rewrite every row they fill: on a large backlog, without
+       * the worker, this connection's own checkpoints land in them. So a
+       * fill of RISK_FILL_WORKER_ROWS or more starts the worker and begins
+       * once it is up (or could not start, or the store is closing). A small
+       * one does neither: a start that has a few rows to fill and nothing to
+       * write starts no thread, as before.
+       */
+      const backlog = RISK_FILL_QUERIES.reduce((n, sql, i) => {
+        if (n >= RISK_FILL_WORKER_ROWS) return n;
+        const count = `SELECT COUNT(*) AS n FROM (${sql.replace('SELECT rowid AS rid, *', 'SELECT 1')})`;
+        const params = i === 0 ? [RISK_FILL_WORKER_ROWS] : [RISK_KEY_VERSION, RISK_FILL_WORKER_ROWS];
+        return n + Number((this.db.prepare(count).get(...params) as { n: number }).n);
+      }, 0);
+      if (backlog >= RISK_FILL_WORKER_ROWS) {
+        this.ensureCheckpointer();
+        if (this.checkpointer) await Promise.race([this.checkpointer.whenStarted(), this.closingNow]);
+        if (this.closing) return;
+      }
       let rows = RISK_FILL_ROWS;
       while (!this.closing) {
         await this.beforeWriteStep();
@@ -2803,7 +2827,24 @@ export class SqliteAdapter implements IStorageAdapter {
      * two erasures met the worker still opening its connection.
      */
     const worker = this.checkpointer;
-    if (worker && !this.closing && (await worker.whenStarted()) && !this.closing && (await this.truncateCheckpointNow(true))) return;
+    if (worker && !this.closing && (await worker.whenStarted())) {
+      /*
+       * And for up to ERASE_WAIT_MS more, tried again on the worker every
+       * ERASE_RETRY_MS, with the event loop free: under the stress test a
+       * hold on the file that neither connection's attempt names outlasted
+       * the first try by tens of milliseconds (both TRUNCATEs busy, 10 ms
+       * apart, and the retry succeeding later), on Linux with the built-in
+       * driver. A reader that holds the file longer, a search, is left to
+       * the retry below, as before.
+       */
+      const until = performance.now() + ERASE_WAIT_MS;
+      for (;;) {
+        if (this.closing) break;
+        if (await this.truncateCheckpointNow(true)) return;
+        if (performance.now() + ERASE_RETRY_MS > until) break;
+        await new Promise((r) => setTimeout(r, ERASE_RETRY_MS));
+      }
+    }
     let trying = false;
     this.eraseRetry ??= setInterval(() => {
       if (trying) return;
