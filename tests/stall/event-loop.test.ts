@@ -34,6 +34,8 @@ import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { retiredRemain } from '../../src/storage/search-index.js';
+import { READ_PATH_INDEXES, readPathsMissing } from '../../src/storage/read-paths.js';
+import { openDriver } from '../../src/storage/driver.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
 import { EvalEngine } from '../../src/eval/engine.js';
 import type { Driver } from '../../src/storage/driver.js';
@@ -251,6 +253,35 @@ describe(`no background step holds the event loop over ${STALL_LIMIT_MS} ms (${T
     report(`risk estimates stored for ${EVALS} evaluations`, stall);
     expect(count(s, 'SELECT COUNT(*) AS n FROM eval_results')).toBe(EVALS);
     expect(count(s, 'SELECT COUNT(*) AS n FROM eval_results WHERE risk_version IS NULL')).toBe(0);
+    expect(stall.held).toBeLessThan(STALL_LIMIT_MS);
+    await s.close();
+  });
+
+  it('the first start after an upgrade from 0.19.0, and the indexes the hot reads name built after it (migration 019)', async () => {
+    const path = copy(indexed, 'read-paths.db');
+    // Back to the indexes 0.19.0 left: the four 019 builds gone, the three it replaces there, 019 not applied.
+    const raw = openDriver(path, { driver: SEARCH_DRIVER });
+    raw.exec(`
+      ${READ_PATH_INDEXES.map((i) => `DROP INDEX ${i.name};`).join('\n')}
+      CREATE INDEX idx_traces_tenant_agent ON traces(tenant_id, agent_name);
+      CREATE INDEX idx_traces_tenant_timestamp ON traces(tenant_id, timestamp);
+      CREATE INDEX idx_traces_framework ON traces(framework);
+      DELETE FROM _iris_migrations WHERE id = '019-read-paths';
+    `);
+    raw.close();
+    // Without the copy #710 takes before migrating, which is a start's other cost and moves off the event loop on its own.
+    const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER, backup: false });
+    let started = false;
+    const stall = await longestStall(async () => {
+      await s.initialize();
+      // The start answers before they are built.
+      started = s.readIndexesState() === 'building';
+      await s.whenIdle();
+    });
+    report(`first start after an upgrade, then ${READ_PATH_INDEXES.length} indexes built over ${TRACES} traces`, stall);
+    expect(started).toBe(true);
+    expect(s.readIndexesState()).toBe('ready');
+    expect(readPathsMissing(dbOf(s))).toEqual([]);
     expect(stall.held).toBeLessThan(STALL_LIMIT_MS);
     await s.close();
   });

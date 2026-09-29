@@ -1,10 +1,12 @@
 /*
  * Migration 019 — the indexes the hot reads walk (#711).
  *
- * On a cold file and on a database written before it, the four indexes
- * exist and the three they replace are gone, applied once, with every row
- * where it was; on a SQLite without FTS5 too, since nothing here depends on
- * the search index. The count of known migrations belongs to the newest
+ * On a cold file the migration builds the four indexes and drops the three
+ * they replace, once; on a SQLite without FTS5 too, since nothing here
+ * depends on the search index. On a database written before it, with
+ * traces, the start does not: they are built after it (read-paths.ts),
+ * health says `building` until they are, and every read answers the same
+ * before and after. The count of known migrations belongs to the newest
  * migration's test, this one.
  */
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -14,6 +16,8 @@ import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { KNOWN_MIGRATION_IDS } from '../../../src/storage/migrations/index.js';
+import { READ_PATH_INDEXES } from '../../../src/storage/read-paths.js';
+import { buildHealth } from '../../../src/health.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 
 vi.setConfig({ testTimeout: 30_000 });
@@ -88,7 +92,8 @@ describe('migration 019 — the read-path indexes', () => {
     });
   }
 
-  it('a database written before 019 gains the indexes at its next start, and every row reads back the same', async () => {
+  /** Put the file back the way a build before 019 left it, with its traces. */
+  async function writtenBefore019(): Promise<string> {
     const path = tempDb();
     const store = new SqliteAdapter(path);
     await store.initialize();
@@ -98,8 +103,6 @@ describe('migration 019 — the read-path indexes', () => {
     ]);
     await store.insertEvalResult(LOCAL_TENANT, { id: 'e1', trace_id: 't1', eval_type: 'completeness', output_text: 'x', score: 0.4, passed: false, rule_results: [{ ruleName: 'min_output_length', passed: false, score: 0, message: '' }] });
     await store.close();
-
-    // Put the file back the way a build before 019 left it.
     const raw = new Database(path);
     raw.exec(`
       CREATE INDEX idx_traces_tenant_agent ON traces(tenant_id, agent_name);
@@ -111,22 +114,67 @@ describe('migration 019 — the read-path indexes', () => {
     raw.close();
     const before = indexes(path);
     for (const name of Object.keys(ADDED)) expect(before.has(name)).toBe(false);
+    return path;
+  }
 
+  /** Every read the indexes serve, as it answers. */
+  const reads = async (s: SqliteAdapter) => ({
+    agents: await s.getDistinctValues(LOCAL_TENANT, 'agent_name'),
+    frameworks: await s.getDistinctValues(LOCAL_TENANT, 'framework'),
+    failureLog: (await s.getAgentFailureLog(LOCAL_TENANT, 'alpha')).map((e) => [e.traceId, e.failed, e.costUsd]),
+    oneAgent: (await s.queryTraces(LOCAL_TENANT, { filter: { agent_name: 'beta' } })).traces.map((t) => t.trace_id),
+    summary: await s.getDashboardSummary(LOCAL_TENANT, 24 * 365 * 10).then((d) => [d.total_traces, d.error_rate]),
+  });
+  const EXPECTED = {
+    agents: ['alpha', 'beta'],
+    frameworks: ['autogen', 'langchain'],
+    failureLog: [['t1', ['min_output_length'], 0.01]],
+    oneAgent: ['t2'],
+    summary: [2, 0.5],
+  };
+
+  it('a start that finds only some of them builds the rest, and a close during the build waits for it', async () => {
+    const path = await writtenBefore019();
+    const raw = new Database(path);
+    raw.exec("INSERT INTO _iris_migrations (id) VALUES ('019-read-paths')");
+    raw.exec(READ_PATH_INDEXES[0].sql);
+    raw.close();
+    const first = new SqliteAdapter(path);
+    await first.initialize();
+    expect(first.readIndexesState()).toBe('building');
+    await first.close();
+    // The close waited for the build: every index is there, and the replaced ones are gone.
+    const found = indexes(path);
+    for (const name of Object.keys(ADDED)) expect(found.has(name), name).toBe(true);
+    for (const name of REPLACED) expect(found.has(name), name).toBe(false);
+    const next = new SqliteAdapter(path);
+    await next.initialize();
+    try {
+      expect(next.readIndexesState()).toBe('ready');
+      expect(await reads(next)).toEqual(EXPECTED);
+    } finally {
+      await next.close();
+    }
+  });
+
+  it('a database written before 019 answers at once, and gains the indexes after the start, reading back the same', async () => {
+    const path = await writtenBefore019();
     const upgraded = new SqliteAdapter(path);
     await upgraded.initialize();
     try {
       expect(await upgraded.migrations()).toEqual({ applied: KNOWN_MIGRATION_IDS.length, known: KNOWN_MIGRATION_IDS.length, pending: [] });
+      // The start did not build them: the reads answer without them, on the indexes the file had.
+      expect(upgraded.readIndexesState()).toBe('building');
+      expect((await buildHealth({ storage: upgraded, version: 'test' })).body.indexes).toBe('building');
+      for (const name of Object.keys(ADDED)) expect(indexes(path).has(name), name).toBe(false);
+      expect(await reads(upgraded)).toEqual(EXPECTED);
+      await upgraded.whenIdle();
+      expect(upgraded.readIndexesState()).toBe('ready');
+      expect((await buildHealth({ storage: upgraded, version: 'test' })).body.indexes).toBe('ready');
       const found = indexes(path);
-      for (const name of Object.keys(ADDED)) expect(found.has(name), name).toBe(true);
+      for (const [name, on] of Object.entries(ADDED)) expect(found.get(name), name).toBe(`CREATE INDEX ${name} ON ${on}`);
       for (const name of REPLACED) expect(found.has(name), name).toBe(false);
-      // Every read the indexes serve answers as before.
-      expect(await upgraded.getDistinctValues(LOCAL_TENANT, 'agent_name')).toEqual(['alpha', 'beta']);
-      expect(await upgraded.getDistinctValues(LOCAL_TENANT, 'framework')).toEqual(['autogen', 'langchain']);
-      expect((await upgraded.getAgentFailureLog(LOCAL_TENANT, 'alpha')).map((e) => [e.traceId, e.failed, e.costUsd])).toEqual([['t1', ['min_output_length'], 0.01]]);
-      expect((await upgraded.queryTraces(LOCAL_TENANT, { filter: { agent_name: 'beta' } })).traces.map((t) => t.trace_id)).toEqual(['t2']);
-      const summary = await upgraded.getDashboardSummary(LOCAL_TENANT, 24 * 365 * 10);
-      expect(summary.total_traces).toBe(2);
-      expect(summary.error_rate).toBe(0.5);
+      expect(await reads(upgraded)).toEqual(EXPECTED);
     } finally {
       await upgraded.close();
     }

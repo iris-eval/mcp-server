@@ -341,6 +341,8 @@ export interface IStorageAdapter {
   migrations(): Promise<MigrationState>;
   /** Where the trace search index is: health's `search` and the self-test read it. Optional: a store without an index has none. */
   searchStatus?(): Promise<SearchIndexStatus>;
+  /** Whether the indexes the dashboard and the failure log read exist, or are being built after the start (#711): health's `indexes`. */
+  readIndexesState?(): 'ready' | 'building';
   /**
    * The relevance judge's spend, per tenant per UTC day, in this database:
    * the daily budget holds across restarts and across every process that

@@ -1506,6 +1506,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
     "migrations": { "status": "ok", "applied": 11, "known": 11 }
   },
   "search": { "state": "ready", "index": "fts5", "progress": 1 },
+  "indexes": "ready",
   "storage": "connected",
   "judge": { "enabled": false, "provider": null },
   "mode": "real"
@@ -1516,6 +1517,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
 - `search_worker` — where searches run: `ready` (on their own thread, so a slow search never holds other requests), `not_started` (the thread starts with the first search), `unavailable` (it could not start on this machine, so searches run on the main thread; `detail` gives the reason, and the server also logs it once), or `not_used` (a store in memory, which searches on the main thread by design); `null` without storage. It is informational: search works in every case, so it never makes `status` `degraded`. `--self-test` prints the same line.
 - `checks.storage` — the database answered a count. The count itself is not reported: this endpoint answers without a key, so it says whether the store works, not how much it holds (the number is `total` on the authenticated `GET /api/v1/traces`); `checks.rules_store` — the deployed custom-rules file reads and parses; `checks.migrations` — every migration this build knows is applied, with the numbers so a schema that is behind is visible before a query fails. Each is `ok`, `fail`, or `absent` when there was nothing to check.
 - `search` — the trace search index: `state` is `ready`, `building` (after an upgrade or a rebuild, in the background; a search reads the traces until it is done, with the same results) or `unavailable` (a SQLite without FTS5, where a search always reads the traces); `index` is what a search reads now, `fts5` or `scan`, as on a search response; `progress` is the share of stored traces the index holds, from 0 to 0.99 while it is being built, 1 when ready and `null` without FTS5 (a share, not a count, for the reason above). It is not a check: a search answers in every state, so it never makes `status` degraded. `null` when the store cannot say.
+- `indexes` (0.20.0) — the indexes the dashboard's summary, filters and trace list and the failure log read: `building` after an upgrade from a release before them, while they are built in the background after the server starts (those reads answer meanwhile with the same results, more slowly), then `ready`; `null` without storage. Informational: it never makes `status` degraded. `--self-test` says when a database still needs them.
 - `status` is `ok` only when no check failed; otherwise `degraded`, with HTTP **503**, so a probe that reads only the status code is right.
 - `version` is read from `package.json` at runtime; `judge` is the provider name when a key is present, never the key; `mode` is `demo` when serving the disposable demo database.
 - `judge.relevance` (0.20.0) — whether a relevance judge is installed (`configured`) and callable (`ready`), and whether its daily budget has stopped it today for the local tenant (`budget_exhausted`, with `budget_resets_at` when it has). The amount spent is not reported here, since the endpoint answers without a key; it is in `iris://capabilities` → `judge.relevance.budget`.
@@ -1535,6 +1537,7 @@ The one health contract (0.15.0). Unauthenticated by design — no key, no sessi
     "migrations": { "status": "ok", "applied": 11, "known": 11 }
   },
   "search": null,
+  "indexes": null,
   "storage": "disconnected",
   "judge": { "enabled": false, "provider": null },
   "mode": "real"

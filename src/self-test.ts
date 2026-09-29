@@ -49,6 +49,7 @@ import { request as httpRequest } from 'node:http';
 import type { Server } from 'node:http';
 import { openDriver, type Driver } from './storage/driver.js';
 import { searchIndexProgress } from './storage/search-index.js';
+import { readPathsMissing } from './storage/read-paths.js';
 import { ensureIrisDirectory, loadConfig } from './config/index.js';
 import { PKG_VERSION } from './config/defaults.js';
 import { createStorage } from './storage/index.js';
@@ -281,9 +282,13 @@ export function probeDatabaseSchema(dbPath: string): { detail: string; plan: Mig
   if (!existsSync(dbPath)) return { detail: 'no database yet; this version creates it on first start', plan: null };
   let plan: MigrationPlan;
   let db: Driver | undefined;
+  let toBuild = 0;
   try {
     db = openDriver(dbPath, { fileMustExist: true, readOnly: true });
     plan = inspectMigrations(db);
+    // The indexes the hot reads name, built after the start on a store with traces (read-paths.ts).
+    const hasTraces = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'traces'").get() !== undefined && db.prepare('SELECT 1 FROM traces LIMIT 1').get() !== undefined;
+    if (hasTraces) toBuild = readPathsMissing(db).length;
   } catch (err) {
     throw new Error(`database "${dbPath}" could not be read (${errorCode(err)}) — the server would fail at startup the same way.`);
   } finally {
@@ -297,15 +302,17 @@ export function probeDatabaseSchema(dbPath: string): { detail: string; plan: Mig
   }
   const known = KNOWN_MIGRATION_IDS.length;
   if (plan.applied.length === 0) return { detail: 'empty; this version sets it up on first start', plan };
+  // Said as health says it (`indexes: building`), with what it means for the reads.
+  const building = toBuild > 0 ? `; indexes building: ${toBuild} of the indexes the dashboard and the failure log read are built in the background after the server starts, and those reads are slower until they are` : '';
   if (plan.pending.length > 0) {
     const lockout = plan.floorAfter !== plan.floor ? `; from then on Iris before ${plan.floorAfter} cannot open it` : '';
     return {
-      detail: `schema ${known - plan.pending.length} of ${known}: the next start applies ${plan.pending.join(', ')}, after copying the file next to it${lockout}`,
+      detail: `schema ${known - plan.pending.length} of ${known}: the next start applies ${plan.pending.join(', ')}, after copying the file next to it${lockout}${building}`,
       plan,
     };
   }
   const newer = plan.unknown.length > 0 ? `, with ${plan.unknown.map((r) => r.id).join(', ')} from Iris ${plan.lastWriter ?? 'a newer release'}, which this version can use` : '';
-  return { detail: `up to date (schema ${known} of ${known}${newer}); Iris ${plan.floor} and later can open it`, plan };
+  return { detail: `up to date (schema ${known} of ${known}${newer}); Iris ${plan.floor} and later can open it${building}`, plan };
 }
 
 /**

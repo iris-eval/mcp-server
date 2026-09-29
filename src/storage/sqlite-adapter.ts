@@ -63,6 +63,7 @@ import { runMigrations, migrationState, inspectMigrations, assertCompatible, DOW
 import { backupDatabase, type BackupResult } from './backup.js';
 import { PKG_VERSION } from '../config/defaults.js';
 import { Checkpointer, AUTOCHECKPOINT_PAGES, TAIL_CHECKPOINT_PAGES, STEP_TRUNCATE_PAGES } from './checkpointer.js';
+import { readPathsMissing, DROP_REPLACED, READ_PATH_INDEX_NAMES } from './read-paths.js';
 import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, nextStepSize, eraseRetiredStep, isShadowWriteRefused, retiredRemain, ERASE_ROWS, ERASE_ROWS_RANGE, sweepEraseMode, deleteOwingMerge, mergeOwed, mergeOwedStep, levelMergeStep, filterIndexMissing, CREATE_FILTER_INDEX, MERGE_PAGES, MERGE_PAGES_RANGE, searchIndexProgress, type SearchIndexStatus, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
 import { parseSearch, searchRefusal, describeTerm, mayHoldCjk, type ParsedSearch, type TraceMatch } from './search.js';
 import { installSearchFunctions, matchSearch, type MatchRequest, type MatchResult, type SearchPlan } from './search-match.js';
@@ -394,6 +395,9 @@ export class SqliteAdapter implements IStorageAdapter {
   private searchIndex: SearchIndexState = 'unavailable';
   /** The background build of the search index, while one runs; see buildSearchIndex. */
   private searchBuild: Promise<SearchIndexState> | undefined;
+  /** The indexes the hot reads name, being built after the start, while they are (buildReadPaths), and whether all of them exist. */
+  private readPaths: Promise<void> | undefined;
+  private readPathsReady = false;
   /** The covering index being built after the start, while it is; see createFilterIndex. */
   private filterIndex: Promise<void> | undefined;
   private riskFill: Promise<void> | undefined;
@@ -575,6 +579,10 @@ export class SqliteAdapter implements IStorageAdapter {
       if (this.db.prepare('SELECT 1 FROM traces LIMIT 1').get() === undefined) this.db.exec(CREATE_FILTER_INDEX);
       else this.filterIndex = this.createFilterIndex();
     }
+    // The indexes the hot reads name (read-paths.ts): built by migration 019 on a store with no traces, after the start on one with traces.
+    const missing = readPathsMissing(this.db);
+    this.readPathsReady = missing.length === 0;
+    if (!this.readPathsReady) this.readPaths = this.buildReadPaths(missing.map((i) => i.sql));
     // Traces stored before the index existed are indexed after the start, not during it.
     if (this.searchIndex === 'building') this.searchBuild = this.buildSearchIndex();
     // Evaluations with no stored risk estimate (written before migration 018, or by an older corpus) get one, behind the start.
@@ -616,7 +624,7 @@ export class SqliteAdapter implements IStorageAdapter {
     // Background work in progress stops at its next step; each is resumable, and the next start carries on.
     this.closing = true;
     this.markClosing();
-    await Promise.all([this.filterIndex, this.searchBuild, this.merging, this.riskFill, ...this.sweeps]);
+    await Promise.all([this.filterIndex, this.readPaths, this.searchBuild, this.merging, this.riskFill, ...this.sweeps]);
     // The search thread closes its own connection before this one closes.
     await this.searchWorker?.close();
     this.searchWorker = undefined;
@@ -675,7 +683,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   /** Resolves when no background work runs: the build, a merge a sweep owes, a sweep. For tests and the benchmark. */
   async whenIdle(): Promise<void> {
-    while (this.filterIndex || this.searchBuild || this.merging || this.riskFill || this.sweeps.size > 0) await Promise.all([this.filterIndex, this.searchBuild, this.merging, this.riskFill, ...this.sweeps]);
+    while (this.filterIndex || this.readPaths || this.searchBuild || this.merging || this.riskFill || this.sweeps.size > 0) await Promise.all([this.filterIndex, this.readPaths, this.searchBuild, this.merging, this.riskFill, ...this.sweeps]);
   }
 
   /**
@@ -713,8 +721,8 @@ export class SqliteAdapter implements IStorageAdapter {
           : `indexing the Chinese, Japanese and Korean text of ${at.cjk_pending.toLocaleString('en-US')} trace(s)`;
       this.log('info', `Search index: ${at.retired ? 'erasing the previous index, then ' : ''}${what} in the background; until it is done, a search reads the traces (the same results, slower)`);
       // An index retired at the start is erased first (search-index.ts, retiring an index).
-      // No write step while the covering index is built: it holds the write lock, and a step would wait for it on the event loop.
-      if (this.filterIndex) await this.filterIndex;
+      // No write step while an index is built after the start: it holds the write lock, and a step would wait for it on the event loop.
+      if (this.filterIndex || this.readPaths) await this.indexesAfterStart();
       await this.eraseRetiredIndex();
       let after = 0;
       let batch = BUILD_BATCH;
@@ -828,6 +836,63 @@ export class SqliteAdapter implements IStorageAdapter {
     return this.pageSize;
   }
 
+  /**
+   * Build the indexes the hot reads name, after the start (read-paths.ts):
+   * each on the checkpoint worker's connection, one statement at a time so
+   * a write can go between them, or on this one when the worker cannot
+   * run; then drop the ones they replace. Until all exist the reads run
+   * without naming them (pinned). A build that fails leaves the reads so,
+   * and the next start tries again. Runs even when the store is closing:
+   * close() waits for it.
+   */
+  private async buildReadPaths(statements: readonly string[]): Promise<void> {
+    await yieldToRequests();
+    // One writer at a time: the covering index first, when it is being built too.
+    if (this.filterIndex) await this.filterIndex;
+    const began = performance.now();
+    try {
+      this.ensureCheckpointer();
+      const worker = this.checkpointer;
+      const onWorker = worker !== undefined && (await worker.whenStarted()) && worker.active;
+      const run = async (sql: string) => {
+        if (onWorker) {
+          try {
+            return await worker.exec(sql);
+          } catch {
+            // Refused there (the write lock held past the busy timeout, or the worker stopped): here instead.
+          }
+        }
+        // After any TRUNCATE in flight (insertTraces says why).
+        while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
+        this.db.exec(sql);
+      };
+      for (const sql of statements) await run(sql);
+      this.readPathsReady = true;
+      await run(DROP_REPLACED);
+      this.log('info', `Storage: the indexes the dashboard and the failure log read were built after the start, in ${((performance.now() - began) / 1000).toFixed(1)} s`);
+    } catch (err) {
+      this.log('warn', `Building the indexes the dashboard and the failure log read failed (${err instanceof Error ? err.message : String(err)}); those reads work without them, more slowly, and the next start tries again.`);
+    } finally {
+      this.readPaths = undefined;
+    }
+  }
+
+  /** Resolves once no index is being built after the start: each holds the write lock while it is. */
+  private async indexesAfterStart(): Promise<void> {
+    await this.filterIndex;
+    await this.readPaths;
+  }
+
+  /** Whether the indexes the hot reads name all exist, or are still being built after the start: for health and the self-test. */
+  readIndexesState(): 'ready' | 'building' {
+    return this.readPathsReady ? 'ready' : 'building';
+  }
+
+  /** `INDEXED BY name`, or nothing while that index is still being built after the start (read-paths.ts). */
+  private pinned(name: string): string {
+    return this.readPathsReady || !READ_PATH_INDEX_NAMES.has(name) ? `INDEXED BY ${name}` : '';
+  }
+
   /** The build's merge-page budget, carried from one round of merges to the next. */
   private mergePages = MERGE_PAGES;
 
@@ -854,8 +919,8 @@ export class SqliteAdapter implements IStorageAdapter {
    */
   private async fillRiskEstimates(): Promise<void> {
     await yieldToRequests();
-    // No write step while the covering index is built: it holds the write lock, and a step would wait for it on the event loop.
-    if (this.filterIndex) await this.filterIndex;
+    // No write step while an index is built after the start: it holds the write lock, and a step would wait for it on the event loop.
+    if (this.filterIndex || this.readPaths) await this.indexesAfterStart();
     try {
       // The rows still to fill, found through idx_eval_results_risk_version: once every row is filled, a start reads nothing.
       const [unversioned, below, above] = RISK_FILL_QUERIES.map((sql) => this.db.prepare(sql));
@@ -952,7 +1017,7 @@ export class SqliteAdapter implements IStorageAdapter {
     this.merging ??= (async () => {
       await yieldToRequests();
       this.ensureCheckpointer();
-      if (this.filterIndex) await this.filterIndex;
+      if (this.filterIndex || this.readPaths) await this.indexesAfterStart();
       try {
         let pages = MERGE_PAGES;
         while (!this.closing) {
@@ -1151,11 +1216,11 @@ export class SqliteAdapter implements IStorageAdapter {
     const { whereClause, params, sortBy, sortOrder, limit, offset } = plan;
     const { countIndex, pageIndex } = traceIndexes(options.filter);
     const countRow = this.db
-      .prepare(`SELECT COUNT(*) as count FROM traces INDEXED BY ${countIndex} ${whereClause}`)
+      .prepare(`SELECT COUNT(*) as count FROM traces ${this.pinned(countIndex)} ${whereClause}`)
       .get(...params) as { count: number };
 
     const rows = this.db
-      .prepare(`SELECT * FROM traces INDEXED BY ${pageIndex} ${whereClause} ORDER BY ${sortBy} ${sortOrder} LIMIT ? OFFSET ?`)
+      .prepare(`SELECT * FROM traces ${this.pinned(pageIndex)} ${whereClause} ORDER BY ${sortBy} ${sortOrder} LIMIT ? OFFSET ?`)
       .all(...params, limit, offset) as Array<Record<string, unknown>>;
 
     return {
@@ -1210,12 +1275,12 @@ export class SqliteAdapter implements IStorageAdapter {
     } else if (plan.sortBy !== 'timestamp') {
       pages = chunks(
         (this.db
-          .prepare(`SELECT trace_id FROM traces INDEXED BY ${pageIndex} ${plan.whereClause} ORDER BY ${plan.sortBy} ${plan.sortOrder}, rowid ${plan.sortOrder}`)
+          .prepare(`SELECT trace_id FROM traces ${this.pinned(pageIndex)} ${plan.whereClause} ORDER BY ${plan.sortBy} ${plan.sortOrder}, rowid ${plan.sortOrder}`)
           .all(...plan.params) as Array<{ trace_id: string }>).map((r) => r.trace_id),
         batchSize,
       );
     } else {
-      pages = this.keysetIds(`traces INDEXED BY ${pageIndex}`, 'traces', 'trace_id', 'timestamp', plan.whereClause, plan.params, plan.sortOrder, batchSize);
+      pages = this.keysetIds(`traces ${this.pinned(pageIndex)}`, 'traces', 'trace_id', 'timestamp', plan.whereClause, plan.params, plan.sortOrder, batchSize);
     }
 
     for (;;) {
@@ -1919,7 +1984,7 @@ export class SqliteAdapter implements IStorageAdapter {
     const fromTraces = filter.caseKey !== undefined ? 'idx_traces_tenant_case' : filter.session !== undefined ? 'idx_traces_tenant_session' : undefined;
     const from =
       fromTraces !== undefined
-        ? `FROM traces t INDEXED BY ${fromTraces} CROSS JOIN eval_results e INDEXED BY idx_eval_results_tenant_trace ON e.trace_id = t.trace_id AND e.tenant_id = t.tenant_id`
+        ? `FROM traces t ${this.pinned(fromTraces)} CROSS JOIN eval_results e INDEXED BY idx_eval_results_tenant_trace ON e.trace_id = t.trace_id AND e.tenant_id = t.tenant_id`
         : 'FROM eval_results e INDEXED BY idx_eval_results_tenant_created CROSS JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id';
     // Grouped by session, a turn without a case key still counts; grouped by case, a turn without one never did.
     // Read from the evaluations, each trace is found by its id: the `+` keeps that test from becoming a range scan of an index per evaluation.
@@ -2075,14 +2140,14 @@ export class SqliteAdapter implements IStorageAdapter {
         COALESCE(AVG(latency_ms), 0) as avg_latency_ms,
         COALESCE(SUM(cost_usd), 0) as total_cost_usd,
         COALESCE(SUM(CASE WHEN cost_source = 'estimated' THEN cost_usd END), 0) as estimated_cost_usd
-      FROM traces INDEXED BY idx_traces_tenant_timestamp_cover WHERE tenant_id = ? AND timestamp >= ?
+      FROM traces ${this.pinned('idx_traces_tenant_timestamp_cover')} WHERE tenant_id = ? AND timestamp >= ?
     `).get(tenantId, since) as { total_traces: number; avg_latency_ms: number; total_cost_usd: number; estimated_cost_usd: number };
 
     const errorCount = this.db.prepare(`
       SELECT COUNT(*) as count
-      FROM traces t INDEXED BY idx_traces_tenant_timestamp_cover
+      FROM traces t ${this.pinned('idx_traces_tenant_timestamp_cover')}
       WHERE t.tenant_id = ? AND t.timestamp >= ?
-        AND t.trace_id IN (SELECT s.trace_id FROM spans s INDEXED BY idx_spans_tenant_error WHERE s.tenant_id = ? AND s.status_code = 'ERROR')
+        AND t.trace_id IN (SELECT s.trace_id FROM spans s ${this.pinned('idx_spans_tenant_error')} WHERE s.tenant_id = ? AND s.status_code = 'ERROR')
     `).get(tenantId, since, tenantId) as { count: number };
 
     const evalStats = this.db.prepare(`
@@ -2094,13 +2159,13 @@ export class SqliteAdapter implements IStorageAdapter {
 
     const tracesPerHour = this.db.prepare(`
       SELECT strftime('%Y-%m-%dT%H:00:00', timestamp) as hour, COUNT(*) as count
-      FROM traces INDEXED BY idx_traces_tenant_timestamp_cover WHERE tenant_id = ? AND timestamp >= ?
+      FROM traces ${this.pinned('idx_traces_tenant_timestamp_cover')} WHERE tenant_id = ? AND timestamp >= ?
       GROUP BY hour ORDER BY hour
     `).all(tenantId, since) as Array<{ hour: string; count: number }>;
 
     const topAgents = this.db.prepare(`
       SELECT agent_name, COUNT(*) as count
-      FROM traces INDEXED BY idx_traces_tenant_timestamp_cover WHERE tenant_id = ? AND timestamp >= ?
+      FROM traces ${this.pinned('idx_traces_tenant_timestamp_cover')} WHERE tenant_id = ? AND timestamp >= ?
       GROUP BY agent_name ORDER BY count DESC LIMIT 10
     `).all(tenantId, since) as Array<{ agent_name: string; count: number }>;
 
@@ -2173,13 +2238,13 @@ export class SqliteAdapter implements IStorageAdapter {
     const cost = this.db.prepare(`
       SELECT COALESCE(SUM(cost_usd), 0) AS total_cost,
              COALESCE(SUM(CASE WHEN cost_source = 'estimated' THEN cost_usd END), 0) AS estimated_cost
-      FROM traces INDEXED BY idx_traces_tenant_timestamp_cover
+      FROM traces ${this.pinned('idx_traces_tenant_timestamp_cover')}
       WHERE tenant_id = ? AND timestamp >= ?
     `).get(tenantId, since) as { total_cost: number; estimated_cost: number };
 
     const agents = this.db.prepare(`
       SELECT COUNT(DISTINCT agent_name) AS agent_count
-      FROM traces INDEXED BY idx_traces_tenant_timestamp_cover
+      FROM traces ${this.pinned('idx_traces_tenant_timestamp_cover')}
       WHERE tenant_id = ? AND timestamp >= ?
     `).get(tenantId, since) as { agent_count: number };
 
@@ -2399,7 +2464,7 @@ export class SqliteAdapter implements IStorageAdapter {
     );
     const byTrace = this.db.prepare(
       `SELECT e.rule_results AS rule_results, e.run_id AS run_id, t.trace_id AS trace_id, t.timestamp AS timestamp, t.cost_usd AS cost_usd
-         FROM traces t INDEXED BY idx_traces_tenant_agent_timestamp
+         FROM traces t ${this.pinned('idx_traces_tenant_agent_timestamp')}
          CROSS JOIN eval_results e INDEXED BY idx_eval_results_tenant_trace ON e.tenant_id = t.tenant_id AND e.trace_id = t.trace_id
         WHERE t.tenant_id = ? AND t.agent_name = ? AND t.timestamp >= ?
         ORDER BY t.timestamp DESC, e.created_at DESC
@@ -2407,10 +2472,10 @@ export class SqliteAdapter implements IStorageAdapter {
     );
     const evaluations = this.db.prepare('SELECT COUNT(*) AS n FROM (SELECT 1 FROM eval_results INDEXED BY idx_eval_results_tenant_trace WHERE tenant_id = ? LIMIT ?)');
     const windowEdge = this.db.prepare(
-      'SELECT timestamp FROM traces INDEXED BY idx_traces_tenant_agent_timestamp WHERE tenant_id = ? AND agent_name = ? ORDER BY timestamp DESC LIMIT 1 OFFSET ?',
+      `SELECT timestamp FROM traces ${this.pinned('idx_traces_tenant_agent_timestamp')} WHERE tenant_id = ? AND agent_name = ? ORDER BY timestamp DESC LIMIT 1 OFFSET ?`,
     );
     const agentTraces = this.db.prepare(
-      'SELECT COUNT(*) AS n FROM (SELECT 1 FROM traces INDEXED BY idx_traces_tenant_agent_timestamp WHERE tenant_id = ? AND agent_name = ? LIMIT ?)',
+      `SELECT COUNT(*) AS n FROM (SELECT 1 FROM traces ${this.pinned('idx_traces_tenant_agent_timestamp')} WHERE tenant_id = ? AND agent_name = ? LIMIT ?)`,
     );
     let window = 4 * Math.max(limit, 1);
     for (;;) {
@@ -2692,7 +2757,7 @@ export class SqliteAdapter implements IStorageAdapter {
   private async sweepTraces(tid: TenantId, cut: string): Promise<number> {
     if (this.closing) return 0;
     this.ensureCheckpointer();
-    if (this.filterIndex) await this.filterIndex;
+    if (this.filterIndex || this.readPaths) await this.indexesAfterStart();
     const indexing = this.searchIndex !== 'unavailable';
     const mode = indexing
       ? sweepEraseMode(
@@ -3014,9 +3079,9 @@ export class SqliteAdapter implements IStorageAdapter {
     const rows = this.db
       .prepare(
         `WITH RECURSIVE v(value) AS (
-           SELECT MIN(${column}) FROM traces INDEXED BY ${index} WHERE tenant_id = ? AND ${column} IS NOT NULL
+           SELECT MIN(${column}) FROM traces ${this.pinned(index)} WHERE tenant_id = ? AND ${column} IS NOT NULL
            UNION ALL
-           SELECT (SELECT MIN(${column}) FROM traces INDEXED BY ${index} WHERE tenant_id = ? AND ${column} > v.value) FROM v WHERE v.value IS NOT NULL
+           SELECT (SELECT MIN(${column}) FROM traces ${this.pinned(index)} WHERE tenant_id = ? AND ${column} > v.value) FROM v WHERE v.value IS NOT NULL
          )
          SELECT value FROM v WHERE value IS NOT NULL ORDER BY value`,
       )
