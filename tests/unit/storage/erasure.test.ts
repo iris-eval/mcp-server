@@ -8,11 +8,12 @@
  * expected text and the rule messages, stamp erased_at,
  * and keep the scores and the evidence offsets.
  */
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
+import { Checkpointer } from '../../../src/storage/checkpointer.js';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
 import { generateTraceId } from '../../../src/utils/ids.js';
@@ -214,6 +215,24 @@ describe('delete_trace leaves no text on disk while the store works in the backg
 
   it(`${STORES} stores, ${DELETES_PER_STORE} deletes each, the first straight after the store's first write: every secret is gone from iris.db and its WAL when the call returns`, async () => {
     const left: string[] = [];
+    // What each erasure tried, for the message when one leaves text behind.
+    let trail: string[] = [];
+    const t0 = Date.now();
+    const record = (what: string, run: () => unknown) => {
+      const r = run();
+      if (r instanceof Promise) return r.then((v) => (trail.push(`${Date.now() - t0}ms ${what} -> ${String(v)}`), v));
+      trail.push(`${Date.now() - t0}ms ${what} -> ${String(r)}`);
+      return r;
+    };
+    const proto = SqliteAdapter.prototype as unknown as { truncateCheckpointHere: () => boolean };
+    const here = proto.truncateCheckpointHere;
+    vi.spyOn(proto, 'truncateCheckpointHere').mockImplementation(function (this: unknown) {
+      return record('TRUNCATE on the adapter', () => here.call(this)) as boolean;
+    });
+    const onWorker = Checkpointer.prototype.truncate;
+    vi.spyOn(Checkpointer.prototype, 'truncate').mockImplementation(function (this: Checkpointer) {
+      return record('TRUNCATE on the worker', () => onWorker.call(this)) as Promise<boolean>;
+    });
     for (let k = 0; k < STORES; k += 1) {
       const dir = mkdtempSync(join(tmpdir(), 'iris-erasure-stress-'));
       dirs.push(dir);
@@ -225,15 +244,17 @@ describe('delete_trace leaves no text on disk while the store works in the backg
       for (let d = 0; d < DELETES_PER_STORE; d += 1) {
         const secret = `STRESSSECRET${k}X${d}Q${'Z'.repeat(8)}`;
         await s.insertTraces(LOCAL_TENANT, [{ trace_id: `secret-${d}`, agent_name: 'erasure', input: 'q', output: `the code is ${secret}`, timestamp: new Date().toISOString() }]);
+        trail = [];
         expect(await s.deleteTrace(LOCAL_TENANT, `secret-${d}`)).toBe(true);
         const w = (s as unknown as { checkpointer?: { active: boolean; stopped: string } }).checkpointer;
-        if (holds(path, secret) || holds(`${path}-wal`, secret)) left.push(`${secret} (store ${k}, delete ${d}; iris.db ${holds(path, secret)}, WAL ${holds(`${path}-wal`, secret)}; worker ${w ? `active ${w.active}, stopped ${w.stopped}` : 'none'})`);
+        if (holds(path, secret) || holds(`${path}-wal`, secret)) left.push(`${secret} (store ${k}, delete ${d}; iris.db ${holds(path, secret)}, WAL ${holds(`${path}-wal`, secret)}; worker ${w ? `active ${w.active}, stopped ${w.stopped}` : 'none'}; retry pending ${(s as unknown as { eraseRetry?: unknown }).eraseRetry !== undefined}; tried: ${trail.join('; ')})`);
         // Let the build, the merges and the worker's copies run between deletes.
         await new Promise((r) => setTimeout(r, d % 2 === 0 ? 0 : 30));
       }
       await s.close();
       open.splice(open.indexOf(s), 1);
     }
+    vi.restoreAllMocks();
     expect(left).toEqual([]);
   }, 180_000);
 });
