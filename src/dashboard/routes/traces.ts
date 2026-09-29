@@ -9,7 +9,9 @@ import type { EvalEngine } from '../../eval/engine.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import { generateTraceId, generateSpanId } from '../../utils/ids.js';
 import { bestEffortExport } from '../../otel/lazy.js';
-import { traceQuerySchema, ingestTraceSchema } from '../validation.js';
+import { traceQuerySchema, traceExportQuerySchema, ingestTraceSchema } from '../validation.js';
+import { sendExport } from '../export-response.js';
+import { traceEncoder } from '../../export/format.js';
 import { searchOf } from '../../tools/get-traces.js';
 import { costFieldsOf, resolveTraceCost } from '../../cost/trace-cost.js';
 
@@ -139,6 +141,40 @@ export function registerTraceRoutes(
         sort_order: query.sort_order,
       });
       res.json(result);
+    } catch (err) {
+      if (err instanceof Error && err.name === 'ZodError') {
+        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        return;
+      }
+      throw err;
+    }
+  });
+
+  /*
+   * Every trace the list's filters and search admit, as CSV or JSON Lines,
+   * streamed (#4). Registered before /traces/:id so "export" is never read
+   * as a trace id. The tenant comes from the request like every other read.
+   */
+  router.get('/traces/export', async (req, res) => {
+    try {
+      const tenantId = requireTenant(req);
+      const query = traceExportQuerySchema.parse(req.query);
+      const search = searchOf(query.q);
+      const batches = storage.exportTraces(tenantId, {
+        ...(search !== undefined ? { search } : {}),
+        filter: {
+          agent_name: query.agent_name,
+          framework: query.framework,
+          session_id: query.session,
+          since: query.since,
+          until: query.until,
+          min_score: query.min_score,
+          max_score: query.max_score,
+        },
+        ...(query.sort_by !== undefined ? { sort_by: query.sort_by } : {}),
+        sort_order: query.sort_order,
+      });
+      await sendExport(res, 'traces', query.format, traceEncoder(query.format), batches);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
         res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });

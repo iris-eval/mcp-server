@@ -82,10 +82,10 @@ describe('iris-eval install (the CLI entry point)', () => {
     expect(stderr).toContain('install comes first');
   }, 30_000);
 
-  it('an unknown verb names both commands', async () => {
+  it('an unknown verb names every command', async () => {
     const { code, stderr } = await runCli(['instal']);
     expect(code).toBe(2);
-    expect(stderr).toContain('The commands are "ingest" and "install"');
+    expect(stderr).toContain('The commands are "ingest", "export" and "install"');
   }, 30_000);
 
   it('--help lists the install verb', async () => {

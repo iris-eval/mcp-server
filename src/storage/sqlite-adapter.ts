@@ -33,6 +33,9 @@ import type {
   TraceQueryOptions,
   TraceQueryResult,
   TraceSearchInfo,
+  TraceExportOptions,
+  TraceRecord,
+  EvalResultFilter,
   SearchWorkerStatus,
   EvalStatsPeriod,
   EvalStats,
@@ -68,6 +71,31 @@ import { SqliteJudgeSpendLedger } from './judge-spend.js';
 import { resolveTraceCost } from '../cost/trace-cost.js';
 
 const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
+
+/** Rows an export reads per statement; the bound on what one export holds in memory at once. */
+export const EXPORT_BATCH = 250;
+
+/**
+ * The indexes a trace list reads, named (#711). A session or an agent is
+ * the narrowest range, and each index is in time order; otherwise the page
+ * walks the covering time index, which also holds latency and cost, so a
+ * page sorted by either sorts index entries and reads 50 rows rather than
+ * every row (0.37 s at 100,000 traces when the planner took another
+ * index). The count takes the smallest index that answers its filters.
+ * The export walks the page's index too.
+ */
+function traceIndexes(filter: TraceQueryOptions['filter']): { countIndex: string; pageIndex: string } {
+  const narrowest = filter?.session_id !== undefined ? 'idx_traces_tenant_session' : filter?.agent_name ? 'idx_traces_tenant_agent_timestamp' : undefined;
+  return {
+    countIndex: narrowest ?? (filter?.since || filter?.until ? 'idx_traces_tenant_timestamp_cover' : 'idx_traces_tenant_framework'),
+    pageIndex: narrowest ?? 'idx_traces_tenant_timestamp_cover',
+  };
+}
+
+/** An id list read in one statement, handed out `size` at a time. */
+function* chunks(ids: readonly string[], size: number): Generator<string[]> {
+  for (let i = 0; i < ids.length; i += size) yield ids.slice(i, i + size);
+}
 
 /**
  * Stored rule results, read back in one shape. Every reader sorts or groups
@@ -1072,6 +1100,153 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async queryTraces(tenantId: TenantId, options: TraceQueryOptions): Promise<TraceQueryResult> {
     assertTenant(tenantId);
+    const plan = this.planTraceQuery(tenantId, options);
+    if (plan.search) {
+      return await this.searchTraces(tenantId, plan.search, plan);
+    }
+    const { whereClause, params, sortBy, sortOrder, limit, offset } = plan;
+    const { countIndex, pageIndex } = traceIndexes(options.filter);
+    const countRow = this.db
+      .prepare(`SELECT COUNT(*) as count FROM traces INDEXED BY ${countIndex} ${whereClause}`)
+      .get(...params) as { count: number };
+
+    const rows = this.db
+      .prepare(`SELECT * FROM traces INDEXED BY ${pageIndex} ${whereClause} ORDER BY ${sortBy} ${sortOrder} LIMIT ? OFFSET ?`)
+      .all(...params, limit, offset) as Array<Record<string, unknown>>;
+
+    return {
+      traces: rows.map((row) => this.rowToTrace(row)),
+      total: countRow.count,
+      limit,
+      offset,
+    };
+  }
+
+  /**
+   * Every trace a query matches, in the order its pages show them, a batch
+   * at a time: the trace, its spans and its evaluations — what
+   * GET /api/v1/traces/:id answers for one. The dashboard's export streams
+   * from this.
+   *
+   * Memory is bounded by the batch, not by the store, and the generator
+   * yields to the event loop before every batch so the server keeps
+   * answering while an export runs. No statement stays open across a
+   * yield (better-sqlite3 refuses other statements on a connection while
+   * one iterates), so each batch is its own read:
+   *
+   *   - In time order (the list's default, and every export the dashboard
+   *     makes without a search), the ids come a batch at a time by keyset
+   *     on (timestamp, rowid), through the index the list's page reads
+   *     (traceIndexes): an index range per batch, nothing held between
+   *     batches.
+   *   - Ranked by a search, the order is only known once every match is
+   *     scored: the search is matched as the list's is (on the search
+   *     worker when the store has one), with no time budget and no
+   *     snippets, and the rows are then read a batch at a time.
+   *   - Sorted by latency or cost, the ids are read in one statement first,
+   *     then the rows a batch at a time.
+   *
+   * Either way the export's membership is fixed when it starts: a trace
+   * stored after that is not included (the keyset read is bounded by the
+   * largest rowid at the start), and one deleted part-way is skipped.
+   */
+  async *exportTraces(tenantId: TenantId, options: TraceExportOptions, batchSize = EXPORT_BATCH): AsyncGenerator<TraceRecord[]> {
+    assertTenant(tenantId);
+    const plan = this.planTraceQuery(tenantId, { ...options, limit: Infinity, offset: 0 });
+    const { pageIndex } = traceIndexes(options.filter);
+    let pages: Generator<string[]>;
+    if (plan.search) {
+      if (this.searchIndex === 'ready') this.catchUpOtherWriters();
+      const index: 'fts5' | 'scan' = this.searchIndex === 'ready' ? 'fts5' : 'scan';
+      // Every match, however long it takes: an export that stopped at the list's budget would be a cut-off file.
+      const { pageIds, complete } = await this.match({ tenantId, parsed: plan.search, plan, index, budgetMs: Infinity, snippets: false });
+      // A search thread that failed answers as stopped with nothing read: an error here, never an empty or partial file.
+      if (!complete) throw new Error('The search stopped before it read every match, so the export was not started; try again.');
+      pages = chunks(pageIds, batchSize);
+    } else if (plan.sortBy !== 'timestamp') {
+      pages = chunks(
+        (this.db
+          .prepare(`SELECT trace_id FROM traces INDEXED BY ${pageIndex} ${plan.whereClause} ORDER BY ${plan.sortBy} ${plan.sortOrder}, rowid ${plan.sortOrder}`)
+          .all(...plan.params) as Array<{ trace_id: string }>).map((r) => r.trace_id),
+        batchSize,
+      );
+    } else {
+      pages = this.keysetIds(`traces INDEXED BY ${pageIndex}`, 'traces', 'trace_id', 'timestamp', plan.whereClause, plan.params, plan.sortOrder, batchSize);
+    }
+
+    for (;;) {
+      // Before every batch, the first included: whatever read came before was synchronous.
+      await yieldToRequests();
+      const next = pages.next();
+      if (next.done) return;
+      const chunk = next.value;
+      const marks = chunk.map(() => '?').join(', ');
+      // By primary key, named: a few hundred bound ids otherwise tempt the planner onto a (tenant_id, ...) index, which reads the whole tenant per batch.
+      const rows = this.db
+        .prepare(`SELECT * FROM traces INDEXED BY sqlite_autoindex_traces_1 WHERE tenant_id = ? AND trace_id IN (${marks})`)
+        .all(tenantId, ...chunk) as Array<Record<string, unknown>>;
+      const traces = new Map(rows.map((row) => [row.trace_id as string, this.rowToTrace(row)]));
+      const spans = new Map<string, Span[]>();
+      const spanRows = this.db
+        .prepare(`SELECT * FROM spans INDEXED BY idx_spans_tenant_trace WHERE tenant_id = ? AND trace_id IN (${marks}) ORDER BY trace_id, start_time`)
+        .all(tenantId, ...chunk) as Array<Record<string, unknown>>;
+      for (const row of spanRows) {
+        const span = this.rowToSpan(row);
+        const list = spans.get(span.trace_id);
+        if (list) list.push(span);
+        else spans.set(span.trace_id, [span]);
+      }
+      const evals = await this.getEvalsByTraceIds(tenantId, chunk);
+      const batch = chunk.flatMap((id) => {
+        const trace = traces.get(id);
+        return trace ? [{ trace, spans: spans.get(id) ?? [], evals: evals.get(id) ?? [] }] : [];
+      });
+      if (batch.length > 0) yield batch;
+    }
+  }
+
+  /**
+   * The ids a filter admits, ordered by a NOT NULL column with rowid
+   * breaking ties, `size` at a time: each read starts after the previous
+   * one's last (column, rowid), so it is an index range however deep into
+   * the store the export has got. `from` names the table and the index to
+   * walk. Bounded by the largest rowid when it starts, so rows written
+   * meanwhile are not picked up.
+   */
+  private *keysetIds(
+    from: string,
+    table: 'traces' | 'eval_results',
+    idColumn: 'trace_id' | 'id',
+    column: 'timestamp' | 'created_at',
+    whereClause: string,
+    params: unknown[],
+    sortOrder: string,
+    size: number,
+  ): Generator<string[]> {
+    const ceiling = Number((this.db.prepare(`SELECT MAX(rowid) AS m FROM ${table}`).get() as { m: number | null }).m ?? 0);
+    const desc = sortOrder === 'desc';
+    const [edge, strict] = desc ? ['<=', '<'] : ['>=', '>'];
+    const dir = desc ? 'DESC' : 'ASC';
+    let last: { key: string; rowid: number } | undefined;
+    for (;;) {
+      const after = last ? ` AND ${column} ${edge} ? AND (${column} ${strict} ? OR rowid ${strict} ?)` : '';
+      const rows = this.db
+        .prepare(`SELECT rowid AS rid, ${idColumn} AS id, ${column} AS k FROM ${from} ${whereClause} AND rowid <= ?${after} ORDER BY ${column} ${dir}, rowid ${dir} LIMIT ?`)
+        .all(...params, ceiling, ...(last ? [last.key, last.key, last.rowid] : []), size) as Array<{ rid: number; id: string; k: string }>;
+      if (rows.length === 0) return;
+      yield rows.map((r) => r.id);
+      if (rows.length < size) return;
+      const tail = rows[rows.length - 1];
+      last = { key: tail.k, rowid: Number(tail.rid) };
+    }
+  }
+
+  /**
+   * A query's filters as SQL, its search parsed and its order checked —
+   * shared by the page (queryTraces) and the export (exportTraces), so the
+   * two cannot disagree about which traces a filter admits or in what order.
+   */
+  private planTraceQuery(tenantId: TenantId, options: TraceQueryOptions): SearchPlan & { search?: ParsedSearch } {
     const conditions: string[] = ['tenant_id = ?'];
     const params: unknown[] = [tenantId];
     const filter = options.filter;
@@ -1147,38 +1322,17 @@ export class SqliteAdapter implements IStorageAdapter {
     if (!ALLOWED_SORT_ORDERS.has(sortOrder)) {
       throw new Error(`Invalid sort order: ${sortOrder} (allowed: ${[...ALLOWED_SORT_ORDERS].join(', ')})`);
     }
-    const limit = options.limit ?? 50;
-    const offset = options.offset ?? 0;
-
-    if (search) {
-      return await this.searchTraces(tenantId, search, { whereClause, params, filtered: conditions.length > 1, sortBy, sortOrder, limit, offset });
-    }
-
-    /*
-     * Both reads name their index (#711). A session or an agent is the
-     * narrowest range, and each index is in time order; otherwise the page
-     * walks the covering time index, which also holds latency and cost, so
-     * a page sorted by either sorts index entries and reads 50 rows rather
-     * than every row (0.37 s at 100,000 traces when the planner took another
-     * index). The count takes the smallest index that answers its filters.
-     */
-    const narrowest = filter?.session_id !== undefined ? 'idx_traces_tenant_session' : filter?.agent_name ? 'idx_traces_tenant_agent_timestamp' : undefined;
-    const countIndex = narrowest ?? (filter?.since || filter?.until ? 'idx_traces_tenant_timestamp_cover' : 'idx_traces_tenant_framework');
-    const pageIndex = narrowest ?? 'idx_traces_tenant_timestamp_cover';
-    const countRow = this.db
-      .prepare(`SELECT COUNT(*) as count FROM traces INDEXED BY ${countIndex} ${whereClause}`)
-      .get(...params) as { count: number };
-
-    const rows = this.db
-      .prepare(`SELECT * FROM traces INDEXED BY ${pageIndex} ${whereClause} ORDER BY ${sortBy} ${sortOrder} LIMIT ? OFFSET ?`)
-      .all(...params, limit, offset) as Array<Record<string, unknown>>;
-
     return {
-      traces: rows.map((row) => this.rowToTrace(row)),
-      total: countRow.count,
-      limit,
-      offset,
+      whereClause,
+      params,
+      filtered: conditions.length > 1,
+      sortBy,
+      sortOrder,
+      limit: options.limit ?? 50,
+      offset: options.offset ?? 0,
+      ...(search ? { search } : {}),
     };
+
   }
 
   /**
@@ -1771,16 +1925,60 @@ export class SqliteAdapter implements IStorageAdapter {
 
   async queryEvalResults(
     tenantId: TenantId,
-    options: {
-      eval_type?: string;
-      passed?: boolean;
-      since?: string;
-      until?: string;
+    options: EvalResultFilter & {
       limit?: number;
       offset?: number;
     },
   ): Promise<{ results: EvalResult[]; total: number }> {
     assertTenant(tenantId);
+    const { whereClause, params } = this.evalWhere(tenantId, options);
+    const limit = options.limit ?? 50;
+    const offset = options.offset ?? 0;
+
+    const countRow = this.db
+      .prepare(`SELECT COUNT(*) as count FROM eval_results ${whereClause}`)
+      .get(...params) as { count: number };
+
+    const rows = this.db
+      .prepare(`SELECT * FROM eval_results ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+      .all(...params, limit, offset) as Array<Record<string, unknown>>;
+
+    return {
+      results: rows.map((row) => this.rowToEvalResult(row)),
+      total: countRow.count,
+    };
+  }
+
+  /** Every evaluation a filter matches, newest first as the list pages them, a batch at a time: by keyset on (created_at, rowid), as exportTraces reads in time order. */
+  async *exportEvalResults(tenantId: TenantId, filter: EvalResultFilter, batchSize = EXPORT_BATCH): AsyncGenerator<EvalResult[]> {
+    assertTenant(tenantId);
+    const { whereClause, params } = this.evalWhere(tenantId, filter);
+    const pages = this.keysetIds('eval_results INDEXED BY idx_eval_results_tenant_created', 'eval_results', 'id', 'created_at', whereClause, params, 'desc', batchSize);
+    for (;;) {
+      await yieldToRequests();
+      const next = pages.next();
+      if (next.done) return;
+      const chunk = next.value;
+      /*
+       * By primary key, named: with a few hundred ids bound, SQLite otherwise
+       * picks a (tenant_id, ...) index and reads every evaluation of the
+       * tenant for each batch (37 s instead of under 2 for 100k rows,
+       * scripts/bench-export.ts). The tenant is still checked on every row.
+       */
+      const rows = this.db
+        .prepare(`SELECT * FROM eval_results INDEXED BY sqlite_autoindex_eval_results_1 WHERE tenant_id = ? AND id IN (${chunk.map(() => '?').join(', ')})`)
+        .all(tenantId, ...chunk) as Array<Record<string, unknown>>;
+      const byId = new Map(rows.map((row) => [row.id as string, row]));
+      const batch = chunk.flatMap((id) => {
+        const row = byId.get(id);
+        return row ? [this.rowToEvalResult(row)] : [];
+      });
+      if (batch.length > 0) yield batch;
+    }
+  }
+
+  /** The evaluation list's filters as SQL — one builder for the page and the export. */
+  private evalWhere(tenantId: TenantId, options: EvalResultFilter): { whereClause: string; params: unknown[] } {
     const conditions: string[] = ['tenant_id = ?'];
     const params: unknown[] = [tenantId];
 
@@ -1800,23 +1998,7 @@ export class SqliteAdapter implements IStorageAdapter {
       conditions.push('created_at <= ?');
       params.push(options.until);
     }
-
-    const whereClause = `WHERE ${conditions.join(' AND ')}`;
-    const limit = options.limit ?? 50;
-    const offset = options.offset ?? 0;
-
-    const countRow = this.db
-      .prepare(`SELECT COUNT(*) as count FROM eval_results ${whereClause}`)
-      .get(...params) as { count: number };
-
-    const rows = this.db
-      .prepare(`SELECT * FROM eval_results ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
-      .all(...params, limit, offset) as Array<Record<string, unknown>>;
-
-    return {
-      results: rows.map((row) => this.rowToEvalResult(row)),
-      total: countRow.count,
-    };
+    return { whereClause: `WHERE ${conditions.join(' AND ')}`, params };
   }
 
   async getDashboardSummary(tenantId: TenantId, sinceHours = 24): Promise<DashboardSummary> {

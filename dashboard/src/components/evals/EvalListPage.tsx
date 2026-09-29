@@ -6,6 +6,7 @@ import { EvalDetailCard } from './EvalDetailCard';
 import { Pagination } from '../shared/Pagination';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { useFocusTrap } from '../shared/useFocusTrap';
+import { ExportMenu } from '../shared/ExportMenu';
 import type { EvalResult } from '../../api/types';
 
 export function EvalListPage() {
@@ -14,14 +15,16 @@ export function EvalListPage() {
   const [selectedEval, setSelectedEval] = useState<EvalResult | null>(null);
   const limit = 50;
 
-  const params = useMemo(() => {
-    const p: Record<string, string> = { limit: String(limit), offset: String(offset) };
+  // What the list is filtered by: sent with each page, and what the export carries (#4).
+  const filterParams = useMemo(() => {
+    const p: Record<string, string> = {};
     if (filters.eval_type) p.eval_type = filters.eval_type;
     if (filters.passed) p.passed = filters.passed;
     if (filters.since) p.since = new Date(filters.since).toISOString();
     if (filters.until) p.until = new Date(filters.until).toISOString();
     return p;
-  }, [filters, offset]);
+  }, [filters]);
+  const params = useMemo(() => ({ limit: String(limit), offset: String(offset), ...filterParams }), [filterParams, offset]);
 
   const { data, loading } = useEvals(params);
 
@@ -37,7 +40,12 @@ export function EvalListPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-      <EvalFilters values={filters} onChange={(v) => { setFilters(v); setOffset(0); }} />
+      <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', alignItems: 'center' }}>
+        <EvalFilters values={filters} onChange={(v) => { setFilters(v); setOffset(0); }} />
+        <div style={{ marginLeft: 'auto' }}>
+          <ExportMenu kind="evaluations" filters={filterParams} total={data?.total} />
+        </div>
+      </div>
 
       <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-lg)', overflow: 'hidden' }}>
         {loading && !data ? (

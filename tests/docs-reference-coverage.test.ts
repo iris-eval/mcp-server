@@ -30,7 +30,9 @@ const reference = readFileSync(resolve(root, 'docs', 'api-reference.md'), 'utf8'
 const ROUTES_THAT_MUST_BE_DOCUMENTED = [
   'POST /api/v1/traces',
   'GET /api/v1/traces',
+  'GET /api/v1/traces/export',
   'GET /api/v1/evaluations',
+  'GET /api/v1/evaluations/export',
   'GET /api/v1/summary',
   'GET /api/v1/capabilities',
   'GET /api/v1/health',

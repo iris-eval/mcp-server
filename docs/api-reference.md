@@ -30,8 +30,10 @@ Complete reference for the Iris MCP server API surface: MCP tools, MCP resources
   - [POST /api/v1/traces](#post-apiv1traces)
   - [GET /api/v1/traces](#get-apiv1traces)
   - [GET /api/v1/traces/:id](#get-apiv1tracesid)
+  - [GET /api/v1/traces/export](#get-apiv1tracesexport)
   - [GET /api/v1/moments](#get-apiv1moments)
   - [GET /api/v1/evaluations](#get-apiv1evaluations)
+  - [GET /api/v1/evaluations/export](#get-apiv1evaluationsexport)
   - [GET /api/v1/summary](#get-apiv1summary)
   - [GET /api/v1/filters](#get-apiv1filters)
   - [GET /api/v1/health](#get-apiv1health)
@@ -1094,6 +1096,47 @@ Get full detail for a single trace, including its spans and linked evaluations.
 
 ---
 
+### GET /api/v1/traces/export
+
+Every trace the [trace list](#get-apiv1traces) would page through with the same filters and search, as one download: CSV or JSON Lines. The dashboard's **Export** button on the Traces page is a link to this route with the page's current filters and search; [`iris-eval export traces`](#exporting-without-the-dashboard) writes the same bytes without a server.
+
+#### Query Parameters
+
+`format` (`csv` or `jsonl`, required), plus every parameter of [`GET /api/v1/traces`](#get-apiv1traces) except `limit` and `offset`: `agent_name`, `framework`, `session`, `q`, `since`, `until`, `min_score`, `max_score`, `sort_by`, `sort_order`. They are validated by the same schema, so a value the list refuses is refused here with the same `400`, and so is `limit` or `offset` (an export is every page). The rows come in the list's order: newest first, or best match first with `q`. With `q`, the search is ranked as the list's is but with no time budget, so an export always holds every match; if the search cannot finish (its thread failed), the request fails with an error rather than sending a partial file.
+
+#### Response (200)
+
+Streamed with `Content-Disposition: attachment; filename="iris-traces-<UTC time>.<format>"` and `Cache-Control: no-store`. The server reads 250 traces at a time and waits whenever the client reads slower than it writes, so an export's memory does not grow with the store: at 100,000 traces the server held 2 MB more while exporting, measured by [`scripts/bench-export.ts`](https://github.com/iris-eval/mcp-server/blob/main/scripts/bench-export.ts). The export is fixed when it starts: a trace stored during the download is not in it, and one deleted during it is left out.
+
+A failure before the first row is an ordinary JSON error with its status. A failure after the download has started breaks the connection instead of ending it, so the browser marks the download failed and `curl` reports a partial transfer; a cut-off file never arrives looking complete.
+
+- **`format=jsonl`** (`application/x-ndjson`): one trace per line, exactly what [`GET /api/v1/traces/:id`](#get-apiv1tracesid) answers for it: `{ "trace": {...}, "spans": [...], "evals": [...] }`, evaluations newest first. The spans and evaluations travel inside their trace, so nothing has to be joined back together.
+- **`format=csv`** (`text/csv`): one row per trace, with the columns below, in this order. UTF-8 with a byte-order mark, because Excel reads a CSV without one in the machine's legacy code page and garbles every non-ASCII character. Records end in CRLF; a field holding a comma, a quote or a line break is quoted, quotes doubled, line breaks kept. A text cell that begins with `=`, `+`, `-`, `@`, a tab or a carriage return is prefixed with `'`, so a spreadsheet shows a stored `=HYPERLINK(...)` as text instead of running it. Number columns are written as numbers and never prefixed. Nothing is shortened; Excel itself displays at most 32,767 characters of a cell, so use JSON Lines for full-length text in a program.
+
+| Column | Value |
+|--------|-------|
+| `trace_id`, `timestamp`, `agent_name`, `framework`, `source`, `session_id`, `run_id`, `case_key` | The trace's own fields; empty when absent |
+| `latency_ms`, `prompt_tokens`, `completion_tokens`, `total_tokens`, `cost_usd` | Numbers; empty when not recorded |
+| `cost_source` | `reported` when the trace carried its cost, `estimated` when Iris priced its tokens at list price; empty when the trace has no cost. The JSON Lines record also carries `cost_estimate`: the calls, tokens and prices behind an estimate, or why there is no cost |
+| `input`, `output` | The stored text |
+| `tool_call_count`, `tool_names` | How many tool calls, and their names joined by `; ` |
+| `span_count`, `eval_count` | How many spans and evaluations the trace has |
+| `latest_eval_id`, `latest_score`, `latest_passed`, `latest_verdict`, `latest_verdict_basis`, `latest_failed_rules` | The newest evaluation (the one `min_score` and `max_score` filter on): its id, score, `true`/`false`, verdict state and basis, and the rules that failed (skips are not failures), joined by `; ` |
+| `metadata`, `tool_calls` | The stored value as one JSON string |
+
+**What an export contains.** An export is the stored text, the same as the dashboard shows: every trace's `input` and `output` verbatim. With `storage.redact: "critical_spans"`, the spans a critical detector flagged are replaced in each stored evaluation's output text when it is written, so the evaluation export carries the redacted text exactly as the dashboard does; the trace's own text is not redacted by that setting ([Your data on disk](https://github.com/iris-eval/mcp-server#your-data-on-disk)). An evaluation erased with its trace exports as erased. The route sits behind the same API key, DNS-rebinding guard, tenant scoping and rate limit as every other read, and exports only the requesting tenant's rows.
+
+#### Exporting without the dashboard
+
+```bash
+iris-eval export traces --format jsonl --q "refund" --since 2026-09-01 > refunds.jsonl
+iris-eval export evaluations --format csv --passed false --out failures.csv
+```
+
+`iris-eval export traces|evaluations` reads the configured database directly (`--config`, `--db-path`), so it works with the dashboard off. Its filter flags are this route's query parameters with hyphens (`--agent-name`, `--min-score`, `--eval-type`, …), validated by the same schema. It writes to stdout, or to `--out`, which is deleted if the export fails part-way. Exit codes: `0` written, `1` failed part-way, `2` usage.
+
+---
+
 ### GET /api/v1/moments
 
 List Decision Moments. A moment is one trace with its evaluations, classified by what makes it worth a reader's attention. The dashboard's Moments page reads this route.
@@ -1191,6 +1234,28 @@ List evaluation results with filtering and pagination.
   "total": 98
 }
 ```
+
+---
+
+### GET /api/v1/evaluations/export
+
+Every evaluation the [evaluation list](#get-apiv1evaluations) would page through with the same filters, newest first, as one download; the Evaluations page's **Export** button links here. `format` (`csv` or `jsonl`, required) plus `eval_type`, `passed`, `since` and `until`. Streaming, headers, failure behaviour and what an export contains are as for [`GET /api/v1/traces/export`](#get-apiv1tracesexport).
+
+- **`format=jsonl`**: one evaluation per line, exactly an item of `GET /api/v1/evaluations`' `results`.
+- **`format=csv`**: the same CSV rules, with these columns in this order:
+
+| Column | Value |
+|--------|-------|
+| `eval_id`, `created_at`, `trace_id`, `run_id`, `eval_type` | The evaluation's own fields |
+| `score`, `passed` | A number, and `true`/`false` |
+| `verdict`, `verdict_basis`, `verdict_by` | The verdict's state, basis, and the rules that decided it joined by `; ` |
+| `rules_evaluated`, `rules_skipped` | Counts |
+| `failed_rules`, `critical_failures`, `critical_skipped` | Rule names joined by `; ` |
+| `insufficient_data` | `true`/`false` |
+| `eval_cost_usd`, `eval_tokens` | What the evaluation itself cost; empty for the free rules |
+| `iris_version`, `ruleset_hash` | From the evaluation's provenance |
+| `erased_at` | When the evaluation's text was erased with its trace |
+| `output_text`, `expected_text` | The stored text |
 
 ---
 

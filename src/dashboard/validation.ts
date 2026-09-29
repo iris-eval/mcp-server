@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { logTraceInputShape } from '../tools/log-trace.js';
 import { isoTimestamp, addTraceRangeIssues, traceSearchText } from '../tools/get-traces.js';
+import { EXPORT_FORMATS } from '../export/format.js';
 
 /*
  * Strict request-body schema for the dashboard's MUTATING routes.
@@ -106,7 +107,7 @@ export const ingestTraceSchema = strictBody(
  * refused here with both values named — exactly as the tool refuses it —
  * instead of returning an empty page that reads as "no such traces".
  */
-export const traceQuerySchema = strictQuery({
+const traceFilterShape = {
   agent_name: z.string().optional(),
   framework: z.string().optional(),
   session: z.string().min(1).max(200).optional(),
@@ -115,19 +116,45 @@ export const traceQuerySchema = strictQuery({
   until: isoTimestamp.optional(),
   min_score: z.coerce.number().min(0).max(1).optional(),
   max_score: z.coerce.number().min(0).max(1).optional(),
-  limit: z.coerce.number().int().min(1).max(1000).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
   sort_by: z.enum(['timestamp', 'latency_ms', 'cost_usd', 'relevance']).optional(),
   sort_order: z.enum(['asc', 'desc']).default('desc'),
-  }).superRefine(addTraceRangeIssues);
+};
 
-export const evalQuerySchema = strictQuery({
+export const traceQuerySchema = strictQuery({
+  ...traceFilterShape,
+  limit: z.coerce.number().int().min(1).max(1000).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+}).superRefine(addTraceRangeIssues);
+
+const evalFilterShape = {
   eval_type: z.string().optional(),
   passed: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
   since: z.string().optional(),
   until: z.string().optional(),
+};
+
+export const evalQuerySchema = strictQuery({
+  ...evalFilterShape,
   limit: z.coerce.number().int().min(1).max(1000).default(50),
   offset: z.coerce.number().int().min(0).default(0),
+});
+
+/*
+ * The exports (#4): the list's own filters — the same shape, so an export
+ * admits exactly the rows the page shows — without the page (limit,
+ * offset), plus the format. A parameter the list would refuse is refused
+ * here too, with the same sentence.
+ */
+const exportFormat = z.enum(EXPORT_FORMATS, { error: `format must be one of: ${EXPORT_FORMATS.join(', ')}` });
+
+export const traceExportQuerySchema = strictQuery({
+  ...traceFilterShape,
+  format: exportFormat,
+}).superRefine(addTraceRangeIssues);
+
+export const evalExportQuerySchema = strictQuery({
+  ...evalFilterShape,
+  format: exportFormat,
 });
 
 export const runsQuerySchema = strictQuery({
