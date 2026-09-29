@@ -22,8 +22,12 @@ export interface SparklineProps {
   max?: number;
   /** Override height in pixels. Default 24. */
   height?: number;
-  /** Optional aria-label for accessibility. */
-  label?: string;
+  /**
+   * What the line shows, read by screen readers (the SVG has role="img",
+   * and an image with no name fails WCAG 1.1.1). Required so no caller can
+   * leave it out.
+   */
+  label: string;
 }
 
 export function Sparkline({ values, color, min, max, height = 24, label }: SparklineProps) {

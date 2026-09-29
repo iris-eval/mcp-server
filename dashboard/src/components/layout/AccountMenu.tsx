@@ -14,14 +14,19 @@
  * Signing out / switching workspaces belong in Cloud tier and are
  * intentionally absent here. OSS is single-user single-workspace.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useState, type KeyboardEvent } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Moon, Sun, Gauge, Shield, BookOpen, FileCode2, Check } from 'lucide-react';
 import { Icon } from '../shared/Icon';
 import { useTheme } from './ThemeProvider';
 import { usePreferences } from '../../hooks/usePreferences';
+import { usePopover } from '../shared/usePopover';
+import { rovingIndex } from '../../utils/roving';
 
 const VERSION = __IRIS_VERSION__;
+
+/** Every item of the menu, in order. */
+const MENU_ITEM = '[role="menuitem"], [role="menuitemradio"]';
 
 const styles = {
   triggerWrap: {
@@ -71,6 +76,11 @@ const styles = {
     color: 'var(--text-muted)',
     padding: 'var(--space-1) var(--space-3)',
     marginTop: 'var(--space-1)',
+  } as const,
+  menuList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-1)',
   } as const,
   divider: {
     height: '1px',
@@ -125,36 +135,24 @@ export interface AccountMenuProps {
 
 export function AccountMenu({ serverVersion = null, retention = null }: AccountMenuProps = {}) {
   const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  // Opening focuses the first item; Escape closes and returns to the button; Tab out closes.
+  const { triggerRef, popoverRef } = usePopover<HTMLButtonElement, HTMLDivElement>(open, setOpen, MENU_ITEM);
 
   const { theme, setTheme } = useTheme();
   const { preferences, patch } = usePreferences();
   const density: DensityOption = preferences?.density ?? 'compact';
 
-  // Close on outside click or Escape.
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (!menuRef.current || !triggerRef.current) return;
-      if (
-        menuRef.current.contains(e.target as Node) ||
-        triggerRef.current.contains(e.target as Node)
-      ) {
-        return;
-      }
-      setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', onClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
+  /*
+   * The ARIA menu pattern: the items are not Tab stops; Up and Down move
+   * between them (wrapping), Home and End go to the ends.
+   */
+  const onMenuKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>(MENU_ITEM));
+    const to = rovingIndex(e.key, items.indexOf(document.activeElement as HTMLElement), items.length, 'vertical');
+    if (to < 0) return;
+    e.preventDefault();
+    items[to].focus();
+  };
 
   const pickTheme = (next: ThemeOption) => {
     setTheme(next);
@@ -174,65 +172,74 @@ export function AccountMenu({ serverVersion = null, retention = null }: AccountM
         aria-label="Account menu"
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
+        onKeyDown={(e) => {
+          // A menu button also opens on Down arrow (ARIA menu button pattern).
+          if (e.key === 'ArrowDown' && !open) {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
       >
         I
       </button>
       {open && (
-        <div
-          ref={menuRef}
-          role="menu"
-          aria-label="Account options"
-          style={styles.menu}
-        >
-          <div style={styles.sectionLabel}>Theme</div>
-          <MenuItem
-            icon={Moon}
-            label="Dark"
-            active={theme === 'dark'}
-            onClick={() => pickTheme('dark')}
-          />
-          <MenuItem
-            icon={Sun}
-            label="Light"
-            active={theme === 'light'}
-            onClick={() => pickTheme('light')}
-          />
+        <div ref={popoverRef} style={styles.menu}>
+          {/* A menu owns only items, groups and separators; the version footer sits outside it. */}
+          <div role="menu" aria-label="Account options" style={styles.menuList} onKeyDown={onMenuKeyDown}>
+            <div role="group" aria-label="Theme" style={styles.menuList}>
+              <div style={styles.sectionLabel} aria-hidden="true">Theme</div>
+              <MenuItem
+                icon={Moon}
+                label="Dark"
+                active={theme === 'dark'}
+                onClick={() => pickTheme('dark')}
+              />
+              <MenuItem
+                icon={Sun}
+                label="Light"
+                active={theme === 'light'}
+                onClick={() => pickTheme('light')}
+              />
+            </div>
 
-          <div style={styles.divider} />
-          <div style={styles.sectionLabel}>Density</div>
-          <MenuItem
-            icon={Gauge}
-            label="Compact"
-            active={density === 'compact'}
-            onClick={() => pickDensity('compact')}
-          />
-          <MenuItem
-            icon={Gauge}
-            label="Comfortable"
-            active={density === 'comfortable'}
-            onClick={() => pickDensity('comfortable')}
-          />
+            <div style={styles.divider} role="separator" />
+            <div role="group" aria-label="Density" style={styles.menuList}>
+              <div style={styles.sectionLabel} aria-hidden="true">Density</div>
+              <MenuItem
+                icon={Gauge}
+                label="Compact"
+                active={density === 'compact'}
+                onClick={() => pickDensity('compact')}
+              />
+              <MenuItem
+                icon={Gauge}
+                label="Comfortable"
+                active={density === 'comfortable'}
+                onClick={() => pickDensity('comfortable')}
+              />
+            </div>
 
-          <div style={styles.divider} />
-          <MenuLink
-            href="https://iris-eval.com/security"
-            icon={Shield}
-            label="Security"
-            external
-          />
-          <MenuLink
-            href="https://github.com/iris-eval/mcp-server/blob/main/docs/architecture.md"
-            icon={FileCode2}
-            label="Architecture docs"
-            external
-          />
-          <MenuLink
-            href="https://github.com/iris-eval/mcp-server/releases"
-            icon={BookOpen}
-            label="Release notes"
-            external
-          />
+            <div style={styles.divider} role="separator" />
+            <MenuLink
+              href="https://iris-eval.com/security"
+              icon={Shield}
+              label="Security"
+              external
+            />
+            <MenuLink
+              href="https://github.com/iris-eval/mcp-server/blob/main/docs/architecture.md"
+              icon={FileCode2}
+              label="Architecture docs"
+              external
+            />
+            <MenuLink
+              href="https://github.com/iris-eval/mcp-server/releases"
+              icon={BookOpen}
+              label="Release notes"
+              external
+            />
+          </div>
 
           <div style={styles.divider} />
           <div style={styles.footer}>
@@ -274,6 +281,7 @@ function MenuItem({
       type="button"
       role="menuitemradio"
       aria-checked={active}
+      tabIndex={-1}
       style={{
         ...styles.item,
         ...(hover ? styles.itemHover : {}),
@@ -300,6 +308,7 @@ function MenuLink({
   return (
     <a
       role="menuitem"
+      tabIndex={-1}
       href={href}
       target={external ? '_blank' : undefined}
       rel={external ? 'noopener noreferrer' : undefined}

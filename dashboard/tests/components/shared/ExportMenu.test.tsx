@@ -24,6 +24,8 @@ describe('ExportMenu', () => {
     const { container } = render(<ExportMenu kind="traces" filters={{ q: 'refund', agent_name: 'bot' }} total={1234} />);
     const trigger = screen.getByRole('button', { name: 'Export 1,234 traces' });
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    // Closed, the panel is not on the page, so the button names no panel.
+    expect(trigger.hasAttribute('aria-controls')).toBe(false);
     fireEvent.click(trigger);
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     const csv = screen.getByRole('link', { name: /CSV/ });

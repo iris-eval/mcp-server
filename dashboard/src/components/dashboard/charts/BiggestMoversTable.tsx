@@ -260,7 +260,7 @@ export function BiggestMoversTable({
             >
               <span style={styles.agentName}>{m.agent}</span>
               <span style={styles.spark}>
-                <Sparkline values={m.series} height={20} />
+                <Sparkline values={m.series} height={20} label={`${m.agent} pass rate over the period`} />
               </span>
               <span style={{ ...styles.delta, background: bg, color: fg }}>
                 <Icon as={icon} size={14} />

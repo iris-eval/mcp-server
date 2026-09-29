@@ -139,7 +139,8 @@ export function ExportMenu({ kind, filters, total }: ExportMenuProps) {
         type="button"
         style={{ ...styles.trigger, ...(empty ? styles.triggerDisabled : {}) }}
         aria-expanded={open}
-        aria-controls={panelId}
+        // The panel exists only while open; a reference to a missing id names nothing.
+        aria-controls={open ? panelId : undefined}
         disabled={empty}
         title={empty ? `No ${kind} match these filters` : undefined}
         onClick={(e) => {

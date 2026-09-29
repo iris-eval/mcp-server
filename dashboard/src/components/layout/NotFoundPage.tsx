@@ -23,9 +23,12 @@ export function NotFoundPage() {
         </p>
       </div>
       <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        {/* Underlined: a link in a line of text must differ from it by more than colour (WCAG 1.4.1). */}
         {SECTIONS.map((s) => (
           <li key={s.to}>
-            <Link to={s.to}>{s.label}</Link> <span style={{ color: 'var(--text-muted)' }}>— {s.what}</span>
+            <Link to={s.to} style={{ textDecoration: 'underline', textUnderlineOffset: '0.2em' }}>
+              {s.label}
+            </Link> <span style={{ color: 'var(--text-muted)' }}>— {s.what}</span>
           </li>
         ))}
       </ul>

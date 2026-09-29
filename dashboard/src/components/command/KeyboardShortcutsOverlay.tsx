@@ -11,6 +11,7 @@
  */
 import { useEffect } from 'react';
 import { buildCommands, type Command } from './commands';
+import { useFocusTrap } from '../shared/useFocusTrap';
 
 const styles = {
   backdrop: {
@@ -114,6 +115,8 @@ const GLOBAL_SHORTCUTS: Array<{ keys: string; description: string }> = [
 ];
 
 export function KeyboardShortcutsOverlay({ open, onClose }: Props) {
+  // Modal: focus moves to the close button, stays inside, and returns on close.
+  const dialogRef = useFocusTrap<HTMLDivElement>(open);
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -145,6 +148,7 @@ export function KeyboardShortcutsOverlay({ open, onClose }: Props) {
 
   return (
     <div
+      ref={dialogRef}
       style={styles.backdrop}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -156,7 +160,7 @@ export function KeyboardShortcutsOverlay({ open, onClose }: Props) {
       <div style={styles.panel}>
         <div style={styles.header}>
           <h2 style={styles.title}>Keyboard shortcuts</h2>
-          <button type="button" onClick={onClose} style={styles.close}>
+          <button type="button" onClick={onClose} style={styles.close} aria-label="Close (esc)">
             esc
           </button>
         </div>

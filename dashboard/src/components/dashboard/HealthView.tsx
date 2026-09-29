@@ -38,6 +38,7 @@ import { formatCost } from '../../utils/formatters';
 import { drillToMoments, isoDaysAgo } from '../../utils/drillThrough';
 import { resolvePeriod, periodToDays, PeriodSelector } from './PeriodSelector';
 import { SectionHeader } from './SectionHeader';
+import { panelId, tabId } from './ViewTabs';
 import { StatTile } from './StatTile';
 import { PassRateGauge } from './charts/PassRateGauge';
 import { PassRateAreaChart } from './charts/PassRateAreaChart';
@@ -222,7 +223,7 @@ export function HealthView() {
   };
 
   return (
-    <div className="iris-stack" role="tabpanel" id="view-panel-health" aria-labelledby="health-tab">
+    <div className="iris-stack" role="tabpanel" id={panelId('health')} aria-labelledby={tabId('health')}>
       {rateLimitedUntil && (
         <RateLimitBanner until={rateLimitedUntil} onRetry={retryAll} />
       )}

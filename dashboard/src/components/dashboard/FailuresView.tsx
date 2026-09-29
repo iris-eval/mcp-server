@@ -22,6 +22,7 @@ import { useSeenFailures } from '../../hooks/useSeenFailures';
 import { MomentCard } from '../moments/MomentCard';
 import { IssuesList } from './IssuesList';
 import { SectionHeader } from './SectionHeader';
+import { panelId, tabId } from './ViewTabs';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { QueryError } from '../shared/QueryError';
 import { PageEmptyState } from '../layout/PageEmptyState';
@@ -44,7 +45,7 @@ export function FailuresView() {
   );
 
   return (
-    <div className="iris-stack" role="tabpanel" id="view-panel-failures" aria-labelledby="failures-tab">
+    <div className="iris-stack" role="tabpanel" id={panelId('failures')} aria-labelledby={tabId('failures')}>
       {rateLimitedUntil && <RateLimitBanner until={rateLimitedUntil} onRetry={refetch} />}
 
       <SectionHeader

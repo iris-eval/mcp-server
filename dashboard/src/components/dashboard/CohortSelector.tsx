@@ -6,6 +6,7 @@
  */
 import type { CSSProperties } from 'react';
 import { useSearchParams } from 'react-router';
+import { onRovingKeyDown } from '../../utils/roving';
 
 export type Cohort = 'run';
 
@@ -43,6 +44,8 @@ export function CohortSelector() {
     else next.delete('cohort');
     setSearchParams(next);
   };
+  // A radio group is one Tab stop; the arrow keys move and select (utils/roving.ts).
+  const ids = OPTIONS.map((o) => o.id);
   return (
     <div style={styles.group} role="radiogroup" aria-label="Cohort">
       {OPTIONS.map((o) => (
@@ -51,9 +54,11 @@ export function CohortSelector() {
           type="button"
           role="radio"
           aria-checked={active === o.id}
+          tabIndex={active === o.id ? 0 : -1}
           data-cohort-option={o.id || 'all'}
           style={{ ...styles.option, ...(active === o.id ? styles.active : {}) }}
           onClick={() => choose(o.id)}
+          onKeyDown={(e) => onRovingKeyDown(e, ids, active, 'both', choose)}
         >
           {o.label}
         </button>
