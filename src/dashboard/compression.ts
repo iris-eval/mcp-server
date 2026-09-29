@@ -20,6 +20,9 @@
  *
  * What is never compressed, and why:
  *
+ *   - The answer to a write (POST, PUT, PATCH, DELETE): an acknowledgement,
+ *     where compressing costs the writer time and saves nothing that
+ *     matters (READS below).
  *   - Anything streamed. Only a whole body handed to res.send / res.json is
  *     compressed; res.write and pipe pass through byte for byte, so a
  *     server-sent-event stream or a streamed export keeps flushing as it is
@@ -72,14 +75,25 @@ function negotiate(req: Request, available: { br: boolean; gzip: boolean }): Cod
   return null;
 }
 
+/*
+ * Only reads. The bodies worth compressing are the pages the dashboard and
+ * API clients read: lists, searches, a trace with its spans. A write's
+ * answer is an acknowledgement (the stored trace's id, its verdict), and
+ * compressing it on the thread pool keeps the request waiting for bytes no
+ * one needed saved: 1 ms of an 8 ms `POST /api/v1/traces` with evaluate.
+ */
+const READS = new Set(['GET', 'HEAD']);
+
 const COMPRESSIBLE_TYPE = /^application\/(?:[\w.+-]+\+)?json\b/i;
 
 /**
  * Compresses whole JSON bodies of COMPRESS_MIN_BYTES or more, sent with
- * res.send or res.json. Mount it before the routes it covers.
+ * res.send or res.json, in answer to a GET or HEAD. Mount it before the
+ * routes it covers.
  */
 export function compressJsonResponses(): RequestHandler {
   return (req, res, next) => {
+    if (!READS.has(req.method)) return next();
     const send = res.send.bind(res) as (body?: unknown) => Response;
     res.send = function compressedSend(body?: unknown): Response {
       if (!(typeof body === 'string' || Buffer.isBuffer(body))) return send(body);
