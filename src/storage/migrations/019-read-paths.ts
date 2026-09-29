@@ -29,8 +29,16 @@ import type { Driver } from '../driver.js';
  * 100,000 traces that start takes 1.0 s longer (measured 1.43 to 1.47 s
  * against 0.42 to 0.43 s), and 1.6 s longer with three spans a trace
  * (2.2 to 2.3 s against 0.6 to 0.7 s).
+ *
+ * Because the reads name these indexes, a release that drops or renames
+ * one of them, or a column one of them covers, makes this release's reads
+ * fail with "no such index": that later migration sets its compatFloor to
+ * its own release. A test checks every INDEXED BY in src/ names an index
+ * the migrations create (tests/unit/storage/indexed-by.test.ts).
  */
 export const id = '019-read-paths';
+/** The release that introduced it, and the oldest that can use a database it has been applied to (migrations/index.ts). */
+export const compatFloor = '0.20.0';
 
 export function up(db: Driver): void {
   db.exec(`
