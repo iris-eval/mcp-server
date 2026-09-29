@@ -383,13 +383,13 @@ describe('trace search — building the index after the start', () => {
     setImmediate(tick);
     await s.whenSearchIndexReady();
     stop = true;
-    // The fewest steps 3,000 traces can take: every step instant, so each doubles (32, 64, … 1,024). The event loop turned between them.
+    // The fewest steps 3,000 traces can take: every step instant, so each grows by half (32, 48, 72, … 1,024). The event loop turned between them.
     let fewest = 0;
     for (let done = 0, size = BUILD_BATCH; done < 3000; size = nextBuildBatch(size, 0)) {
       done += size;
       fewest += 1;
     }
-    expect(fewest).toBe(7);
+    expect(fewest).toBe(10);
     expect(turns).toBeGreaterThanOrEqual(fewest - 1);
   });
 
