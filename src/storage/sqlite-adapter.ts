@@ -588,7 +588,7 @@ export class SqliteAdapter implements IStorageAdapter {
     try {
       this.ensureCheckpointer();
       const worker = this.checkpointer;
-      if (worker && (await worker.started) && worker.active) {
+      if (worker && (await worker.whenStarted()) && worker.active) {
         try {
           await worker.exec(CREATE_FILTER_INDEX);
         } catch {

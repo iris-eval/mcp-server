@@ -151,6 +151,20 @@ export class Checkpointer {
     this.worker.unref();
   }
 
+  /**
+   * `started`, for a caller that goes on only once the thread is up: the
+   * thread is held while it starts, so a CLI with nothing else to do does
+   * not exit under a promise that can never settle.
+   */
+  async whenStarted(): Promise<boolean> {
+    this.worker.ref();
+    try {
+      return await this.started;
+    } finally {
+      if (this.waiting.size === 0) this.worker.unref();
+    }
+  }
+
   /** Whether the worker is checkpointing: false before it is ready and after it failed. */
   get active(): boolean {
     return this.ready && !this.failed;
