@@ -183,9 +183,17 @@ describe(`no background step holds the event loop over ${STALL_LIMIT_MS} ms (${T
     rmSync(dir, { recursive: true, force: true });
   });
 
-  /** A copy of a store, so each case starts from the same file. */
+  /*
+   * A copy of a store, so each case starts from the same file. Each call
+   * gets a file of its own: a retried case used to copy over the file its
+   * failed attempt had left open, beside that attempt's write-ahead log,
+   * and SQLite read the old log into the new copy ("database disk image is
+   * malformed"), which hid the first failure behind a false one.
+   */
+  let copies = 0;
   const copy = (from: string, name: string) => {
-    const to = join(dir, name);
+    copies += 1;
+    const to = join(dir, `${copies}-${name}`);
     copyFileSync(from, to);
     return to;
   };
