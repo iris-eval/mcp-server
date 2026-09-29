@@ -2781,6 +2781,17 @@ export class SqliteAdapter implements IStorageAdapter {
    */
   private async eraseFromFile(onWorker = false): Promise<void> {
     if (this.dbPath === ':memory:' || this.closing || (await this.truncateCheckpointNow(onWorker))) return;
+    /*
+     * Held off. The checkpoint worker's own work can do that: its
+     * connection opening (it starts at the store's first write, so a delete
+     * straight after that write meets it) or a copy in progress. Both are
+     * short, and a TRUNCATE sent to the worker runs as soon as they end, so
+     * the worker is waited for and asked before anything is treated as a
+     * reader to wait out. On a Windows CI runner with the built-in driver,
+     * two erasures met the worker still opening its connection.
+     */
+    const worker = this.checkpointer;
+    if (worker && !this.closing && (await worker.whenStarted()) && !this.closing && (await this.truncateCheckpointNow(true))) return;
     let trying = false;
     this.eraseRetry ??= setInterval(() => {
       if (trying) return;
@@ -2798,9 +2809,10 @@ export class SqliteAdapter implements IStorageAdapter {
    * A TRUNCATE checkpoint that gives up at once rather than wait for a
    * reader; whether it emptied the WAL. `onWorker`: on the checkpoint
    * worker's connection when it runs (checkpointer.ts), so copying a large
-   * log never holds the event loop. A delete's own erasure stays on this
-   * connection: its log is a few pages, and it must not wait behind the
-   * worker's periodic checkpoint for its answer.
+   * log never holds the event loop. A delete's own erasure is tried on this
+   * connection first: its log is a few pages, and it should not wait behind
+   * the worker's periodic checkpoint for its answer unless this connection
+   * was held off (eraseFromFile).
    */
   private async truncateCheckpointNow(onWorker = false): Promise<boolean> {
     if (onWorker && this.checkpointer?.active) {
