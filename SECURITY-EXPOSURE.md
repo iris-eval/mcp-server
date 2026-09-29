@@ -245,6 +245,20 @@ All four are transitive-only (`brace-expansion` via dev-tooling globs, `fast-uri
 **Gate after:** `npm audit` reports 0 vulnerabilities.
 
 
+### 2026-09-28 — `ip-address` and `undici` patched by lockfile bump (Linux-regenerated); NAT64 added to iris's own SSRF guard
+
+| Advisory(ies) | Package | Was → Now | Load path | Decision |
+|---|---|---|---|---|
+| [GHSA-rpw4-54j3-4h4q](https://github.com/advisories/GHSA-rpw4-54j3-4h4q) (moderate — `Address6.isLinkLocal()` recognizes `fe80::/64`, not `fe80::/10`), [GHSA-2vr4-cq9g-pvrc](https://github.com/advisories/GHSA-2vr4-cq9g-pvrc) (moderate — no classifier recognizes the NAT64 local-use range `64:ff9b:1::/48`) | `ip-address` | 10.4.0 → 10.7.2 | root ← `express-rate-limit@8.7.0` — runtime: shipped in the npm package, the image and the MCPB bundle. **Not reachable:** `express-rate-limit` imports `Address6` only in `ipKeyGenerator` and calls `isMapped4()`, `is4()`, `isInSubnet(::/96)`, `to4()`, `correctForm()` and `networkForm()` to build a rate-limit key; it never calls `isLinkLocal()`, `isPrivate()` or any other classifier (`grep -n "isLinkLocal\|isPrivate\|getType" node_modules/express-rate-limit/dist/index.mjs`: no hits). iris's source does not import `ip-address` at all. The keys for `::ffff:127.0.0.1`, `2001:db8:1234:5678::1`, `2001:db8:1234:56ff:ffff::9`, `::1`, `10.0.0.1` and `::127.0.0.1` are identical under 10.4.0 and 10.7.2 (checked with `express-rate-limit@8.7.0` on Linux). | **Patch** — lockfile bump; `overrides.ip-address` raised from `^10.4.0` to `^10.5.1` so the floor excludes both advisories |
+| [GHSA-3wwx-pv8p-q78v](https://github.com/advisories/GHSA-3wwx-pv8p-q78v) (moderate — WebSocket client crashes the process on a malformed permessage-deflate message past the size limit) | `undici` | 7.29.0 → 7.30.0 | dashboard ← `jsdom@29.1.1` (a devDependency: the dashboard's vitest environment). **Not reachable:** jsdom's `WebSocket` is undici's, but no dashboard source or test opens a WebSocket (`grep -rn WebSocket dashboard/src`: no hits), and jsdom never ships: the built dashboard is static files. iris's server does not use WebSocket; Node's own bundled undici (`globalThis.WebSocket`) is patched with Node, not by this lockfile. | **Patch** — lockfile bump; `jsdom`'s range `^7.25.0` admits 7.30.0, so no override |
+
+**iris's own guard had the same gap as GHSA-2vr4-cq9g-pvrc.** The citation fetcher's SSRF check (`isBlockedIpv6` in `src/eval/citation-verify/resolve.ts`) classifies IPv4 re-encoded through 6to4, Teredo, IPv4-mapped and IPv4-compatible addresses, but not NAT64. On a network with a NAT64 gateway, `64:ff9b::7f00:1` reaches 127.0.0.1 and `64:ff9b::a9fe:a9fe` reaches the cloud metadata endpoint. The well-known prefix `64:ff9b::/96` now applies the IPv4 blocklist to the address it embeds, and the local-use `64:ff9b:1::/48` is refused whole, because where it embeds the address depends on the prefix length an operator chose. Tests: `tests/unit/eval/citation-verify/resolve.test.ts` (the NAT64 case fails on the previous guard). The guard's link-local check was already `fe80::/10` (`/^fe[89ab]/`); a regression test now holds it, including `fe81::1`, the address GHSA-rpw4-54j3-4h4q uses. Citation fetching is opt-in, and the DNS-rebinding window recorded in the 0.20.0 security review still applies.
+
+**Lockfile provenance.** Regenerated on Linux (`node:22-bookworm`, npm 11.20.0) from copies of the manifests and lockfiles, with `npm update ip-address --package-lock-only --ignore-scripts` at the root and `npm update undici --package-lock-only --ignore-scripts` in `dashboard/`. Each lockfile changed in exactly one entry (version, `resolved` and `integrity` of the package named); no entry added or removed, `libc` fields intact. (npm 10.9.9, the image's default, dropped every `libc` field, so it was not used.)
+
+**Gate after:** `npm audit` reports 0 vulnerabilities in the root, `dashboard/` and `website/`.
+
+
 ### Untrusted JSON Schema — the tool-argument path (v0.11.0+)
 
 Not an advisory. A standing assessment, recorded here because it is the one place in iris where a

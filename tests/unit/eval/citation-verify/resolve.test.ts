@@ -155,6 +155,27 @@ describe('isSafeHost (SSRF guard)', () => {
     expect(isSafeHost('[2001:0:4136:e378:8000:63bf:f7f7:f7f7]')).toBe(true);
   });
 
+  it('blocks NAT64: the well-known prefix wrapping a private IPv4, and the whole local-use /48', () => {
+    // 64:ff9b::/96 (RFC 6052): the IPv4 destination is the last two hextets.
+    expect(isSafeHost('[64:ff9b::7f00:1]')).toBe(false); // 127.0.0.1
+    expect(isSafeHost('[64:ff9b::a9fe:a9fe]')).toBe(false); // 169.254.169.254 IMDS
+    expect(isSafeHost('[64:ff9b::c0a8:101]')).toBe(false); // 192.168.1.1
+    expect(isSafeHost('[64:ff9b::808:808]')).toBe(true); // 8.8.8.8, public
+    // 64:ff9b:1::/48 (RFC 8215), local use: refused whatever it embeds.
+    // The first two are the examples in GHSA-2vr4-cq9g-pvrc (127.0.0.1 and 169.254.169.254).
+    expect(isSafeHost('[64:ff9b:1:7f00:0:100::]')).toBe(false);
+    expect(isSafeHost('[64:ff9b:1:a9fe:a9:fe00::]')).toBe(false);
+    expect(isSafeHost('[64:ff9b:1::808:808]')).toBe(false);
+    // Neighbouring space is not NAT64.
+    expect(isSafeHost('[64:ff9b:2::1]')).toBe(true);
+    expect(isSafeHost('[64:ff9a::7f00:1]')).toBe(true);
+  });
+
+  it('refuses every link-local address in fe80::/10, not only fe80::/64 (the gap GHSA-rpw4-54j3-4h4q reported in ip-address)', () => {
+    for (const host of ['[fe80::1]', '[fe81::1]', '[fe90::1]', '[febf:ffff::1]', '[fe80:1::1]']) expect(isSafeHost(host), host).toBe(false);
+    expect(isSafeHost('[fec0::1]')).toBe(true); // site-local, deprecated, not link-local
+  });
+
   it('does not over-block ordinary 2001: production addresses', () => {
     // Only 2001:0000::/32 is Teredo — 2001:db8, 2001:4860 etc. are normal.
     expect(isSafeHost('[2001:4860:4860::8888]')).toBe(true); // Google DNS
