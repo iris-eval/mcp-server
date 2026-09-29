@@ -28,6 +28,8 @@ import { buildKeyRing } from './security/keys.js';
 import { registerPlugins } from './eval/plugins.js';
 import { irisHome } from './utils/iris-home.js';
 import { requestSizeLimitBytes } from './utils/size-limit.js';
+import { pruneBackups } from './storage/backup.js';
+import { announceUpgrade, fatalLine } from './cli/upgrade-notice.js';
 import {
   seedDemoData,
   clearDemoData,
@@ -74,7 +76,7 @@ const CliSchema = z
 
 /*
  * `install` is handed off before the server's own argument parsing: it has
- * its own flags (--list, --uninstall), writes a client's config and exits,
+ * its own flags (--list, --upgrade, --uninstall), writes a client's config and exits,
  * and never reaches the MCP stdio path below, where stdout belongs to the
  * JSON-RPC stream. Only as the first argument, so a server flag's value can
  * never be read as the verb.
@@ -158,7 +160,7 @@ Iris — MCP-Native Agent Eval Server v${PKG_VERSION}
 
 Usage: ${COMMAND} [options]
        ${COMMAND} ingest [--file <path>] [--evaluate] [--eval-type <bundle>] [--fail-on <basis>] [--dataset <id|label>] [--redact <mode>] [--source cli|hook]
-       ${COMMAND} install <client> [--uninstall] | --list   (add Iris to an MCP client's config; install --help for the clients)
+       ${COMMAND} install <client> [--uninstall] | --list | --upgrade   (add Iris to an MCP client's config, or move every client to this version; install --help)
 
 Options:
   --transport <type>       Transport type: stdio (default) or http
@@ -179,14 +181,17 @@ Options:
   --demo-clear             Delete the demo database (and its sidecar files), then exit.
                            Your real traces are not touched.
   --self-test              Run the offline install diagnostic and exit: the configured IRIS_HOME
-                           is created and probed for writability, its database's search index
-                           is reported (read only), then storage round-trip,
+                           is created and probed for writability, the configured database's
+                           schema is read (read-only) against this version's and its search index
+                           reported, the MCP clients pinned to a version that cannot open it are
+                           named, then storage round-trip,
                            deterministic evals, dashboard + rebinding guard run inside an
                            isolated temp home. Exit code 0 = healthy, 1 = a check failed.
   --purge                  Delete EVERY stored trace, span and evaluation from the configured
                            database, compact the file and truncate the write-ahead log so the
                            deleted text does not linger on disk, then exit. Deployed rules, the
-                           audit log and preferences are kept. Not reversible. Stop any running
+                           audit log and preferences are kept, and the copies of the database
+                           taken before an upgrade are deleted too. Not reversible. Stop any running
                            Iris server first — the file is compacted in place.
   --version                Print the version and exit
   -h, --help               Show this help message
@@ -393,11 +398,15 @@ const logger = createLogger(config);
 async function runPurge(): Promise<void> {
   const storage = createStorage(config);
   await storage.initialize();
+  announceUpgrade(storage.upgradeReport?.());
   try {
     const { traces, evalResults } = await storage.purge(LOCAL_TENANT);
+    // The copies taken before a migration hold the same traces (storage/backup.ts).
+    const backups = config.storage.path === ':memory:' ? [] : pruneBackups(config.storage.path, { keep: 0 });
     process.stderr.write(
       `iris-eval: purged ${traces} trace(s) and ${evalResults} evaluation(s) from "${config.storage.path}" ` +
-        '(database compacted, write-ahead log truncated). Deployed rules, audit log and preferences were kept.\n',
+        `(database compacted, write-ahead log truncated${backups.length > 0 ? `; ${backups.length} copy(ies) of it taken before an upgrade deleted` : ''}). ` +
+        'Deployed rules, audit log and preferences were kept.\n',
     );
   } finally {
     await storage.close();
@@ -428,6 +437,7 @@ async function main(): Promise<void> {
 
   const storage = createStorage(config, { log: (level, line) => logger[level](line) });
   await storage.initialize();
+  announceUpgrade(storage.upgradeReport?.());
   logger.info(`Storage initialized (${config.storage.type}: ${config.storage.path}; driver ${storage.driver}: ${storage.driverReason ?? 'reason not reported'})`);
 
   // Load the custom rule store first so it can be shared between the
@@ -724,6 +734,8 @@ async function runDemo(): Promise<void> {
 
 const run = values.demo ? runDemo : main;
 run().catch((err) => {
+  // The sentence itself, plain, before the structured record: a refused database must not reach the terminal only inside JSON.
+  process.stderr.write(fatalLine(err));
   logger.error(`Fatal error: ${err instanceof Error ? err.message : err}`, {
     stack: err instanceof Error ? err.stack : undefined,
   });

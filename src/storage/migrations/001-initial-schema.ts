@@ -1,6 +1,8 @@
 import type { Driver } from '../driver.js';
 
 export const id = '001-initial-schema';
+/** The release that introduced it, and the oldest that can use a database it has been applied to (migrations/index.ts). */
+export const compatFloor = '0.1.0';
 
 export function up(db: Driver): void {
   db.exec(`

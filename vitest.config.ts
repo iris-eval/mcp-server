@@ -5,9 +5,10 @@ export default defineConfig({
     globals: true,
     include: ['tests/**/*.test.ts'],
     // The real-client tests start installed MCP clients, the MCPB tests a
-    // built bundle, and the stall guard measures time and must run alone;
-    // only their CI jobs run them, through each folder's own vitest.config.ts.
-    exclude: ['**/node_modules/**', 'tests/real-clients/**', 'tests/mcpb/**', 'tests/stall/**'],
+    // built bundle, the stall guard measures time and must run alone, and the
+    // upgrade tests the previous release from npm; only their CI jobs run them,
+    // through each folder's own vitest.config.ts.
+    exclude: ['**/node_modules/**', 'tests/real-clients/**', 'tests/mcpb/**', 'tests/stall/**', 'tests/upgrade/**'],
     /*
      * Confines every in-process test to a scratch IRIS_HOME. Without it, a
      * test that builds a server from defaultConfig writes to the developer's

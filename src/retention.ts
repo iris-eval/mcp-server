@@ -20,6 +20,7 @@
 import type { IrisConfig } from './types/config.js';
 import type { IStorageAdapter } from './types/query.js';
 import { LOCAL_TENANT } from './types/tenant.js';
+import { pruneBackups } from './storage/backup.js';
 
 export interface RetentionLogger {
   info(msg: string): void;
@@ -29,6 +30,8 @@ export interface RetentionLogger {
 export interface SweepOutcome {
   deletedTraces: number;
   deletedEvals: number;
+  /** Copies of the database taken before a migration and older than the window (storage/backup.ts). */
+  deletedBackups: number;
 }
 
 /**
@@ -52,7 +55,14 @@ export async function runRetentionSweep(storage: IStorageAdapter, config: IrisCo
       await storage.checkpoint();
       logger.info(`Retention cleanup: deleted ${deletedTraces} trace(s) and ${deletedEvals} evaluation(s) older than ${config.retention.days} days`);
     }
-    return { deletedTraces, deletedEvals };
+    /*
+     * A copy taken before a migration holds every trace as it was then, so
+     * one older than the window holds traces the window says are gone: it
+     * goes too, even when it is the only copy (#704).
+     */
+    const deletedBackups = config.storage.path === ':memory:' ? 0 : pruneBackups(config.storage.path, { olderThan: new Date(Date.now() - config.retention.days * 86_400_000) }).length;
+    if (deletedBackups > 0) logger.info(`Retention cleanup: deleted ${deletedBackups} copy(ies) of the database taken before an upgrade, older than ${config.retention.days} days`);
+    return { deletedTraces, deletedEvals, deletedBackups };
   } catch (err) {
     logger.warn(`Retention cleanup skipped: ${err instanceof Error ? err.message : String(err)}`);
     return null;

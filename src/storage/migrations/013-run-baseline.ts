@@ -13,6 +13,8 @@ import type { Driver } from '../driver.js';
  * one in the same transaction.
  */
 export const id = '013-run-baseline';
+/** The release that introduced it, and the oldest that can use a database it has been applied to (migrations/index.ts). */
+export const compatFloor = '0.16.0';
 
 export function up(db: Driver): void {
   db.exec(`

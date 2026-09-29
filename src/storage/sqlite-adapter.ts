@@ -56,7 +56,9 @@ import { rememberRiskEstimate, storedRiskEstimate, RISK_KEY_VERSION } from '../e
 import type { TenantId } from '../types/tenant.js';
 import { TenantContextRequiredError } from '../types/tenant.js';
 import { randomBytes } from 'node:crypto';
-import { runMigrations, migrationState, type MigrationState } from './migrations/index.js';
+import { runMigrations, migrationState, inspectMigrations, assertCompatible, DOWNGRADING_URL, type MigrationState } from './migrations/index.js';
+import { backupDatabase, type BackupResult } from './backup.js';
+import { PKG_VERSION } from '../config/defaults.js';
 import { Checkpointer, AUTOCHECKPOINT_PAGES } from './checkpointer.js';
 import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, nextStepSize, eraseRetiredStep, isShadowWriteRefused, retiredRemain, ERASE_ROWS, ERASE_ROWS_RANGE, sweepEraseMode, deleteOwingMerge, mergeOwed, mergeOwedStep, levelMergeStep, filterIndexMissing, CREATE_FILTER_INDEX, MERGE_PAGES, MERGE_PAGES_RANGE, searchIndexProgress, type SearchIndexStatus, BUILD_BATCH, BUILD_STEP_MS, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
 import { parseSearch, searchRefusal, describeTerm, mayHoldCjk, type ParsedSearch, type TraceMatch } from './search.js';
@@ -132,6 +134,24 @@ export interface SqliteAdapterOptions {
   searchWorkerEntry?: URL;
   /** storage.synchronous — when a commit reaches the disk; see initialize(). Default `normal`. */
   synchronous?: SynchronousMode;
+  /** Copy the file before applying a migration to it (default true; backup.ts). */
+  backup?: boolean;
+}
+
+/** What a start that migrated an existing file did: the storage layer's half of #704. */
+export interface UpgradeReport {
+  dbPath: string;
+  /** The release that last migrated the file, when one was recorded. */
+  from: string | null;
+  /** This release. */
+  to: string;
+  /** The migrations this start applied. */
+  applied: string[];
+  /** The oldest release that could open the file before, and can now. */
+  floorBefore: string | null;
+  floorAfter: string | null;
+  /** The copy taken first, or why there is none. */
+  backup: BackupResult;
 }
 export type SynchronousMode = 'normal' | 'full';
 
@@ -292,6 +312,15 @@ function riskColumns(result: EvalResult): [string | null, string | null] {
   return [stored ? JSON.stringify(stored) : null, RISK_KEY_VERSION];
 }
 
+/** The one stderr line a start that migrated an existing file prints. */
+export function upgradeLine(r: UpgradeReport): string {
+  const lockedOut = r.floorAfter !== null && r.floorAfter !== r.floorBefore ? ` Iris releases before ${r.floorAfter} cannot open it now.` : '';
+  const copy = r.backup.taken
+    ? ` The file as it was is at ${r.backup.path}; to go back, see ${DOWNGRADING_URL}.`
+    : ` No copy was taken first: ${r.backup.reason}. To keep one, stop every Iris process and copy the file before the next upgrade.`;
+  return `[iris.storage] Upgraded ${r.dbPath} for Iris ${r.to} (${r.applied.join(', ')}).${lockedOut}${copy}`;
+}
+
 export class SqliteAdapter implements IStorageAdapter {
   /** After-insert listeners for evaluations; see IStorageAdapter.onEvalResultInserted. */
   private readonly evalListeners = new Set<(tenantId: TenantId, result: EvalResult) => void>();
@@ -346,6 +375,10 @@ export class SqliteAdapter implements IStorageAdapter {
   private searchWorkerFailure: string | undefined;
   /** A delete's checkpoint waiting for a reader (eraseFromFile). */
   private eraseRetry: NodeJS.Timeout | undefined;
+  private readonly backupFirst: boolean;
+  private upgrade: UpgradeReport | undefined;
+  /** The highest traces rowid known to be in the search index; see catchUpOtherWriters. */
+  private indexedThrough = 0;
 
   constructor(dbPath: string, options?: SqliteAdapterOptions) {
     this.dbPath = dbPath;
@@ -354,6 +387,7 @@ export class SqliteAdapter implements IStorageAdapter {
     this.fts5Override = options?.fts5;
     this.log = options?.log ?? ((level, line) => (level === 'warn' ? process.stderr.write(`[iris.storage] ${line}\n`) : undefined));
     this.searchBudgetMs = options?.searchBudgetMs ?? SEARCH_BUDGET_MS;
+    this.backupFirst = options?.backup ?? true;
     /*
      * The busy wait belongs to the CONNECTION, not to a pragma run after
      * the first statement. `PRAGMA journal_mode = WAL` on a cold file takes
@@ -369,6 +403,11 @@ export class SqliteAdapter implements IStorageAdapter {
     // A store in memory has no file a second connection could open: it searches on this one.
     this.searchOnWorker = (options?.searchWorker ?? true) && dbPath !== ':memory:';
     this.searchWorkerEntry = options?.searchWorkerEntry;
+  }
+
+  /** What this start's migration did to an existing file; undefined when it applied nothing to one. */
+  upgradeReport(): UpgradeReport | undefined {
+    return this.upgrade;
   }
 
   /** Applied against known — the health contract's `checks.migrations`. */
@@ -414,6 +453,8 @@ export class SqliteAdapter implements IStorageAdapter {
   async initialize(): Promise<void> {
     this.db.pragma(`busy_timeout = ${BUSY_TIMEOUT_MS}`);
     try {
+      // A file a newer release migrated past this one is refused before anything here writes to it, the journal-mode switch included.
+      assertCompatible(inspectMigrations(this.db));
       await this.switchToWal();
     } catch (err) {
       // The same rule as a refused migration below: a failed boot must not leak the handle.
@@ -451,9 +492,24 @@ export class SqliteAdapter implements IStorageAdapter {
     this.db.pragma('secure_delete = ON');
     if (this.fts5Override !== undefined) assumeFts5(this.db, this.fts5Override);
     try {
+      /*
+       * A file that already holds data and has migrations pending is copied
+       * first (backup.ts): a migration cannot be undone, and the release
+       * before it may not open the file afterwards. The compatibility check
+       * comes before the copy, so a file this release refuses is left alone.
+       */
+      const plan = inspectMigrations(this.db);
+      assertCompatible(plan);
+      const upgrading = plan.pending.length > 0 && plan.applied.length > 0 && this.dbPath !== ':memory:';
+      const backup: BackupResult = upgrading && this.backupFirst ? backupDatabase(this.db, this.dbPath, { from: plan.lastWriter, to: PKG_VERSION }) : { taken: false, reason: 'copies are turned off for this store' };
       runMigrations(this.db);
+      if (upgrading) {
+        this.upgrade = { dbPath: this.dbPath, from: plan.lastWriter, to: PKG_VERSION, applied: plan.pending, floorBefore: plan.floor, floorAfter: plan.floorAfter, backup };
+        process.stderr.write(`${upgradeLine(this.upgrade)}\n`);
+      }
       // After the migrations, every start: build, repair or stand down the search index (search-index.ts).
       this.searchIndex = reconcileSearchIndex(this.db, fts5Available(this.db));
+      if (this.searchIndex === 'ready') this.indexedThrough = this.maxTraceRowid();
     } catch (err) {
       // A refused boot (a newer writer, a failed migration) must not leak the handle.
       this.db.close();
@@ -635,7 +691,9 @@ export class SqliteAdapter implements IStorageAdapter {
           }
           if (this.closing) break;
           // Past the end. A purge's VACUUM may have renumbered rowids behind the walk: check, and walk again if so.
+          const through = this.maxTraceRowid();
           if (!unindexedRemain(this.db)) {
+            this.indexedThrough = through;
             this.searchIndex = 'ready';
             const { total } = searchIndexProgress(this.db, 'building');
             this.log('info', `Search index ready: ${(total ?? 0).toLocaleString('en-US')} trace(s) indexed in ${((performance.now() - began) / 1000).toFixed(1)} s`);
@@ -805,6 +863,38 @@ export class SqliteAdapter implements IStorageAdapter {
       }
     })();
     return this.merging;
+  }
+
+  private maxTraceRowid(): number {
+    return Number((this.db.prepare('SELECT COALESCE(MAX(rowid), 0) AS m FROM traces').get() as { m: number }).m);
+  }
+
+  /*
+   * Traces another process stored without indexing them. Every writer from
+   * this release on indexes its own inserts in the transaction that stores
+   * them; a trace inserted any other way — by hand, or by a release from
+   * before the index — has no docs row, and a search that trusted the index
+   * would miss it until the next start rebuilt it (reconcileSearchIndex).
+   * Before each search on a ready index, the traces added since the last
+   * check are looked for in the index: a lookup of the table's last rowid,
+   * and of each new row's id in the docs table's unique index. If any is
+   * missing, the index goes back to building, so this search and the next
+   * read the traces, and the background build indexes the stragglers.
+   */
+  private catchUpOtherWriters(): void {
+    const max = this.maxTraceRowid();
+    if (max <= this.indexedThrough) {
+      // Rows deleted from the end, or renumbered by a purge's VACUUM: the mark follows them down.
+      this.indexedThrough = max;
+      return;
+    }
+    const missing = this.db.prepare(`SELECT 1 FROM traces WHERE rowid > ? AND trace_id NOT IN (SELECT trace_id FROM ${SEARCH_DOCS_TABLE}) LIMIT 1`).get(this.indexedThrough) !== undefined;
+    if (!missing) {
+      this.indexedThrough = max;
+      return;
+    }
+    this.searchIndex = 'building';
+    this.searchBuild ??= this.buildSearchIndex();
   }
 
   async insertTrace(tenantId: TenantId, trace: Trace): Promise<void> {
@@ -1051,6 +1141,7 @@ export class SqliteAdapter implements IStorageAdapter {
    * the page does, not what the store does.
    */
   private async searchTraces(tenantId: TenantId, parsed: ParsedSearch, q: SearchPlan): Promise<TraceQueryResult> {
+    if (this.searchIndex === 'ready') this.catchUpOtherWriters();
     const index: 'fts5' | 'scan' = this.searchIndex === 'ready' ? 'fts5' : 'scan';
     let complete = true;
     const info = (): TraceSearchInfo => ({

@@ -1,6 +1,8 @@
 import type { Driver } from '../driver.js';
 
 export const id = '009-runs-and-case-keys';
+/** The release that introduced it, and the oldest that can use a database it has been applied to (migrations/index.ts). */
+export const compatFloor = '0.12.0';
 
 /*
  * The two things a comparison needs, and Iris has never stored either.

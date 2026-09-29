@@ -18,6 +18,8 @@ import type { Driver } from '../driver.js';
  * can say which dataset version it ran against.
  */
 export const id = '012-datasets';
+/** The release that introduced it, and the oldest that can use a database it has been applied to (migrations/index.ts). */
+export const compatFloor = '0.15.0';
 
 export function up(db: Driver): void {
   db.exec(`

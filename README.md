@@ -52,7 +52,7 @@ Then add Iris to your MCP client. One command writes the client's own config fil
 npx -y @iris-eval/mcp-server install claude-code
 ```
 
-The clients: `claude-code`, `claude-desktop`, `cursor`, `windsurf`, `continue`, `vscode`, `cline`, `zed`, `codex`, `gemini`. `install --list` shows the ones found on this machine and the file each one reads; `install <client> --uninstall` takes Iris out again; after an upgrade, `install <client>` once more moves the pinned version. Restart the client to load it.
+The clients: `claude-code`, `claude-desktop`, `cursor`, `windsurf`, `continue`, `vscode`, `cline`, `zed`, `codex`, `gemini`. `install --list` shows the ones found on this machine, the Iris each one runs and the file it reads; `install <client> --uninstall` takes Iris out again. Every client shares one database, so after an upgrade move them all at once with `install --upgrade` ([Updating](#updating)). Restart the client to load it.
 
 **Claude Desktop: one click.** Each release from 0.20.0 on attaches `iris-eval.mcpb`, an [MCP Bundle](https://github.com/modelcontextprotocol/mcpb): download [the latest](https://github.com/iris-eval/mcp-server/releases/latest/download/iris-eval.mcpb), open it, and Claude Desktop shows an install dialog. Nothing on it is required — an Anthropic or OpenAI key for the LLM judge is optional, and the dashboard is a switch that starts off. The bundle holds the npm package and its dependencies, so nothing else needs installing: Claude Desktop runs it under the Node it ships when that Node is 22.13 or newer (Claude Desktop 1.1.6679 ships 24.13), and Iris stores traces with Node's built-in SQLite, in the same `~/.iris` every other install uses. The release notes show how to verify its signature and build attestation.
 
@@ -188,7 +188,7 @@ npx @iris-eval/mcp-server --self-test   # offline diagnostic; exit 0 = healthy, 
 npx @iris-eval/mcp-server --version     # prints the bare version, e.g. 1.2.3
 ```
 
-`--self-test` first creates your Iris home if it is missing and checks that it is writable (exit 1, naming the path, if it is not), reports where your database's search index is (whole, how many traces a background build has indexed so far, or no FTS5 on this SQLite), then runs its checks — storage round-trip, a planted SSN and a planted injection caught by the safety rules, dashboard boot, the DNS-rebinding guard — inside an isolated temp home. Your real database is only read, never changed. Everything Iris writes lives under one directory, your **Iris home**: `~/.iris` by default (`%USERPROFILE%\.iris` on Windows), or wherever `IRIS_HOME` points. That is where `iris.db`, `config.json`, `custom-rules.json`, `audit.log`, `preferences.json` and the demo files live; point `IRIS_HOME` at a scratch directory to try Iris without touching your real data.
+`--self-test` first creates your Iris home if it is missing and checks that it is writable (exit 1, naming the path, if it is not), reports where your database's search index is (whole, how many traces a background build has indexed so far, or no FTS5 on this SQLite), reads your database's schema (exit 1, with the fix, when this version or an MCP client pinned to an older release cannot open it), then runs its checks — storage round-trip, a planted SSN and a planted injection caught by the safety rules, dashboard boot, the DNS-rebinding guard — inside an isolated temp home. Your real database is only read, never changed. Everything Iris writes lives under one directory, your **Iris home**: `~/.iris` by default (`%USERPROFILE%\.iris` on Windows), or wherever `IRIS_HOME` points. That is where `iris.db`, `config.json`, `custom-rules.json`, `audit.log`, `preferences.json` and the demo files live; point `IRIS_HOME` at a scratch directory to try Iris without touching your real data.
 
 <details>
 <summary><strong>Setup by tool</strong></summary>
@@ -448,11 +448,11 @@ Two commitments hold regardless: **nothing that is free today will move behind a
 | `--dashboard-host` | `127.0.0.1` | Dashboard bind address. Loopback by default — the dashboard is unauthenticated unless `--api-key` is set, so binding beyond loopback exposes your full trace history |
 | `--demo` | `false` | Seed a demo database (separate from your real traces) and serve the dashboard against it |
 | `--demo-clear` | `false` | Delete the demo database and exit |
-| `--self-test` | `false` | Run the offline install diagnostic in an isolated temp home, then exit (0 = healthy, 1 = a check failed) |
+| `--self-test` | `false` | Run the offline install diagnostic in an isolated temp home, then exit (0 = healthy, 1 = a check failed). It also reads the configured database, read-only, and fails when this version or a pinned MCP client cannot open it |
 | `--purge` | `false` | Delete **every** stored trace, span and evaluation from the configured database, compact the file and truncate the write-ahead log so the deleted text does not linger on disk, then exit. Deployed rules, the audit log and preferences are kept. Not reversible. Stop any running Iris server first — the file is compacted in place. Refuses to combine with `--demo`, `--demo-clear` or `--self-test` |
 | `--version` | — | Print the bare version (e.g. `1.2.3`) to stdout and exit 0. Reads nothing under your Iris home |
 
-Two commands take their own arguments and exit: `iris-eval ingest` loads traces from a file or stdin ([A CI gate, no server needed](#a-ci-gate-no-server-needed)), and `iris-eval install <client>` writes Iris into an MCP client's config — `--uninstall` takes it out, `--list` shows the clients found on this machine ([Hook up your own agent](#hook-up-your-own-agent)). Neither starts a server.
+Two commands take their own arguments and exit: `iris-eval ingest` loads traces from a file or stdin ([A CI gate, no server needed](#a-ci-gate-no-server-needed)), and `iris-eval install <client>` writes Iris into an MCP client's config — `--uninstall` takes it out, `--list` shows the clients found on this machine and the Iris each runs, `--upgrade` moves every client that runs Iris to this version ([Hook up your own agent](#hook-up-your-own-agent), [Updating](#updating)). Neither starts a server.
 
 **`config.json` is validated when Iris starts.** A key Iris does not read — a typo such as `eval.critcalRules`, a key from another tool — or a value of the wrong type refuses startup with one sentence naming the full key, the key it most likely meant, or the type it wanted. Nothing in the file is silently ignored.
 
@@ -538,7 +538,7 @@ A webhook fires on a moment (0.16.0): `notify.webhook` in `config.json` (or `IRI
 
 ### Your data on disk
 
-Everything Iris stores lives under your Iris home (`~/.iris`, or `IRIS_HOME`). `iris.db` keeps every trace's `input` and `output` **verbatim** — including any text `no_pii` goes on to flag; detection does not redact unless you ask it to: `storage.redact: "critical_spans"` in `config.json` stores each evaluation's output with the spans a critical detector flagged replaced by `[REDACTED:<pattern>]` (off by default; the evidence offsets still index the text the caller saw). `storage.synchronous` sets when a write reaches the disk: `normal` (the default) syncs the write-ahead log at each checkpoint, so a crash of Iris loses nothing and the file cannot be corrupted, but a power cut or an operating-system crash can undo the writes since the last sync; `full` syncs every commit and keeps them through both, at about 1.5 ms more per write. At startup, and every `retention.sweepIntervalHours` (default `24`, `0` disables the timer) after that, traces and evaluations older than `retention.days` (default `30`, `0` disables, set in `config.json`) are deleted and the write-ahead log is checkpointed. Deleting a trace — by `delete_trace` or by the sweep — erases the text of every evaluation linked to it (the output, the expected text, and the rule messages) and stamps `erased_at`; the verdict, the scores and the evidence offsets stay. Each delete checkpoints the write-ahead log before it returns, so the deleted text is not left readable in `iris.db` or `iris.db-wal` (if a search or another process is reading the file at that moment, the delete returns without waiting and the text leaves the file as soon as the reader finishes). To remove everything now, stop the server and run `--purge`: it deletes every stored trace, span and evaluation, compacts the database and truncates the write-ahead log so the text is gone from disk, and keeps your deployed rules, audit log and preferences.
+Everything Iris stores lives under your Iris home (`~/.iris`, or `IRIS_HOME`). `iris.db` keeps every trace's `input` and `output` **verbatim** — including any text `no_pii` goes on to flag; detection does not redact unless you ask it to: `storage.redact: "critical_spans"` in `config.json` stores each evaluation's output with the spans a critical detector flagged replaced by `[REDACTED:<pattern>]` (off by default; the evidence offsets still index the text the caller saw). `storage.synchronous` sets when a write reaches the disk: `normal` (the default) syncs the write-ahead log at each checkpoint, so a crash of Iris loses nothing and the file cannot be corrupted, but a power cut or an operating-system crash can undo the writes since the last sync; `full` syncs every commit and keeps them through both, at about 1.5 ms more per write. At startup, and every `retention.sweepIntervalHours` (default `24`, `0` disables the timer) after that, traces and evaluations older than `retention.days` (default `30`, `0` disables, set in `config.json`) are deleted and the write-ahead log is checkpointed. Deleting a trace — by `delete_trace` or by the sweep — erases the text of every evaluation linked to it (the output, the expected text, and the rule messages) and stamps `erased_at`; the verdict, the scores and the evidence offsets stay. Each delete checkpoints the write-ahead log before it returns, so the deleted text is not left readable in `iris.db` or `iris.db-wal` (if a search or another process is reading the file at that moment, the delete returns without waiting and the text leaves the file as soon as the reader finishes). To remove everything now, stop the server and run `--purge`: it deletes every stored trace, span and evaluation, compacts the database and truncates the write-ahead log so the text is gone from disk, and keeps your deployed rules, audit log and preferences. Before a release applies a migration to an existing `iris.db`, it copies the file next to it (`iris.db.<from>-to-<to>.<time>.bak`, owner-only, the newest three kept; [Downgrading](#downgrading)): the copy holds the traces as they were, so the retention sweep deletes one older than `retention.days` and `--purge` deletes them all.
 
 Iris does not encrypt its data at rest. `iris.db` and its write-ahead-log files are created owner-only (mode 600), and the Iris home directory is created mode 700 (on Windows, file ACLs govern instead). The database stores no LLM provider keys: `IRIS_ANTHROPIC_API_KEY` and `IRIS_OPENAI_API_KEY` are read from the environment and never written to disk. It does store trace inputs and outputs verbatim, so put the Iris home on an encrypted disk or volume (FileVault, BitLocker, LUKS, or an encrypted cloud volume for the Docker image's `/data` mount).
 
@@ -593,13 +593,32 @@ The first startup log line also carries it (`Starting Iris MCP server vX.Y.Z`), 
 
 ### Updating
 
-```bash
-# If using npx (clears cache and fetches latest)
-npx --yes @iris-eval/mcp-server@latest
+Every MCP client on a machine shares one database, `~/.iris/iris.db`, and `install` pins each client to the release that wrote its config. When a release changes the database's schema, the first process of that release to open the file upgrades it, and from then on a client still pinned to an older release refuses to start. So move every client in one step, before or right after you upgrade:
 
-# If installed globally
-npm update -g @iris-eval/mcp-server
+```bash
+npx -y @iris-eval/mcp-server@latest install --upgrade
 ```
+
+It finds every client config on this machine that runs Iris, moves each pin to that release (keeping anything you added to the entry, such as `--dashboard` or an `env` block), leaves alone a pin to a newer release and an entry that runs something other than the npm package, and lists what it did. Restart the clients it names. `install --list` shows which Iris each client runs.
+
+Two installs live outside those files: the Claude Desktop extension (`iris-eval.mcpb`) moves when you open a newer bundle, and the Claude Code plugins with `claude plugin marketplace update iris-eval` and then `claude plugin update iris-eval@iris-eval` (and `claude plugin update iris-eval-capture@iris-eval` for the capture plugin).
+
+**Upgrading from 0.19.x to 0.20.0.** 0.20.0 adds the search index and other additions to the database (migrations 015 and later). Once any 0.20.0 process has opened `~/.iris/iris.db` (the Claude Desktop extension, `npx iris-eval`, or `npx @iris-eval/mcp-server` with no version), a client pinned to 0.19.x stops with `This database was migrated by a newer Iris (…) — migration(s) 015-trace-search, … are unknown to v0.19.0. Upgrade Iris, …`. That message comes from 0.19.x and cannot change; the fix is the command above. Before the upgrade, 0.20.0 copies the file next to it, so going back is possible too (below).
+
+A start that upgrades the database prints what it did on stderr: the copy it took, which older releases can no longer open the file, and any client on this machine pinned to one of them, with the command. `--self-test` reads the database without changing it and says the same before you start anything.
+
+For a global install, `npm update -g @iris-eval/mcp-server`, then `iris-eval install --upgrade`.
+
+### Downgrading
+
+A release that upgraded the database copies it first, next to it: `iris.db.<from>-to-<to>.<time>.bak` in your Iris home (`<from>` is the release that last changed the file's schema, `<to>` the one that upgraded it; the startup line printed the exact path). To go back:
+
+1. Stop every MCP client and any other Iris process that uses the database.
+2. Keep the upgraded file, in case you come back: rename `iris.db` to `iris.db.upgraded`, and delete `iris.db-wal` and `iris.db-shm` if they are there.
+3. Copy the backup to `iris.db`: `cp ~/.iris/iris.db.0.19.0-to-0.20.0.<time>.bak ~/.iris/iris.db`.
+4. Pin every client back to the older release: `npx -y @iris-eval/mcp-server@0.19.0 install <client>` for each one (`install --upgrade` never moves a client back).
+
+Traces stored after the upgrade are in `iris.db.upgraded`, not in the backup. If no copy was taken (the startup line says why, for example a full disk), the older release cannot open the upgraded file, and the way forward is `install --upgrade`.
 
 ### The storage driver
 

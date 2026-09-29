@@ -10,6 +10,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Server } from 'node:http';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
@@ -76,7 +78,8 @@ describe('judge enablement — every surface agrees', () => {
   }
   async function selfTestOutput(): Promise<string> {
     const lines: string[] = [];
-    await runSelfTest((l) => lines.push(l));
+    // No client config is read from this machine: the client paths resolve under a directory that does not exist.
+    await runSelfTest((l) => lines.push(l), { clientEnvironment: { platform: process.platform, home: join(tmpdir(), 'iris-judge-no-clients'), env: {} } });
     return lines.join('\n');
   }
 

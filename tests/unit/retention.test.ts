@@ -28,7 +28,7 @@ describe('retention', () => {
   it('one sweep deletes traces and evaluations older than the window and checkpoints when anything went', async () => {
     const storage = fakeStorage();
     const out = await runRetentionSweep(storage, defaultConfig, logger);
-    expect(out).toEqual({ deletedTraces: 2, deletedEvals: 1 });
+    expect(out).toEqual({ deletedTraces: 2, deletedEvals: 1, deletedBackups: 0 });
     expect(storage.deleteTracesOlderThan).toHaveBeenCalledWith(expect.anything(), 30);
     expect(storage.checkpoint).toHaveBeenCalledTimes(1);
     const quiet = fakeStorage(0, 0);

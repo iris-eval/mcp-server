@@ -1,6 +1,8 @@
 import type { Driver } from '../driver.js';
 
 export const id = '006-eval-critical-failures';
+/** The release that introduced it, and the oldest that can use a database it has been applied to (migrations/index.ts). */
+export const compatFloor = '0.5.1';
 
 /*
  * v0.5.0's headline feature — the critical-rule veto — was response-only.
