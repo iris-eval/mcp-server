@@ -15,9 +15,12 @@
  *                        either a `keyFile` or a `keyHash` (the sha256 hex
  *                        of the key, so the config file itself holds no
  *                        secret), and an optional `expiresAt`.
- *   rotation             add the new key, restart, move the clients, remove
- *                        the old key, restart. Every key authenticates until
- *                        it is removed or expires; a key past `expiresAt`
+ *   rotation             add the new key, move the clients, remove the old
+ *                        key. The server's ring is live (live-key-ring.ts):
+ *                        a change to config.json or a key file applies on
+ *                        the next request, no restart. Every key
+ *                        authenticates until it is removed or expires; a
+ *                        key past `expiresAt`
  *                        stops matching at that instant, no restart needed,
  *                        and so do the browser sessions it opened
  *                        (dashboard/session-auth.ts asks `expiryOf`).

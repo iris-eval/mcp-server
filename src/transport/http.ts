@@ -10,7 +10,7 @@ import { createErrorHandler } from '../middleware/error-handler.js';
 import { createMcpRateLimiter } from '../middleware/rate-limit.js';
 import { createRebindingGuard } from '../middleware/rebinding-guard.js';
 import { assertAuthenticatedBind } from '../utils/bind-policy.js';
-import { buildKeyRing, hasAnyApiKey } from '../security/keys.js';
+import { buildKeyRing, hasAnyApiKey, type KeyRing } from '../security/keys.js';
 import { buildHealth, type HealthDeps } from '../health.js';
 import { requestSizeLimitBytes } from '../utils/size-limit.js';
 
@@ -27,6 +27,8 @@ export async function createHttpTransport(
   config: IrisConfig,
   logger: Logger,
   health: HttpTransportHealthDeps = {},
+  /** The server's live key ring (security/live-key-ring.ts), shared with the dashboard; built from the config when absent. */
+  keyRing?: KeyRing,
 ): Promise<HttpTransportResult> {
   /*
    * Refuse, don't warn: a bind beyond loopback with no API key is
@@ -41,8 +43,8 @@ export async function createHttpTransport(
     hasApiKey: hasAnyApiKey(config.security),
     allowUnauthenticated: config.security.allowUnauthenticated,
   });
-  // Every configured key, read once.
-  const keys = buildKeyRing(config.security);
+  // Every configured key: the server's live ring, or one read once for an embedder.
+  const keys = keyRing ?? buildKeyRing(config.security);
 
   const app = express();
 

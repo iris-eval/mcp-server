@@ -34,7 +34,7 @@ import { registerPreferencesRoutes } from './routes/preferences.js';
 import { registerAuditRoutes } from './routes/audit.js';
 import { createSessionAuth } from './session-auth.js';
 import { assertAuthenticatedBind } from '../utils/bind-policy.js';
-import { buildKeyRing, hasAnyApiKey } from '../security/keys.js';
+import { buildKeyRing, hasAnyApiKey, type KeyRing } from '../security/keys.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
 import type { PreferenceStore } from '../preferences.js';
@@ -52,6 +52,8 @@ export interface DashboardServerOptions {
   preferenceStore?: PreferenceStore;
   /**  when serving the disposable demo database; reported on /api/v1/capabilities. */
   mode?: 'real' | 'demo';
+  /** The server's live key ring (security/live-key-ring.ts), shared with the MCP transport; built from the config when absent. */
+  keyRing?: KeyRing;
 }
 
 export function createDashboardServer(
@@ -74,9 +76,9 @@ export function createDashboardServer(
     allowUnauthenticated: config.security.allowUnauthenticated,
   });
 
-  // Every configured key, read once: the Bearer middleware and
-  // the browser session layer match against the same ring.
-  const keys = buildKeyRing(config.security);
+  // Every configured key: the Bearer middleware and the browser session
+  // layer match against the same ring, the server's live one when given.
+  const keys = options?.keyRing ?? buildKeyRing(config.security);
 
   const app = express();
 
