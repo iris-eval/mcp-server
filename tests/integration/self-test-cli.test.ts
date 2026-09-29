@@ -24,6 +24,23 @@ import { nodeSqliteAvailable } from '../../src/storage/driver.js';
  * spawning in cross-spawn.
  */
 
+const clientHome = mkdtempSync(join(tmpdir(), 'iris-selftest-cli-clients-'));
+afterAll(() => rmSync(clientHome, { recursive: true, force: true }));
+function clientHomeEnv(): Record<string, string> {
+  return {
+    HOME: clientHome,
+    USERPROFILE: clientHome,
+    APPDATA: join(clientHome, 'AppData', 'Roaming'),
+    XDG_CONFIG_HOME: join(clientHome, '.config'),
+    CLAUDE_CONFIG_DIR: '',
+    CODEX_HOME: '',
+    CONTINUE_GLOBAL_DIR: '',
+    CLINE_DIR: '',
+    CLINE_DATA_DIR: '',
+    GEMINI_CLI_HOME: '',
+  };
+}
+
 const serverPath = resolve(import.meta.dirname, '../../src/index.ts');
 const tsxCli = resolve(import.meta.dirname, '../../node_modules/tsx/dist/cli.mjs');
 
@@ -32,7 +49,8 @@ function runSelfTestCli(
 ): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolvePromise, rejectPromise) => {
     const child = spawn(process.execPath, [tsxCli, serverPath, '--self-test'], {
-      env: { ...process.env, ...extraEnv },
+      // The self-test reads the MCP client configs (#704); every client path resolves under a scratch home, never this machine's.
+      env: { ...process.env, ...clientHomeEnv(), ...extraEnv },
       windowsHide: true,
     });
     let stdout = '';

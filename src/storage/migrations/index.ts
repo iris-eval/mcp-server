@@ -19,9 +19,32 @@ import * as migration017 from './017-relevance-judge-spend.js';
 import * as migration018 from './018-eval-risk-estimate.js';
 import * as migration019 from './019-read-paths.js';
 import { PKG_VERSION } from '../../config/defaults.js';
+import { compareVersions, isVersion, latestVersion } from '../../utils/versions.js';
 
+/*
+ * The compatibility floor (0.20.0, #704). Each migration names the oldest
+ * Iris release that can still use a database it has been applied to, and
+ * the ledger stores that floor beside the migration's id. A release that
+ * finds a migration it does not know reads the floor the newer release left
+ * and opens the file when it is at or below its own version, so a migration
+ * that only adds something an older release can live with (a table it never
+ * reads, an index) does not lock that release out. Before 0.20.0 every
+ * unknown migration refused the start, and those releases still do.
+ *
+ * Choosing a floor for a new migration: the release that introduces it,
+ * unless every write the previous releases make keeps the new schema right
+ * (a trigger, a constraint or a derived table they do not maintain is the
+ * usual reason not). Lowering it is a promise every release from the floor
+ * on must keep; test it against the older release's own package, as
+ * 015-trace-search.ts records. The other direction matters too: a
+ * migration that drops or renames something an earlier release relies on
+ * by name (a column its inserts list, an index its queries name with
+ * INDEXED BY) takes a floor of its own release, since those releases would
+ * open the file and then fail on it.
+ */
 interface Migration {
   id: string;
+  compatFloor: string;
   up(db: Driver): void;
 }
 
@@ -50,6 +73,9 @@ const migrations: Migration[] = [
 /** Every migration this build knows, in order. */
 export const KNOWN_MIGRATION_IDS: readonly string[] = migrations.map((m) => m.id);
 
+/** Each known migration's compatibility floor, by id. */
+export const COMPAT_FLOORS: ReadonlyMap<string, string> = new Map(migrations.map((m) => [m.id, m.compatFloor]));
+
 export interface MigrationState {
   /** How many of the known migrations the database has applied. */
   applied: number;
@@ -70,6 +96,100 @@ export function migrationState(db: Driver): MigrationState {
   return { applied: KNOWN_MIGRATION_IDS.length - pending.length, known: KNOWN_MIGRATION_IDS.length, pending };
 }
 
+/** One row of the ledger, as this build reads it. */
+export interface LedgerRow {
+  id: string;
+  /** The release that applied it; null on rows written before 0.9.0 recorded one. */
+  writerVersion: string | null;
+  /** The floor the ledger holds for it, else this build's own for a migration it knows; null when neither exists. */
+  compatFloor: string | null;
+  /** Whether this build knows the migration. */
+  known: boolean;
+}
+
+/** A database's migrations against this build's, before anything is applied. */
+export interface MigrationPlan {
+  /** The ledger's rows. Empty for a new file. */
+  applied: LedgerRow[];
+  /** Known migrations the file has not applied, in order. */
+  pending: string[];
+  /** Applied migrations this build does not know. */
+  unknown: LedgerRow[];
+  /** Of those, the ones whose floor is above this version, or that record none: any of them refuses the start. */
+  blocking: LedgerRow[];
+  /** The newest release that applied a migration to the file; null when none is recorded. */
+  lastWriter: string | null;
+  /** The oldest release that can open the file as it is; null for a new file. */
+  floor: string | null;
+  /** The same once the pending migrations are applied. */
+  floorAfter: string | null;
+  /** The version the plan was made for. */
+  version: string;
+}
+
+function columns(db: Driver, table: string): Set<string> {
+  return new Set((db.prepare(`PRAGMA table_info('${table}')`).all() as Array<{ name: string }>).map((c) => c.name));
+}
+
+/**
+ * Read the ledger and compare it with this build. Reads only: the
+ * self-test runs it on a read-only connection to the configured file.
+ */
+export function inspectMigrations(db: Driver, version: string = PKG_VERSION): MigrationPlan {
+  const hasLedger = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '_iris_migrations'").get() !== undefined;
+  const cols = hasLedger ? columns(db, '_iris_migrations') : new Set<string>();
+  const rows = hasLedger
+    ? (db
+        .prepare(
+          `SELECT id, ${cols.has('writer_version') ? 'writer_version' : 'NULL AS writer_version'}, ${cols.has('compat_floor') ? 'compat_floor' : 'NULL AS compat_floor'} FROM _iris_migrations`,
+        )
+        .all() as Array<{ id: string; writer_version: string | null; compat_floor: string | null }>)
+    : [];
+  const applied: LedgerRow[] = rows.map((r) => {
+    const known = COMPAT_FLOORS.has(r.id);
+    const recorded = r.compat_floor && isVersion(r.compat_floor) ? r.compat_floor : null;
+    return { id: r.id, writerVersion: r.writer_version, compatFloor: recorded ?? (known ? COMPAT_FLOORS.get(r.id)! : null), known };
+  });
+  const appliedIds = new Set(applied.map((r) => r.id));
+  const pending = KNOWN_MIGRATION_IDS.filter((id) => !appliedIds.has(id));
+  const unknown = applied.filter((r) => !r.known);
+  const blocking = unknown.filter((r) => r.compatFloor === null || compareVersions(r.compatFloor, version) > 0);
+  const floor = latestVersion(applied.map((r) => r.compatFloor));
+  return {
+    applied,
+    pending,
+    unknown,
+    blocking,
+    lastWriter: latestVersion(applied.map((r) => r.writerVersion)),
+    floor,
+    floorAfter: latestVersion([floor, ...pending.map((id) => COMPAT_FLOORS.get(id))]),
+    version,
+  };
+}
+
+/** Where the README says how to go back to an older release. */
+export const DOWNGRADING_URL = 'https://github.com/iris-eval/mcp-server#downgrading';
+
+/** A database this version cannot open: a newer release applied a migration whose floor is above it. */
+export class IncompatibleDatabaseError extends Error {
+  constructor(readonly plan: MigrationPlan) {
+    const writers = [...new Set(plan.blocking.map((r) => r.writerVersion ?? 'an unknown version'))].join(', ');
+    const floors = plan.blocking.map((r) => r.compatFloor);
+    const needs = floors.every((f) => f !== null) ? `need Iris ${latestVersion(floors)} or later` : 'need a newer Iris';
+    super(
+      `This database was migrated by a newer Iris (${writers}) — migration(s) ${plan.blocking.map((r) => r.id).join(', ')} ${needs}, and this is v${plan.version}. ` +
+        'Upgrade Iris: `npx -y @iris-eval/mcp-server@latest install --upgrade` moves every MCP client on this machine to the newest release. ' +
+        `To go back to v${plan.version} instead, restore the backup taken before that upgrade (${DOWNGRADING_URL}), or point IRIS_DB_PATH at a database this version wrote.`,
+    );
+    this.name = 'IncompatibleDatabaseError';
+  }
+}
+
+/** Refuse a plan with a blocking migration. */
+export function assertCompatible(plan: MigrationPlan): void {
+  if (plan.blocking.length > 0) throw new IncompatibleDatabaseError(plan);
+}
+
 export function runMigrations(db: Driver): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS _iris_migrations (
@@ -78,26 +198,20 @@ export function runMigrations(db: Driver): void {
     )
   `);
 
-  const known = new Set(migrations.map((m) => m.id));
-  const hasWriterVersion = (db.prepare("PRAGMA table_info('_iris_migrations')").all() as Array<{ name: string }>).some((c) => c.name === 'writer_version');
-  const appliedRows = db
-    .prepare(hasWriterVersion ? 'SELECT id, writer_version FROM _iris_migrations' : 'SELECT id, NULL AS writer_version FROM _iris_migrations')
-    .all() as Array<{ id: string; writer_version: string | null }>;
-
   /*
    * A downgrade guard (0.9.0). Before it, a binary that did not know a
    * migration silently ignored it and read a schema newer than itself —
-   * half the columns, none of the meaning. Now an applied id this build has
+   * half the columns, none of the meaning. An applied id this build has
    * never heard of refuses to start, naming the version that wrote it, so
-   * the operator upgrades instead of corrupting.
+   * the operator upgrades instead of corrupting — unless its compatibility
+   * floor (above) says this version can use the file.
    */
-  const unknown = appliedRows.filter((r) => !known.has(r.id));
-  if (unknown.length > 0) {
-    const writers = [...new Set(unknown.map((r) => r.writer_version ?? 'an unknown version'))].join(', ');
-    throw new Error(
-      `This database was migrated by a newer Iris (${writers}) — migration(s) ${unknown.map((r) => r.id).join(', ')} are unknown to v${PKG_VERSION}. Upgrade Iris, or point IRIS_DB_PATH at a database this version wrote.`,
-    );
-  }
+  assertCompatible(inspectMigrations(db));
+
+  // The floor column (0.20.0), added under the write lock so two processes starting on one file cannot both add it.
+  db.transaction(() => {
+    if (!columns(db, '_iris_migrations').has('compat_floor')) db.exec('ALTER TABLE _iris_migrations ADD COLUMN compat_floor TEXT');
+  }).immediate();
 
   /*
    * Two processes on one cold file — a server booting and a hook-driven
@@ -110,15 +224,20 @@ export function runMigrations(db: Driver): void {
    * fail.
    */
   const isApplied = db.prepare('SELECT 1 FROM _iris_migrations WHERE id = ?');
-  const markApplied = db.prepare('INSERT INTO _iris_migrations (id) VALUES (?)');
+  const markApplied = db.prepare('INSERT INTO _iris_migrations (id, compat_floor) VALUES (?, ?)');
   for (const migration of migrations) {
     db.transaction(() => {
       if (isApplied.get(migration.id)) return;
       migration.up(db);
-      markApplied.run(migration.id);
+      markApplied.run(migration.id, migration.compatFloor);
     }).immediate();
   }
   // Every applied migration names the binary that applied it (this one, for
-  // rows written before the column existed — the closest true statement).
-  db.prepare('UPDATE _iris_migrations SET writer_version = ? WHERE writer_version IS NULL').run(PKG_VERSION);
+  // rows written before the column existed — the closest true statement),
+  // and its floor (rows written before 0.20.0 recorded none).
+  db.transaction(() => {
+    db.prepare('UPDATE _iris_migrations SET writer_version = ? WHERE writer_version IS NULL').run(PKG_VERSION);
+    const setFloor = db.prepare('UPDATE _iris_migrations SET compat_floor = ? WHERE id = ? AND compat_floor IS NULL');
+    for (const m of migrations) setFloor.run(m.compatFloor, m.id);
+  }).immediate();
 }

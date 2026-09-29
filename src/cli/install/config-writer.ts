@@ -607,6 +607,58 @@ function uninstallCodex(profile: ClientProfile): UninstallResult {
   return { configPath: path, action: 'removed', ...extra };
 }
 
+/* ---------------- Reading ---------------- */
+
+/** The Iris entry in a client's config, as `install --list` and `--upgrade` read it. Never writes. */
+export type IrisEntry =
+  | { configPath: string; state: 'absent' }
+  | { configPath: string; state: 'present'; key: string; command: string | undefined; args: string[] }
+  | { configPath: string; state: 'unreadable'; error: string };
+
+function readJsonEntry(profile: ClientProfile): IrisEntry {
+  const path = profile.configPath;
+  const file = readText(path);
+  if (!file.exists || file.text.trim() === '') return { configPath: path, state: 'absent' };
+  const root = parseConfig(path, file.text);
+  const map = mapNode(path, root, mapKeyFor(profile.configMode));
+  if (!map) return { configPath: path, state: 'absent' };
+  const current = memberOf(map, IRIS_SERVER_KEY);
+  const legacy = memberOf(map, LEGACY_IRIS_SERVER_KEY);
+  const member = current ?? (legacy && isIrisEntry(valueOf(file.text, legacy.value)) ? legacy : undefined);
+  if (!member) return { configPath: path, state: 'absent' };
+  const value = valueOf(file.text, member.value);
+  if (!isRecord(value)) return { configPath: path, state: 'present', key: member.key, command: undefined, args: [] };
+  const launch = isRecord(value.command) ? { command: value.command.path, args: value.command.args } : { command: value.command, args: value.args };
+  return {
+    configPath: path,
+    state: 'present',
+    key: member.key,
+    command: typeof launch.command === 'string' ? launch.command : undefined,
+    args: Array.isArray(launch.args) ? launch.args.filter((a): a is string => typeof a === 'string') : [],
+  };
+}
+
+function readCodexEntry(profile: ClientProfile): IrisEntry {
+  const path = profile.configPath;
+  const file = readText(path);
+  if (!file.exists) return { configPath: path, state: 'absent' };
+  const raw = file.text.replace(/\r\n/g, '\n');
+  const own = tableSpans(raw, CODEX_TABLE).find((s) => s.main);
+  const legacyAny = tableSpans(raw, CODEX_LEGACY_TABLE).find((s) => s.main);
+  const span = own ?? (legacyAny && codexTableIsIris(raw, legacyAny) ? legacyAny : undefined);
+  if (!span) return { configPath: path, state: 'absent' };
+  const body = raw.slice(span.start, span.end);
+  return { configPath: path, state: 'present', key: own ? IRIS_SERVER_KEY : LEGACY_IRIS_SERVER_KEY, command: stringKey(body, 'command'), args: findKey(body, 'args')?.items ?? [] };
+}
+
+export function readIrisEntry(profile: ClientProfile): IrisEntry {
+  try {
+    return profile.configMode === 'codex-toml' ? readCodexEntry(profile) : readJsonEntry(profile);
+  } catch (err) {
+    return { configPath: profile.configPath, state: 'unreadable', error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 /* ---------------- Dispatch ---------------- */
 
 export function installIris(profile: ClientProfile, launch: LaunchCommand): InstallResult {
