@@ -26,7 +26,7 @@ import { LOCAL_TENANT, asTenantId } from '../../../src/types/tenant.js';
 import type { Driver } from '../../../src/storage/driver.js';
 import type { Trace } from '../../../src/types/trace.js';
 import { SEARCH_DRIVER } from './fts5-here.js';
-import { BUILD_BATCH, nextBuildBatch } from '../../../src/storage/search-index.js';
+import { BUILD_BATCH, indexQueued, nextBuildBatch } from '../../../src/storage/search-index.js';
 
 // File-backed stores, several opens per test: 70-90 ms on a Windows laptop, up to 8 s on a hosted Windows runner (CI, 2026-09-26).
 vi.setConfig({ testTimeout: 30_000 });
@@ -58,6 +58,8 @@ const dbOf = (s: SqliteAdapter) => (s as unknown as { db: Driver }).db;
 /** FTS5's own consistency check of the index, and the id table against the traces (equal unless the test says otherwise). */
 function assertIndexHealthy(s: SqliteAdapter, expected?: { docs: number; traces: number }): void {
   const db = dbOf(s);
+  // What waits on the queue (#729) is indexed first: the check is of the index as a search would read it.
+  while (indexQueued(db, 1024) !== null);
   db.exec("INSERT INTO trace_search (trace_search, rank) VALUES ('integrity-check', 0)");
   const row = db.prepare('SELECT (SELECT COUNT(*) FROM traces) AS traces, (SELECT COUNT(*) FROM trace_search_docs) AS docs').get() as { traces: number; docs: number };
   if (expected) expect({ docs: Number(row.docs), traces: Number(row.traces) }).toEqual(expected);
@@ -359,7 +361,7 @@ describe('trace search — building the index after the start', () => {
     const during = await s.queryTraces(LOCAL_TENANT, { search: 'needle', limit: 1000 });
     expect(during.search?.index).toBe('scan');
     expect(during.total).toBe(10);
-    // A trace written mid-build is indexed on insert and found either way.
+    // A trace written mid-build is queued, indexed by the build or the indexer, and found either way.
     await s.insertTraces(LOCAL_TENANT, [{ trace_id: 'new', agent_name: 'a', output: 'a fresh needle', timestamp: at(55) }]);
     expect(await s.whenSearchIndexReady()).toBe('ready');
     assertIndexHealthy(s);
@@ -456,7 +458,7 @@ describe('trace search — a SQLite without FTS5', () => {
     expect(await ids(restored, 'zurich')).toEqual([]);
     expect(await ids(restored, 'escalated')).toEqual(['refund']);
     const triggersBack = dbOf(restored).prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'trace_search%' ORDER BY name").all() as Array<{ name: string }>;
-    expect(triggersBack.map((t) => t.name)).toEqual(['trace_search_au', 'trace_search_bd', 'trace_search_spans_ad', 'trace_search_spans_ai', 'trace_search_spans_au', 'trace_search_spans_bd', 'trace_search_spans_bi', 'trace_search_spans_bu']);
+    expect(triggersBack.map((t) => t.name)).toEqual(['trace_search_au', 'trace_search_bd', 'trace_search_queue_au', 'trace_search_queue_bd', 'trace_search_spans_ad', 'trace_search_spans_ai', 'trace_search_spans_au', 'trace_search_spans_bd', 'trace_search_spans_bi', 'trace_search_spans_bu']);
   });
 });
 
@@ -470,6 +472,8 @@ describe('trace search — erasure', () => {
     const word = 'zyxwvutsrqponmlkjihgfedcba';
     const sentence = `the account number is ${word} and it must not survive`;
     await s.insertTraces(LOCAL_TENANT, [{ trace_id: 'secret', agent_name: 'a', output: sentence, timestamp: at(1) }, refundTrace]);
+    // Indexed first (the queue drained), so the delete has index words to erase.
+    await s.whenSearchIndexReady();
     await s.checkpoint();
     // Anti-theater: the word is on disk, in the trace row and in the index.
     expect(fileHolds(path, word)).toBe(true);
@@ -501,6 +505,7 @@ describe('trace search — erasure', () => {
     const s = await adapter(path);
     const word = 'qwpoeirutyalskdjfhgzmxncbv';
     await s.insertTraces(LOCAL_TENANT, [...secretTraces(40, word, '2020-01-01T00:00:00.000Z'), { ...refundTrace, timestamp: new Date().toISOString() }]);
+    await s.whenSearchIndexReady();
     await s.checkpoint();
     expect(fileHolds(path, word)).toBe(true);
     expect(await s.deleteTracesOlderThan(LOCAL_TENANT, 30)).toBe(40);
@@ -521,6 +526,7 @@ describe('trace search — erasure', () => {
     const word = 'mnbvcxzlkjhgfdsapoiuytrewq';
     await s.insertTraces(LOCAL_TENANT, secretTraces(20, word, at(1)));
     await s.insertTraces(other, [{ ...refundTrace, trace_id: 'acme-refund' }]);
+    await s.whenSearchIndexReady();
     await s.purge(LOCAL_TENANT);
     expect(fileHolds(path, word)).toBe(false);
     expect(fileHolds(`${path}-wal`, word)).toBe(false);

@@ -21,7 +21,7 @@ import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import type { Driver } from '../../../src/storage/driver.js';
 import type { Trace } from '../../../src/types/trace.js';
 import { fromOtlp, type OtlpTraceRequest } from '../../../src/otel/ingest.js';
-import { SPAN_TEXT_MAX_CHARS, SPAN_TEXT_SEPARATOR, SPAN_VALUE_MAX_CHARS, readSpanText, spanTextSql, type SpanText } from '../../../src/storage/search-index.js';
+import { SPAN_TEXT_MAX_CHARS, SPAN_TEXT_SEPARATOR, SPAN_VALUE_MAX_CHARS, readSpanText, spanTextSql, type SpanText, indexQueued } from '../../../src/storage/search-index.js';
 import type { Span } from '../../../src/types/trace.js';
 import { SEARCH_DRIVER } from './fts5-here.js';
 import { parseSearch, spansMayMatch } from '../../../src/storage/search.js';
@@ -50,7 +50,12 @@ async function adapter(path = ':memory:', options: { fts5?: boolean } = {}): Pro
   return s;
 }
 
-const dbOf = (s: SqliteAdapter) => (s as unknown as { db: Driver }).db;
+/** The store's connection, with what waits on the index queue (#729) indexed first: a direct read sees the index a search would. */
+const dbOf = (s: SqliteAdapter): Driver => {
+  const db = (s as unknown as { db: Driver }).db;
+  while (indexQueued(db, 1024) !== null);
+  return db;
+};
 
 function assertIndexHealthy(s: SqliteAdapter): void {
   const db = dbOf(s);

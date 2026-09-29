@@ -184,7 +184,7 @@ async function time(store: SqliteAdapter, query: Query, runs: number): Promise<{
   return { ms: median(samples), total, complete };
 }
 
-/** Fill a store with `size` traces in batches of 1,000, from the same seed every time; returns the milliseconds taken. */
+/** Fill a store with `size` traces in batches of 1,000, from the same seed every time; returns the milliseconds taken until every trace is searchable. */
 async function fill(store: SqliteAdapter, size: number): Promise<number> {
   seed = 0x9e3779b9;
   SIZE_NOW = size;
@@ -192,6 +192,8 @@ async function fill(store: SqliteAdapter, size: number): Promise<number> {
   for (let i = 0; i < size; i += 1000) {
     await store.insertTraces(LOCAL_TENANT, Array.from({ length: Math.min(1000, size - i) }, (_, k) => trace(i + k)));
   }
+  // Stored traces are indexed after the write (#729): the cost of indexing counts until the queue is empty.
+  await store.whenSearchIndexReady();
   const ms = performance.now() - t0;
   await store.checkpoint();
   return ms;

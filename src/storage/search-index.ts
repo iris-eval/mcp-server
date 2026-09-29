@@ -62,8 +62,8 @@
  * whose spans change after it was indexed (insertSpan, or a hand-run
  * statement), so a delete always hands FTS5 the text it was given.
  *
- * Staying in sync: inserts are written by the adapter, updates and deletes
- * by triggers.
+ * Staying in sync: inserts are queued by the adapter and written by its
+ * indexer (the queue, below), updates and deletes by triggers.
  *   - Deletes and updates are triggers because a trace leaves the table by
  *     several routes — delete_trace, the retention sweep, --purge, a
  *     hand-run DELETE by an operator — and changes by one (the metadata
@@ -77,11 +77,12 @@
  *     of 1,000 traces became 1,000 one-document segments and a merge storm:
  *     255 µs per trace from a trigger against 76 µs from the same statement
  *     run by the adapter (measured on the machine in the changelog). There
- *     is one insert route (insertTraces), and it writes the index in the
- *     transaction that writes the trace, after the batch's traces and
- *     spans, in one statement: a span trigger's savepoint then never
- *     follows FTS5 terms still pending in the batch. A trace inserted any
- *     other way has no docs row, so the delete trigger leaves the index
+ *     is one insert route (insertTraces). A batch of INDEX_INLINE_MIN
+ *     traces or more is indexed in the transaction that writes it, after
+ *     its traces and spans, in one statement; a smaller one is queued, and
+ *     the indexer writes its words later in batches, the same way (#729;
+ *     the queue, below). A trace inserted any other way has
+ *     no docs row and no queue row, so the delete trigger leaves the index
  *     alone for it, and the next start indexes it (reconcileSearchIndex,
  *     then the build).
  *
@@ -89,8 +90,9 @@
  * stored are indexed after the start, BUILD_BATCH at a time, each step its
  * own short transaction with the event loop free between steps, so the
  * server answers MCP and HTTP requests throughout; searches read the traces
- * (the scan) until the index holds every one, then use it. A new trace is
- * indexed on insert even mid-build, and the build skips it. Closing stops the
+ * (the scan) until the index holds every one, then use it. A trace stored
+ * mid-build is queued as always; whichever of the build and the indexer
+ * reaches it first indexes it, and the other skips it. Closing stops the
  * build at its next step and the next start carries on from there.
  *
  * Erasure. `secure-delete` is set on the index (SQLite 3.42+): deleting a
@@ -324,6 +326,36 @@ const CREATE_CJK_TABLES = `
     content = '',
     tokenize = 'unicode61 remove_diacritics 2'
   );
+`;
+
+/*
+ * The queue (#729). A small insert (one trace from log_trace or
+ * POST /api/v1/traces) does not write the index in the transaction that
+ * stores the trace: it adds the id here, and the adapter's indexer
+ * (indexQueued) writes the index in batches after it. One trace a commit
+ * cost 558 µs to index on its own and 95 µs in a batch of 1,000 (366 µs to
+ * 1,059 µs with five spans a trace), and a stored trace wrote 38 pages to
+ * the log where 0.19.0 wrote 13.5. A queued trace has no
+ * docs row, so every index trigger leaves it alone: an update, or a span
+ * added before it is indexed, is simply read when it is, inside the
+ * indexer's write lock. The trace's text is never copied here, only its
+ * id, and the delete trigger below takes a queued trace off the queue on
+ * every route a trace leaves by, as the index triggers take an indexed one
+ * out of the index. Searches never miss a queued trace: the adapter
+ * indexes the queue before a search reads the index. The queue is read in
+ * the traces' own order (their rowid), so doc ids, which break a tie in
+ * the ranking, still follow arrival.
+ */
+export const QUEUE_TABLE = 'trace_search_queue';
+const QUEUE_TRIGGERS = ['trace_search_queue_bd', 'trace_search_queue_au'] as const;
+const CREATE_QUEUE = `
+  CREATE TABLE IF NOT EXISTS ${QUEUE_TABLE} (trace_id TEXT PRIMARY KEY) WITHOUT ROWID;
+  CREATE TRIGGER IF NOT EXISTS trace_search_queue_bd BEFORE DELETE ON traces BEGIN
+    DELETE FROM ${QUEUE_TABLE} WHERE trace_id = OLD.trace_id;
+  END;
+  CREATE TRIGGER IF NOT EXISTS trace_search_queue_au AFTER UPDATE OF trace_id ON traces WHEN NEW.trace_id IS NOT OLD.trace_id BEGIN
+    UPDATE ${QUEUE_TABLE} SET trace_id = NEW.trace_id WHERE trace_id = OLD.trace_id;
+  END;
 `;
 
 const CREATE_TABLES = `
@@ -674,6 +706,8 @@ function retireIndex(db: Driver): void {
   db.exec(`ALTER TABLE ${SEARCH_DOCS_TABLE} RENAME TO ${RETIRED_DOCS_TABLE}`);
   // A merge the old index owed is moot: all of it is erased.
   if (objectExists(db, 'table', ERASE_OWED_TABLE)) db.exec(`DELETE FROM ${ERASE_OWED_TABLE}`);
+  // The build indexes every trace again, queued or not.
+  if (objectExists(db, 'table', QUEUE_TABLE)) db.exec(`DELETE FROM ${QUEUE_TABLE}`);
 }
 
 /** Whether anything of a retired index is left to erase. */
@@ -790,14 +824,17 @@ export function installSearchIndex(db: Driver): void {
   db.exec(`INSERT INTO ${SEARCH_TABLE} (${SEARCH_TABLE}, rank) VALUES ('secure-delete', 1)`);
   db.exec(`INSERT INTO ${CJK_TABLE} (${CJK_TABLE}, rank) VALUES ('secure-delete', 1)`);
   db.exec(CREATE_TRIGGERS);
+  db.exec(CREATE_QUEUE);
 }
 
 /**
  * `ready`: every trace is in the index and searches use it. `building`: the
  * index exists and is being filled; searches read the traces until it is
  * done, so they are slower but never miss a trace. `unavailable`: no FTS5.
+ * `off`: storage.searchIndex is off, so there is no index to keep and every
+ * search reads the traces.
  */
-export type SearchIndexState = 'ready' | 'building' | 'unavailable';
+export type SearchIndexState = 'ready' | 'building' | 'unavailable' | 'off';
 
 /** Where the index is: health, the self-test and the build's own log lines read it. */
 export interface SearchIndexStatus {
@@ -824,6 +861,7 @@ export function searchIndexProgress(db: Driver, state?: SearchIndexState): Searc
   const settled = state ?? (fts5Available(db) ? undefined : 'unavailable');
   if (settled === 'unavailable') return { state: 'unavailable', index: 'scan', total: null, indexed: null, cjk_pending: 0, retired: false };
   const retired = retiredRemain(db);
+  if (settled === 'off') return { state: 'off', index: 'scan', total: null, indexed: null, cjk_pending: 0, retired };
   const cjk_pending = has(CJK_PENDING_TABLE) ? count(`SELECT COUNT(*) AS n FROM ${CJK_PENDING_TABLE}`) : 0;
   if (settled === 'ready') return { state: 'ready', index: 'fts5', total: null, indexed: null, cjk_pending, retired };
   const total = count('SELECT COUNT(*) AS n FROM traces');
@@ -848,15 +886,33 @@ export function searchIndexProgress(db: Driver, state?: SearchIndexState): Searc
  * Nothing here indexes a trace: that is the caller's background build.
  *   - no FTS5, triggers present: drop them, so deletes and updates keep
  *     working; search reads the traces instead.
+ *   - FTS5 here, the index turned off (`wanted` false, storage.searchIndex):
+ *     drop the triggers and retire the index for the adapter to erase;
+ *     `off`, and search reads the traces.
  */
-export function reconcileSearchIndex(db: Driver, available = fts5Available(db)): SearchIndexState {
+export function reconcileSearchIndex(db: Driver, available = fts5Available(db), wanted = true): SearchIndexState {
   let state: SearchIndexState = 'unavailable';
   // Checked and repaired under one write lock, so two processes starting on one file cannot both rebuild.
   db.transaction(() => {
     const hasTable = objectExists(db, 'table', SEARCH_TABLE);
     const triggersPresent = TRIGGERS.filter((t) => objectExists(db, 'trigger', t)).length;
-    if (!available) {
-      for (const t of ALL_TRIGGERS) db.exec(`DROP TRIGGER IF EXISTS ${t}`);
+    if (!available || !wanted) {
+      for (const t of [...ALL_TRIGGERS, ...QUEUE_TRIGGERS]) db.exec(`DROP TRIGGER IF EXISTS ${t}`);
+      // Nothing indexes the queue here; the index is rebuilt from the traces on the next start that can.
+      if (objectExists(db, 'table', QUEUE_TABLE)) db.exec(`DELETE FROM ${QUEUE_TABLE}`);
+      if (!available) return;
+      /*
+       * Turned off (storage.searchIndex): nothing keeps the index, so it
+       * goes, rather than hold the words of traces deleted from now on. It
+       * is retired, and the adapter erases it in steps after the start, and
+       * then the covering index only a search reads (dropSearchFilterIndex).
+       * Turned on again, the next start builds a new one.
+       */
+      if (hasTable) retireIndex(db);
+      // Emptied above and by the retirement: the queue, and the merges a sweep owed the index.
+      db.exec(`DROP TABLE IF EXISTS ${QUEUE_TABLE}`);
+      db.exec(`DROP TABLE IF EXISTS ${ERASE_OWED_TABLE}`);
+      state = 'off';
       return;
     }
     if (hasTable && !hasSpanColumn(db)) {
@@ -874,6 +930,8 @@ export function reconcileSearchIndex(db: Driver, available = fts5Available(db)):
     }
     if (!hasTable) installSearchIndex(db);
     db.exec(CREATE_OWED);
+    // An index built before the queue gets it now (#729); idempotent.
+    db.exec(CREATE_QUEUE);
     const counts = db
       .prepare(`SELECT (SELECT COUNT(*) FROM traces) AS traces, (SELECT COUNT(*) FROM ${SEARCH_DOCS_TABLE}) AS docs`)
       .get() as { traces: number; docs: number };
@@ -886,9 +944,82 @@ export function reconcileSearchIndex(db: Driver, available = fts5Available(db)):
       return;
     }
     const pending = db.prepare(`SELECT 1 FROM ${CJK_PENDING_TABLE} LIMIT 1`).get() !== undefined;
-    state = docs < traces || pending || retiredRemain(db) ? 'building' : 'ready';
+    // A trace waiting on the queue is accounted for: the adapter's indexer takes it, and a search drains the queue first.
+    const queued = Number(
+      (db.prepare(`SELECT COUNT(*) AS n FROM ${QUEUE_TABLE} q WHERE NOT EXISTS (SELECT 1 FROM ${SEARCH_DOCS_TABLE} d WHERE d.trace_id = q.trace_id)`).get() as { n: number }).n,
+    );
+    state = docs + queued < traces || pending || retiredRemain(db) ? 'building' : 'ready';
   }).immediate();
   return state;
+}
+
+/** Queue traces the adapter has just inserted for the index (#729), in the caller's transaction. */
+export function enqueueTraces(db: Driver, traceIds: readonly string[]): void {
+  const add = db.prepare(`INSERT OR IGNORE INTO ${QUEUE_TABLE} (trace_id) VALUES (?)`);
+  for (const id of traceIds) add.run(id);
+}
+
+/** Whether the covering index only a search reads is in the file. */
+export function searchFilterIndexExists(db: Driver): boolean {
+  return db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?").get(SEARCH_FILTER_INDEX) !== undefined;
+}
+
+/**
+ * Drop the covering index only a search reads, once the index is off: one
+ * statement that zeroes its pages, 75 to 133 ms at 100,000 traces, so it
+ * runs after the start, not in it.
+ */
+export function dropSearchFilterIndex(db: Driver): void {
+  db.exec(`DROP INDEX IF EXISTS ${SEARCH_FILTER_INDEX}`);
+}
+
+/** Whether any trace waits on the queue. */
+export function queueWaiting(db: Driver): boolean {
+  return db.prepare(`SELECT 1 FROM ${QUEUE_TABLE} LIMIT 1`).get() !== undefined;
+}
+
+/**
+ * Whether a trace stored at or before `rowid` waits on the queue. The queue
+ * is read, and each of its traces looked up: left to itself, SQLite walked
+ * the traces up to `rowid` instead, 189 ms at 100,000 traces for a queue
+ * that held only the newest.
+ */
+export function queuedUpTo(db: Driver, rowid: number): boolean {
+  return db.prepare(`SELECT 1 FROM ${QUEUE_TABLE} q CROSS JOIN traces t ON t.trace_id = q.trace_id WHERE t.rowid <= ? LIMIT 1`).get(rowid) !== undefined;
+}
+
+
+/**
+ * One step of the indexer: up to `max` queued traces written to the index,
+ * with their spans and their CJK stream, and taken off the queue, under one
+ * write lock. A queued trace the build has indexed meanwhile is only taken
+ * off. The words go in through INDEX_WHERE, the expression the delete
+ * trigger later recomputes them with, as on every other route. Returns how
+ * many traces left the queue, or null when none waited.
+ */
+export function indexQueued(db: Driver, max: number): number | null {
+  return db
+    // Merges its writes owe run in steps of their own, after the queue (levelMergeStep; merges out of the build's steps).
+    .transaction((): number | null => withoutAutomerge(db, () => {
+      const ids = (db.prepare(`SELECT q.trace_id FROM ${QUEUE_TABLE} q LEFT JOIN traces t ON t.trace_id = q.trace_id ORDER BY t.rowid LIMIT ?`).all(max) as Array<{ trace_id: string }>).map((r) => r.trace_id);
+      if (ids.length === 0) return null;
+      const before = Number((db.prepare(`SELECT COALESCE(MAX(doc_id), 0) AS m FROM ${SEARCH_DOCS_TABLE}`).get() as { m: number }).m);
+      const addDoc = db.prepare(
+        `INSERT INTO ${SEARCH_DOCS_TABLE} (tenant_id, trace_id) SELECT tenant_id, trace_id FROM traces WHERE trace_id = ? AND NOT EXISTS (SELECT 1 FROM ${SEARCH_DOCS_TABLE} WHERE trace_id = ?)`,
+      );
+      let added = 0;
+      for (const id of ids) added += addDoc.run(id, id).changes;
+      if (added > 0) {
+        db.prepare(INDEX_WHERE('d.doc_id > ?')).run(before);
+        // The CJK stream in the same step, so a search after the drain finds CJK text too.
+        const cjk = (db.prepare(`SELECT d.doc_id FROM ${SEARCH_DOCS_TABLE} d WHERE d.doc_id > ? AND ${traceMayHoldCjk('d.trace_id')}`).all(before) as Array<{ doc_id: number }>).map((r) => Number(r.doc_id));
+        indexCjk(db, cjk);
+      }
+      const take = db.prepare(`DELETE FROM ${QUEUE_TABLE} WHERE trace_id = ?`);
+      for (const id of ids) take.run(id);
+      return ids.length;
+    }))
+    .immediate();
 }
 
 /**

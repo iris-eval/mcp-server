@@ -91,7 +91,7 @@ describe('migration 015 — the trace search index', () => {
 
     const db = new Database(path, { readonly: true });
     const objects = db.prepare(SEARCH_OBJECTS).all() as Array<{ type: string; name: string }>;
-    expect(objects.filter((o) => o.type === 'trigger').map((o) => o.name)).toEqual(['trace_search_au', 'trace_search_bd', 'trace_search_spans_ad', 'trace_search_spans_ai', 'trace_search_spans_au', 'trace_search_spans_bd', 'trace_search_spans_bi', 'trace_search_spans_bu']);
+    expect(objects.filter((o) => o.type === 'trigger').map((o) => o.name)).toEqual(['trace_search_au', 'trace_search_bd', 'trace_search_queue_au', 'trace_search_queue_bd', 'trace_search_spans_ad', 'trace_search_spans_ai', 'trace_search_spans_au', 'trace_search_spans_bd', 'trace_search_spans_bi', 'trace_search_spans_bu']);
     expect(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_traces_search_filter'").get()).toBeDefined();
     expect(objects.filter((o) => o.type === 'table').map((o) => o.name)).toEqual(
       expect.arrayContaining(['trace_search', 'trace_search_docs', 'trace_search_data', 'trace_search_idx']),
@@ -118,7 +118,7 @@ describe('migration 015 — the trace search index', () => {
     for (const { name } of raw.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'trace_search%'").all() as Array<{ name: string }>) raw.exec(`DROP TRIGGER ${name}`);
     raw.exec(`
       DROP TABLE trace_search; DROP TABLE trace_search_docs; DROP INDEX idx_traces_search_filter;
-      DROP TABLE trace_search_cjk; DROP TABLE trace_search_cjk_docs; DROP TABLE trace_search_cjk_pending;
+      DROP TABLE trace_search_cjk; DROP TABLE trace_search_cjk_docs; DROP TABLE trace_search_cjk_pending; DROP TABLE trace_search_queue;
       DROP TABLE trace_search_erase_owed;
       DELETE FROM _iris_migrations WHERE id = '015-trace-search';
     `);

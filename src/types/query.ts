@@ -81,7 +81,7 @@ export interface SearchWorkerStatus {
 export interface TraceSearchInfo {
   /** Each term as it was searched: `refund`, `"agent said"`, `refund*`. */
   terms: string[];
-  /** `fts5`: the full-text index, ranked by BM25. `scan`: this SQLite has no FTS5, so the traces were read and ranked by how often the terms occur. */
+  /** `fts5`: the full-text index, ranked by BM25. `scan`: this SQLite has no FTS5, storage.searchIndex is off, or the index is still being built, so the traces were read and ranked by how often the terms occur. */
   index: 'fts5' | 'scan';
   /**
    * false when the search stopped at its time budget (storage.searchBudgetMs,

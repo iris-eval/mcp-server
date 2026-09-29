@@ -177,8 +177,8 @@ const topLevel = (rows: PlanRow[]): string[] => rows.filter((r) => r.parent === 
 
 /* ---- What each read must look like ---- */
 
-/** A full read of a big table, by its name or the alias the queries give it. */
-const FULL_SCAN = /\bSCAN (traces|eval_results|spans|t|e|e2|s)\b/;
+/** A full read of a big table, by its name or the alias the queries give it (a json_each or json_tree over one value is not one). */
+const FULL_SCAN = /\bSCAN (traces|eval_results|spans|t|e|e2|s)\b(?! VIRTUAL TABLE)/;
 const TRACE_BY_ID = /^SEARCH t USING (COVERING )?INDEX (sqlite_autoindex_traces_1|idx_traces_search_filter) \(trace_id=\?/;
 
 /** A join: the SQL it is recognised by, and its plan's lines in order, outer table first. */
@@ -207,6 +207,11 @@ const JOINS: Array<{ name: string; sql: RegExp; order: RegExp[] }> = [
     name: 'search, the matches joined to their traces',
     sql: /\) m CROSS JOIN traces ON traces\.trace_id = m\.matched_id/,
     order: [/VIRTUAL TABLE INDEX/, /^SEARCH traces USING (COVERING )?INDEX (sqlite_autoindex_traces_1|idx_traces_search_filter) \(trace_id=\?/],
+  },
+  {
+    name: 'search, the queue checked for traces stored before it',
+    sql: /FROM trace_search_queue q CROSS JOIN traces t/,
+    order: [/^SCAN q\b/, TRACE_BY_ID],
   },
 ];
 
@@ -313,6 +318,23 @@ const HOT: Array<{ name: string; fts?: true; indexOnly?: true; read: (s: SqliteA
   { name: '/summary, 24 hours', indexOnly: true, read: (s) => s.getDashboardSummary(T, 24) },
   { name: '/summary, 30 days', indexOnly: true, read: (s) => s.getDashboardSummary(T, 720) },
   { name: '/eval-stats, 30 days', indexOnly: true, read: (s) => s.getEvalStats(T, '30d') },
+  // The search index queue (#729): a trace stored, then its batch indexed.
+  {
+    name: 'indexing the queue',
+    fts: true,
+    read: async (s) => {
+      await s.insertTraces(T, [{ trace_id: `q-${Math.random()}`, agent_name: 'a0', output: 'queued words', timestamp: at(1) } as Trace]);
+      await s.whenSearchIndexReady();
+    },
+  },
+  {
+    name: 'a search right after a write, which indexes it first',
+    fts: true,
+    read: async (s) => {
+      await s.insertTraces(T, [{ trace_id: `w-${Math.random()}`, agent_name: 'a0', output: 'written then searched', timestamp: at(1) } as Trace]);
+      await s.queryTraces(T, { search: 'searched' });
+    },
+  },
 ];
 
 /* ---- The variants ---- */
@@ -334,6 +356,8 @@ async function open(driver: 'native' | 'node', fts5: boolean, stats: Stats): Pro
   await seed(store);
   // Nothing of the start's own runs while a read is captured.
   await store.whenRiskEstimatesStored();
+  // The seed's traces wait on the index queue (#729): index them, so the reads below are what a settled store does.
+  await store.whenSearchIndexReady();
   const db = (store as unknown as { db: Driver }).db;
   applyStats(db, stats);
   return { store, db };

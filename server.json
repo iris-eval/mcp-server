@@ -77,6 +77,13 @@
           "name": "IRIS_SEARCH_BUDGET_MS"
         },
         {
+          "description": "on (default) or off. off keeps no full-text index of the traces: writes are cheaper, and a search reads the traces within its time budget",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_SEARCH_INDEX"
+        },
+        {
           "description": "Log level: debug, info, warn, error",
           "isRequired": false,
           "format": "string",

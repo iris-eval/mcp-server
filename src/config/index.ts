@@ -100,6 +100,13 @@ function parseSearchBudgetEnv(value: string): number {
   return n;
 }
 
+/** IRIS_SEARCH_INDEX: `on` or `off`, as config.json's storage.searchIndex; anything else refuses startup. */
+function parseSearchIndexEnv(value: string): 'on' | 'off' {
+  const v = value.trim().toLowerCase();
+  if (v === 'on' || v === 'off') return v;
+  throw new Error(`IRIS_SEARCH_INDEX=${JSON.stringify(value)} is not valid (use on or off)`);
+}
+
 /*
  * IRIS_DASHBOARD used to be `value === 'true'`, which silently read every
  * other spelling — 1, yes, on, TRUE — as an explicit DISABLE that then
@@ -135,6 +142,9 @@ function loadEnvVars(): Partial<IrisConfig> {
   }
   if (process.env.IRIS_SEARCH_BUDGET_MS) {
     config.storage = { ...(config.storage as object), searchBudgetMs: parseSearchBudgetEnv(process.env.IRIS_SEARCH_BUDGET_MS) };
+  }
+  if (process.env.IRIS_SEARCH_INDEX) {
+    config.storage = { ...(config.storage as object), searchIndex: parseSearchIndexEnv(process.env.IRIS_SEARCH_INDEX) };
   }
   if (process.env.IRIS_LOG_LEVEL) {
     config.logging = { level: process.env.IRIS_LOG_LEVEL };

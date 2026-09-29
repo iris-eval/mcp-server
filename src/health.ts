@@ -110,7 +110,7 @@ export interface HealthDeps {
 
 /** The share of stored traces the index holds: 1 when ready; while building, rounded down and never 1, so it reads as done only when it is. */
 function searchProgress(s: SearchIndexStatus): number | null {
-  if (s.state === 'unavailable') return null;
+  if (s.state === 'unavailable' || s.state === 'off') return null;
   if (s.state === 'ready') return 1;
   if (!s.total) return 0.99;
   return Math.min(0.99, Math.floor(((s.indexed ?? 0) / s.total) * 100) / 100);

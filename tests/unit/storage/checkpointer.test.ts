@@ -23,7 +23,7 @@ import { Checkpointer, STEP_TRUNCATE_PAGES, TAIL_CHECKPOINT_PAGES } from '../../
 import { EvalEngine } from '../../../src/eval/engine.js';
 import type { Driver } from '../../../src/storage/driver.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
-import { CELL_DRIVER } from './fts5-here.js';
+import { CELL_DRIVER, driverHasFts5 } from './fts5-here.js';
 
 /*
  * The hooks get the tests' time: afterEach closes each store, and close()
@@ -102,6 +102,35 @@ describe('WAL checkpoints on a worker thread', () => {
     await s.checkpoint();
     expect(size(`${path}-wal`)).toBe(0);
     expect((await s.queryTraces(LOCAL_TENANT, { limit: 1 })).total).toBe(210);
+  });
+
+  it('a search index step never starts while the worker truncates the log, which holds the write lock', async () => {
+    const { s } = await store();
+    await s.insertTraces(LOCAL_TENANT, traces(200));
+    const w = worker(s)!;
+    expect(await w.started).toBe(true);
+    await s.whenSearchIndexReady();
+    // Queued for the index (a write of fewer than 100 traces), then a TRUNCATE asked for before the indexer takes it.
+    await s.insertTraces(LOCAL_TENANT, traces(5, 1000));
+    const order: string[] = [];
+    const db = dbOf(s) as unknown as { transaction: (fn: (...a: unknown[]) => unknown) => { immediate: (...a: unknown[]) => unknown } };
+    const transaction = db.transaction.bind(db);
+    db.transaction = (fn) => {
+      const t = transaction(fn);
+      return Object.assign((...a: unknown[]) => (t as unknown as (...a: unknown[]) => unknown)(...a), {
+        immediate: (...a: unknown[]) => {
+          order.push('step');
+          return t.immediate(...a);
+        },
+      });
+    };
+    const truncated = w.truncate().then(() => order.push('truncated'));
+    expect(w.truncateInProgress).toBe(true);
+    await s.whenSearchIndexReady();
+    await truncated;
+    expect(w.truncateInProgress).toBe(false);
+    expect(order[0]).toBe('truncated');
+    if (driverHasFts5(CELL_DRIVER)) expect(order).toContain('step');
   });
 
   it('when the worker stops, the adapter’s connection checkpoints by itself again and says so, and the next write starts a new one', async () => {
