@@ -128,10 +128,17 @@ describe('delete_trace leaves no text on disk', () => {
     return { s, path };
   }
 
-  function assertGone(path: string, needles: string[]) {
+  /** The checkpoint worker's state, and whether an erasure is being retried: the message when an assertion fails. */
+  const state = (s: SqliteAdapter, path: string) => {
+    const w = (s as unknown as { checkpointer?: { active: boolean; stopped: string; truncateInProgress: boolean } }).checkpointer;
+    return JSON.stringify({ walBytes: existsSync(`${path}-wal`) ? readFileSync(`${path}-wal`).length : -1, worker: w ? { active: w.active, stopped: w.stopped, truncating: w.truncateInProgress } : null, retrying: (s as unknown as { eraseRetry?: unknown }).eraseRetry !== undefined });
+  };
+
+  function assertGone(path: string, needles: string[], s?: SqliteAdapter) {
+    const why = s ? ` ${state(s, path)}` : '';
     for (const n of needles) {
-      expect(holds(path, n), `${n} in iris.db`).toBe(false);
-      expect(holds(`${path}-wal`, n), `${n} in iris.db-wal`).toBe(false);
+      expect(holds(path, n), `${n} in iris.db${why}`).toBe(false);
+      expect(holds(`${path}-wal`, n), `${n} in iris.db-wal${why}`).toBe(false);
     }
   }
 
@@ -139,7 +146,7 @@ describe('delete_trace leaves no text on disk', () => {
     const secret = 'ZEBRAQUOKKASECRETTOKEN42';
     const { s, path } = await stored(`my secret is ${secret}`, [secret]);
     expect(await s.deleteTrace(LOCAL_TENANT, 'secret')).toBe(true);
-    assertGone(path, [secret]);
+    assertGone(path, [secret], s);
     expect((await s.queryTraces(LOCAL_TENANT, { search: 'ordinary' })).total).toBe(1);
   });
 
@@ -148,7 +155,7 @@ describe('delete_trace leaves no text on disk', () => {
     const needles = [secret, '鼗鼙', '鼙鼛', '鼛鼜'];
     const { s, path } = await stored(`密码是${secret}不要外传`, needles);
     expect(await s.deleteTrace(LOCAL_TENANT, 'secret')).toBe(true);
-    assertGone(path, needles);
+    assertGone(path, needles, s);
     expect((await s.queryTraces(LOCAL_TENANT, { search: '普通' })).total).toBe(1);
   });
 
@@ -163,6 +170,6 @@ describe('delete_trace leaves no text on disk', () => {
     await s.insertTraces(LOCAL_TENANT, [{ trace_id: 'secret', agent_name: 'erasure', input: 'q', output: `wal ${secret}`, timestamp: '2026-09-28T00:00:00.000Z' }]);
     expect(holds(`${path}-wal`, secret) || holds(path, secret)).toBe(true);
     expect(await s.deleteTrace(LOCAL_TENANT, 'secret')).toBe(true);
-    assertGone(path, [secret]);
+    assertGone(path, [secret], s);
   });
 });

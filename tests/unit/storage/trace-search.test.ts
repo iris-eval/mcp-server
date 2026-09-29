@@ -478,8 +478,10 @@ describe('trace search — erasure', () => {
 
     expect(await s.deleteTrace(LOCAL_TENANT, 'secret')).toBe(true);
     await s.checkpoint();
-    expect(fileHolds(path, word)).toBe(false);
-    expect(fileHolds(`${path}-wal`, word)).toBe(false);
+    const w = (s as unknown as { checkpointer?: { active: boolean; stopped: string; truncateInProgress: boolean } }).checkpointer;
+    const seen = JSON.stringify({ inWal: fileHolds(`${path}-wal`, word), worker: w ? { active: w.active, stopped: w.stopped, truncating: w.truncateInProgress } : null, retrying: (s as unknown as { eraseRetry?: unknown }).eraseRetry !== undefined });
+    expect(fileHolds(path, word), seen).toBe(false);
+    expect(fileHolds(`${path}-wal`, word), seen).toBe(false);
     expect(await ids(s, 'approved')).toEqual(['refund']);
   });
 

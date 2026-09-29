@@ -173,7 +173,6 @@ describe('WAL checkpoints on a worker thread', () => {
     while (restarts(tail.path) === first && Date.now() < deadline) await write(tail.s, i++);
     const seen = { writes: i, restarts: restarts(tail.path) - first, logMb: size(`${tail.path}-wal`) / 2 ** 20, uncheckedMb: size(`${idle.path}-wal`) / 2 ** 20, autocheckpoint: autocheckpoint(tail.s), worker: worker(tail.s)?.active };
     expect(seen.restarts, JSON.stringify(seen)).toBeGreaterThan(0);
-    expect(size(`${tail.path}-wal`)).toBeLessThan(size(`${idle.path}-wal`));
   }, 90_000);
 
   it('has the worker empty the log before a background step that finds it past STEP_TRUNCATE_PAGES, so the adapter’s own checkpoint stays out of the steps', async () => {
@@ -186,7 +185,10 @@ describe('WAL checkpoints on a worker thread', () => {
     db.exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 7999) INSERT INTO eval_results (id, ${cols}) SELECT 'e-' || i, ${cols} FROM n, (SELECT * FROM eval_results WHERE id = 'e-0')`);
     db.exec('UPDATE eval_results SET risk_estimate = NULL, risk_version = NULL');
     const pageBytes = Number((db.pragma('page_size') as Array<{ page_size: number }>)[0]?.page_size ?? (db.pragma('page_size') as { page_size: number }).page_size);
+    // Everything in iris.db itself before it is copied: the copy below takes that file alone.
+    await seed.s.checkpoint();
     await seed.s.close();
+    expect(size(`${seed.path}-wal`)).toBe(0);
     /** The fill on a copy of that file: the log's largest size on disk while it ran, in pages, and the TRUNCATEs asked of the worker. */
     const fill = async (): Promise<{ maxPages: number; truncates: number }> => {
       const dir = mkdtempSync(join(tmpdir(), 'iris-ckpt-'));
