@@ -12,7 +12,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { createRequire } from 'node:module';
 import { SqliteAdapter, SQLITE_DRIVER } from '../../../src/storage/sqlite-adapter.js';
 import {
@@ -23,6 +23,7 @@ import {
   nativeBinaryPath,
   runtimeKeepsAddonHooks,
   OBJECTWRAP_HOOK_SYMBOL,
+  sqliteHolding,
   DRIVER_VAR,
   type Driver,
 } from '../../../src/storage/driver.js';
@@ -440,5 +441,76 @@ describe('a native binary that would abort on a collected statement', () => {
       }),
     ).toThrow(/could not load \(invalid ELF header\)/);
     expect(loaded).toBe(true);
+  });
+});
+
+/*
+ * One copy of SQLite per file (driver.ts). better-sqlite3's SQLite and
+ * node:sqlite on one WAL file in one process cannot see each other's
+ * locks; tests/fixtures/worker-exit/two-sqlites.cjs shows the SIGBUS that
+ * follows. These hold the seam to one copy per file, and Iris's two worker
+ * threads to the copy the store's own connection got.
+ */
+describe('one copy of SQLite per file', () => {
+  const other = (d: Driver): 'native' | 'node' => (d.name === 'node' ? 'native' : 'node');
+
+  it('refuses the other copy on a file this thread holds, before it opens anything, naming both and the way out', () => {
+    const path = tempDb();
+    const first = openDriver(path);
+    drivers.push(first);
+    if (!builtIn) return;
+    expect(() => openDriver(path, { driver: other(first) })).toThrow(/is already open in this process with .*; opening it with .* as well would put two copies of SQLite on one file, whose locks cannot see each other .*sqlite\.org\/howtocorrupt\.html\)\. Open it with (native|node), or close the other connection first\./);
+    expect(sqliteHolding(path)).toBe(first.name);
+  });
+
+  it('an unset choice follows the file: a second connection uses the copy that holds it, and never falls back to the other', () => {
+    if (!builtIn) return withoutBuiltIn(tempDb());
+    const path = tempDb();
+    const onNode = openDriver(path, { driver: 'node' });
+    drivers.push(onNode);
+    const second = openDriver(path, {
+      loadNative: () => {
+        throw new Error('the native copy was loaded for a file node:sqlite holds');
+      },
+    });
+    drivers.push(second);
+    expect(second.name).toBe('node');
+    expect(second.reason).toBe("this file is already open in this process on Node's built-in SQLite, so Iris uses it here too");
+  });
+
+  it('counts connections: the file is let go when the last one closes, and a relative path, a different case where the file system ignores case, and the absolute path are one file', () => {
+    const path = tempDb();
+    const a = openDriver(path);
+    const b = openDriver(path);
+    expect(sqliteHolding(path)).toBe(a.name);
+    a.close();
+    a.close();
+    expect(sqliteHolding(path)).toBe(a.name);
+    const rel = relative(process.cwd(), path);
+    expect(sqliteHolding(rel)).toBe(a.name);
+    if (process.platform === 'win32' || process.platform === 'darwin') expect(sqliteHolding(path.toUpperCase())).toBe(a.name);
+    b.close();
+    expect(sqliteHolding(path)).toBeUndefined();
+    if (!builtIn) return;
+    const c = openDriver(path, { driver: other(a) });
+    drivers.push(c);
+    expect(c.name).not.toBe(a.name);
+    expect(sqliteHolding(':memory:')).toBeUndefined();
+  });
+
+  it("the search worker and the checkpoint worker are handed the copy the store's connection got, on either driver", async () => {
+    for (const driver of builtIn ? (['native', 'node'] as const) : (['native'] as const)) {
+      const storage = new SqliteAdapter(tempDb(), { driver });
+      await storage.initialize();
+      try {
+        await storage.insertTrace(LOCAL_TENANT, { trace_id: 't1', agent_name: 'a', input: 'q', output: 'the refund was approved', timestamp: '2026-09-01T10:00:00Z' });
+        await storage.queryTraces(LOCAL_TENANT, { search: 'refund', limit: 5, offset: 0 });
+        const inner = storage as unknown as { searchWorker?: { data: { driver: string } }; checkpointer?: { options: { driver: string } } };
+        expect(inner.searchWorker?.data.driver).toBe(storage.driver === 'node' ? 'node' : 'native');
+        expect(inner.checkpointer?.options.driver).toBe(storage.driver);
+      } finally {
+        await storage.close();
+      }
+    }
   });
 });

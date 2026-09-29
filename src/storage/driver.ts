@@ -46,9 +46,9 @@
  * triggers, and the index statement is 2 KB of SQL — 1.8 of 3.2 ms per
  * stored trace, before any row was written.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 
 export type DriverName = 'better-sqlite3' | 'node';
 
@@ -485,13 +485,102 @@ export function requestedDriver(raw: string | undefined = process.env.IRIS_SQLIT
   throw new Error(`${DRIVER_VAR}=${JSON.stringify(raw)} is not a driver. Use "native" (better-sqlite3, the default) or "node" (Node's built-in node:sqlite, Node ${NODE_SQLITE_MIN} or later).`);
 }
 
+/* ---- One copy of SQLite per file ---- */
+
+/*
+ * better-sqlite3 carries its own SQLite and node:sqlite is Node's: two
+ * copies of the library. SQLite's locks on a file are POSIX advisory
+ * locks, which belong to the process, so when both copies open the same
+ * WAL database in one process neither sees the other's locks. Each can
+ * take itself for the file's only user and reset the -shm file the other
+ * has mapped, and the other's next read of it is a SIGBUS; closing a
+ * descriptor in one copy also drops the locks the other holds, which is
+ * how a file gets corrupted (sqlite.org/howtocorrupt.html, "Multiple
+ * copies of SQLite linked into the same application"). Measured on Linux
+ * with Node 24.21: the main thread on node:sqlite writing while a worker
+ * thread opened and closed the file with better-sqlite3 died of SIGBUS
+ * in 3 runs of 5; one copy on both threads, 0 of 10.
+ *
+ * So a file this thread has open is opened again only with the copy that
+ * holds it: an unset choice follows the file, and a choice of the other
+ * copy is refused before it opens anything. Worker threads keep their own
+ * modules, so this map cannot see across them; Iris's workers are handed
+ * the driver the store's own connection got (Driver.name), never the one
+ * configured, and a test holds each to it.
+ */
+const holders = new Map<string, { name: DriverName; count: number }>();
+
+/** The file behind a path, as this process names it; undefined for a database that has no file. */
+function fileKey(path: string): string | undefined {
+  if (path === '' || path === ':memory:' || path.startsWith('file:')) return undefined;
+  const full = resolve(path);
+  let real: string;
+  try {
+    real = realpathSync.native(full);
+  } catch {
+    try {
+      real = resolve(realpathSync.native(dirname(full)), basename(full));
+    } catch {
+      real = full;
+    }
+  }
+  // Windows and macOS name files without regard to case by default.
+  return process.platform === 'win32' || process.platform === 'darwin' ? real.toLowerCase() : real;
+}
+
+const COPY: Record<DriverName, string> = { 'better-sqlite3': "better-sqlite3's SQLite", node: "Node's built-in SQLite (node:sqlite)" };
+
+/** Count the open connection against its file, and let go of it when the connection closes. */
+function held(key: string, driver: Driver): Driver {
+  const h = holders.get(key);
+  if (h) h.count += 1;
+  else holders.set(key, { name: driver.name, count: 1 });
+  let open = true;
+  return {
+    ...driver,
+    close: () => {
+      driver.close();
+      if (!open) return;
+      open = false;
+      const now = holders.get(key);
+      if (now && --now.count === 0) holders.delete(key);
+    },
+  };
+}
+
+/** Which copy of SQLite holds this file in this thread, if any: for the tests that hold the seam to one copy per file. */
+export function sqliteHolding(path: string): DriverName | undefined {
+  const key = fileKey(path);
+  return key === undefined ? undefined : holders.get(key)?.name;
+}
+
 /**
  * Open the file with the driver the deployment chose, else native with
  * the fallback. The one place the choice is made, so the adapter, the
  * self-test and the health contract cannot disagree about which driver
- * holds the file.
+ * holds the file. A file already open in this thread is opened with the
+ * copy of SQLite that holds it (see "One copy of SQLite per file").
  */
 export function openDriver(path: string, options: OpenOptions = {}): Driver {
+  const key = fileKey(path);
+  const holder = key === undefined ? undefined : holders.get(key);
+  if (holder === undefined) return key === undefined ? chooseAndOpen(path, options) : held(key, chooseAndOpen(path, options));
+  const choice = options.driver ?? requestedDriver();
+  const wanted: DriverName | undefined = choice === undefined ? undefined : choice === 'node' ? 'node' : 'better-sqlite3';
+  if (wanted !== undefined && wanted !== holder.name) {
+    throw new Error(
+      `${path} is already open in this process with ${COPY[holder.name]}; opening it with ${COPY[wanted]} as well would put two copies of SQLite on one file, ` +
+        `whose locks cannot see each other (a SIGBUS, or a corrupted file: sqlite.org/howtocorrupt.html). Open it with ${holder.name === 'node' ? 'node' : 'native'}, or close the other connection first.`,
+    );
+  }
+  if (holder.name === 'node') {
+    return held(key!, nodeDriver((options.loadNode ?? defaultLoadNode)(), path, options, choice === 'node' ? `${DRIVER_VAR}=node chose Node's built-in SQLite` : "this file is already open in this process on Node's built-in SQLite, so Iris uses it here too"));
+  }
+  // Held by better-sqlite3: never fall back to the other copy for this file.
+  return held(key!, chooseAndOpen(path, { ...options, allowFallback: false }));
+}
+
+function chooseAndOpen(path: string, options: OpenOptions): Driver {
   const choice = options.driver ?? requestedDriver();
   const loadNative = options.loadNative ?? defaultLoadNative;
   const loadNode = options.loadNode ?? defaultLoadNode;

@@ -281,6 +281,76 @@ jobs:
             grep -q "driver better-sqlite3" self-test.txt
           fi
 
+  # Iris runs database connections on worker threads (the search worker and
+  # the checkpoint worker). test (22, macOS) once died of SIGBUS while
+  # search-worker.test.ts started and ended search threads; this job found
+  # why. Ending a worker is safe: a worker with its own connection, started
+  # and ended thousands of times every way one ends in Iris (it closes its
+  # own connection; it throws; terminate() while idle, in a JS function a
+  # statement calls, in a statement in SQLite alone, in a loop of
+  # statements), on both drivers, then Iris's own two workers every way each
+  # ends, from the sources and from the build: no process died. What kills
+  # the process is two copies of SQLite on one WAL file in one process
+  # (better-sqlite3's and node:sqlite; driver.ts, "One copy of SQLite per
+  # file"), which the test's stand-in thread did. The two-copies step shows
+  # the mechanism on this OS and requires one copy to be clean; the last
+  # step runs the search worker's test file in a loop with coverage on, as
+  # the test job does, and requires every run to pass.
+  worker-exit:
+    name: worker exit (${{ matrix.os }}, Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [22, 24]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run build:server
+      - name: Workers started and ended every way, on both drivers, raw and as Iris's two workers
+        env:
+          WORKER_EXIT_SEARCH: '1'
+        run: node tests/fixtures/worker-exit/stress.cjs > worker-exit.json
+      - name: Two copies of SQLite on one file in one process, against one copy
+        if: always()
+        run: |
+          bad=0
+          for pair in "native native" "node node" "native node" "node native"; do
+            set -- $pair
+            died=0
+            for i in $(seq 1 10); do
+              node tests/fixtures/worker-exit/two-sqlites.cjs "$1" "$2" 100 > out.txt 2> err.txt || { died=$((died + 1)); echo "    main=$1 worker=$2 run $i: exit $? $(grep -v -E 'ExperimentalWarning|trace-warnings' err.txt | head -1)"; }
+            done
+            echo "main=$1 worker=$2: $died of 10 processes died"
+            # One copy on both threads must never die; two copies are shown, not required to die.
+            if [ "$1" = "$2" ] && [ "$died" != 0 ]; then bad=1; fi
+          done
+          test "$bad" = 0
+      - name: The search worker's test file, 50 times with coverage on
+        if: always()
+        run: |
+          died=0
+          for i in $(seq 1 50); do
+            if ! npx vitest run tests/unit/storage/search-worker.test.ts --coverage.enabled --coverage.thresholds.lines=0 --coverage.thresholds.branches=0 --coverage.thresholds.functions=0 --coverage.thresholds.statements=0 > run.log 2>&1; then
+              died=$((died + 1))
+              echo "::error::run $i failed"
+              grep -E "SIG[A-Z]+|exited unexpectedly|FAIL|Error" run.log | head -10
+            fi
+          done
+          echo "search-worker.test.ts: $died of 50 runs failed"
+          test "$died" = 0
+      - if: always()
+        run: cat worker-exit.json || true
+
   integration:
     runs-on: ubuntu-latest
     needs: test
