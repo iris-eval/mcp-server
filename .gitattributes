@@ -39,3 +39,6 @@ mcpb/icon.png binary
 
 # SQLite files written by released versions for the migration tests: bytes, never text.
 tests/fixtures/db/*.db binary
+
+# Run by the site host with sh on Linux: a carriage return would break it.
+website/scripts/*.sh text eol=lf

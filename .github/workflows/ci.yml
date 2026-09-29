@@ -319,6 +319,11 @@ jobs:
       - run: cd website && npm ci
       - run: cd website && npm run lint
       - run: cd website && npx tsc --noEmit
+      # The production build, against this branch's .claims.json and docs/blog/.
+      # A pull request that changes neither website/ nor docs/blog/ gets no
+      # preview deployment (website/scripts/ignore-build.sh), so this is where
+      # a .claims.json change that would break the site's build is caught.
+      - run: cd website && npm run build
 
   # Upgrading from the previous release (#704): tests/upgrade installs the
   # released 0.19.0 from npm into a scratch home, has it install three MCP
