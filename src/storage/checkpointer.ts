@@ -14,8 +14,8 @@
  *
  * So the copying moves to a worker thread (checkpoint-worker.ts), which
  * holds a second connection to the same file and runs a PASSIVE checkpoint
- * every CHECKPOINT_INTERVAL_MS: it copies what it can and never waits on a
- * writer. What stays on the adapter's connection is SQLite's own
+ * CHECKPOINT_INTERVAL_MS after the last one ended: it copies what it can
+ * and never waits on a writer. What stays on the adapter's connection is SQLite's own
  * checkpoint, at TAIL_CHECKPOINT_PAGES instead of 1,000. By then the
  * worker has copied all but the last CHECKPOINT_INTERVAL_MS of writes, so
  * that checkpoint copies only those, and it is what lets the log start
@@ -61,7 +61,7 @@ import { Worker } from 'node:worker_threads';
 import type { DriverName } from './driver.js';
 import type { CheckpointWorkerData } from './checkpoint-worker.js';
 
-/** How often the worker copies the log into the file. */
+/** How long after one copy of the log into the file the worker starts the next. */
 export const CHECKPOINT_INTERVAL_MS = 250;
 /** What the adapter's own connection falls back to: SQLite's default. */
 export const AUTOCHECKPOINT_PAGES = 1000;
