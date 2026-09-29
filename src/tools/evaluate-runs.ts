@@ -4,6 +4,7 @@ import type { IStorageAdapter } from '../types/query.js';
 import type { EvalEngine } from '../eval/engine.js';
 import { costHistoryFor } from '../eval/ingest.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
+import { newJudgeRequest } from '../eval/llm-judge/budget.js';
 import { strictInput } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { advertisedOutput } from './advertise.js';
@@ -94,7 +95,8 @@ export function registerEvaluateRunsTool(
         readOnlyHint: false,
         destructiveHint: false, // Writes new verdicts into a new run; the source run is untouched.
         idempotentHint: true,   // A trace already scored under this ruleset is skipped, so a second call is a no-op.
-        openWorldHint: false,
+        // Read at registration, after the server installs the relevance judge: with one, each re-scored trace that carries an input may call its provider.
+        openWorldHint: evalEngine.relevanceJudgeInForce() !== null,
       },
     },
     guarded(async (args) => {
@@ -128,6 +130,8 @@ export function registerEvaluateRunsTool(
       const failed: Array<{ trace_id: string; reason: string }> = [];
       let passed = 0;
       let evaluated = 0;
+      // One call, one relevance judge allowance: a run of any size makes at most IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST judge calls.
+      const judgeRequest = newJudgeRequest();
 
       for (const { traceId } of todo) {
         const trace = await storage.getTrace(LOCAL_TENANT, traceId);
@@ -162,6 +166,8 @@ export function registerEvaluateRunsTool(
           spans,
           tools: trace.tools,
           ...(trace.metadata ? { metadata: trace.metadata } : {}),
+          tenantId: LOCAL_TENANT,
+          judgeRequest,
         });
         result.trace_id = traceId;
         result.run_id = target;
@@ -176,6 +182,9 @@ export function registerEvaluateRunsTool(
           ? `${alreadyCurrent} already had a verdict from this ruleset and ${alreadyCurrent === 1 ? 'was' : 'were'} left alone.`
           : '',
         failed.length > 0 ? `${failed.length} could not be scored; each is listed with its reason.` : '',
+        judgeRequest.withheld > 0
+          ? `The relevance judge was asked for ${judgeRequest.calls} of them, the most one call may make (IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST); answers_the_ask read the other ${judgeRequest.withheld} lexically, and each says so.`
+          : '',
         evaluated > 0
           ? `${passed} of the ${evaluated} new verdict${evaluated === 1 ? '' : 's'} passed. Compare "${args.run}" against "${target}" to see what the rules change did — the executions are identical, so any difference is the rules.`
           : 'Nothing was re-scored, so there is nothing new to compare.',

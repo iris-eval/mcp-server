@@ -6,6 +6,7 @@ import type { RegressionAlarm } from '../eval/cusum.js';
 import type { MigrationState } from '../storage/migrations/index.js';
 import type { TraceMatch } from '../storage/search.js';
 import type { SearchIndexStatus } from '../storage/search-index.js';
+import type { JudgeSpendLedger } from '../eval/llm-judge/budget.js';
 
 export interface TraceFilter {
   agent_name?: string;
@@ -322,6 +323,12 @@ export interface IStorageAdapter {
   migrations(): Promise<MigrationState>;
   /** Where the trace search index is: health's `search` and the self-test read it. Optional: a store without an index has none. */
   searchStatus?(): Promise<SearchIndexStatus>;
+  /**
+   * The relevance judge's spend, per tenant per UTC day, in this database:
+   * the daily budget holds across restarts and across every process that
+   * opens the file (src/eval/llm-judge/budget.ts).
+   */
+  judgeSpendLedger(): JudgeSpendLedger;
   insertTrace(tenantId: TenantId, trace: Trace): Promise<void>;
   /**
    * Store several traces in ONE transaction: all of them or none. The OTLP

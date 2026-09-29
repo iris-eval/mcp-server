@@ -149,7 +149,12 @@ export function createDashboardServer(
    * here since 0.5.0, and until now the promise was false.
    */
   const healthRouter = express.Router();
-  registerHealthRoutes(healthRouter, storage, config.server.version, { mode: options?.mode, customRuleStore: options?.customRuleStore });
+  const engine = options?.evalEngine;
+  registerHealthRoutes(healthRouter, storage, config.server.version, {
+    mode: options?.mode,
+    customRuleStore: options?.customRuleStore,
+    ...(engine ? { relevanceJudge: () => engine.relevanceJudgeInForce() } : {}),
+  });
   app.use('/api/v1', healthRouter);
 
   /*

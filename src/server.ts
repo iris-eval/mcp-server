@@ -12,7 +12,7 @@ import { createCustomRuleStore } from './custom-rule-store.js';
 import { buildInstructions } from './instructions.js';
 import { buildCapabilities, type Capabilities } from './capabilities.js';
 import { judgeState } from './judge-enablement.js';
-import { relevanceJudgeFromEnv, relevanceJudgeState } from './eval/llm-judge/relevance-judge.js';
+import { relevanceJudgeFromEnv, relevanceJudgeStartupWarnings, relevanceJudgeState } from './eval/llm-judge/relevance-judge.js';
 
 export interface IrisServer {
   mcpServer: McpServer;
@@ -27,6 +27,8 @@ export interface IrisServer {
 export interface IrisServerOptions {
   /** `demo` when the server runs against the disposable demo database. */
   mode?: 'real' | 'demo';
+  /** Where a warning line goes: the relevance judge's budget says here when it first refuses a call on a day. */
+  warn?: (line: string) => void;
 }
 
 export function createIrisServer(
@@ -41,8 +43,12 @@ export function createIrisServer(
    * its model (IRIS_RELEVANCE_JUDGE_MODEL). A key alone never installs it:
    * the key enables evaluate_with_llm_judge, which a caller invokes and pays
    * for per call, and must not start billing every evaluation on upgrade.
+   * Its daily budget is kept in this database, so a restart does not reset it.
    */
-  evalEngine.setRelevanceJudge(relevanceJudgeFromEnv());
+  const warn = options?.warn ?? ((line: string) => process.stderr.write(`${line}\n`));
+  evalEngine.setRelevanceJudge(relevanceJudgeFromEnv({ ledger: storage.judgeSpendLedger(), log: warn }));
+  // A judge that is configured and cannot run fails open; say so once, at startup, where the operator is looking.
+  for (const line of relevanceJudgeStartupWarnings(evalEngine.relevanceJudgeInForce())) warn(line);
   // Caller can inject a shared rule store (e.g. index.ts passes the
   // same instance the HTTP dashboard uses, so a rule deployed via MCP
   // is immediately visible in the dashboard without a restart). If

@@ -36,8 +36,8 @@ function copyOf019(): string {
 }
 
 describe('migration 016 — the trace cost source', () => {
-  it('is the sixteenth known migration, and the last', () => {
-    expect(KNOWN_MIGRATION_IDS).toHaveLength(16);
+  it('is the sixteenth known migration', () => {
+    // The newest migration's test owns the count; this one owns the position.
     expect(KNOWN_MIGRATION_IDS[15]).toBe('016-trace-cost-source');
     expect(KNOWN_MIGRATION_IDS[14]).toBe('015-trace-search');
   });

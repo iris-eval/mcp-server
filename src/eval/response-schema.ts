@@ -138,10 +138,13 @@ export const evalRuleResultSchema = z.looseObject({
         latencyMs: z.number(),
         agentModel: z.string().optional(),
         sameFamily: z.boolean().optional(),
+        redacted: z.record(z.string(), z.number()).optional(),
+        sentUnredacted: z.boolean().optional(),
+        withheld: z.enum(['daily_budget', 'request_cap']).optional(),
         error: z.string().optional(),
       })
       .optional()
-      .describe('answers_the_ask only, when IRIS_RELEVANCE_JUDGE_MODEL installed a relevance judge: what it scored against which pass line, why, and what it cost; error when it did not answer and the rule fell back to its lexical reading'),
+      .describe('answers_the_ask only, when IRIS_RELEVANCE_JUDGE_MODEL installed a relevance judge: what it scored against which pass line, why, and what it cost; redacted counts what was replaced before sending; withheld (daily_budget | request_cap) when a spend limit kept the call from being made; error when it did not answer and the rule fell back to its lexical reading'),
   });
 
 export const evalCategoryResultSchema = z.looseObject({

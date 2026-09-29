@@ -112,11 +112,32 @@
           "name": "IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL"
         },
         {
-          "description": "A priced judge model; answers_the_ask then asks it on every evaluation with input and gates on its verdict (off by default)",
+          "description": "A priced judge model; answers_the_ask then asks it on every evaluation with input, sending that input and output to the model's provider, and gates on its verdict (off by default)",
           "isRequired": false,
           "format": "string",
           "isSecret": false,
           "name": "IRIS_RELEVANCE_JUDGE_MODEL"
+        },
+        {
+          "description": "What the relevance judge may spend per UTC day, per tenant, in USD (default 1); past it answers_the_ask reads the ask lexically",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD"
+        },
+        {
+          "description": "Relevance judge calls one request may make (default 20)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST"
+        },
+        {
+          "description": "on (default) replaces the PII and credentials no_pii flags before the relevance judge sends input and output to its provider; off sends them as they are",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_RELEVANCE_JUDGE_REDACT"
         },
         {
           "description": "Let verify_citations fetch URLs (off by default)",

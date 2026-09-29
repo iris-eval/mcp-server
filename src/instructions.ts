@@ -68,7 +68,7 @@ export function buildInstructions(i: InstructionsInput): string {
       // Said only with a key present: without one the judge cannot run at all, and the sentence above already says how to enable it.
       (i.judge.enabled && i.relevanceJudge?.configured
         ? i.relevanceJudge.ready
-          ? ` answers_the_ask asks the relevance judge (${i.relevanceJudge.model}) whenever input is present, and gates on it.`
+          ? ` answers_the_ask asks the relevance judge (${i.relevanceJudge.model}) whenever input is present, and gates on it; ${i.relevanceJudge.redact ? 'redacted' : 'UNREDACTED'} text goes to its provider.`
           : ' A relevance judge is configured and cannot be called; see iris://capabilities.'
         : ''),
 

@@ -211,7 +211,7 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
   });
 
   it('IRIS_INTERNAL_ERROR — anything unrecognised is reported as such, never dressed up as a caller mistake', async () => {
-    const broken = { evaluateAll: () => { throw new Error('engine exploded'); }, evaluate: () => { throw new Error('engine exploded'); } } as unknown as EvalEngine;
+    const broken = { evaluateAll: () => { throw new Error('engine exploded'); }, evaluate: () => { throw new Error('engine exploded'); }, relevanceJudgeInForce: () => null } as unknown as EvalEngine;
     const e = envelope(await callIsolated(storage, broken, { output: 'x' }));
     expect(e.code).toBe('IRIS_INTERNAL_ERROR');
     expect(e.message).toContain('engine exploded');

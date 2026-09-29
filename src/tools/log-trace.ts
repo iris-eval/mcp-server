@@ -248,7 +248,9 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
         readOnlyHint: false,     // Writes a row to storage
         destructiveHint: false,  // Creates new data; doesn't overwrite or delete
         idempotentHint: false,   // Each call mints a fresh trace_id; duplicate payloads produce distinct traces
-        openWorldHint: false,    // Local storage first. When IRIS_OTEL_ENDPOINT is set a best-effort async OTel export runs but is non-blocking (tool succeeds even if export fails).
+        // Local storage first. When IRIS_OTEL_ENDPOINT is set a best-effort async OTel export runs but is non-blocking (tool succeeds even if export fails).
+        // With a relevance judge installed (read at registration), evaluate: true calls its provider for a trace that carries input.
+        openWorldHint: evalEngine?.relevanceJudgeInForce() != null,
       },
     },
     guarded(async (args, extra) => {

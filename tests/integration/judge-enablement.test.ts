@@ -97,7 +97,7 @@ describe('judge enablement — every surface agrees', () => {
     expect(caps.judge.howToEnable.length).toBeGreaterThanOrEqual(4);
 
     const h = await health();
-    expect(h.judge).toEqual({ enabled: false, provider: null });
+    expect(h.judge).toEqual({ enabled: false, provider: null, relevance: { configured: false, ready: false, budget_exhausted: false, budget_resets_at: null } });
     expect(h.mode).toBe('real');
 
     const out = await selfTestOutput();
@@ -114,7 +114,8 @@ describe('judge enablement — every surface agrees', () => {
     expect(JSON.stringify(caps)).not.toContain(DUMMY);
 
     const h = await health();
-    expect(h.judge).toEqual({ enabled: true, provider: 'anthropic' });
+    // A key alone installs no relevance judge: nothing is spent per evaluation.
+    expect(h.judge).toEqual({ enabled: true, provider: 'anthropic', relevance: { configured: false, ready: false, budget_exhausted: false, budget_resets_at: null } });
     expect(JSON.stringify(h)).not.toContain(DUMMY);
 
     const out = await selfTestOutput();

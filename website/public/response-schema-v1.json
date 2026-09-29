@@ -941,7 +941,7 @@
             "additionalProperties": {}
           },
           "judge": {
-            "description": "answers_the_ask only, when IRIS_RELEVANCE_JUDGE_MODEL installed a relevance judge: what it scored against which pass line, why, and what it cost; error when it did not answer and the rule fell back to its lexical reading",
+            "description": "answers_the_ask only, when IRIS_RELEVANCE_JUDGE_MODEL installed a relevance judge: what it scored against which pass line, why, and what it cost; redacted counts what was replaced before sending; withheld (daily_budget | request_cap) when a spend limit kept the call from being made; error when it did not answer and the rule fell back to its lexical reading",
             "type": "object",
             "properties": {
               "template": {
@@ -1012,6 +1012,25 @@
               },
               "sameFamily": {
                 "type": "boolean"
+              },
+              "redacted": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "number"
+                }
+              },
+              "sentUnredacted": {
+                "type": "boolean"
+              },
+              "withheld": {
+                "type": "string",
+                "enum": [
+                  "daily_budget",
+                  "request_cap"
+                ]
               },
               "error": {
                 "type": "string"
