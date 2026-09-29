@@ -61,6 +61,7 @@ import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBu
 import { parseSearch, searchRefusal, describeTerm, mayHoldCjk, type ParsedSearch, type TraceMatch } from './search.js';
 import { installSearchFunctions, matchSearch, type MatchRequest, type MatchResult, type SearchPlan } from './search-match.js';
 import { SearchWorkerClient, SearchWorkerUnavailable, warnSearchWorkerUnavailable } from './search-worker-client.js';
+import { SqliteJudgeSpendLedger } from './judge-spend.js';
 import { resolveTraceCost } from '../cost/trace-cost.js';
 
 const ALLOWED_SORT_COLUMNS = new Set(['timestamp', 'latency_ms', 'cost_usd']);
@@ -321,6 +322,14 @@ export class SqliteAdapter implements IStorageAdapter {
   /** Applied against known — the health contract's `checks.migrations`. */
   async migrations(): Promise<MigrationState> {
     return migrationState(this.db);
+  }
+
+  private spendLedger: SqliteJudgeSpendLedger | undefined;
+
+  /** The relevance judge's spend ledger on this connection (migration 017). */
+  judgeSpendLedger(): SqliteJudgeSpendLedger {
+    this.spendLedger ??= new SqliteJudgeSpendLedger(this.db);
+    return this.spendLedger;
   }
 
   /**

@@ -53,6 +53,8 @@ import { generateTraceId } from './utils/ids.js';
 import { LOCAL_TENANT } from './types/tenant.js';
 import { judgeState, judgeStateLine } from './judge-enablement.js';
 import { relevanceJudgeFromEnv, relevanceJudgeState, relevanceJudgeStateLine } from './eval/llm-judge/relevance-judge.js';
+import { SqliteJudgeSpendLedger } from './storage/judge-spend.js';
+import type { JudgeSpendLedger } from './eval/llm-judge/budget.js';
 import type { IrisConfig, Trace } from './types/index.js';
 import type { IStorageAdapter } from './types/query.js';
 import type { EvalResult } from './types/eval.js';
@@ -324,8 +326,48 @@ export async function runSelfTest(write: WriteLine = stdoutLine): Promise<number
    */
   await step(SELF_TEST_STEPS.judge, () => {
     const state = judgeState();
-    const relevance = relevanceJudgeStateLine(relevanceJudgeState(relevanceJudgeFromEnv()));
-    return `${judgeStateLine(state)}; relevance judge ${relevance}; your MCP client passes only what its config env block lists — confirm with iris://capabilities from inside the client`;
+    /*
+     * Today's relevance-judge spend is read from this install's database,
+     * so the line shows what the running server has spent, not zero. Read
+     * only: this ledger admits no call. A database from before the ledger
+     * existed has no table, and has spent nothing.
+     */
+    let db: Driver | undefined;
+    try {
+      let ledger: JudgeSpendLedger | undefined;
+      if (existsSync(userStoragePath)) {
+        db = openDriver(userStoragePath, { fileMustExist: true });
+        const stored = new SqliteJudgeSpendLedger(db);
+        ledger = {
+          reserve: () => false,
+          settle: () => {},
+          read: (tenantId, day) => {
+            try {
+              return stored.read(tenantId, day);
+            } catch {
+              return { spentMicroUsd: 0, calls: 0, refused: 0 };
+            }
+          },
+        };
+      }
+      const relevanceState = relevanceJudgeState(relevanceJudgeFromEnv(ledger ? { ledger } : {}));
+      const relevance = relevanceJudgeStateLine(relevanceState);
+      /*
+       * A relevance judge that is configured and cannot run is a failed
+       * check, not a note: the deployment named a model to get a gate, and
+       * without a key or a price every evaluation falls back to a reading
+       * that only advises, so off-topic answers pass. PASS would say the
+       * install does what it was configured to do, and it does not.
+       */
+      if (relevanceState.configured && !relevanceState.ready) {
+        throw new Error(
+          `${judgeStateLine(state)}; relevance judge ${relevance}. answers_the_ask falls back to its lexical reading and only advises, so an off-topic answer passes: fix the variable named above, or unset IRIS_RELEVANCE_JUDGE_MODEL`,
+        );
+      }
+      return `${judgeStateLine(state)}; relevance judge ${relevance}; your MCP client passes only what its config env block lists — confirm with iris://capabilities from inside the client`;
+    } finally {
+      db?.close();
+    }
   }, { independent: true });
 
   /*

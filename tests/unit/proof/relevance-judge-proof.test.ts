@@ -22,19 +22,15 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readJudgeCaseFile, materialiseCases } from '../../../proof/judge/lib/cases.js';
 import { RELEVANCE_TEMPLATE } from '../../../src/eval/llm-judge/templates/index.js';
-import { estimateCostUsd } from '../../../src/eval/llm-judge/pricing.js';
-import { estimateInputTokens } from '../../../src/eval/llm-judge/client.js';
+import { worstCaseJudgeCostUsd } from '../../../src/eval/llm-judge/evaluator.js';
 import { answersTheAsk } from '../../../src/eval/rules/relevance.js';
 import { JUDGE_DEFAULT_COST_CAP_USD } from '../../../src/judge-enablement.js';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
-/** The evaluator's pre-check, as evaluator.ts computes it: both attempts, the full output cap billed. */
+/** The evaluator's pre-check, which the relevance judge's daily budget also reserves: both attempts, the full output caps billed. */
 function worstCaseUsd(model: string, input: string, output: string): number {
-  const system = RELEVANCE_TEMPLATE.buildSystem();
-  const user = RELEVANCE_TEMPLATE.buildUser({ input, output });
-  const strict = system + '\n\nIMPORTANT: your previous response was not valid JSON. Respond with ONLY the JSON object, no prefatory text, no code fences.';
-  return (estimateCostUsd(model, estimateInputTokens(system, user), 512) ?? Infinity) + (estimateCostUsd(model, estimateInputTokens(strict, user), 256) ?? Infinity);
+  return worstCaseJudgeCostUsd({ template: 'relevance', model, input, output }) ?? Infinity;
 }
 
 describe('relevance judge proof set', () => {
@@ -62,7 +58,7 @@ describe('relevance judge proof set', () => {
     expect(worst.anthropic).toBeLessThan(JUDGE_DEFAULT_COST_CAP_USD);
     expect(worst.openai).toBeLessThan(JUDGE_DEFAULT_COST_CAP_USD);
     // The figures docs/llm-as-judge.md quotes, to four decimal places.
-    expect(worst.anthropic.toFixed(4)).toBe('0.0059');
+    expect(worst.anthropic.toFixed(4)).toBe('0.0060');
     expect(worst.openai.toFixed(4)).toBe('0.0008');
   });
 

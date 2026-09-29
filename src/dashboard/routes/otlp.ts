@@ -33,6 +33,7 @@ import { dormantRulesFrom } from '../../eval/dormant.js';
 import type { IngestEvalType } from '../../eval/ingest.js';
 import { logTraceInputShape } from '../../tools/log-trace.js';
 import { costFieldsOf } from '../../cost/trace-cost.js';
+import { newJudgeRequest } from '../../eval/llm-judge/budget.js';
 
 /**
  * The most traces one OTLP request may store. A collector's default batch is
@@ -126,6 +127,12 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
     }
     const stored: Array<Record<string, unknown>> = [];
     let done = 0;
+    /*
+     * One request, one judge allowance: a batch of up to 2,000 traces makes
+     * at most IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST relevance judge
+     * calls, and each trace past that is scored lexically and says why.
+     */
+    const judgeRequest = newJudgeRequest();
     for (const { trace, otelTraceId, lacked, evaluate: requested, evalType: requestedType } of accepted) {
       if (++done % YIELD_EVERY === 0) await new Promise((resolve) => setImmediate(resolve));
       const entry: Record<string, unknown> = {
@@ -153,6 +160,7 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
           ...(evalType?.success && evalType.data !== undefined ? { evalType: evalType.data as IngestEvalType } : {}),
           dormant: options.customRuleStore ? dormantRulesFrom(options.customRuleStore.quarantined(tenantId)) : undefined,
           rulesChanged: options.customRuleStore?.changesSinceStart(tenantId),
+          judgeRequest,
         });
         entry.evaluation = response;
       } else if (wanted && trace.output === undefined) {
@@ -169,7 +177,15 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
       }
       body.partialSuccess = { rejectedSpans, errorMessage: reasons.join(' | ') };
     }
-    body['iris-eval'] = { stored, count: stored.length, evaluate_on_ingest: options.evaluateOnIngest };
+    body['iris-eval'] = {
+      stored,
+      count: stored.length,
+      evaluate_on_ingest: options.evaluateOnIngest,
+      // What the relevance judge did for this request, when one is installed: calls made, and evaluations the per-request cap kept from it.
+      ...(options.evalEngine?.relevanceJudgeInForce()
+        ? { relevance_judge: { calls: judgeRequest.calls, withheld: judgeRequest.withheld, max_calls_per_request: options.evalEngine.relevanceJudgeInForce()!.maxCallsPerRequest } }
+        : {}),
+    };
     res.status(200).json(body);
   });
 }

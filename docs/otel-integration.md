@@ -245,4 +245,6 @@ The answer is OTLP's `ExportTraceServiceResponse` — `{}` when every span was a
   "stored": [{ "trace_id": "9f58…", "otel_trace_id": "5b8efff7…", "agent_name": "support-bot", "spans": 2, "steps": 1, "lacked": [] }] } }
 ```
 
+With a relevance judge installed (`IRIS_RELEVANCE_JUDGE_MODEL`), one request makes at most `IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST` judge calls (default 20), and the block carries `relevance_judge: { calls, withheld, max_calls_per_request }`; a trace past the cap is scored with the lexical reading and its `answers_the_ask` result says so in `judge.withheld`. See [the relevance judge](https://github.com/iris-eval/mcp-server/blob/main/docs/llm-as-judge.md#the-relevance-judge-behind-answers_the_ask) for what it sends and what it may spend.
+
 A trace that arrived by OTLP is never re-exported to `IRIS_OTEL_ENDPOINT`, which may well be the collector that sent it.

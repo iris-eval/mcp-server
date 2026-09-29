@@ -30,6 +30,12 @@
  * code gets the right answer. The older fields (`storage`, `judge`, `mode`)
  * stay: the dashboard header and the UAT read them.
  *
+ * `judge.relevance` says whether a relevance judge is installed and callable
+ * and whether its daily budget has stopped it today — a probe can alert on
+ * `budget_exhausted` before a user wonders why verdicts went lexical. What
+ * was spent is on the authenticated surfaces (iris://capabilities, the
+ * self-test), not here, for the reason below.
+ *
  * The endpoint answers without a key, so it reports whether the store can
  * be counted, never the count; the index build's progress is a share of
  * the traces for the same reason. Until this change it carried `trace_count`,
@@ -41,6 +47,7 @@ import type { SearchIndexStatus } from './storage/search-index.js';
 import type { CustomRuleStore } from './custom-rule-store.js';
 import { LOCAL_TENANT } from './types/tenant.js';
 import { judgeState } from './judge-enablement.js';
+import type { RelevanceJudge } from './eval/llm-judge/relevance-judge.js';
 
 const startTime = Date.now();
 
@@ -68,7 +75,12 @@ export interface HealthReport {
   search: { state: SearchIndexStatus['state']; index: SearchIndexStatus['index']; progress: number | null } | null;
   /** The word the pre-0.15.0 contract used; kept for readers of it. */
   storage?: 'connected' | 'disconnected';
-  judge: { enabled: boolean; provider: string | null };
+  judge: {
+    enabled: boolean;
+    provider: string | null;
+    /** The relevance judge answers_the_ask gates on; absent when no engine was handed to the health check. */
+    relevance?: { configured: boolean; ready: boolean; budget_exhausted: boolean; budget_resets_at: string | null };
+  };
   mode: 'real' | 'demo';
 }
 
@@ -78,6 +90,8 @@ export interface HealthDeps {
   version?: string;
   /** `demo` when serving the disposable demo database. */
   mode?: 'real' | 'demo';
+  /** The relevance judge in force, read per request (`evalEngine.relevanceJudgeInForce`), for `judge.relevance`. */
+  relevanceJudge?: () => RelevanceJudge | null;
 }
 
 /** The share of stored traces the index holds: 1 when ready; while building, rounded down and never 1, so it reads as done only when it is. */
@@ -112,6 +126,17 @@ export async function buildHealth(deps: HealthDeps): Promise<{ status: number; b
     judge: { enabled: judge.enabled, provider: judge.provider },
     mode: deps.mode ?? 'real',
   };
+  if (deps.relevanceJudge) {
+    const relevance = deps.relevanceJudge();
+    // Server-level facts, so LOCAL_TENANT like the storage probe below.
+    const today = relevance?.budget.today(LOCAL_TENANT) ?? null;
+    body.judge.relevance = {
+      configured: relevance !== null,
+      ready: relevance !== null && relevance.problem === null,
+      budget_exhausted: today?.exhausted ?? false,
+      budget_resets_at: today?.exhausted ? today.resetsAt : null,
+    };
+  }
 
   if (deps.storage) {
     /*

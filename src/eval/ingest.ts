@@ -22,6 +22,7 @@ import type { Trace } from '../types/trace.js';
 import type { EvalResult, EvalType } from '../types/eval.js';
 import type { TenantId } from '../types/tenant.js';
 import { costContextOf } from './cost-basis.js';
+import type { JudgeRequest } from './llm-judge/budget.js';
 
 export type IngestEvalType = EvalType | 'all';
 
@@ -40,6 +41,8 @@ export interface EvaluateStoredTraceOptions {
    * judged in one second. Omitted, the store dates the row now.
    */
   createdAt?: string;
+  /** The request this trace arrived in, when it carried several: the relevance judge's per-request cap counts across them. */
+  judgeRequest?: JudgeRequest;
 }
 
 export interface StoredTraceEvaluation {
@@ -94,6 +97,9 @@ export async function evaluateStoredTrace(
     spans: trace.spans,
     tools: trace.tools,
     ...(trace.metadata ? { metadata: trace.metadata } : {}),
+    // The relevance judge charges the tenant that stored the trace, and counts this request's calls.
+    tenantId,
+    ...(options.judgeRequest ? { judgeRequest: options.judgeRequest } : {}),
   };
   const omitted = options.evalType === undefined;
   const evalType = options.evalType ?? DEFAULT_EVAL_TYPE;

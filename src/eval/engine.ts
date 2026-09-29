@@ -509,11 +509,17 @@ export class EvalEngine {
     delete evalContext.relevanceJudgment;
     const judge = this.relevanceJudge;
     if (judge !== null && rules.includes(answersTheAsk) && typeof context.input === 'string' && context.input.trim() !== '' && context.output.trim() !== '') {
-      evalContext.relevanceJudgment = await judge.judge({
-        input: context.input,
-        output: context.output,
-        agentModel: agentModelOf({ metadata: context.metadata, spans: context.spans as Array<{ attributes?: Record<string, unknown> }> | undefined }),
-      });
+      evalContext.relevanceJudgment = await judge.judge(
+        {
+          input: context.input,
+          output: context.output,
+          agentModel: agentModelOf({ metadata: context.metadata, spans: context.spans as Array<{ attributes?: Record<string, unknown> }> | undefined }),
+        },
+        {
+          ...(context.tenantId !== undefined ? { tenantId: context.tenantId } : {}),
+          ...(context.judgeRequest !== undefined ? { request: context.judgeRequest } : {}),
+        },
+      );
     }
     const judgeSpend = evalContext.relevanceJudgment;
     /*

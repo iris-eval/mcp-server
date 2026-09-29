@@ -24,6 +24,7 @@ import { SqliteAdapter } from '../src/storage/sqlite-adapter.js';
 import { defaultConfig } from '../src/config/defaults.js';
 import { COMMAND, PRODUCT_NAME } from '../src/identity.js';
 import { NODE_SQLITE_MIN } from '../src/storage/driver.js';
+import { DEFAULT_DAILY_BUDGET_USD } from '../src/eval/llm-judge/budget.js';
 // @ts-ignore — plain .mjs module
 import { BUNDLE_NAME } from '../scripts/mcpb/pack.mjs';
 
@@ -141,6 +142,11 @@ describe('mcpb/manifest.json', () => {
       expect(manifest.server.mcp_config.env[variable]).toBe(`\${user_config.${key}}`);
     }
     expect(manifest.user_config.dashboard).toMatchObject({ type: 'boolean', required: false, default: false });
+    // The relevance judge: off until a model is named, and inside the same daily budget the server defaults to.
+    expect(manifest.user_config.relevance_judge_model).toMatchObject({ type: 'string', required: false, default: '' });
+    expect(manifest.server.mcp_config.env.IRIS_RELEVANCE_JUDGE_MODEL).toBe('${user_config.relevance_judge_model}');
+    expect(manifest.user_config.relevance_judge_daily_budget_usd).toMatchObject({ type: 'number', required: false, default: DEFAULT_DAILY_BUDGET_USD });
+    expect(manifest.server.mcp_config.env.IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD).toBe('${user_config.relevance_judge_daily_budget_usd}');
     expect(manifest.server.mcp_config.env.IRIS_DASHBOARD).toBe('${user_config.dashboard}');
     for (const url of manifest.privacy_policies) expect(url.startsWith('https://'), url).toBe(true);
   });

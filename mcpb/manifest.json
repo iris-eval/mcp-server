@@ -4,7 +4,7 @@
   "display_name": "Iris",
   "version": "0.19.0",
   "description": "Stop shipping agents on vibes. Score every agent output for quality, safety, and cost.",
-  "long_description": "Iris is an open-source MCP server that scores AI agent output for quality, safety and cost. Its built-in rules are deterministic and need no key: PII and prompt-injection detection, hallucination signals, cost thresholds, and checks on the agent's tool calls. Each verdict says which layer decided it and what was not judged.\n\nEvery trace and evaluation is stored in a local SQLite database under `~/.iris`. Nothing leaves your machine unless you add an Anthropic or OpenAI key below, which lets `evaluate_with_llm_judge` and `verify_citations` send the output they judge to that provider under a hard per-call cost cap, or set up an export yourself (an OpenTelemetry collector or a webhook).\n\nThe web dashboard is off unless you turn it on here; it then serves http://localhost:6920 on this machine only.",
+  "long_description": "Iris is an open-source MCP server that scores AI agent output for quality, safety and cost. Its built-in rules are deterministic and need no key: PII and prompt-injection detection, hallucination signals, cost thresholds, and checks on the agent's tool calls. Each verdict says which layer decided it and what was not judged.\n\nEvery trace and evaluation is stored in a local SQLite database under `~/.iris`. Nothing leaves your machine unless you add an Anthropic or OpenAI key below, which lets `evaluate_with_llm_judge` and `verify_citations` send the output they judge to that provider under a hard per-call cost cap, or set up an export yourself (an OpenTelemetry collector or a webhook). Naming a relevance judge model below as well sends each evaluation's input and output to that model's provider, with the personal data and credentials Iris detects replaced first, within a daily budget you set.\n\nThe web dashboard is off unless you turn it on here; it then serves http://localhost:6920 on this machine only.",
   "author": {
     "name": "Iris",
     "email": "hello@iris-eval.com",
@@ -31,7 +31,9 @@
         "IRIS_SQLITE_DRIVER": "node",
         "IRIS_DASHBOARD": "${user_config.dashboard}",
         "IRIS_ANTHROPIC_API_KEY": "${user_config.anthropic_api_key}",
-        "IRIS_OPENAI_API_KEY": "${user_config.openai_api_key}"
+        "IRIS_OPENAI_API_KEY": "${user_config.openai_api_key}",
+        "IRIS_RELEVANCE_JUDGE_MODEL": "${user_config.relevance_judge_model}",
+        "IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD": "${user_config.relevance_judge_daily_budget_usd}"
       }
     }
   },
@@ -128,6 +130,21 @@
       "sensitive": true,
       "required": false,
       "default": ""
+    },
+    "relevance_judge_model": {
+      "type": "string",
+      "title": "Relevance judge model (optional)",
+      "description": "A priced model id, such as claude-haiku-4-5 (needs the Anthropic key above) or gpt-4o-mini (needs the OpenAI key). answers_the_ask then asks this judge whether each answer addresses its ask, and fails an off-topic one. One judge call per evaluation that carries an input, on your key; its input and output are sent to the provider with personal data and credentials replaced. Leave empty to keep the lexical reading, which sends nothing.",
+      "required": false,
+      "default": ""
+    },
+    "relevance_judge_daily_budget_usd": {
+      "type": "number",
+      "title": "Relevance judge daily budget (USD)",
+      "description": "The most the relevance judge may spend per UTC day. Past it, answers_the_ask reads the ask lexically until midnight UTC, and each result says so. 0 stops every call.",
+      "required": false,
+      "default": 1,
+      "min": 0
     },
     "dashboard": {
       "type": "boolean",

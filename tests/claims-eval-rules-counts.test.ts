@@ -155,9 +155,11 @@ describe('mcpTools.annotations match what the tools register', () => {
         captured.push({ name, annotations: config.annotations ?? {} });
       },
     } as unknown as McpServer;
-    // Registration never touches the deps — they are only closed over by the
-    // handlers — so stubs are enough to read the advertised contract.
-    registerAllTools(server, {} as never, {} as never, {} as never);
+    // Registration reads one thing from the deps: whether the engine has a
+    // relevance judge, which makes three tools open-world. The truthbase
+    // counts the default install, which has none; everything else is only
+    // closed over by the handlers, so stubs are enough.
+    registerAllTools(server, {} as never, { relevanceJudgeInForce: () => null } as never, {} as never);
     return captured;
   }
 

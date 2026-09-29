@@ -243,7 +243,13 @@ Environment variables (CLI flags take precedence):
   IRIS_OPENAI_API_KEY                  Required by evaluate_with_llm_judge + verify_citations (provider=openai)
   IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL Hard cost cap per LLM judge call (default: 0.25)
   IRIS_RELEVANCE_JUDGE_MODEL           A priced model id: answers_the_ask then asks this judge on every
-                                       evaluation that carries input, and gates on its verdict (off by default)
+                                       evaluation that carries input, and gates on its verdict (off by default).
+                                       Sends that input and output to the model's provider on your key
+  IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD  What the relevance judge may spend per UTC day, per tenant, kept in the
+                                       database (default: 1). Past it, answers_the_ask reads the ask lexically
+  IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST  Relevance judge calls one request may make (default: 20)
+  IRIS_RELEVANCE_JUDGE_REDACT          on (default): PII and credentials no_pii flags are replaced before the
+                                       input and output are sent to the judge; off sends them as they are
   IRIS_CITATION_ALLOW_FETCH            Set to 1 to permit outbound HTTP in verify_citations (off by default)
   IRIS_CITATION_DOMAINS                Comma-separated hostname allowlist for verify_citations (suffix match)
   IRIS_OTEL_ENDPOINT                   Enable best-effort OTLP/HTTP JSON trace export to this collector URL
@@ -430,7 +436,7 @@ async function main(): Promise<void> {
   // via either surface is immediately visible from the other.
   const customRuleStore = createCustomRuleStore();
 
-  const { mcpServer, evalEngine } = createIrisServer(config, storage, customRuleStore);
+  const { mcpServer, evalEngine } = createIrisServer(config, storage, customRuleStore, { warn: (line) => logger.warn(line) });
 
   // Load deployed custom rules from ~/.iris/custom-rules.json (B3 — workflow inversion).
   // Each enabled rule is registered with the engine under its evalType so it fires on
@@ -464,7 +470,7 @@ async function main(): Promise<void> {
   const httpServers: Server[] = [];
 
   if (config.transport.type === 'http') {
-    const { transport, httpServer } = await createHttpTransport(mcpServer, config, logger, { storage, customRuleStore });
+    const { transport, httpServer } = await createHttpTransport(mcpServer, config, logger, { storage, customRuleStore, relevanceJudge: () => evalEngine.relevanceJudgeInForce() });
     httpServers.push(httpServer);
     await mcpServer.connect(transport);
     const addr = httpServer.address();
