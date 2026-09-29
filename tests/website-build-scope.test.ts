@@ -14,6 +14,7 @@
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 
@@ -40,11 +41,12 @@ describe('the website build scope', () => {
     expect(config.ignoreCommand).toBe('sh scripts/ignore-build.sh');
     expect(script).toContain("git diff --quiet \"$base\" HEAD -- ':(top)website' ':(top)docs/blog' || exit 1");
     expect(script).toContain("':(top).claims.json'");
-    // Against the last successful deployment; a commit that no longer exists (a force-pushed
-    // branch) falls back to the parent, and any git error builds, because the host fails the
-    // deployment on an exit code above 1 instead of building (seen 2026-09-25).
-    expect(script).toContain('base="${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}"');
-    expect(script).toContain('git cat-file -e "${base}^{commit}" 2>/dev/null || base="HEAD^"');
+    // Against the last successful deployment, or main for a branch's first deployment; a base
+    // the shallow clone lacks is fetched, and anything that fails builds, because the host fails
+    // the deployment on an exit code above 1 instead of building (seen 2026-09-25).
+    expect(script).toContain('base="$VERCEL_GIT_PREVIOUS_SHA"');
+    expect(script).toContain('git fetch --quiet --depth=1 "$url" main 2>/dev/null || exit 1');
+    expect(script).not.toContain('HEAD^');
     expect(script.trimEnd().endsWith('exit 0')).toBe(true);
   });
 
@@ -86,23 +88,30 @@ describe('the website build scope', () => {
 });
 
 /*
- * The script itself, in a scratch repository shaped like this one: its exit
- * code is what Vercel reads (0 skips, 1 builds). Needs `git`, `sh` and `node`
- * on PATH, which every CI runner and a Windows checkout with Git have.
+ * The script itself, run the way the host runs it: in a shallow clone of one
+ * branch, from website/, with the host's variables. Its exit code is what
+ * Vercel reads (0 skips, 1 builds). The "origin" here is a local repository
+ * standing in for GitHub (SITE_REPO_URL points the script's fetches at it),
+ * configured, as GitHub is, to serve any commit by its id. Needs `git`, `sh`
+ * and `node` on PATH, which every CI runner and a Windows checkout with Git
+ * have.
  */
 // Each case spawns git, sh and node a dozen times; on a loaded Windows runner that takes seconds.
 describe('website/scripts/ignore-build.sh', { timeout: 60_000 }, () => {
-  const repo = mkdtempSync(join(tmpdir(), 'iris-ignore-build-'));
-  afterAll(() => rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  const scratch = mkdtempSync(join(tmpdir(), 'iris-ignore-build-'));
+  const origin = join(scratch, 'origin');
+  const originUrl = pathToFileURL(origin).href;
+  afterAll(() => rmSync(scratch, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
-  const git = (...args: string[]) => {
-    const r = spawnSync('git', args, { cwd: repo, encoding: 'utf8' });
+  const gitIn = (cwd: string, ...args: string[]) => {
+    const r = spawnSync('git', ['-c', 'core.autocrlf=false', '-c', 'protocol.file.allow=always', ...args], { cwd, encoding: 'utf8' });
     if (r.status !== 0) throw new Error(`git ${args.join(' ')}: ${r.stderr}`);
     return r.stdout.trim();
   };
+  const git = (...args: string[]) => gitIn(origin, ...args);
   const write = (rel: string, text: string) => {
-    mkdirSync(dirname(join(repo, rel)), { recursive: true });
-    writeFileSync(join(repo, rel), text);
+    mkdirSync(dirname(join(origin, rel)), { recursive: true });
+    writeFileSync(join(origin, rel), text);
   };
   const commit = (message: string) => {
     git('add', '-A');
@@ -110,14 +119,27 @@ describe('website/scripts/ignore-build.sh', { timeout: 60_000 }, () => {
     return git('rev-parse', 'HEAD');
   };
   const claims = (fields: Record<string, unknown>) => JSON.stringify({ generatedAt: '2026-09-28T00:00:00Z', generatedFromCommit: 'abc1234', ...fields }, null, 2);
-  /** Runs the script from website/, as the host does, and returns its exit code. */
-  const run = (env: Record<string, string>) =>
-    spawnSync('sh', [join(repo, 'website', 'scripts', 'ignore-build.sh')], { cwd: join(repo, 'website'), env: { ...process.env, ...env }, encoding: 'utf8' }).status;
 
-  git('init', '-q');
+  let n = 0;
+  /**
+   * Clones `branch` shallowly, as the host does, runs the script from its
+   * website/ with `env`, and returns the exit code.
+   */
+  const deploy = (branch: string, env: Record<string, string>) => {
+    const clone = join(scratch, `clone-${++n}`);
+    gitIn(scratch, 'clone', '-q', '--depth=1', '--branch', branch, originUrl, clone);
+    return spawnSync('sh', [join(clone, 'website', 'scripts', 'ignore-build.sh')], {
+      cwd: join(clone, 'website'),
+      env: { ...process.env, SITE_REPO_URL: originUrl, VERCEL_GIT_PREVIOUS_SHA: '', ...env },
+      encoding: 'utf8',
+    }).status;
+  };
+
+  mkdirSync(origin, { recursive: true });
+  git('init', '-q', '-b', 'main');
   git('config', 'user.email', 'ci@example.com');
   git('config', 'user.name', 'ci');
-  git('config', 'core.autocrlf', 'false');
+  git('config', 'uploadpack.allowAnySHA1InWant', 'true');
   write('website/scripts/ignore-build.sh', script);
   write('website/src/page.tsx', 'export default 1;\n');
   write('docs/blog/post.md', '# post\n');
@@ -135,20 +157,47 @@ describe('website/scripts/ignore-build.sh', { timeout: 60_000 }, () => {
     { what: 'a blog post', change: () => write('docs/blog/post.md', '# post, edited\n'), preview: 1, production: 1 },
   ];
 
-  it.each(cases)('$what: preview $preview, production $production (0 skips, 1 builds)', ({ change, preview, production }) => {
-    git('checkout', '-q', '--detach', start);
+  it.each(cases)('$what, since the last deployment: preview $preview, production $production (0 skips, 1 builds)', ({ what, change, preview, production }) => {
+    const branch = `case-${what.replace(/\W+/g, '-')}`;
+    git('checkout', '-q', '-b', branch, start);
     change();
     commit('change');
-    expect(run({ VERCEL_ENV: 'preview', VERCEL_GIT_PREVIOUS_SHA: start })).toBe(preview);
-    expect(run({ VERCEL_ENV: 'production', VERCEL_GIT_PREVIOUS_SHA: start })).toBe(production);
-    // With no previous deployment recorded, the parent commit is the base: the same answer.
-    expect(run({ VERCEL_ENV: 'preview', VERCEL_GIT_PREVIOUS_SHA: '' })).toBe(preview);
+    // The previous deployment is `start`, which a depth-1 clone of the branch does not hold: the script fetches it.
+    expect(deploy(branch, { VERCEL_ENV: 'preview', VERCEL_GIT_PREVIOUS_SHA: start })).toBe(preview);
+    expect(deploy(branch, { VERCEL_ENV: 'production', VERCEL_GIT_PREVIOUS_SHA: start })).toBe(production);
+    git('checkout', '-q', 'main');
   });
 
-  it('a previous deployment that no longer exists (a force-pushed branch) compares with the parent', () => {
-    git('checkout', '-q', '--detach', start);
-    write('tests/a.test.ts', '// y\n');
-    commit('test only');
-    expect(run({ VERCEL_ENV: 'preview', VERCEL_GIT_PREVIOUS_SHA: '0123456789abcdef0123456789abcdef01234567' })).toBe(0);
+  /*
+   * The case the first version of this script got wrong on its own pull
+   * request: a branch's first deployment has no previous one, and comparing
+   * with the parent commit saw only the last commit (a truthbase recapture),
+   * so a site change two commits back was skipped. The base is now main.
+   */
+  it('a branch\'s first deployment compares with main, so a site change in an earlier commit still builds', () => {
+    git('checkout', '-q', '-b', 'first-deploy-site', start);
+    write('website/src/page.tsx', 'export default 3;\n');
+    commit('site change');
+    write('.claims.json', claims({ tests: { total: 12 } }));
+    commit('recapture');
+    expect(deploy('first-deploy-site', { VERCEL_ENV: 'preview' })).toBe(1);
+    git('checkout', '-q', 'main');
+
+    git('checkout', '-q', '-b', 'first-deploy-server', start);
+    write('src/server.ts', 'export const y = 2;\n');
+    commit('server change');
+    write('.claims.json', claims({ tests: { total: 12 } }));
+    commit('recapture');
+    expect(deploy('first-deploy-server', { VERCEL_ENV: 'preview' })).toBe(0);
+    git('checkout', '-q', 'main');
+  });
+
+  it('builds when the base cannot be had: an unknown previous deployment, or a repository it cannot fetch from', () => {
+    git('checkout', '-q', '-b', 'unfetchable', start);
+    write('tests/a.test.ts', '// z\n');
+    commit('tests only');
+    expect(deploy('unfetchable', { VERCEL_ENV: 'preview', VERCEL_GIT_PREVIOUS_SHA: '0123456789abcdef0123456789abcdef01234567' })).toBe(1);
+    expect(deploy('unfetchable', { VERCEL_ENV: 'preview', SITE_REPO_URL: pathToFileURL(join(scratch, 'no-such-repo')).href })).toBe(1);
+    git('checkout', '-q', 'main');
   });
 });
