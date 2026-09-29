@@ -57,7 +57,7 @@ import { TenantContextRequiredError } from '../types/tenant.js';
 import { randomBytes } from 'node:crypto';
 import { runMigrations, migrationState, type MigrationState } from './migrations/index.js';
 import { Checkpointer, AUTOCHECKPOINT_PAGES } from './checkpointer.js';
-import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, nextStepSize, eraseRetiredStep, isShadowWriteRefused, retiredRemain, ERASE_ROWS, ERASE_ROWS_RANGE, sweepEraseMode, deleteOwingMerge, mergeOwed, mergeOwedStep, MERGE_PAGES, MERGE_PAGES_RANGE, searchIndexProgress, type SearchIndexStatus, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
+import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, nextStepSize, eraseRetiredStep, isShadowWriteRefused, retiredRemain, ERASE_ROWS, ERASE_ROWS_RANGE, sweepEraseMode, deleteOwingMerge, mergeOwed, mergeOwedStep, levelMergeStep, filterIndexMissing, CREATE_FILTER_INDEX, MERGE_PAGES, MERGE_PAGES_RANGE, searchIndexProgress, type SearchIndexStatus, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
 import { parseSearch, searchRefusal, describeTerm, mayHoldCjk, type ParsedSearch, type TraceMatch } from './search.js';
 import { installSearchFunctions, matchSearch, type MatchRequest, type MatchResult, type SearchPlan } from './search-match.js';
 import { SearchWorkerClient, SearchWorkerUnavailable, warnSearchWorkerUnavailable } from './search-worker-client.js';
@@ -275,6 +275,8 @@ export class SqliteAdapter implements IStorageAdapter {
   private searchIndex: SearchIndexState = 'unavailable';
   /** The background build of the search index, while one runs; see buildSearchIndex. */
   private searchBuild: Promise<SearchIndexState> | undefined;
+  /** The covering index being built after the start, while it is; see createFilterIndex. */
+  private filterIndex: Promise<void> | undefined;
   /** The merge a sweep owes, while one runs; see settleOwedMerge. */
   private merging: Promise<void> | undefined;
   /** Retention sweeps in progress: close() waits for each to stop at its next step. */
@@ -392,6 +394,8 @@ export class SqliteAdapter implements IStorageAdapter {
       ensureOwnerOnly(this.dbPath, `${this.dbPath}-wal`, `${this.dbPath}-shm`);
     }
     // Traces stored before the index existed are indexed after the start, not during it.
+    // The covering index a search's filters read, created after the start (search-index.ts, CREATE_FILTER_INDEX).
+    if (this.searchIndex !== 'unavailable' && filterIndexMissing(this.db)) this.filterIndex = this.createFilterIndex();
     if (this.searchIndex === 'building') this.searchBuild = this.buildSearchIndex();
     // A merge a sweep owed when the last server closed: carried on after the start, too.
     if (this.searchIndex !== 'unavailable' && mergeOwed(this.db)) void this.settleOwedMerge();
@@ -429,7 +433,7 @@ export class SqliteAdapter implements IStorageAdapter {
   async close(): Promise<void> {
     // Background work in progress stops at its next step; each is resumable, and the next start carries on.
     this.closing = true;
-    await Promise.all([this.searchBuild, this.merging, ...this.sweeps]);
+    await Promise.all([this.filterIndex, this.searchBuild, this.merging, ...this.sweeps]);
     // The search thread closes its own connection before this one closes.
     await this.searchWorker?.close();
     this.searchWorker = undefined;
@@ -488,7 +492,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   /** Resolves when no background work runs: the build, a merge a sweep owes, a sweep. For tests and the benchmark. */
   async whenIdle(): Promise<void> {
-    while (this.searchBuild || this.merging || this.sweeps.size > 0) await Promise.all([this.searchBuild, this.merging, ...this.sweeps]);
+    while (this.filterIndex || this.searchBuild || this.merging || this.sweeps.size > 0) await Promise.all([this.filterIndex, this.searchBuild, this.merging, ...this.sweeps]);
   }
 
   /**
@@ -526,6 +530,8 @@ export class SqliteAdapter implements IStorageAdapter {
           : `indexing the Chinese, Japanese and Korean text of ${at.cjk_pending.toLocaleString('en-US')} trace(s)`;
       this.log('info', `Search index: ${at.retired ? 'erasing the previous index, then ' : ''}${what} in the background; until it is done, a search reads the traces (the same results, slower)`);
       // An index retired at the start is erased first (search-index.ts, retiring an index).
+      // No write step while the covering index is built: it holds the write lock, and a step would wait for it on the event loop.
+      if (this.filterIndex) await this.filterIndex;
       await this.eraseRetiredIndex();
       let after = 0;
       let batch = BUILD_BATCH;
@@ -533,6 +539,8 @@ export class SqliteAdapter implements IStorageAdapter {
         const started = performance.now();
         const last = indexNextBatch(this.db, after, batch);
         batch = nextBuildBatch(batch, performance.now() - started);
+        // The merges that step's writes owe, in steps of their own (search-index.ts, merges out of the build's steps).
+        await this.levelMerges();
         if (last === null) {
           // Every trace is in the index: stream the ones queued for CJK, in steps of the same size rule.
           let queued = BUILD_BATCH;
@@ -540,6 +548,7 @@ export class SqliteAdapter implements IStorageAdapter {
             const began = performance.now();
             if (indexCjkPending(this.db, queued) === null) break;
             queued = nextBuildBatch(queued, performance.now() - began);
+            await this.levelMerges();
             await yieldToRequests();
           }
           if (this.closing) break;
@@ -562,6 +571,53 @@ export class SqliteAdapter implements IStorageAdapter {
       this.searchBuild = undefined;
     }
     return this.searchIndex;
+  }
+
+  /**
+   * Create the covering index a search's filters read (search-index.ts,
+   * CREATE_FILTER_INDEX), after the start: on the checkpoint worker's
+   * connection, so the event loop is free while it reads every trace row,
+   * or on this one when the worker cannot run. It holds the write lock
+   * meanwhile; the store's own background steps wait for it, and a write a
+   * client sends in that moment waits for it too, as it would behind any
+   * other writer. Runs even when the store is closing: close() waits for it.
+   */
+  private async createFilterIndex(): Promise<void> {
+    await yieldToRequests();
+    const began = performance.now();
+    try {
+      this.ensureCheckpointer();
+      const worker = this.checkpointer;
+      if (worker && (await worker.started) && worker.active) {
+        try {
+          await worker.exec(CREATE_FILTER_INDEX);
+        } catch {
+          // Refused there (the write lock held past the busy timeout, or the worker stopped): here instead.
+          this.db.exec(CREATE_FILTER_INDEX);
+        }
+      } else {
+        this.db.exec(CREATE_FILTER_INDEX);
+      }
+      this.log('info', `Search index: the covering index for search filters was built after the start, in ${((performance.now() - began) / 1000).toFixed(1)} s`);
+    } catch (err) {
+      this.log('warn', `Building the covering index for search filters failed (${err instanceof Error ? err.message : String(err)}); search works without it, more slowly, and the next start tries again.`);
+    } finally {
+      this.filterIndex = undefined;
+    }
+  }
+
+  /** The build's merge-page budget, carried from one round of merges to the next. */
+  private mergePages = MERGE_PAGES;
+
+  /** Merge the levels the build's last step filled, in steps, until none needs it (levelMergeStep). */
+  private async levelMerges(): Promise<void> {
+    while (!this.closing) {
+      await yieldToRequests();
+      const started = performance.now();
+      const written = levelMergeStep(this.db, this.mergePages);
+      if (written === 0) return;
+      this.mergePages = nextStepSize(Math.min(this.mergePages, written), performance.now() - started, MERGE_PAGES_RANGE);
+    }
   }
 
   /** Erase the index retired at the start, if there is one, in steps (search-index.ts, retiring an index). */
@@ -592,13 +648,15 @@ export class SqliteAdapter implements IStorageAdapter {
     this.merging ??= (async () => {
       await yieldToRequests();
       this.ensureCheckpointer();
+      if (this.filterIndex) await this.filterIndex;
       try {
         let pages = MERGE_PAGES;
         while (!this.closing) {
           const started = performance.now();
-          const owed = mergeOwedStep(this.db, pages);
-          pages = nextStepSize(pages, performance.now() - started, MERGE_PAGES_RANGE);
+          const { owed, written } = mergeOwedStep(this.db, pages);
           if (!owed) break;
+          // Sized by what it did: its budget, or less when the merge finished early (the rows it wrote), never a budget it did not use.
+          if (written > 0) pages = nextStepSize(Math.min(pages, written), performance.now() - started, MERGE_PAGES_RANGE);
           await yieldToRequests();
         }
       } catch (err) {
@@ -1990,6 +2048,7 @@ export class SqliteAdapter implements IStorageAdapter {
   private async sweepTraces(tid: TenantId, cut: string): Promise<number> {
     if (this.closing) return 0;
     this.ensureCheckpointer();
+    if (this.filterIndex) await this.filterIndex;
     const indexing = this.searchIndex !== 'unavailable';
     const mode = indexing
       ? sweepEraseMode(

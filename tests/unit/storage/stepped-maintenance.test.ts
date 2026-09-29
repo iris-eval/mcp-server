@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { openDriver, type Driver } from '../../../src/storage/driver.js';
-import { deleteOwingMerge, eraseRetiredStep, retiredRemain, sweepEraseMode, ERASE_OWED_TABLE } from '../../../src/storage/search-index.js';
+import { deleteOwingMerge, eraseRetiredStep, levelMergeStep, mergeOwedStep, nextStepSize, retiredRemain, sweepEraseMode, ERASE_OWED_TABLE, SEARCH_FILTER_INDEX, STEP_TARGET_MS } from '../../../src/storage/search-index.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import type { Trace } from '../../../src/types/trace.js';
 import { SEARCH_DRIVER } from './fts5-here.js';
@@ -306,6 +306,70 @@ describe('an index retired at the start is erased in steps (#695)', () => {
   });
 });
 
+describe('step sizes stay under the bound', () => {
+  it('a step is sized to STEP_TARGET_MS from the work the last one did, and grows by at most half', () => {
+    expect(STEP_TARGET_MS).toBe(35);
+    // 100 traces in 70 ms: 50 next.
+    expect(nextStepSize(100, 70, [8, 1024])).toBe(50);
+    // 100 in 10 ms would scale to 350: at most 150.
+    expect(nextStepSize(100, 10, [8, 1024])).toBe(150);
+    // By what it did, not what it was allowed: a merge that wrote 20 rows of a 512-page budget in 1 ms grows from 20.
+    expect(nextStepSize(20, 1, [16, 512])).toBe(30);
+    // Within the range.
+    expect(nextStepSize(10, 1000, [8, 1024])).toBe(8);
+    expect(nextStepSize(1000, 1, [8, 1024])).toBe(1024);
+  });
+
+  it('the build turns automerge off in its steps and merges the levels in steps of its own: nothing is left to merge, automerge is back at 4, and the index is whole', async () => {
+    const path = tempDb();
+    const bare = await started(path, { fts5: false });
+    await bare.insertTraces(LOCAL_TENANT, traces(3000, 0, 'unused'));
+    await closed(bare);
+    const s = await started(path);
+    expect(await s.whenSearchIndexReady()).toBe('ready');
+    const db = dbOf(s);
+    // The merges the build's writes owed are done: a level merge finds nothing to do.
+    expect(levelMergeStep(db, 512)).toBe(0);
+    expect(Number((db.prepare("SELECT v FROM trace_search_config WHERE k = 'automerge'").get() as { v: number }).v)).toBe(4);
+    integrity(s);
+    expect((await s.queryTraces(LOCAL_TENANT, { search: 'ordinary' })).total).toBe(3000);
+  });
+
+  it('the merge a sweep owes reports the rows each step wrote, which sizes the next', async () => {
+    const path = tempDb();
+    const s = await started(path);
+    await s.insertTraces(LOCAL_TENANT, traces(400, 200, 'zxcvbnmasdfghjklqwertyuiop'));
+    const db = dbOf(s);
+    db.transaction(() => deleteOwingMerge(db, () => db.prepare('DELETE FROM traces WHERE timestamp < ?').run('2021-01-01T00:00:00.000Z').changes)).immediate();
+    const first = mergeOwedStep(db, 16);
+    expect(first.written).toBeGreaterThan(0);
+    let step = first;
+    while (step.owed) step = mergeOwedStep(db, 512);
+    expect(owed(s)).toBe(0);
+    integrity(s);
+  });
+});
+
+describe('the covering index is built after the start (search-index.ts, CREATE_FILTER_INDEX)', () => {
+  it('a store from before the index opens without it, answers searches meanwhile, and has it once the background work is done', async () => {
+    const path = tempDb();
+    const bare = await started(path, { fts5: false });
+    await bare.insertTraces(LOCAL_TENANT, traces(500, 0, 'unused'));
+    await closed(bare);
+    const log: Log = [];
+    const s = store(path, { log });
+    await s.initialize();
+    const hasIndex = () => dbOf(s).prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?").get(SEARCH_FILTER_INDEX) !== undefined;
+    // initialize() did not build it: the start does not wait for a read of every trace row.
+    expect(hasIndex()).toBe(false);
+    expect((await s.queryTraces(LOCAL_TENANT, { search: 'ordinary', limit: 1 })).total).toBe(500);
+    await s.whenIdle();
+    expect(hasIndex()).toBe(true);
+    expect(log).toContainEqual(['info', expect.stringMatching(/^Search index: the covering index for search filters was built after the start, in [\d.]+ s$/)]);
+    integrity(s);
+  });
+});
+
 describe('the build says what it is doing', () => {
   it('logs when it starts and when it is ready, with the counts and the time, and reports its progress', async () => {
     const path = tempDb();
@@ -319,9 +383,12 @@ describe('the build says what it is doing', () => {
     expect(await s.searchStatus()).toEqual({ state: 'building', index: 'scan', total: 500, indexed: 0, cjk_pending: 0, retired: false });
     await s.whenSearchIndexReady();
     expect(await s.searchStatus()).toEqual({ state: 'ready', index: 'fts5', total: null, indexed: null, cjk_pending: 0, retired: false });
-    expect(log.map(([level, line]) => [level, line.replace(/[\d.]+ s$/, 'N s')])).toEqual([
-      ['info', 'Search index: indexing 500 of 500 stored trace(s) in the background; until it is done, a search reads the traces (the same results, slower)'],
+    const lines = log.map(([level, line]) => [level, line.replace(/[\d.]+ s$/, 'N s')]);
+    // The covering index is built beside the build, so its line may come before or after the build's first.
+    expect(lines[0]).toEqual(['info', 'Search index: indexing 500 of 500 stored trace(s) in the background; until it is done, a search reads the traces (the same results, slower)']);
+    expect(lines.slice(1).sort()).toEqual([
       ['info', 'Search index ready: 500 trace(s) indexed in N s'],
+      ['info', 'Search index: the covering index for search filters was built after the start, in N s'],
     ]);
   });
 

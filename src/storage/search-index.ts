@@ -185,6 +185,21 @@ const ALL_TRIGGERS = [...TRIGGERS, ...RETIRED_TRIGGERS];
  */
 export const SEARCH_FILTER_INDEX = 'idx_traces_search_filter';
 
+/*
+ * It is created after the start, not by the migration (sqlite-adapter.ts,
+ * createFilterIndex). Building it reads every trace row, past the text
+ * before its columns, in one statement: 0.65 s at 100,000 agent-loop
+ * traces, which the migration spent before the server answered anyone.
+ * Nothing needs it to be correct; a search joins through the traces' own
+ * key until it exists, more slowly.
+ */
+export const CREATE_FILTER_INDEX = `CREATE INDEX IF NOT EXISTS ${SEARCH_FILTER_INDEX} ON traces (trace_id, tenant_id, timestamp, agent_name, framework, session_id, latency_ms, cost_usd)`;
+
+/** Whether the search index exists and its covering index does not yet. */
+export function filterIndexMissing(db: Driver): boolean {
+  return objectExists(db, 'table', SEARCH_TABLE) && !objectExists(db, 'index', SEARCH_FILTER_INDEX);
+}
+
 /**
  * bm25 column weights, in column order: input, output, tool_calls, metadata,
  * spans. A word in what the agent was asked or said counts twice a word in
@@ -321,7 +336,6 @@ const CREATE_TABLES = `
     content = '',
     tokenize = 'unicode61 remove_diacritics 2'
   );
-  CREATE INDEX IF NOT EXISTS ${SEARCH_FILTER_INDEX} ON traces (trace_id, tenant_id, timestamp, agent_name, framework, session_id, latency_ms, cost_usd);
 `;
 
 /*
@@ -380,22 +394,33 @@ const CREATE_TRIGGERS = `
 `;
 
 /**
- * A background step, in milliseconds of work: a request waits at most about
- * this long behind it. What a trace costs to index or delete depends on its
- * text (a trace with an agent loop's spans takes several times one without),
- * so each step is sized from how long the last one took: the build from
- * BUILD_BATCH traces within BUILD_BATCH_RANGE, the others from their own
- * start and range.
+ * A background step's bound, in milliseconds of work: a request waits at
+ * most about this long behind it. What a trace costs to index or delete
+ * depends on its text (a trace with an agent loop's spans takes several
+ * times one without), so each step is sized from what the last one did and
+ * how long it took: the build from BUILD_BATCH traces within
+ * BUILD_BATCH_RANGE, the others from their own start and range.
+ *
+ * Sized to STEP_TARGET_MS, not to the bound: two steps of the same size
+ * vary, and one sized to the bound itself ran over it about every other
+ * step (at 100,000 agent-loop traces, 515 of the build's 1,328 steps were
+ * over 50 ms, the longest 110 ms). Aimed at 35 ms and grown at most by half
+ * per step, one step in 1,485 was.
  */
 export const BUILD_STEP_MS = 50;
+export const STEP_TARGET_MS = 35;
 export const BUILD_BATCH = 32;
 export const BUILD_BATCH_RANGE = [8, 1024] as const;
 
-/** The next step's size, from the last one's size and the milliseconds it took. */
-export function nextStepSize(size: number, tookMs: number, [min, max]: readonly [number, number]): number {
-  const scaled = tookMs > 0 ? Math.round((size * BUILD_STEP_MS) / tookMs) : max;
-  // At most double per step, so one fast step on small traces cannot size the next to many large ones.
-  return Math.max(min, Math.min(max, size * 2, scaled));
+/**
+ * The next step's size: `done`, the work the last step did (traces, rows or
+ * pages), scaled to STEP_TARGET_MS by the milliseconds it took, and at most
+ * half again what it did, so one fast step cannot size the next to many
+ * slow ones.
+ */
+export function nextStepSize(done: number, tookMs: number, [min, max]: readonly [number, number]): number {
+  const scaled = tookMs > 0 ? Math.floor((done * STEP_TARGET_MS) / tookMs) : max;
+  return Math.max(min, Math.min(max, Math.ceil(done * 1.5), scaled));
 }
 
 /** The build's next step size. */
@@ -413,7 +438,7 @@ export function nextBuildBatch(size: number, tookMs: number): number {
  */
 export function indexNextBatch(db: Driver, after: number, max = BUILD_BATCH): number | null {
   return db
-    .transaction((): number | null => {
+    .transaction((): number | null => withoutAutomerge(db, () => {
       const upTo = (db.prepare('SELECT MAX(rowid) AS m FROM (SELECT rowid FROM traces WHERE rowid > ? ORDER BY rowid LIMIT ?)').get(after, max) as { m: number | null }).m;
       if (upTo === null || upTo === undefined) return null;
       const before = Number((db.prepare(`SELECT COALESCE(MAX(doc_id), 0) AS m FROM ${SEARCH_DOCS_TABLE}`).get() as { m: number }).m);
@@ -427,7 +452,7 @@ export function indexNextBatch(db: Driver, after: number, max = BUILD_BATCH): nu
         db.prepare(`INSERT OR IGNORE INTO ${CJK_PENDING_TABLE} (doc_id) SELECT d.doc_id FROM ${SEARCH_DOCS_TABLE} d WHERE d.doc_id > ? AND ${traceMayHoldCjk('d.trace_id')}`).run(before);
       }
       return Number(upTo);
-    })
+    }))
     .immediate();
 }
 
@@ -497,11 +522,65 @@ export function indexCjk(db: Driver, docIds: readonly number[]): void {
 /** One step of streaming the queued traces: up to `max` of them, under one write lock. Returns how many, or null when none wait. */
 export function indexCjkPending(db: Driver, max: number): number | null {
   return db
-    .transaction((): number | null => {
+    .transaction((): number | null => withoutAutomerge(db, () => {
       const ids = (db.prepare(`SELECT doc_id FROM ${CJK_PENDING_TABLE} ORDER BY doc_id LIMIT ?`).all(max) as Array<{ doc_id: number }>).map((r) => Number(r.doc_id));
       if (ids.length === 0) return null;
       indexCjk(db, ids);
       return ids.length;
+    }))
+    .immediate();
+}
+
+/*
+ * Merges out of the build's steps. FTS5 merges older segments as it writes
+ * new ones (automerge), inside whichever step's commit flushes: the build's
+ * slowest steps were those. So a build step turns automerge off for its own
+ * writes, and levelMergeStep does that merging in steps of its own, the
+ * way automerge would have (a level merges once it holds `usermerge`
+ * segments, 4), sized by the rows each step wrote.
+ */
+/** FTS5's default automerge. */
+const AUTOMERGE = 4;
+
+/** Run `write` with automerge off on the FTS5 tables, restored after it in the same transaction. In the caller's transaction. */
+export function withoutAutomerge<T>(db: Driver, write: () => T): T {
+  const tables = ftsTables(db).filter((t) => objectExists(db, 'table', t));
+  for (const t of tables) db.exec(`INSERT INTO ${t} (${t}, rank) VALUES ('automerge', 0)`);
+  try {
+    return write();
+  } finally {
+    for (const t of tables) db.exec(`INSERT INTO ${t} (${t}, rank) VALUES ('automerge', ${AUTOMERGE})`);
+  }
+}
+
+/** A merge step's page budget: sized by the rows the last step wrote (nextStepSize), and never over the top of the range, since one merge's work is lumpy past it. */
+export const MERGE_PAGES = 64;
+export const MERGE_PAGES_RANGE = [16, 512] as const;
+
+/** Rows changed so far on this connection (FTS5 writes a page as a row of its data table). */
+function totalChanges(db: Driver): number {
+  return Number((db.prepare('SELECT total_changes() AS n').get() as { n: number }).n);
+}
+
+/**
+ * One step of the merges the build's writes owe, under one write lock:
+ * about `pages` pages of each FTS5 table merged where a level holds enough
+ * segments ('merge' with a positive count). Returns the rows it wrote: 0
+ * when there was nothing to merge.
+ */
+export function levelMergeStep(db: Driver, pages: number): number {
+  return db
+    .transaction((): number => {
+      let written = 0;
+      for (const t of ftsTables(db)) {
+        if (!objectExists(db, 'table', t)) continue;
+        const before = totalChanges(db);
+        db.exec(`INSERT INTO ${t} (${t}, rank) VALUES ('merge', ${Math.max(1, Math.floor(pages))})`);
+        // FTS5's own test for a merge that found nothing to do: it changes fewer than two rows.
+        const d = totalChanges(db) - before;
+        if (d >= 2) written += d;
+      }
+      return written;
     })
     .immediate();
 }
@@ -543,7 +622,7 @@ export function assumeFts5(db: Driver, available: boolean): void {
   cache.set(db, available);
 }
 
-function objectExists(db: Driver, type: 'table' | 'trigger', name: string): boolean {
+function objectExists(db: Driver, type: 'table' | 'trigger' | 'index', name: string): boolean {
   return db.prepare('SELECT 1 FROM sqlite_master WHERE type = ? AND name = ?').get(type, name) !== undefined;
 }
 
@@ -849,8 +928,6 @@ export function indexInsertedTraces(db: Driver, tenantId: string, traceIds: read
  * step; the merge owed does that work, in steps of its own.
  */
 export const ERASE_OWED_TABLE = 'trace_search_erase_owed';
-/** FTS5's default automerge: a sweep step turns it off for its own deletes and back to this, so no merge lands inside a step. */
-const AUTOMERGE = 4;
 const CREATE_OWED = `CREATE TABLE IF NOT EXISTS ${ERASE_OWED_TABLE} (fts TEXT PRIMARY KEY)`;
 
 export type SweepEraseMode = 'rows' | 'merge';
@@ -885,32 +962,31 @@ export function mergeOwed(db: Driver): boolean {
   return objectExists(db, 'table', ERASE_OWED_TABLE) && db.prepare(`SELECT 1 FROM ${ERASE_OWED_TABLE} LIMIT 1`).get() !== undefined;
 }
 
-/** The merge step's size in pages, like the build's in traces. */
-export const MERGE_PAGES = 64;
-export const MERGE_PAGES_RANGE = [16, 16_384] as const;
-
 /**
  * One step of the merge owed, under one write lock: about `pages` pages of
  * each owing index merged ('merge' with a negative count merges whatever
  * segments there are, down to one). An index with nothing left to merge is
- * one segment and owes nothing more. Returns whether a merge is still owed.
+ * one segment and owes nothing more. Returns whether a merge is still owed,
+ * and the rows the step wrote (what the next step is sized from).
  */
-export function mergeOwedStep(db: Driver, pages: number): boolean {
+export function mergeOwedStep(db: Driver, pages: number): { owed: boolean; written: number } {
   return db
-    .transaction((): boolean => {
-      const changes = () => Number((db.prepare('SELECT total_changes() AS n').get() as { n: number }).n);
+    .transaction((): { owed: boolean; written: number } => {
       const paid = db.prepare(`DELETE FROM ${ERASE_OWED_TABLE} WHERE fts = ?`);
+      let written = 0;
       for (const { fts } of db.prepare(`SELECT fts FROM ${ERASE_OWED_TABLE}`).all() as Array<{ fts: string }>) {
         if (!objectExists(db, 'table', fts)) {
           paid.run(fts);
           continue;
         }
-        const before = changes();
+        const before = totalChanges(db);
         db.exec(`INSERT INTO ${fts} (${fts}, rank) VALUES ('merge', ${-Math.max(1, Math.floor(pages))})`);
         // FTS5's own test for a merge that found nothing to do: it changes fewer than two rows.
-        if (changes() - before < 2) paid.run(fts);
+        const d = totalChanges(db) - before;
+        if (d < 2) paid.run(fts);
+        else written += d;
       }
-      return db.prepare(`SELECT 1 FROM ${ERASE_OWED_TABLE} LIMIT 1`).get() !== undefined;
+      return { owed: db.prepare(`SELECT 1 FROM ${ERASE_OWED_TABLE} LIMIT 1`).get() !== undefined, written };
     })
     .immediate();
 }

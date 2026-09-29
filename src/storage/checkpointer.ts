@@ -83,6 +83,14 @@ const run = (mode) => {
 const timer = setInterval(() => run('PASSIVE'), intervalMs);
 parentPort.on('message', (m) => {
   if (m.type === 'checkpoint') parentPort.postMessage({ id: m.id, ...run(m.mode) });
+  else if (m.type === 'exec') {
+    try {
+      db.exec(m.sql);
+      parentPort.postMessage({ id: m.id });
+    } catch (err) {
+      parentPort.postMessage({ id: m.id, error: String((err && err.message) || err) });
+    }
+  }
   else if (m.type === 'close') {
     clearInterval(timer);
     db.close();
@@ -162,7 +170,7 @@ export class Checkpointer {
     this.settle(false);
   }
 
-  private request(message: { type: 'checkpoint'; mode: 'PASSIVE' | 'TRUNCATE' } | { type: 'close' }): Promise<{ busy?: number; error?: string }> {
+  private request(message: { type: 'checkpoint'; mode: 'PASSIVE' | 'TRUNCATE' } | { type: 'exec'; sql: string } | { type: 'close' }): Promise<{ busy?: number; error?: string }> {
     if (this.failed) return Promise.resolve({ error: 'the checkpoint worker is not running' });
     const id = this.nextId++;
     // Held while a request is in flight: a CLI awaiting its checkpoint must not exit before the answer.
@@ -183,6 +191,17 @@ export class Checkpointer {
     const reply = await this.request({ type: 'checkpoint', mode: 'TRUNCATE' });
     if (reply.error) throw new Error(reply.error);
     return !reply.busy;
+  }
+
+  /**
+   * Run one statement on the worker's connection, off the event loop: the
+   * covering index created after the start (sqlite-adapter.ts). It holds the
+   * write lock while it runs, so the adapter starts no write step of its own
+   * until it is done. Throws with SQLite's message when it failed.
+   */
+  async exec(sql: string): Promise<void> {
+    const reply = await this.request({ type: 'exec', sql });
+    if (reply.error) throw new Error(reply.error);
   }
 
   /**
