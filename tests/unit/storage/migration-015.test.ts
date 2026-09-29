@@ -5,7 +5,7 @@
  * the migration, the traces already stored are indexed by it; applied once;
  * and on a SQLite without FTS5 it is recorded as applied with nothing
  * created, so the rest of the schema never depends on FTS5. The count of
- * known migrations belongs to the newest migration's test, this one.
+ * known migrations belongs to the newest migration's test (016).
  */
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
