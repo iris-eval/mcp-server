@@ -171,8 +171,8 @@ function ipv4FromHextets(h6: string, h7: string): string {
 }
 
 // True when an IPv6 literal resolves to a range we refuse: unspecified,
-// loopback, link-local, unique-local, or an embedded IPv4 that itself hits
-// the IPv4 blocklist (IPv4-mapped `::ffff:a.b.c.d` reaches the v4 endpoint on
+// loopback, link-local, unique-local, NAT64 local-use, or an embedded IPv4
+// that itself hits the IPv4 blocklist (IPv4-mapped `::ffff:a.b.c.d` reaches the v4 endpoint on
 // dual-stack hosts — e.g. `::ffff:169.254.169.254` == AWS IMDS). Fails closed
 // on any colon-bearing host that does not parse as valid IPv6.
 function isBlockedIpv6(addr: string): boolean {
@@ -196,6 +196,22 @@ function isBlockedIpv6(addr: string): boolean {
    */
   if (first === '2002') {
     return BLOCKED_IPV4.some((re) => re.test(ipv4FromHextets(g[1], g[2])));
+  }
+  /*
+   * NAT64 (RFC 6052, RFC 8215). A NAT64 gateway turns an IPv6 destination
+   * back into the IPv4 address written inside it, so on a network with one
+   * `64:ff9b::7f00:1` reaches 127.0.0.1. The well-known prefix 64:ff9b::/96
+   * carries the address in the last two hextets. The local-use prefix
+   * 64:ff9b:1::/48 is for an operator's own translation, and where the
+   * address sits depends on the prefix length the operator chose, so the
+   * whole /48 is refused (the gap GHSA-2vr4-cq9g-pvrc reported in the
+   * ip-address package, found here while triaging it).
+   */
+  if (first === '0064' && g[1] === 'ff9b') {
+    if (g[2] === '0001') return true;
+    if (g.slice(2, 6).every((h) => h === '0000')) {
+      return BLOCKED_IPV4.some((re) => re.test(ipv4FromHextets(g[6], g[7])));
+    }
   }
   if (first === '2001' && g[1] === '0000') {
     const deobfuscate = (h: string): string =>
