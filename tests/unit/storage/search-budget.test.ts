@@ -248,14 +248,23 @@ describe('adversarial queries, on the review’s store', () => {
     const part = fc.oneof(prefix, fc.constantFrom(...reviewWords.slice(0, 50)), phrase, fc.constantFrom('w*', 'w1*', 'w10*'));
     const query = fc.array(part, { minLength: 1, maxLength: 40 }).map((ps) => ps.join(' ').slice(0, SEARCH_MAX_LENGTH));
     let answered = 0;
+    let refused = 0;
     await fc.assert(
       fc.asyncProperty(query, async (q) => {
         if ((await bounded(q)) === 'answered') answered += 1;
+        else refused += 1;
       }),
       { numRuns: 60 },
     );
-    // The set exercises both outcomes, not only refusals.
-    expect(answered).toBeGreaterThan(5);
+    /*
+     * The set exercises both outcomes. Which side a query lands on follows
+     * from its text alone, and the queries are drawn afresh each run, so how
+     * many land on each side varies: 12 to 18 of 60 were answered in six
+     * local runs, and one CI run drew 5, which failed a threshold of more
+     * than 5. Both outcomes occurring is what the check is for.
+     */
+    expect(answered).toBeGreaterThan(0);
+    expect(refused).toBeGreaterThan(0);
   }, 120_000);
 });
 
