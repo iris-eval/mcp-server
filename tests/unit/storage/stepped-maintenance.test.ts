@@ -58,11 +58,50 @@ async function closed(s: SqliteAdapter): Promise<void> {
 }
 
 const dbOf = (s: SqliteAdapter) => (s as unknown as { db: Driver }).db;
-/** Where a word left on disk is, and the checkpoint worker's state: the message when an erasure assertion fails. */
+/**
+ * The pages of a database file that hold `word`: each page's number, the
+ * first byte of its b-tree header (2, 5, 10, 13 for b-tree pages), and
+ * whether the file's free list names it. Read from the file itself, so it
+ * says where the bytes are, not what the connection believes.
+ */
+const pagesHolding = (file: string, word: string): Array<{ page: number; type: number; free: boolean }> => {
+  if (!existsSync(file)) return [];
+  const buf = readFileSync(file);
+  if (buf.length < 100) return [];
+  const raw = buf.readUInt16BE(16);
+  const pageSize = raw === 1 ? 65536 : raw;
+  const free = new Set<number>();
+  // The free list: trunk pages from the header (offset 32), each naming the next trunk and its leaves.
+  for (let trunk = buf.readUInt32BE(32), seen = 0; trunk !== 0 && seen < 100_000; seen++) {
+    free.add(trunk);
+    const base = (trunk - 1) * pageSize;
+    if (base + 8 > buf.length) break;
+    const leaves = buf.readUInt32BE(base + 4);
+    for (let i = 0; i < leaves && base + 12 + 4 * i <= buf.length; i++) free.add(buf.readUInt32BE(base + 8 + 4 * i));
+    trunk = buf.readUInt32BE(base);
+  }
+  const out: Array<{ page: number; type: number; free: boolean }> = [];
+  const needle = Buffer.from(word);
+  for (let at = buf.indexOf(needle); at !== -1 && out.length < 8; at = buf.indexOf(needle, at + 1)) {
+    const page = Math.floor(at / pageSize) + 1;
+    if (out.some((p) => p.page === page)) continue;
+    out.push({ page, type: buf[(page - 1) * pageSize + (page === 1 ? 100 : 0)], free: free.has(page) });
+  }
+  return out;
+};
+/** Where a word left on disk is, and the store's state: the message when an erasure assertion fails. */
 const residue = (s: SqliteAdapter, path: string, word: string): string => {
   const w = (s as unknown as { checkpointer?: { active: boolean; stopped: string; truncateInProgress: boolean } }).checkpointer;
   const has = (file: string) => existsSync(file) && readFileSync(file).includes(Buffer.from(word));
-  return JSON.stringify({ inDb: has(path), inWal: has(`${path}-wal`), walBytes: existsSync(`${path}-wal`) ? readFileSync(`${path}-wal`).length : -1, worker: w ? { active: w.active, stopped: w.stopped, truncating: w.truncateInProgress } : null, retrying: (s as unknown as { eraseRetry?: unknown }).eraseRetry !== undefined, passive: dbOf(s).pragma('wal_checkpoint(PASSIVE)') });
+  return JSON.stringify({ inDb: has(path), inWal: has(`${path}-wal`), walBytes: existsSync(`${path}-wal`) ? readFileSync(`${path}-wal`).length : -1, worker: w ? { active: w.active, stopped: w.stopped, truncating: w.truncateInProgress } : null, retrying: (s as unknown as { eraseRetry?: unknown }).eraseRetry !== undefined, passive: dbOf(s).pragma('wal_checkpoint(PASSIVE)'), pages: pagesHolding(path, word), secureDelete: dbOf(s).pragma('secure_delete'), freelist: dbOf(s).pragma('freelist_count'), owedMerge: owedRows(s) });
+};
+/** Rows of the merge a sweep owes, or null when the store has no such table. */
+const owedRows = (s: SqliteAdapter): number | null => {
+  try {
+    return Number((dbOf(s).prepare(`SELECT COUNT(*) AS n FROM ${ERASE_OWED_TABLE}`).get() as { n: number }).n);
+  } catch {
+    return null;
+  }
 };
 const fileHolds = (path: string, needle: string): boolean => existsSync(path) && readFileSync(path).includes(needle);
 /** Whether the word is in iris.db or its WAL. FTS5 stores a term after the prefix it shares with the term before it, so look for its tail. */
