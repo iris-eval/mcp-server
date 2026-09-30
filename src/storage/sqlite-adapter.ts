@@ -165,6 +165,13 @@ export interface SqliteAdapterOptions {
   synchronous?: SynchronousMode;
   /** Copy the file before applying a migration to it (default true; backup.ts). */
   backup?: boolean;
+  /**
+   * Tests only: the log sizes, in pages, at which this connection checkpoints
+   * while the worker runs (default TAIL_CHECKPOINT_PAGES) and a background
+   * step has the worker empty the log (default STEP_TRUNCATE_PAGES), so a test
+   * can prove what they do on a log a tenth the size.
+   */
+  checkpointPages?: { tail: number; stepTruncate: number };
 }
 
 /** What a start that migrated an existing file did: the storage layer's half of #704. */
@@ -413,6 +420,9 @@ export class SqliteAdapter implements IStorageAdapter {
   /** Resolves when close() begins: a wait that must not hold a close up races it. Declared after markClosing, whose initializer would otherwise replace the resolver. */
   private readonly closingNow: Promise<void> = new Promise((resolve) => (this.markClosing = resolve));
   private readonly fts5Override: boolean | undefined;
+  /** SqliteAdapterOptions.checkpointPages, or the defaults. */
+  private readonly tailCheckpointPages: number;
+  private readonly stepTruncatePages: number;
   private readonly log: (level: 'info' | 'warn', line: string) => void;
   /** storage.searchBudgetMs — see SEARCH_BUDGET_MS. */
   private readonly searchBudgetMs: number;
@@ -434,6 +444,8 @@ export class SqliteAdapter implements IStorageAdapter {
     this.redact = options?.redact ?? 'none';
     this.synchronous = options?.synchronous ?? 'normal';
     this.fts5Override = options?.fts5;
+    this.tailCheckpointPages = options?.checkpointPages?.tail ?? TAIL_CHECKPOINT_PAGES;
+    this.stepTruncatePages = options?.checkpointPages?.stepTruncate ?? STEP_TRUNCATE_PAGES;
     this.log = options?.log ?? ((level, line) => (level === 'warn' ? process.stderr.write(`[iris.storage] ${line}\n`) : undefined));
     this.searchBudgetMs = options?.searchBudgetMs ?? SEARCH_BUDGET_MS;
     this.backupFirst = options?.backup ?? true;
@@ -608,7 +620,7 @@ export class SqliteAdapter implements IStorageAdapter {
         driver: this.db.name,
         busyMs: BUSY_TIMEOUT_MS,
         onReady: () => {
-          if (!this.closing) this.db.pragma(`wal_autocheckpoint = ${TAIL_CHECKPOINT_PAGES}`);
+          if (!this.closing) this.db.pragma(`wal_autocheckpoint = ${this.tailCheckpointPages}`);
         },
         onFailed: (reason) => {
           if (this.closing) return;
@@ -818,7 +830,7 @@ export class SqliteAdapter implements IStorageAdapter {
    */
   private async beforeWriteStep(): Promise<void> {
     const worker = this.checkpointer;
-    if (worker?.active && !worker.truncateInProgress && worker.logBytes() >= STEP_TRUNCATE_PAGES * this.pageBytes()) void worker.truncate().catch(() => undefined);
+    if (worker?.active && !worker.truncateInProgress && worker.logBytes() >= this.stepTruncatePages * this.pageBytes()) void worker.truncate().catch(() => undefined);
     // Checked again after each yield: the erasure's retry can start a TRUNCATE while this waits, and the step must start in the turn that saw none.
     while (this.checkpointer?.truncateInProgress) {
       await this.checkpointer.whenTruncated();

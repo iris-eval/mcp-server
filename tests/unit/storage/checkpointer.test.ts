@@ -18,7 +18,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { closeSync, copyFileSync, mkdtempSync, openSync, readSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
+import { SqliteAdapter, type SqliteAdapterOptions } from '../../../src/storage/sqlite-adapter.js';
 import { Checkpointer, STEP_TRUNCATE_PAGES, TAIL_CHECKPOINT_PAGES } from '../../../src/storage/checkpointer.js';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import type { Driver } from '../../../src/storage/driver.js';
@@ -42,11 +42,11 @@ afterEach(async () => {
 
 type Log = Array<['info' | 'warn', string]>;
 
-async function store(log: Log = []): Promise<{ s: SqliteAdapter; path: string }> {
+async function store(log: Log = [], options: SqliteAdapterOptions = {}): Promise<{ s: SqliteAdapter; path: string }> {
   const dir = mkdtempSync(join(tmpdir(), 'iris-ckpt-'));
   dirs.push(dir);
   const path = join(dir, 'iris.db');
-  const s = new SqliteAdapter(path, { driver: CELL_DRIVER, log: (level, line) => void log.push([level, line]) });
+  const s = new SqliteAdapter(path, { driver: CELL_DRIVER, log: (level, line) => void log.push([level, line]), ...options });
   open.push(s);
   await s.initialize();
   return { s, path };
@@ -193,7 +193,9 @@ describe('WAL checkpoints on a worker thread', () => {
       await s.insertTrace(LOCAL_TENANT, traces(1, 1_000_000 + i)[0]);
       await new Promise((r) => setImmediate(r));
     };
-    const tailBytes = TAIL_CHECKPOINT_PAGES * 4096;
+    // The tail checkpoint at a fifth of its size (checkpointPages), so the writes that take the log to twice it are a fifth as many (#756).
+    const PAGES = { tail: TAIL_CHECKPOINT_PAGES / 5, stepTruncate: STEP_TRUNCATE_PAGES / 5 };
+    const tailBytes = PAGES.tail * 4096;
     // Anti-theater, and the yardstick: with nothing checkpointing, the writes that take the log to twice the tail threshold never start it over.
     const idle = await store();
     (idle.s as unknown as { ensureCheckpointer: () => void }).ensureCheckpointer = () => undefined;
@@ -204,7 +206,7 @@ describe('WAL checkpoints on a worker thread', () => {
     while (size(`${idle.path}-wal`) < 2 * tailBytes) await write(idle.s, n++);
     expect(restarts(idle.path)).toBe(before);
     // With the worker and the tail checkpoint, writes like those start the log over: the log restarts only at a write that finds every frame copied, which the worker's copy alone never guarantees while writes keep coming.
-    const tail = await store();
+    const tail = await store([], { checkpointPages: PAGES });
     await write(tail.s, 0);
     expect(await worker(tail.s)!.started).toBe(true);
     const first = restarts(tail.path);
@@ -218,13 +220,22 @@ describe('WAL checkpoints on a worker thread', () => {
   }, 90_000);
 
   it('has the worker empty the log before a background step that finds it past STEP_TRUNCATE_PAGES, so the adapter’s own checkpoint stays out of the steps', async () => {
-    // 8,000 evaluations with no stored risk estimate, as 0.19.0 left them: the fill after the start rewrites every row, more log than TAIL_CHECKPOINT_PAGES (the anti-theater half shows it).
+    /*
+     * 2,500 evaluations with no stored risk estimate, as 0.19.0 left them (a
+     * fill starts the worker from RISK_FILL_WORKER_ROWS, 2,048), and both
+     * thresholds a fifth of their size (checkpointPages): the fill after the
+     * start rewrites every row, more log than the tail checkpoint's (the
+     * anti-theater half shows it). At full size, 8,000 evaluations, this took
+     * 18 to 50 s on a Windows runner and at times more than 90 s (#756); the
+     * stall suite measures the log at full size.
+     */
+    const PAGES = { tail: TAIL_CHECKPOINT_PAGES / 5, stepTruncate: STEP_TRUNCATE_PAGES / 5 };
     const seed = await store();
     const result = await new EvalEngine().evaluateAll({ output: 'The order shipped on Monday and should arrive by Thursday.', input: 'Where is my order?' });
     await seed.s.insertEvalResult(LOCAL_TENANT, { ...result, id: 'e-0', trace_id: undefined });
     const db = dbOf(seed.s);
     const cols = (db.prepare("SELECT name FROM pragma_table_info('eval_results') WHERE name <> 'id'").all() as Array<{ name: string }>).map((c) => c.name).join(', ');
-    db.exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 7999) INSERT INTO eval_results (id, ${cols}) SELECT 'e-' || i, ${cols} FROM n, (SELECT * FROM eval_results WHERE id = 'e-0')`);
+    db.exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 2499) INSERT INTO eval_results (id, ${cols}) SELECT 'e-' || i, ${cols} FROM n, (SELECT * FROM eval_results WHERE id = 'e-0')`);
     db.exec('UPDATE eval_results SET risk_estimate = NULL, risk_version = NULL');
     const pageBytes = Number((db.pragma('page_size') as Array<{ page_size: number }>)[0]?.page_size ?? (db.pragma('page_size') as { page_size: number }).page_size);
     // Everything in iris.db itself before it is copied: the copy below takes that file alone.
@@ -238,7 +249,7 @@ describe('WAL checkpoints on a worker thread', () => {
       const path = join(dir, 'iris.db');
       copyFileSync(seed.path, path);
       const truncate = vi.spyOn(Checkpointer.prototype, 'truncate');
-      const s = new SqliteAdapter(path, { driver: CELL_DRIVER });
+      const s = new SqliteAdapter(path, { driver: CELL_DRIVER, checkpointPages: PAGES });
       open.push(s);
       let max = 0;
       const sample = setInterval(() => void (max = Math.max(max, size(`${path}-wal`))), 1);
@@ -253,15 +264,15 @@ describe('WAL checkpoints on a worker thread', () => {
     const stepped = await fill();
     expect(stepped.truncates).toBeGreaterThan(0);
     // The adapter's own checkpoint runs only once the log holds TAIL_CHECKPOINT_PAGES: the log never got there.
-    expect(stepped.maxPages).toBeGreaterThan(STEP_TRUNCATE_PAGES);
-    expect(stepped.maxPages).toBeLessThan(TAIL_CHECKPOINT_PAGES);
+    expect(stepped.maxPages).toBeGreaterThan(PAGES.stepTruncate);
+    expect(stepped.maxPages).toBeLessThan(PAGES.tail);
     // Anti-theater: the same fill with the steps blind to the log's size. Only the adapter's own checkpoint bounds it, inside whichever step takes it past TAIL_CHECKPOINT_PAGES.
     const blind = vi.spyOn(Checkpointer.prototype, 'logBytes').mockReturnValue(0);
     const unstepped = await fill();
     blind.mockRestore();
     expect(unstepped.truncates).toBe(0);
-    expect(unstepped.maxPages).toBeGreaterThanOrEqual(TAIL_CHECKPOINT_PAGES);
-  }, 90_000);
+    expect(unstepped.maxPages).toBeGreaterThanOrEqual(PAGES.tail);
+  });
 
   it('says whether a TRUNCATE is in flight, and when it is done', async () => {
     const { s } = await store();
