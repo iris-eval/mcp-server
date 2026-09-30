@@ -70,7 +70,11 @@
    * ════════════════════════════════════════════════════════════════ */
   --eval-pass: #22c55e;
   --eval-warn: #eab308;
-  --eval-fail: #ef4444;
+  /* #ef4444 lifted in OKLCH lightness only (0.637 to 0.673): 4.6:1 or more
+   * as text on its own 10-15% chip tint over every dark surface. */
+  --eval-fail: #fc514f;
+  /* The solid destructive button keeps the red it always had. */
+  --danger-fill: #ef4444;
 
   /* Additional eval-domain semantic colors — for span kinds in trace
    * tree. These were `--accent-tool` and `--accent-llm` in v1. Renamed
@@ -144,6 +148,7 @@
   --eval-pass: #007532;
   --eval-warn: #886600;
   --eval-fail: #c50b20;
+  --danger-fill: var(--eval-fail);
   --eval-skipped: #6a6a73;
 
   --glow-primary: rgba(13, 148, 136, 0.06);

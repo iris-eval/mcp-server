@@ -106,14 +106,14 @@
 
 /* Danger (solid) — the confirm button inside a destructive dialog only. */
 .iris-btn--danger-solid {
-  background: var(--eval-fail);
-  border-color: var(--eval-fail);
+  background: var(--danger-fill);
+  border-color: var(--danger-fill);
   color: #ffffff;
   font-weight: 600;
 }
 
 .iris-btn--danger-solid:not(:disabled):hover {
-  /* One step darker than --eval-fail (#ef4444); no darker token exists. */
+  /* One step darker than the dark theme's --danger-fill (#ef4444); no darker token exists. */
   background: #dc2626;
   border-color: #dc2626;
 }
