@@ -83,7 +83,11 @@ export function failedTests(report, root = '') {
   return out;
 }
 
-/** Refuse a report that must not become counts. Returns the summary when it may. */
+/**
+ * Refuse a report that must not become counts. Returns the summary when it may.
+ * @param {object | null} report
+ * @param {{ scope?: string, root?: string, exitCode?: number }} [options] `exitCode`: the vitest run's, when this capture ran it.
+ */
 export function checkReport(report, { scope = 'root', root = '', exitCode } = {}) {
   const broken = fileLevelFailures(report, root);
   if (broken.length > 0) {

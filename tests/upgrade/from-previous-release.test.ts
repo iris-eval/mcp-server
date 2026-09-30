@@ -29,6 +29,7 @@ import { SELF_TEST_STEPS, SELF_TEST_PASS_VERDICT } from '../../src/self-test.js'
 import { runInstall } from '../../src/cli/install/command.js';
 import { compareVersions } from '../../src/utils/versions.js';
 import { resolveTraceCost } from '../../src/cost/trace-cost.js';
+import type { Trace } from '../../src/types/trace.js';
 import { KNOWN_MIGRATION_IDS } from '../../src/storage/migrations/index.js';
 
 const N = KNOWN_MIGRATION_IDS.length;
@@ -288,7 +289,7 @@ describe(`the later migrations are safe for ${PREVIOUS} to write through`, () =>
     const file = join(root, 'floors.db');
     copyFileSync(join(repoRoot, 'tests', 'fixtures', 'db', 'iris-0.19.0.db'), file);
     const now = new Date().toISOString();
-    const estimated = resolveTraceCost({
+    const estimated = resolveTraceCost<Trace>({
       trace_id: 'e0000000000000000000000000000001', agent_name: 'estimated-bot', input: 'q', output: 'estimated platypus',
       token_usage: { prompt_tokens: 150_000, completion_tokens: 10_000, total_tokens: 160_000 }, metadata: { model: 'gpt-4o-mini' }, timestamp: now,
     });
