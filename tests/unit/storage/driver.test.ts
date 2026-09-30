@@ -491,7 +491,14 @@ describe('one copy of SQLite per file', () => {
     if (process.platform === 'win32' || process.platform === 'darwin') expect(sqliteHolding(path.toUpperCase())).toBe(a.name);
     b.close();
     expect(sqliteHolding(path)).toBeUndefined();
-    if (!builtIn) return;
+    // A second close does nothing on either copy: node:sqlite throws on it where better-sqlite3 does not.
+    if (builtIn) {
+      const n = openDriver(tempDb(), { driver: 'node' });
+      n.close();
+      expect(() => n.close()).not.toThrow();
+    }
+    // Let go, the file opens with the other copy: when both can open here (the job that builds the addon from source refuses native on Node 24).
+    if (!builtIn || (other(a) === 'native' && nativeAbortsOnCollect(nativeBinaryPath()))) return;
     const c = openDriver(path, { driver: other(a) });
     drivers.push(c);
     expect(c.name).not.toBe(a.name);
@@ -499,7 +506,10 @@ describe('one copy of SQLite per file', () => {
   });
 
   it("the search worker and the checkpoint worker are handed the copy the store's connection got, on either driver", async () => {
-    for (const driver of builtIn ? (['native', 'node'] as const) : (['native'] as const)) {
+    // Each driver that opens here. Where native is refused (the job that builds the addon from source), the refusal is the check for it.
+    const nativeRefused = nativeAbortsOnCollect(nativeBinaryPath());
+    if (nativeRefused) expect(() => new SqliteAdapter(tempDb(), { driver: 'native' })).toThrow(/nodejs\/node#65446/);
+    for (const driver of [...(nativeRefused ? [] : (['native'] as const)), ...(builtIn ? (['node'] as const) : [])]) {
       const storage = new SqliteAdapter(tempDb(), { driver });
       await storage.initialize();
       try {

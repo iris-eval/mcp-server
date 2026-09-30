@@ -538,9 +538,10 @@ function held(key: string, driver: Driver): Driver {
   let open = true;
   return {
     ...driver,
+    // A second close of one connection does nothing: node:sqlite throws on it where better-sqlite3 does not. The file is let go only after a close that succeeded.
     close: () => {
-      driver.close();
       if (!open) return;
+      driver.close();
       open = false;
       const now = holders.get(key);
       if (now && --now.count === 0) holders.delete(key);

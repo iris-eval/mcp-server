@@ -325,7 +325,7 @@ jobs:
         run: |
           bad=0
           for pair in "native native" "node node" "native node" "node native"; do
-            set -- $pair
+            set -- "${pair% *}" "${pair#* }"
             died=0
             for i in $(seq 1 10); do
               node tests/fixtures/worker-exit/two-sqlites.cjs "$1" "$2" 100 > out.txt 2> err.txt || { died=$((died + 1)); echo "    main=$1 worker=$2 run $i: exit $? $(grep -v -E 'ExperimentalWarning|trace-warnings' err.txt | head -1)"; }
