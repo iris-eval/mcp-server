@@ -53,8 +53,8 @@
  * starts a thread; unref'd while idle; a thread that stops after it was
  * ready is replaced on the next write, and one that could not start is not
  * tried again by that store; close() asks the thread to close its
- * connection itself and waits for it to end, and terminates it only if it
- * has not ended in CLOSE_TIMEOUT_MS.
+ * connection itself and waits for it to end, terminates it if it has not
+ * ended in CLOSE_TIMEOUT_MS, and resolves only once the thread has ended.
  */
 import { statSync } from 'node:fs';
 import { Worker } from 'node:worker_threads';
@@ -91,6 +91,8 @@ export interface CheckpointerOptions {
   onReady: () => void;
   /** Called if the worker fails or stops: the adapter's connection checkpoints by itself again. */
   onFailed: (reason: string) => void;
+  /** How long close() lets the thread end on its own before it terminates it (CLOSE_TIMEOUT_MS); for tests. */
+  closeTimeoutMs?: number;
 }
 
 export class Checkpointer {
@@ -246,9 +248,9 @@ export class Checkpointer {
 
   /**
    * Ask the thread to close its connection, and wait for it to end on its
-   * own; terminate it only if it has not in CLOSE_TIMEOUT_MS, without
-   * waiting for that (terminate cannot stop a SQLite statement; the thread
-   * ends when its statement does).
+   * own; terminate it if it has not in CLOSE_TIMEOUT_MS (terminate cannot
+   * stop a SQLite statement; the thread ends when its statement does), and
+   * resolve once it has ended.
    */
   async close(): Promise<void> {
     this.settle(false);
@@ -258,9 +260,21 @@ export class Checkpointer {
     this.worker.postMessage({ type: 'close', id: this.nextId++ });
     let timer: NodeJS.Timeout | undefined;
     const late = new Promise<'late'>((resolve) => {
-      timer = setTimeout(() => resolve('late'), CLOSE_TIMEOUT_MS);
+      timer = setTimeout(() => resolve('late'), this.options.closeTimeoutMs ?? CLOSE_TIMEOUT_MS);
     });
-    if ((await Promise.race([this.exited, late])) === 'late') void this.worker.terminate();
+    /*
+     * Resolves only once the thread has ended, and its connection with it,
+     * so a caller can move or remove the file as soon as this returns (on
+     * Windows an open file cannot be). A statement the thread is in cannot
+     * be stopped: the close message waits behind it, and terminate() ends the
+     * thread when it returns. This used to return at the timeout with the
+     * thread still in its statement and the file still open.
+     */
+    if ((await Promise.race([this.exited, late])) === 'late') await this.worker.terminate();
     clearTimeout(timer);
+    await this.exited;
+    // A request the thread never answered (it was terminated in it, or it came after the close) is answered now, so nothing waits on it forever.
+    for (const reply of this.waiting.values()) reply({ error: 'the checkpoint worker closed' });
+    this.waiting.clear();
   }
 }
