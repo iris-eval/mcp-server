@@ -28,7 +28,7 @@ const stores: SqliteAdapter[] = [];
 afterEach(async () => {
   // Close every store first: an open SQLite file cannot be removed on Windows.
   for (const s of stores.splice(0)) await s.close().catch(() => undefined);
-  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 interface Harness {

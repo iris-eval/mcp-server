@@ -144,7 +144,7 @@ async function main() {
   const claims = JSON.parse(readFileSync(IRIS_CLAIMS, 'utf8'));
 
   // Idempotence: every run starts from an empty scratch tree.
-  rmSync(WORK_DIR, { recursive: true, force: true });
+  rmSync(WORK_DIR, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   mkdirSync(WORK_DIR, { recursive: true });
 
   const before = snapshotRealHome();

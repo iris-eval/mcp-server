@@ -87,7 +87,7 @@ describe('repeated start and stop over stdio', () => {
         expect(s.stderr, `cycle ${cycle}: the end of stdin shut the server down in order`).toContain('Shutdown complete');
         expect(s.stderr, `cycle ${cycle}: the store was held by the driver Iris chose for this binary`).toContain(`driver ${chosen}:`);
       } finally {
-        rmSync(home, { recursive: true, force: true });
+        rmSync(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
       }
     }
   }, 180_000);

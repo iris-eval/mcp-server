@@ -25,7 +25,7 @@ describe('Stdio Transport Integration', () => {
   });
 
   afterAll(() => {
-    rmSync(irisHome, { recursive: true, force: true });
+    rmSync(irisHome, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   it('should connect to server via stdio and list tools', async () => {

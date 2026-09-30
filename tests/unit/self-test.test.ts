@@ -57,7 +57,7 @@ describe('runSelfTest', { timeout: 90_000 }, () => {
         process.env[key] = savedEnv[key];
       }
     }
-    rmSync(decoyHome, { recursive: true, force: true });
+    rmSync(decoyHome, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   it('passes on a healthy install, ignores the ambient env, and cleans up after itself', async () => {
@@ -216,7 +216,7 @@ describe('the self-test line for the configured search index', { timeout: 60_000
     dir = mkdtempSync(join(tmpdir(), 'iris-selftest-index-'));
   });
   afterEach(() => {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   const traces = (n: number) => Array.from({ length: n }, (_, i) => ({ trace_id: `t-${i}`, agent_name: 'a', output: `answer ${i}`, timestamp: new Date().toISOString() }));

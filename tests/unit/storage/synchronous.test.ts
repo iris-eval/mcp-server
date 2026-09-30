@@ -35,7 +35,7 @@ afterEach(() => {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
-  rmSync(scratch, { recursive: true, force: true });
+  rmSync(scratch, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 /** PRAGMA synchronous answers 1 for NORMAL and 2 for FULL. */

@@ -201,7 +201,7 @@ describe('adversarial queries, on the review’s store', () => {
   afterAll(async () => {
     await scan?.close();
     await store?.close();
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   /** Run one query on both paths; each must be refused, or answered, within the bound. */
@@ -272,7 +272,7 @@ describe('the time budget', () => {
   beforeAll(() => {
     dir = mkdtempSync(join(tmpdir(), 'iris-search-budget-time-'));
   });
-  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+  afterAll(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }));
 
   it(`defaults to ${SEARCH_BUDGET_MS} ms, and a search inside it is complete`, async () => {
     const s = new SqliteAdapter(':memory:', { driver: SEARCH_DRIVER });

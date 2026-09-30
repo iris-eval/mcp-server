@@ -105,7 +105,7 @@ describe('shipped thresholds read as shipped', () => {
   afterEach(() => {
     if (saved === undefined) delete process.env.IRIS_HOME;
     else process.env.IRIS_HOME = saved;
-    rmSync(home, { recursive: true, force: true });
+    rmSync(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   it('on the engine loadConfig() builds with no config file, every threshold stamp reads "default"', async () => {

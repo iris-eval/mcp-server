@@ -46,7 +46,7 @@ describe('log_trace reads _meta (SEP-414)', () => {
   afterEach(async () => {
     await client.close();
     await storage.close();
-    rmSync(ruleDir, { recursive: true, force: true });
+    rmSync(ruleDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   it('a call carrying traceparent in _meta stores the context; one without stores none', async () => {

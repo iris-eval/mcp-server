@@ -33,7 +33,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await adapter.close();
-  rmSync(tmpDir, { recursive: true, force: true });
+  rmSync(tmpDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 function makeEval(id: string, opts: { traceId?: string; passed: boolean }): EvalResult {

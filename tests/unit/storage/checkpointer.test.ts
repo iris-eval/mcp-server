@@ -32,7 +32,7 @@ const open: SqliteAdapter[] = [];
 afterEach(async () => {
   vi.restoreAllMocks();
   for (const s of open.splice(0)) await s.close().catch(() => undefined);
-  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 type Log = Array<['info' | 'warn', string]>;

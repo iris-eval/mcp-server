@@ -25,7 +25,7 @@ import { nodeSqliteAvailable } from '../../src/storage/driver.js';
  */
 
 const clientHome = mkdtempSync(join(tmpdir(), 'iris-selftest-cli-clients-'));
-afterAll(() => rmSync(clientHome, { recursive: true, force: true }));
+afterAll(() => rmSync(clientHome, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }));
 function clientHomeEnv(): Record<string, string> {
   return {
     HOME: clientHome,
@@ -76,7 +76,7 @@ describe('iris-eval --self-test (CLI)', () => {
   });
 
   afterAll(() => {
-    rmSync(decoyHome, { recursive: true, force: true });
+    rmSync(decoyHome, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   it('exits 0 on a healthy install and leaves the ambient IRIS_HOME untouched', async () => {

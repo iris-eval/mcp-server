@@ -25,7 +25,7 @@ vi.setConfig({ testTimeout: 120_000 });
 
 const dirs: string[] = [];
 afterAll(() => {
-  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 /** A small seeded generator (mulberry32), so a failure names the seed that reproduces it. */

@@ -106,7 +106,7 @@ describe('delete_trace leaves no text on disk', () => {
   const open: SqliteAdapter[] = [];
   afterEach(async () => {
     for (const s of open.splice(0)) await s.close().catch(() => undefined);
-    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   const holds = (file: string, needle: string) => existsSync(file) && readFileSync(file).includes(Buffer.from(needle, 'utf8'));
@@ -208,7 +208,7 @@ describe('delete_trace leaves no text on disk while the store works in the backg
 
   afterAll(async () => {
     for (const st of open.splice(0)) await st.close().catch(() => undefined);
-    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   const holds = (file: string, needle: string) => existsSync(file) && readFileSync(file).includes(Buffer.from(needle, 'utf8'));
@@ -273,7 +273,7 @@ describe('delete_trace leaves no text on disk while the store works in the backg
 describe('delete_trace leaves no text on disk while another client writes', () => {
   const dirs: string[] = [];
   afterAll(() => {
-    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
   const holds = (file: string, needle: string) => existsSync(file) && readFileSync(file).includes(Buffer.from(needle, 'utf8'));
 

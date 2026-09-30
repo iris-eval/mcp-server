@@ -69,7 +69,7 @@ describe('the interpretations reach every surface', () => {
     await client.close();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await storage.close();
-    rmSync(ruleDir, { recursive: true, force: true });
+    rmSync(ruleDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   it('the tool, the resource and both routes carry the sentence for a rule that fired without deciding', async () => {

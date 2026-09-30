@@ -120,7 +120,7 @@ describe('detection', () => {
       mkdirSync(join(home, '.codeium', 'windsurf'), { recursive: true });
       expect(detectInstalledClients(e).map((p) => p.id)).toEqual(['claude-code', 'cursor', 'windsurf']);
     } finally {
-      rmSync(home, { recursive: true, force: true });
+      rmSync(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
   });
 });

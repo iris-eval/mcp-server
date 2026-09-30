@@ -194,7 +194,7 @@ describe('bundleFiles', () => {
   });
 
   afterEach(() => {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   const build = (overrides: Partial<{ packageFiles: Files; lock: Lock; manifest: unknown }> = {}) =>

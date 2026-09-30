@@ -30,7 +30,7 @@ describe('v0.3 → v0.4 migration', () => {
   });
 
   afterEach(() => {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   it('opens a v0.3-era database and backfills existing rows to LOCAL_TENANT', async () => {

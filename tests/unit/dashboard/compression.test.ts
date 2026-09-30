@@ -112,7 +112,7 @@ describe('precompressed static files', () => {
     base = await listen(app);
   });
 
-  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+  afterAll(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }));
 
   it('finds a variant only where it is current and servable', () => {
     const found = findPrecompressed(dir);

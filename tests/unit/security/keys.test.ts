@@ -47,7 +47,7 @@ describe('buildKeyRing', () => {
       expect(ring.match('  from-a-file\n')).toBeNull();
       expect(() => buildKeyRing({ ...base, apiKey: 'k', apiKeyFile: file })).toThrow(/both set — one primary key, from one place/);
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
   });
 
@@ -61,7 +61,7 @@ describe('buildKeyRing', () => {
       expect(() => buildKeyRing({ ...base, apiKeyFile: empty })).toThrow(/is empty\. The file's trimmed contents are the key/);
       expect(() => buildKeyRing({ ...base, apiKeys: [{ id: 'ci', keyFile: missing }] })).toThrow(/the key file for security\.apiKeys "ci"/);
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
   });
 

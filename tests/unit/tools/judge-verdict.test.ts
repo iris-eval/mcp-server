@@ -85,7 +85,7 @@ describe('the composer decides on the judge and the citations tools', () => {
   afterEach(async () => {
     await client.close();
     await storage.close();
-    rmSync(ruleDir, { recursive: true, force: true });
+    rmSync(ruleDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     if (savedKey === undefined) delete process.env.IRIS_ANTHROPIC_API_KEY;
     else process.env.IRIS_ANTHROPIC_API_KEY = savedKey;
   });

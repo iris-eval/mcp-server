@@ -11,7 +11,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  rmSync(dir, { recursive: true, force: true });
+  rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 describe('writeAtomic', () => {
@@ -70,7 +70,7 @@ describe('writeAtomic', () => {
   it('throws immediately on a non-transient error', () => {
     // A directory cannot be overwritten by a file rename.
     const target = join(dir, 'blocking-dir');
-    rmSync(target, { recursive: true, force: true });
+    rmSync(target, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     writeAtomic(join(dir, 'seed.json'), 'x');
     expect(() => writeAtomic(join('\0invalid', 'nope.json'), 'x')).toThrow();
   });

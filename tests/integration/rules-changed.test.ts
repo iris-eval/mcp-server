@@ -51,7 +51,7 @@ describe('rules_changed on a verdict', () => {
   afterEach(async () => {
     await client.close();
     await storage.close();
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   const evaluate = async () => body(await client.callTool({ name: 'evaluate_output', arguments: { output: OUTPUT, input: INPUT } }));
@@ -194,7 +194,7 @@ describe('delete_trace writes to the rule store audit log', () => {
     } finally {
       await client.close();
       await storage.close();
-      rmSync(dir, { recursive: true, force: true });
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
   });
 });

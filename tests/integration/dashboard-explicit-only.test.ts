@@ -48,7 +48,7 @@ afterEach(async () => {
   for (const server of held.splice(0)) {
     await new Promise<void>((r) => server.close(() => r()));
   }
-  rmSync(home, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 function spawnCli(args: string[], extraEnv: Record<string, string> = {}): ChildProcess {

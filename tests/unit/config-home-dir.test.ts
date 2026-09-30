@@ -31,7 +31,7 @@ afterEach(() => {
   else process.env.IRIS_HOME = savedHome;
   if (savedDbPath === undefined) delete process.env.IRIS_DB_PATH;
   else process.env.IRIS_DB_PATH = savedDbPath;
-  rmSync(scratch, { recursive: true, force: true });
+  rmSync(scratch, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 describe('loadConfig creates IRIS_HOME', () => {

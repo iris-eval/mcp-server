@@ -141,7 +141,7 @@ describe('exportTraces', () => {
       expect(rows.map((r) => r.trace.trace_id)).toEqual(await listed(s, { search: 'refund' }));
     } finally {
       await s.close();
-      rmSync(dir, { recursive: true, force: true });
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
   }, 60_000);
 

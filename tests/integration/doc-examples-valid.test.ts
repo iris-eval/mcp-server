@@ -111,7 +111,7 @@ describe('published rule-config examples are deployable', () => {
           } as Parameters<typeof store.deploy>[1]),
         ).not.toThrow();
       } finally {
-        rmSync(dir, { recursive: true, force: true });
+        rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
       }
     },
   );

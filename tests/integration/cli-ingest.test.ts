@@ -20,7 +20,7 @@ const entryPoint = resolve(repoRoot, 'src', 'index.ts');
 let home: string;
 
 beforeEach(() => { home = mkdtempSync(join(tmpdir(), 'iris-cli-ingest-')); });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { rmSync(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); });
 
 function run(args: string[], stdin?: string, env: Record<string, string> = {}): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolvePromise, rejectPromise) => {

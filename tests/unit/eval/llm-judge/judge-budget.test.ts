@@ -134,7 +134,7 @@ describe('the SQLite ledger', () => {
   });
   afterEach(async () => {
     for (const a of adapters.splice(0)) await a.close();
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
   const open = async (): Promise<SqliteAdapter> => {
     const a = new SqliteAdapter(join(dir, 'iris.db'));
