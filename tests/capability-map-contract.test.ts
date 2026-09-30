@@ -71,7 +71,8 @@ describe('capability map — shape', () => {
   });
 
   it('every map question maps to the questions registry', () => {
-    const registry = new Set(QUESTIONS.map((q) => q.id));
+    // A Set of strings: the map's registryId is read from JSON, and the question is whether it is one of these.
+    const registry = new Set<string>(QUESTIONS.map((q) => q.id));
     for (const q of map.questions) expect(registry.has(q.registryId), q.id).toBe(true);
   });
 
@@ -201,7 +202,7 @@ describe('capability map — needs are real', () => {
     for (const c of answering) {
       const rules = c.evidence.filter((e) => e.kind === 'rule').map((e) => RULE_BY_NAME.get(e.name)!);
       if (rules.length === 0) continue;
-      const declared = new Set(rules.flatMap((r) => [...r.needs]));
+      const declared = new Set(rules.flatMap((r) => [...(r.needs ?? [])]));
       for (const need of c.needs) expect(declared.has(need as Need), `${c.id}: no cited rule reads "${need}"`).toBe(true);
     }
   });

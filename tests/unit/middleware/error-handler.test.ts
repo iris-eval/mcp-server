@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import express from 'express';
 import { createErrorHandler } from '../../../src/middleware/error-handler.js';
+import { recordOf } from '../../helpers/json.js';
 
 const mockLogger = {
   debug: () => {},
@@ -14,7 +15,7 @@ async function testError(app: express.Application, path: string) {
   const addr = server.address() as { port: number };
   try {
     const res = await fetch(`http://localhost:${addr.port}${path}`);
-    return { status: res.status, body: await res.json() };
+    return { status: res.status, body: recordOf(await res.json()) };
   } finally {
     server.close();
   }

@@ -62,8 +62,11 @@ describe('getCaseResults with question', () => {
 describe('compare_traces with question', () => {
   it('reads the case’s rate for the question, not the verdict, and echoes the question', async () => {
     const storage = await seeded();
-    let handler: ((args: Record<string, unknown>) => Promise<unknown>) | null = null;
-    registerCompareTracesTool({ registerTool: (_n: string, _c: unknown, fn: typeof handler) => { handler = fn; } } as never, storage as never);
+    type Handler = (args: Record<string, unknown>) => Promise<unknown>;
+    // A holder, not a `let`: TypeScript cannot see an assignment made inside the callback, and would read the handler as never set.
+    const registered: { handler?: Handler } = {};
+    registerCompareTracesTool({ registerTool: (_n: string, _c: unknown, fn: Handler) => { registered.handler = fn; } } as never, storage as never);
+    const handler = registered.handler;
     if (!handler) throw new Error('compare_traces did not register');
     const verdict = (await handler({})) as { structuredContent: { question: string | null; cases: number; flaky_cases: Array<{ case_key: string; attempts: number; passed: number }> } };
     expect(verdict.structuredContent.question).toBeNull();

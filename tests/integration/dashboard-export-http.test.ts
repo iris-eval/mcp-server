@@ -81,7 +81,7 @@ describe('GET /api/v1/traces/export', () => {
 
   it('streams JSON Lines, one trace per line, each exactly what GET /traces/:id answers', async () => {
     const { base } = await boot();
-    const ids = [];
+    const ids: string[] = [];
     for (let i = 0; i < 3; i++) {
       ids.push(await post(base, { agent_name: 'bot', output: `answer ${i}`, spans: [{ name: 'llm', kind: 'LLM', status_code: 'OK', start_time: new Date().toISOString() }], evaluate: i === 1 }));
     }
@@ -125,7 +125,7 @@ describe('GET /api/v1/traces/export', () => {
     const mine = await post(base, { agent_name: 'bot', output: 'shared words here' });
     await storage.insertTrace(asTenantId('someone-else'), { trace_id: 'theirs', agent_name: 'bot', output: 'shared words here', timestamp: new Date().toISOString() });
     await storage.insertEvalResult(asTenantId('someone-else'), { id: 'their-eval', trace_id: 'theirs', eval_type: 'safety', output_text: 'x', score: 1, passed: true, rule_results: [] });
-    for (const query of [{ format: 'jsonl' }, { format: 'jsonl', q: 'shared words' }]) {
+    for (const query of [{ format: 'jsonl' }, { format: 'jsonl', q: 'shared words' }] as Array<Record<string, string>>) {
       expect(jsonl(await (await fetch(exportUrl(base, 'traces', query))).text()).map((r) => r.trace.trace_id)).toEqual([mine]);
     }
     expect(await (await fetch(exportUrl(base, 'evaluations', { format: 'jsonl' }))).text()).toBe('');

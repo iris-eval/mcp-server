@@ -35,10 +35,9 @@ describe('regex rules with a malformed config', () => {
     for (const [label, config] of brokenRegexConfigs) {
       it(`${type} with ${label} skips as configInvalid instead of throwing`, () => {
         const rule = createCustomRule({ name: 'x', type, config });
-        let result;
-        expect(() => {
-          result = rule.evaluate({ output: 'anything' });
-        }).not.toThrow();
+        const run = () => rule.evaluate({ output: 'anything' });
+        expect(run).not.toThrow();
+        const result = run();
         expect(result).toMatchObject({
           ruleName: 'x',
           passed: false,
@@ -61,10 +60,9 @@ describe('keyword rules with a malformed config', () => {
   for (const type of ['contains_keywords', 'excludes_keywords'] as const) {
     it(`${type} with non-string keywords skips as configInvalid instead of throwing`, () => {
       const rule = createCustomRule({ name: 'k', type, config: { keywords: [1, 2] } });
-      let result;
-      expect(() => {
-        result = rule.evaluate({ output: 'anything' });
-      }).not.toThrow();
+      const run = () => rule.evaluate({ output: 'anything' });
+      expect(run).not.toThrow();
+      const result = run();
       expect(result).toMatchObject({ skipped: true, configInvalid: true });
       expect(result.skipReason).toContain('config.keywords');
     });

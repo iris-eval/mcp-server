@@ -18,6 +18,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { textOf, type ToolResult } from '../../helpers/mcp-results.js';
 
 const callLLMJudge = vi.fn();
 vi.mock('../../../src/eval/llm-judge/client.js', () => ({
@@ -37,8 +38,7 @@ const { createCustomRuleStore } = await import('../../../src/custom-rule-store.j
 const { defaultConfig } = await import('../../../src/config/defaults.js');
 const { LOCAL_TENANT } = await import('../../../src/types/tenant.js');
 
-type Content = Array<{ type: string; text: string }>;
-const parse = (r: { content?: unknown }) => JSON.parse((r.content as Content)[0].text) as Record<string, unknown>;
+const parse = (r: ToolResult): Record<string, unknown> => JSON.parse(textOf(r));
 
 /** One judge reply with the given score; the model claims nothing about passing. */
 function judgeReplies(score: number): void {

@@ -38,7 +38,7 @@ const CASES: Array<{ basis: string; node: VerdictNode['node'] | null; rows: Eval
     basis: 'policy_gate',
     node: 'gate',
     // A threshold the deployment SET gates; one Iris ships only advises.
-    rows: [row({ ruleName: 'cost_ceiling', kind: 'policy', passed: false, evidence: [{ type: 'count', name: 'cost', value: 1, threshold: 0.1, thresholdSource: 'config' }] })],
+    rows: [row({ ruleName: 'cost_ceiling', kind: 'policy', passed: false, evidence: [{ type: 'count', stat: 'cost', unit: 'usd', value: 1, threshold: 0.1, thresholdSource: 'config' }] })],
   },
   { basis: 'detector_veto', node: 'veto', rows: [row({ ruleName: 'no_pii', kind: 'detection', passed: false, critical: true })] },
   {

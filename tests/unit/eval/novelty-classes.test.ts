@@ -37,14 +37,15 @@ const log = (entries: Array<[string, string[]]>): AgentFailureLogEntry[] =>
     traceId: id,
     timestamp: `2026-09-0${i + 1}T09:00:00Z`,
     failed: [...failed].sort(),
+    costUsd: null,
   }));
 
 describe('historyBefore', () => {
   it('counts only traces older than the one under test', () => {
     const h = historyBefore(
       [
-        { traceId: 'older', timestamp: '2026-09-01T00:00:00Z', failed: ['a'] },
-        { traceId: 'newer', timestamp: '2026-09-09T00:00:00Z', failed: ['b'] },
+        { traceId: 'older', timestamp: '2026-09-01T00:00:00Z', failed: ['a'], costUsd: null },
+        { traceId: 'newer', timestamp: '2026-09-09T00:00:00Z', failed: ['b'], costUsd: null },
       ],
       'subject',
       '2026-09-07T12:00:00Z',
@@ -55,7 +56,7 @@ describe('historyBefore', () => {
   });
 
   it('never counts a trace as part of its own history', () => {
-    const h = historyBefore([{ traceId: 'subject', timestamp: '2026-09-01T00:00:00Z', failed: ['a'] }], 'subject', '2026-09-07T12:00:00Z');
+    const h = historyBefore([{ traceId: 'subject', timestamp: '2026-09-01T00:00:00Z', failed: ['a'], costUsd: null }], 'subject', '2026-09-07T12:00:00Z');
     expect(h.priorTraces).toBe(0);
     expect(h.rulesEverFailed).toEqual([]);
   });

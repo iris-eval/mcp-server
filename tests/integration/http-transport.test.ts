@@ -7,6 +7,7 @@ import { createDashboardServer } from '../../src/dashboard/server.js';
 import { createHttpTransport } from '../../src/transport/http.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { defaultConfig } from '../../src/config/defaults.js';
+import { recordOf } from '../helpers/json.js';
 
 const testConfig = {
   ...defaultConfig,
@@ -160,7 +161,7 @@ describe('HTTP Transport Integration', () => {
 
     const response = await fetch(`http://localhost:${port}/api/v1/health`);
     expect(response.ok).toBe(true);
-    const data = await response.json();
+    const data = recordOf(await response.json());
     expect(data.status).toBe('ok');
   });
 
@@ -177,7 +178,7 @@ describe('HTTP Transport Integration', () => {
 
     const response = await fetch(`http://localhost:${port}/api/v1/summary`);
     expect(response.ok).toBe(true);
-    const data = await response.json();
+    const data = recordOf(await response.json());
     expect(data.total_traces).toBe(0);
   });
 
@@ -194,7 +195,7 @@ describe('HTTP Transport Integration', () => {
 
     const response = await fetch(`http://localhost:${port}/api/v1/traces`);
     expect(response.ok).toBe(true);
-    const data = await response.json();
+    const data = recordOf(await response.json());
     expect(data.traces).toEqual([]);
     expect(data.total).toBe(0);
   });
@@ -212,7 +213,7 @@ describe('HTTP Transport Integration', () => {
 
     const response = await fetch(`http://localhost:${port}/api/v1/filters`);
     expect(response.ok).toBe(true);
-    const data = await response.json();
+    const data = recordOf(await response.json());
     expect(data.agent_names).toEqual([]);
     expect(data.frameworks).toEqual([]);
   });

@@ -168,12 +168,10 @@ describe('maintenance — measured issue-close latency', () => {
 
   it('a live refresh paginates via the Link header, filters, and stamps source "live"', async () => {
     const urls: string[] = [];
-    const res = (body: unknown, link: string | null = null) => ({
-      ok: true,
-      json: async () => body,
-      headers: { get: (k: string) => (k === 'link' ? link : null) },
-    });
-    const fetchImpl = async (url: string) => {
+    // Real Responses, so the fake is a fetch and not a shape that happens to satisfy this generator.
+    const res = (body: unknown, link: string | null = null) => new Response(JSON.stringify(body), { headers: link === null ? {} : { link } });
+    const fetchImpl = async (input: string | URL | Request) => {
+      const url = input instanceof Request ? input.url : String(input);
       urls.push(url);
       if (url.includes('state=closed') && !url.includes('page=2')) {
         return res([issue(1, '2026-09-01T00:00:00Z', '2026-09-02T00:00:00Z')], '<https://api.github.com/repos/iris-eval/mcp-server/issues?state=closed&page=2>; rel="next"');

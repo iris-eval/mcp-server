@@ -82,6 +82,26 @@ jobs:
       # lost-pixel vendor choice is a separate, open decision.
       - run: cd dashboard && npm run build-storybook
 
+  typecheck-tests:
+    # Every test file, type-checked: tests/ under tsconfig.tests.json, and the
+    # Playwright specs (whose page callbacks run in the browser) under
+    # tsconfig.e2e.json with the DOM library. The root tsconfig covers src/
+    # only, so until this job a test could read a response field under a
+    # name the server no longer sends, or build a fixture the types have
+    # moved past, and find out at run time or never. The dashboard's tests
+    # are checked by its own `npm run typecheck` in lint-and-typecheck.
+    # Named so branch protection can require it.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run typecheck:tests
+
   test:
     # Branch protection requires "test (22)" and "test (24)" by name; the
     # native cells carry those names, the built-in and macOS cells add theirs.

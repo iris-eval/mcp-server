@@ -6,6 +6,8 @@ import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import { createCustomRule } from '../../../src/eval/rules/index.js';
 import { registerEvaluateOutputTool } from '../../../src/tools/evaluate-output.js';
+import { evaluateOutputResponseSchema, type EvaluateOutputResponse } from '../../../src/eval/response-schema.js';
+import { textOf } from '../../helpers/mcp-results.js';
 
 /*
  * The evaluate_output RESPONSE, driven through a real MCP client — not the
@@ -23,13 +25,6 @@ import { registerEvaluateOutputTool } from '../../../src/tools/evaluate-output.j
  * can take without any hostile input at all.
  */
 
-interface EvaluateResponse {
-  passed: boolean;
-  critical_failures?: string[];
-  critical_skipped?: string[];
-  rule_results: Array<{ ruleName: string; skipped?: boolean; skipReason?: string }>;
-  insufficient_data: boolean;
-}
 
 describe('evaluate_output response carries critical_skipped', () => {
   let client: Client;
@@ -55,10 +50,10 @@ describe('evaluate_output response carries critical_skipped', () => {
     await storage.close();
   });
 
-  async function evaluate(args: Record<string, unknown>): Promise<EvaluateResponse> {
+  /** The tool's answer, validated against the published response schema rather than asserted into a local shape. */
+  async function evaluate(args: Record<string, unknown>): Promise<EvaluateOutputResponse> {
     const res = await client.callTool({ name: 'evaluate_output', arguments: args });
-    const content = res.content as Array<{ type: string; text: string }>;
-    return JSON.parse(content[0].text) as EvaluateResponse;
+    return evaluateOutputResponseSchema.parse(JSON.parse(textOf(res)));
   }
 
   function cheapPassingRule() {

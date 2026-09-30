@@ -71,7 +71,7 @@ function makeEval(trace: Trace, index: number): EvalResult {
           kind: 'policy',
           origin: 'built-in',
           question: 'within_budget',
-          saw: ['cost_usd'],
+          saw: ['cost'],
           evidence: [{ type: 'count', stat: 'cost', unit: 'usd', value: 1.33, threshold: 0.1, thresholdSource: 'default' }],
           uncertainty: { basis: 'policy' },
         },

@@ -41,6 +41,7 @@ import type { IrisConfig } from '../../src/types/config.js';
 import { runSelfTest, SELF_TEST_STEPS, SELF_TEST_FAIL_VERDICT } from '../../src/self-test.js';
 import { runIngest } from '../../src/cli/ingest.js';
 import { Readable, Writable } from 'node:stream';
+import { resourceTextOf } from '../helpers/mcp-results.js';
 
 const MODEL = 'claude-haiku-4-5';
 const KEY = 'sk-ant-dummy-key-for-tests-0123456789';
@@ -136,7 +137,7 @@ async function evaluate(client: Client, args: Record<string, unknown>): Promise<
 }
 
 async function capabilitiesRelevance(client: Client) {
-  const caps = JSON.parse((await client.readResource({ uri: 'iris://capabilities' })).contents[0].text as string) as {
+  const caps = JSON.parse(resourceTextOf(await client.readResource({ uri: 'iris://capabilities' }))) as {
     judge: { relevance: { budget: { limitUsd: number; spentUsd: number; calls: number; refused: number; exhausted: boolean; resetsAt: string }; maxCallsPerRequest: number; redact: boolean; egress: string } };
   };
   return caps.judge.relevance;
@@ -342,7 +343,7 @@ describe('what reaches the provider', () => {
     const { client } = await mcp(await store());
     await evaluate(client, LEAKY);
     expect(providerCalls[0].body.messages[0].content).not.toContain('jane.doe@acme-corp.io');
-    const state = JSON.parse((await client.readResource({ uri: 'iris://capabilities' })).contents[0].text as string) as { judge: { relevance: { notes: string[]; redact: boolean } } };
+    const state = JSON.parse(resourceTextOf(await client.readResource({ uri: 'iris://capabilities' }))) as { judge: { relevance: { notes: string[]; redact: boolean } } };
     expect(state.judge.relevance.redact).toBe(true);
     expect(state.judge.relevance.notes.join(' ')).toMatch(/IRIS_RELEVANCE_JUDGE_REDACT="of" is neither on nor off/);
   });

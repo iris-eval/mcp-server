@@ -29,10 +29,9 @@ import { EvalEngine } from '../../src/eval/engine.js';
 import { toEvaluationResponse } from '../../src/eval/response.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
 import type { EvalResult, Interpretation } from '../../src/types/eval.js';
+import { resourceTextOf, textOf } from '../helpers/mcp-results.js';
 
 const LONG = 'A fine answer that is long enough to pass the length floor, in two sentences. It says something concrete.';
-type Item = { type: string; text?: string; uri?: string };
-const textOf = (r: { content?: unknown }) => (r.content as Item[]).find((c) => c.type === 'text')!.text!;
 const costNote = (list: Interpretation[] | undefined) => list?.find((i) => i.rule === 'cost_under_threshold' && i.configKey === 'eval.defaultsGate');
 
 /** Fields the engine's result carries that a response must never: the texts (stored, never echoed) and the storage-only columns. */
@@ -80,7 +79,7 @@ describe('the interpretations reach every surface', () => {
     // the agent-addressed note: no tool calls were supplied, so the trajectory questions were not judged
     expect(viaTool.interpretations!.some((i) => i.addressee === 'agent' && i.text.includes('not judged')), 'the agent-addressed note').toBe(true);
 
-    const viaResource = JSON.parse((await client.readResource({ uri: `iris://evaluations/${viaTool.id}` })).contents[0].text as string) as { interpretations?: Interpretation[] };
+    const viaResource = JSON.parse(resourceTextOf(await client.readResource({ uri: `iris://evaluations/${viaTool.id}` }))) as { interpretations?: Interpretation[] };
     expect(costNote(viaResource.interpretations), 'the resource').toBeDefined();
 
     const viaEvals = (await (await fetch(`http://127.0.0.1:${port}/api/v1/evaluations?limit=5`)).json()) as Record<string, unknown> | EvalResult[];
