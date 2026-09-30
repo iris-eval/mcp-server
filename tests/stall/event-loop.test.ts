@@ -28,11 +28,12 @@
  * (tests/stall/vitest.config.ts), never inside the parallel suite.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { copyFileSync, mkdtempSync, rmSync, statSync } from 'node:fs';
+import { closeSync, copyFileSync, mkdtempSync, openSync, readSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
+import { TAIL_CHECKPOINT_PAGES } from '../../src/storage/checkpointer.js';
 import { retiredRemain } from '../../src/storage/search-index.js';
 import { READ_PATH_INDEXES, readPathsMissing } from '../../src/storage/read-paths.js';
 import { openDriver } from '../../src/storage/driver.js';
@@ -49,16 +50,29 @@ const OLD = 0.3;
 /** Evaluations without a stored risk estimate, as 0.19.0 left them: a fill in one transaction would hold the loop for seconds. */
 const EVALS = 10_000;
 /**
- * The ceiling on iris.db-wal while writes never pause and while the index
- * is built. The server's own connection checkpoints at
- * TAIL_CHECKPOINT_PAGES (64 MB) and background steps have the worker empty
- * the log at STEP_TRUNCATE_PAGES (32 MB); twice the first is room for the
- * worker's own copy holding the checkpoint lock a while. With the worker
+ * The ceiling on iris.db-wal while the index is built. Background steps have
+ * the worker empty the log at STEP_TRUNCATE_PAGES (32 MB). With the worker
  * alone, as 0.20.0's first checkpoint worker had it, the log grew with
  * every write: 2.6 GB by the end of an index build at 100,000 traces, and
- * in these two cases 1.1 GB and 149 MB (67 and 35 MB now).
+ * 149 MB in this case (about 35 MB now).
  */
 const WAL_CEILING_MB = 128;
+/*
+ * While writes never pause, what the design promises is that the log starts
+ * over: the server's own connection checkpoints at TAIL_CHECKPOINT_PAGES
+ * (64 MB) and the next write starts the log over. With the worker alone it
+ * never did, and the log reached 1.1 GB here. How far a cycle runs past
+ * 64 MB before its restart depends on the disk: the tail checkpoint waits
+ * while the worker's own copy holds the checkpoint lock, and SQLite reuses
+ * the file without shrinking it, so the file keeps its largest cycle. On a
+ * desktop that is 63 to 67 MB; on a hosted Linux runner cycles reached 105
+ * to 138 MB, with the log still starting over about every 500 ms (#746). So
+ * this case asserts the restarts and the longest stretch over 64 MB without
+ * one, and keeps a size ceiling far below the 1.1 GB regression.
+ */
+const WAL_WRITES_CEILING_MB = 256;
+/** The longest the log may stay over the tail checkpoint's size without starting over, while writes never pause. */
+const WAL_STRETCH_MS = 2_000;
 /** Steps aim at 50 ms of work; the rest is room for a slower runner and a garbage collection. */
 const STALL_LIMIT_MS = 250;
 
@@ -297,52 +311,104 @@ describe(`no background step holds the event loop over ${STALL_LIMIT_MS} ms (${T
     await s.close();
   });
 
-  /** The log's size on disk, in MB, sampled every few milliseconds while `work` runs: its largest. */
-  async function largestLog(path: string, work: () => Promise<unknown>): Promise<number> {
+  /*
+   * The log's size on disk, in MB, sampled every few milliseconds while
+   * `work` runs: its largest, and the story an assertion prints when it is too
+   * large. The story follows the log's checkpoint sequence number (header
+   * bytes 12-15, which SQLite adds one to each time the log starts over):
+   * how often it started over, how large it was each time, and the longest
+   * stretch it spent over the tail checkpoint's size without starting over.
+   * #746: on hosted runners the log now and then stops starting over, and
+   * this is the record of how.
+   */
+  async function largestLog(path: string, work: () => Promise<unknown>): Promise<{ largest: number; restarts: number; longestOver: number; story: () => string }> {
+    const wal = `${path}-wal`;
     const size = () => {
       try {
-        return statSync(`${path}-wal`).size / 2 ** 20;
+        return statSync(wal).size / 2 ** 20;
       } catch {
         return 0;
       }
     };
-    let largest = size();
-    const timer = setInterval(() => (largest = Math.max(largest, size())), 5);
+    const seq = () => {
+      let fd: number | undefined;
+      try {
+        fd = openSync(wal, 'r');
+        const b = Buffer.alloc(16);
+        return readSync(fd, b, 0, 16, 0) === 16 ? b.readUInt32BE(12) : -1;
+      } catch {
+        return -1;
+      } finally {
+        if (fd !== undefined) closeSync(fd);
+      }
+    };
+    const began = performance.now();
+    const samples: Array<[number, number, number]> = [];
+    const sample = () => samples.push([performance.now() - began, size(), seq()]);
+    sample();
+    const timer = setInterval(sample, 5);
     try {
       await work();
     } finally {
       clearInterval(timer);
+      sample();
     }
-    return Math.max(largest, size());
+    const largest = Math.max(...samples.map(([, mb]) => mb));
+    const tailMb = (TAIL_CHECKPOINT_PAGES * 4096) / 2 ** 20;
+    const restarts: string[] = [];
+    let lastRestart = 0;
+    let longestOver = 0;
+    for (let k = 1; k < samples.length; k += 1) {
+      const [t, mb, q] = samples[k];
+      const before = samples[k - 1];
+      if (q !== -1 && before[2] !== -1 && q !== before[2]) {
+        restarts.push(`${Math.round(t)} ms at ${before[1].toFixed(0)} MB`);
+        lastRestart = t;
+      }
+      if (mb > tailMb) longestOver = Math.max(longestOver, t - lastRestart);
+    }
+    const story = () => {
+      const shown = restarts.slice(0, 20).join(', ') + (restarts.length > 20 ? ', …' : '');
+      return (
+        `log over ${samples.length} samples in ${Math.round(samples.at(-1)![0])} ms: largest ${largest.toFixed(1)} MB; ` +
+        `started over ${restarts.length} time(s)${restarts.length ? ` (${shown})` : ''}; ` +
+        `longest stretch over the tail checkpoint's ${tailMb} MB without starting over: ${Math.round(longestOver)} ms`
+      );
+    };
+    return { largest, restarts: restarts.length, longestOver, story };
   }
 
-  it(`the log stays under ${WAL_CEILING_MB} MB while agent-loop traces are written back to back`, async () => {
+  it('the log keeps starting over while agent-loop traces are written back to back', async () => {
     const path = copy(indexed, 'wal-writes.db');
     const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
     await s.initialize();
     const now = Date.now();
     // Each trace one write, as log_trace stores them, with no pause. With the worker alone the log reached 1.1 GB here; now about 67 MB.
-    const largest = await largestLog(path, async () => {
+    const { largest, restarts, longestOver, story } = await largestLog(path, async () => {
       for (let i = 0; i < 6_000; i += 1) {
         await s.insertTrace(LOCAL_TENANT, trace(TRACES + i, now));
         await new Promise((r) => setImmediate(r));
       }
     });
     process.stdout.write(`[wal] 6,000 agent-loop traces written back to back: largest log ${largest.toFixed(1)} MB\n`);
-    expect(largest).toBeLessThan(WAL_CEILING_MB);
+    const worker = (s as unknown as { checkpointer?: { active: boolean; truncateInProgress: boolean } }).checkpointer;
+    const said = `${story()}; checkpoint worker ${worker ? `active ${worker.active}, truncating ${worker.truncateInProgress}` : 'none'}`;
+    expect(restarts, said).toBeGreaterThanOrEqual(5);
+    expect(longestOver, said).toBeLessThan(WAL_STRETCH_MS);
+    expect(largest, said).toBeLessThan(WAL_WRITES_CEILING_MB);
     await s.close();
   });
 
   it(`the log stays under ${WAL_CEILING_MB} MB while the index is built after an upgrade`, async () => {
     const path = copy(unindexed, 'wal-build.db');
     const s = new SqliteAdapter(path, { driver: SEARCH_DRIVER });
-    const largest = await largestLog(path, async () => {
+    const { largest, story } = await largestLog(path, async () => {
       await s.initialize();
       await s.whenIdle();
     });
     process.stdout.write(`[wal] index built for ${TRACES} traces: largest log ${largest.toFixed(1)} MB\n`);
     expect(await s.whenSearchIndexReady()).toBe('ready');
-    expect(largest).toBeLessThan(WAL_CEILING_MB);
+    expect(largest, story()).toBeLessThan(WAL_CEILING_MB);
     await s.close();
   });
 });
