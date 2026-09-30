@@ -12,7 +12,8 @@ export function ScoreBadge({ score, passed }: { score: number; passed?: boolean 
         fontWeight: 600,
         fontFamily: 'var(--font-mono)',
         background: isPassing ? '#052e16' : '#450a0a',
-        color: isPassing ? '#22c55e' : '#ef4444',
+        // The red is #ef4444 lifted to 4.5:1 on its #450a0a fill.
+        color: isPassing ? '#22c55e' : '#f44948',
       }}
     >
       {formatScore(score)}

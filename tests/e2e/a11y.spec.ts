@@ -17,20 +17,17 @@
  * shortcuts, the tour) is checked open: axe, focus moved into it, and
  * Escape closing it with focus returned to where it was.
  *
- * Colour contrast is the one exception, and it is temporary: the
- * `color-contrast` rule fails today on the muted text and the light
- * theme's status colours, and the fix is a change to the colour tokens
- * that has not landed. Until it does, its failures are reported on each
- * test as an annotation rather than failing the run. When the token change
- * lands, empty CONTRAST_PENDING and this becomes a hard check like the rest.
+ * Colour contrast is enforced like every other rule. CONTRAST_PENDING is
+ * where a rule would go if a known failure had to be reported without
+ * failing the run; it is empty.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test, expect, type Page, type Locator } from '@playwright/test';
 import { AXE_VERSION, describeViolations, runAxe } from './_axe.js';
 
-/** Rules reported but not yet enforced. Only colour contrast, only until the colour tokens change. */
-const CONTRAST_PENDING = new Set(['color-contrast']);
+/** Rules reported but not yet enforced. None. */
+const CONTRAST_PENDING = new Set<string>();
 
 const THEMES = ['dark', 'light'] as const;
 type Theme = (typeof THEMES)[number];

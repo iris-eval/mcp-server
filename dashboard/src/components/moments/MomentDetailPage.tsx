@@ -111,7 +111,7 @@ const styles = {
   cta: {
     appearance: 'none',
     background: 'var(--iris-500)',
-    color: 'var(--bg-base)',
+    color: 'var(--text-on-accent)',
     border: 'none',
     borderRadius: 'var(--radius)',
     padding: 'var(--space-2) var(--space-4)',

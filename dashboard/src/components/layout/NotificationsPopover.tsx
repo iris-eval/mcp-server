@@ -52,7 +52,7 @@ const styles = {
     height: '16px',
     padding: '0 4px',
     background: 'var(--iris-500)',
-    color: 'var(--bg-base)',
+    color: 'var(--text-on-accent)',
     borderRadius: 'var(--radius-pill)',
     fontFamily: 'var(--font-mono)',
     fontSize: '10px',

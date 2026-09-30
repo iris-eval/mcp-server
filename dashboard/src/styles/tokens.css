@@ -64,17 +64,28 @@
   /* ════════════════════════════════════════════════════════════════
    * EVAL-SEMANTIC COLORS — per brand guide
    * Reserved for verdict states (pass/warn/fail). Never use for chrome.
+   * These are the dark theme's; the light theme sets darker steps of the
+   * same hues (below), because these measure 1.6-3.8:1 on its surfaces
+   * and WCAG AA needs 4.5:1 for text.
    * ════════════════════════════════════════════════════════════════ */
   --eval-pass: #22c55e;
   --eval-warn: #eab308;
-  --eval-fail: #ef4444;
+  /* #ef4444 lifted in OKLCH lightness only (0.637 to 0.673): 4.6:1 or more
+   * as text on its own 10-15% chip tint over every dark surface. */
+  --eval-fail: #fc514f;
+  /* The solid destructive button keeps the red it always had. */
+  --danger-fill: #ef4444;
 
   /* Additional eval-domain semantic colors — for span kinds in trace
    * tree. These were `--accent-tool` and `--accent-llm` in v1. Renamed
    * to make their domain explicit. */
   --eval-tool: #3b82f6;   /* blue — tool calls */
   --eval-llm: #a855f7;    /* purple — LLM spans */
-  --eval-skipped: #71717a; /* neutral — skipped rules */
+  --eval-skipped: #8b8b94; /* neutral — skipped rules; 4.5:1 on its chip tint */
+
+  /* Text on a teal fill (iris-500, iris-600): the near-black ink, in both
+   * themes. The light theme's --bg-base on iris-500 measured 2.4:1. */
+  --text-on-accent: #050508;
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -98,7 +109,7 @@
   /* Text — 4 levels with explicit accent token */
   --text-primary: #f0f0f5;
   --text-secondary: #9494a8;
-  --text-muted: #5e5e72;
+  --text-muted: #7d7e93;       /* 4.5:1 on every dark surface */
   --text-accent: var(--iris-400);
 
   /* Glow — for accent surfaces + hover halos */
@@ -129,8 +140,16 @@
 
   --text-primary: #0a0f0e;
   --text-secondary: #3d5250;
-  --text-muted: #7a908e;
+  --text-muted: #5a6f6e;       /* 4.5:1 on every light surface */
   --text-accent: var(--iris-700);
+
+  /* Status colours: the same hues as the dark theme's, darkened until
+   * text in them reaches 4.5:1 on every light surface and chip tint. */
+  --eval-pass: #007532;
+  --eval-warn: #886600;
+  --eval-fail: #c50b20;
+  --danger-fill: var(--eval-fail);
+  --eval-skipped: #6a6a73;
 
   --glow-primary: rgba(13, 148, 136, 0.06);
   --glow-strong: rgba(13, 148, 136, 0.12);
