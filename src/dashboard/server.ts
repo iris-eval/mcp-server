@@ -1,4 +1,6 @@
 import express from 'express';
+import type { StoreGate } from '../storage/ready.js';
+import { storeReadyMiddleware } from '../middleware/store-ready.js';
 import type { Server } from 'node:http';
 import helmet from 'helmet';
 import { fileURLToPath } from 'node:url';
@@ -54,6 +56,8 @@ export interface DashboardServerOptions {
   mode?: 'real' | 'demo';
   /** The server's live key ring (security/live-key-ring.ts), shared with the MCP transport; built from the config when absent. */
   keyRing?: KeyRing;
+  /** Hold API and OTLP requests until the store serves (storage/ready.ts); health answers throughout. */
+  gate?: StoreGate;
 }
 
 export function createDashboardServer(
@@ -179,6 +183,9 @@ export function createDashboardServer(
   // OSS: always resolves to LOCAL_TENANT. Cloud: swaps for an auth-aware
   // resolver that reads the authenticated session. See middleware/tenant.ts.
   app.use(createTenantMiddleware());
+
+  // During an upgrade after the start, the API and OTLP wait for the store, at most as long as the gate allows; the pages do not.
+  if (options?.gate) app.use(['/api', '/v1'], storeReadyMiddleware(options.gate));
 
   // API routes with rate limiting
   const router = express.Router();

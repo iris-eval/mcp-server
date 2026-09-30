@@ -1,4 +1,4 @@
-import type { CaseResultRow, DatasetCase, DatasetDetail, DatasetSummary, RunResultRow, RunSummaryRow, UpgradeReport } from '../storage/sqlite-adapter.js';
+import type { CaseResultRow, DatasetCase, DatasetDetail, DatasetSummary, RunResultRow, RunSummaryRow, StoreReadiness, UpgradeReport } from '../storage/sqlite-adapter.js';
 import type { Trace, Span } from './trace.js';
 import type { EvalResult, QuestionId } from './eval.js';
 import type { TenantId } from './tenant.js';
@@ -351,6 +351,10 @@ export interface IStorageAdapter {
   judgeSpendLedger(): JudgeSpendLedger;
   /** What initialize() did to an existing file it migrated (the copy it took first, the new floor); undefined when it migrated none. */
   upgradeReport?(): UpgradeReport | undefined;
+  /** Resolves once the store serves; for an upgrade after the start, when it is done (storage/ready.ts). */
+  whenReady?(): Promise<void>;
+  /** Where the store is on its way to serving. */
+  readiness?(): StoreReadiness;
   insertTrace(tenantId: TenantId, trace: Trace): Promise<void>;
   /**
    * Store several traces in ONE transaction: all of them or none. The OTLP

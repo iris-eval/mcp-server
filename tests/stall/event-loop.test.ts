@@ -5,7 +5,8 @@
  * A stdio MCP client waits on the server, and a Node process answers
  * nothing while a SQLite statement runs. The retention sweep, the merge it
  * owes, the erasure of a retired search index, the index build and the
- * fill of stored risk estimates each run in steps of under 50 ms of work with the event loop free between them
+ * fill of stored risk estimates each run in steps of under 50 ms of work,
+ * and an upgrade's copy and migrations run on another thread with the event loop free between them
  * (src/storage/search-index.ts, never holding the event loop). This runs
  * each on a store of agent-loop traces (three model calls and two tool calls
  * each, sent the way OTLP stores them: the heaviest shape the benchmark
@@ -30,13 +31,15 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { closeSync, copyFileSync, mkdtempSync, openSync, readSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import Database from 'better-sqlite3';
 import { performance } from 'node:perf_hooks';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { TAIL_CHECKPOINT_PAGES } from '../../src/storage/checkpointer.js';
 import { retiredRemain } from '../../src/storage/search-index.js';
 import { READ_PATH_INDEXES, readPathsMissing } from '../../src/storage/read-paths.js';
 import { openDriver } from '../../src/storage/driver.js';
+import { KNOWN_MIGRATION_IDS } from '../../src/storage/migrations/index.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
 import { EvalEngine } from '../../src/eval/engine.js';
 import type { Driver } from '../../src/storage/driver.js';
@@ -176,6 +179,8 @@ describe(`no background step holds the event loop over ${STALL_LIMIT_MS} ms (${T
   let indexed: string;
   /** The same traces without an index, as 0.19.0 left them. */
   let unindexed: string;
+  /** The same traces in a file 0.19.0 wrote: migrations pending. */
+  let from019: string;
 
   beforeAll(async () => {
     dir = mkdtempSync(join(tmpdir(), 'iris-stall-'));
@@ -193,6 +198,21 @@ describe(`no background step holds the event loop over ${STALL_LIMIT_MS} ms (${T
       await s.checkpoint();
       await s.close();
     }
+    // The released 0.19.0's file (tests/fixtures/db), filled with the same traces in its own schema.
+    from019 = join(dir, 'from-019.db');
+    copyFileSync(resolve(import.meta.dirname, '../fixtures/db/iris-0.19.0.db'), from019);
+    seed = 0x9e3779b9;
+    const old = new Database(from019);
+    const addTrace = old.prepare("INSERT INTO traces (tenant_id, trace_id, agent_name, input, output, tool_calls, timestamp) VALUES ('local', ?, ?, ?, ?, ?, ?)");
+    const addSpan = old.prepare("INSERT INTO spans (tenant_id, span_id, trace_id, name, kind, status_code, start_time, attributes) VALUES ('local', ?, ?, ?, ?, ?, ?, ?)");
+    old.transaction(() => {
+      for (let i = 0; i < TRACES; i += 1) {
+        const t = trace(i, now);
+        addTrace.run(t.trace_id, t.agent_name, t.input, t.output, JSON.stringify(t.tool_calls), t.timestamp);
+        for (const sp of t.spans ?? []) addSpan.run(sp.span_id, sp.trace_id, sp.name, sp.kind, sp.status_code, sp.start_time, JSON.stringify(sp.attributes));
+      }
+    })();
+    old.close();
   });
 
   afterAll(() => {
@@ -298,6 +318,25 @@ describe(`no background step holds the event loop over ${STALL_LIMIT_MS} ms (${T
     expect(readPathsMissing(dbOf(s))).toEqual([]);
     expect(stall.held).toBeLessThan(STALL_LIMIT_MS);
     await s.close();
+  });
+
+  it('an upgrade from 0.19.0: the copy and the migrations after the start, then the index build', async () => {
+    const path = copy(from019, 'upgrade-019.db');
+    let s: SqliteAdapter | undefined;
+    // The start itself is inside the window: a copy or a migration run on the event loop would be the longest hold.
+    const stall = await longestStall(async () => {
+      s = new SqliteAdapter(path, { driver: SEARCH_DRIVER, upgradeAfterStart: true });
+      await s.initialize();
+      await s.whenReady();
+      await s.whenIdle();
+    });
+    report(`upgrade from 0.19.0 of ${TRACES} traces, then the index built`, stall);
+    expect(s!.upgradeReport()?.backup.taken).toBe(true);
+    expect((await s!.migrations()).pending).toEqual([]);
+    expect(KNOWN_MIGRATION_IDS.length).toBeGreaterThan(14);
+    expect(await s!.whenSearchIndexReady()).toBe('ready');
+    expect(stall.held).toBeLessThan(STALL_LIMIT_MS);
+    await s!.close();
   });
 
   it('building the index after an upgrade', async () => {

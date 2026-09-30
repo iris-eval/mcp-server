@@ -3,7 +3,7 @@ import type { IStorageAdapter } from '../types/query.js';
 import { SqliteAdapter, type SqliteAdapterOptions } from './sqlite-adapter.js';
 
 /** `log`: where the store's own lines go (the search index build); the server passes its logger. */
-export function createStorage(config: IrisConfig, options: Pick<SqliteAdapterOptions, 'log'> = {}): IStorageAdapter {
+export function createStorage(config: IrisConfig, options: Pick<SqliteAdapterOptions, 'log' | 'upgradeAfterStart'> = {}): IStorageAdapter {
   switch (config.storage.type) {
     case 'sqlite':
       return new SqliteAdapter(config.storage.path, {
