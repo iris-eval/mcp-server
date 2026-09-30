@@ -159,10 +159,11 @@
         "gen_ai.response.finish_reasons": [
           "end_turn"
         ],
-        "gen_ai.usage.input_tokens": 112,
+        "gen_ai.usage.input_tokens": 142,
         "gen_ai.usage.output_tokens": 6,
         "gen_ai.usage.cache_read.input_tokens": 100,
-        "gen_ai.usage.cache_creation.input_tokens": 0,
+        "gen_ai.usage.cache_creation.input_tokens": 30,
+        "iris.usage.cache_creation.ephemeral_1h_input_tokens": 20,
         "gen_ai.output.messages": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"reasoning\",\"content\":\"The tool said 18C.\"},{\"type\":\"text\",\"content\":\"18C and clear.\"}],\"finish_reason\":\"stop\"}]",
         "iris.output": "18C and clear."
       }

@@ -29,6 +29,8 @@ export interface ConfiguredModelPrice {
   cacheReadUsdPer1M?: number;
   /** Per 1M input tokens written to the prompt cache. Unset: cache writes are priced at inputUsdPer1M, and the estimate says so. */
   cacheWriteUsdPer1M?: number;
+  /** Per 1M input tokens written to the prompt cache with a 1-hour lifetime. Unset: such writes are priced at cacheWriteUsdPer1M, and the estimate says so. */
+  cacheWrite1hUsdPer1M?: number;
 }
 
 export interface IrisConfig {

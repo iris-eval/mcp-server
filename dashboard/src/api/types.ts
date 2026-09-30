@@ -5,6 +5,8 @@ export interface TokenUsage {
   /** Of prompt_tokens, the ones read from and written to the prompt cache. */
   cache_read_tokens?: number;
   cache_creation_tokens?: number;
+  /** Of cache_creation_tokens, the ones written with a 1-hour lifetime. */
+  cache_creation_1h_tokens?: number;
 }
 
 export interface ToolCallRecord {
@@ -44,6 +46,8 @@ export interface CostEstimateCall {
   cache_creation_tokens?: number;
   cache_read_usd_per_1m?: number;
   cache_write_usd_per_1m?: number;
+  cache_creation_1h_tokens?: number;
+  cache_write_1h_usd_per_1m?: number;
   cost_usd: number;
   price_source: 'iris' | 'config';
   price_as_of: string | null;

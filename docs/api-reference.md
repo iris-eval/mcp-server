@@ -111,6 +111,7 @@ Log an agent execution trace with spans, tool calls, and metrics.
 | `total_tokens` | `number` | No | Total token count |
 | `cache_read_tokens` | `number` | No | Of `prompt_tokens`, how many were read from the prompt cache; an estimated cost prices them at the model's cache-read price ([cost.md](cost.md#cached-input)) |
 | `cache_creation_tokens` | `number` | No | Of `prompt_tokens`, how many were written to the prompt cache, priced at the cache-write price |
+| `cache_creation_1h_tokens` | `number` | No | Of `cache_creation_tokens`, how many were written with a 1-hour lifetime, priced at the model's 1-hour write price; omitted, every write is priced as a 5-minute write |
 | `prompt_tokens_details` | `{ cached_tokens?: number }` | No | OpenAI's usage shape, accepted as sent; `cached_tokens` is read as `cache_read_tokens` when that is absent |
 
 **Span**

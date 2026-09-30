@@ -92,7 +92,7 @@ export const configFileSchema = z.strictObject({
     .strictObject({
       estimate: z.boolean().optional(),
       models: z
-        .array(z.strictObject({ model: name, inputUsdPer1M: nonNegative, outputUsdPer1M: nonNegative, cacheReadUsdPer1M: nonNegative.optional(), cacheWriteUsdPer1M: nonNegative.optional() }))
+        .array(z.strictObject({ model: name, inputUsdPer1M: nonNegative, outputUsdPer1M: nonNegative, cacheReadUsdPer1M: nonNegative.optional(), cacheWriteUsdPer1M: nonNegative.optional(), cacheWrite1hUsdPer1M: nonNegative.optional() }))
         .superRefine((models, ctx) => {
           // Matching ignores case, so two entries that differ only in case would be one model at two prices.
           const seen = new Set<string>();

@@ -74,6 +74,8 @@ export const costEstimateSchema = z.union([
         cache_creation_tokens: z.number().optional(),
         cache_read_usd_per_1m: z.number().optional(),
         cache_write_usd_per_1m: z.number().optional(),
+        cache_creation_1h_tokens: z.number().optional(),
+        cache_write_1h_usd_per_1m: z.number().optional(),
         cost_usd: z.number(),
         price_source: z.enum(['iris', 'config']),
         price_as_of: z.string().nullable(),

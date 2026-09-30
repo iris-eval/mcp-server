@@ -46,7 +46,7 @@
 import { z } from 'zod';
 import type { Span, SpanKind, SpanStatus, Trace, ToolDescriptor } from '../types/trace.js';
 import { generateTraceId, generateSpanId } from '../utils/ids.js';
-import { AGGREGATED_INPUT_KEYS, AGGREGATED_OUTPUT_KEYS, CACHE_READ_KEYS, CACHE_WRITE_KEYS, INPUT_TOKEN_KEYS, OUTPUT_TOKEN_KEYS } from './usage-keys.js';
+import { AGGREGATED_INPUT_KEYS, AGGREGATED_OUTPUT_KEYS, CACHE_READ_KEYS, CACHE_WRITE_1H_KEYS, CACHE_WRITE_KEYS, INPUT_TOKEN_KEYS, OUTPUT_TOKEN_KEYS } from './usage-keys.js';
 import { resolveTraceCost } from '../cost/trace-cost.js';
 
 /* ---- OTLP JSON, loosely typed (unknown fields pass; what we read is checked) ---- */
@@ -568,6 +568,7 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
     // The cached part of the input, counted at the leaves like the rest: priced at the cache price (src/cost/trace-cost.ts).
     const cacheRead = usageOf(ordered, CACHE_READ_KEYS, []);
     const cacheWrite = usageOf(ordered, CACHE_WRITE_KEYS, []);
+    const cacheWrite1h = usageOf(ordered, CACHE_WRITE_1H_KEYS, []);
     const model = firstString(rootFirst, MODEL_KEYS);
     const conversationId = (typeof group.resource['gen_ai.conversation.id'] === 'string' ? (group.resource['gen_ai.conversation.id'] as string) : undefined) ?? firstString(rootFirst, CONVERSATION_KEYS);
     const tools = toolDefinitionsOf(rootFirst);
@@ -580,6 +581,8 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
             // Only a count that changes the price: a wrapper reports cached_tokens: 0 on every uncached call.
             ...(cacheRead !== undefined && cacheRead > 0 ? { cache_read_tokens: cacheRead } : {}),
             ...(cacheWrite !== undefined && cacheWrite > 0 ? { cache_creation_tokens: cacheWrite } : {}),
+            // The split is kept whenever there are writes, zero included: a 0 says every write was a 5-minute one.
+            ...(cacheWrite1h !== undefined && cacheWrite !== undefined && cacheWrite > 0 ? { cache_creation_1h_tokens: cacheWrite1h } : {}),
           }
         : undefined;
     const cost = sumOf(ordered, COST_KEYS);

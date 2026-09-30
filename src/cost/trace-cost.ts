@@ -37,8 +37,9 @@
  * says how much there was (`gen_ai.usage.cache_read.input_tokens` /
  * `cache_creation.input_tokens` on a span, or token_usage.cache_read_tokens
  * / cache_creation_tokens): cache reads at the model's cache-read price,
- * cache writes at its cache-write price, the rest of the input at the input
- * price.
+ * cache writes at its cache-write price (a 1-hour write at its 1-hour price
+ * when the trace carries Anthropic's split), the rest of the input at the
+ * input price.
  *
  * The cached counts are a PART of the input count, as the GenAI
  * conventions, OpenInference and OpenAI define it, and as Iris's own
@@ -57,7 +58,7 @@
  * config.json sets them.
  */
 import type { CostEstimate, CostEstimateCall, Span, TokenUsage, Trace } from '../types/trace.js';
-import { AGGREGATED_INPUT_KEYS, AGGREGATED_OUTPUT_KEYS, CACHE_READ_KEYS, CACHE_WRITE_KEYS, INPUT_TOKEN_KEYS, OUTPUT_TOKEN_KEYS } from '../otel/usage-keys.js';
+import { AGGREGATED_INPUT_KEYS, AGGREGATED_OUTPUT_KEYS, CACHE_READ_KEYS, CACHE_WRITE_1H_KEYS, CACHE_WRITE_KEYS, INPUT_TOKEN_KEYS, OUTPUT_TOKEN_KEYS } from '../otel/usage-keys.js';
 import { AGENT_MODEL_KEYS } from '../eval/llm-judge/family.js';
 import { PRICING_SOURCED_ON } from '../eval/llm-judge/pricing.js';
 import { priceModel, pricingSettings, type PriceMatch, type PricingSettings } from './model-lookup.js';
@@ -71,6 +72,8 @@ interface Tokens {
   completion: number;
   cacheRead: number;
   cacheWrite: number;
+  /** Of cacheWrite, the 1-hour writes; undefined when the trace did not say (every write is then priced as a 5-minute one). */
+  cacheWrite1h?: number;
 }
 
 interface ModelCall extends Tokens {
@@ -147,6 +150,7 @@ function modelCallsOf(spans: readonly Span[] | undefined): ModelCall[] {
       completion: numberAt(s.attributes, OUTPUT_TOKEN_KEYS) ?? 0,
       cacheRead: numberAt(s.attributes, CACHE_READ_KEYS) ?? 0,
       cacheWrite: numberAt(s.attributes, CACHE_WRITE_KEYS) ?? 0,
+      cacheWrite1h: numberAt(s.attributes, CACHE_WRITE_1H_KEYS),
       models: modelsOf(s),
     }));
   }
@@ -157,6 +161,7 @@ function modelCallsOf(spans: readonly Span[] | undefined): ModelCall[] {
         completion: numberAt(aggregate.attributes, AGGREGATED_OUTPUT_KEYS) ?? 0,
         cacheRead: numberAt(aggregate.attributes, CACHE_READ_KEYS) ?? 0,
         cacheWrite: numberAt(aggregate.attributes, CACHE_WRITE_KEYS) ?? 0,
+        cacheWrite1h: numberAt(aggregate.attributes, CACHE_WRITE_1H_KEYS),
         models: modelsOf(aggregate),
       }]
     : [];
@@ -191,6 +196,22 @@ function priced(match: PriceMatch, t: Tokens, notes: string[]): CostEstimateCall
   if (t.cacheWrite > 0 && match.cacheWriteUsdPer1M === null) {
     notes.push(`${match.model}: ${fmt(t.cacheWrite)} cache-write tokens are priced at the input price, because pricing.models in config.json names no cacheWriteUsdPer1M for ${match.pricedAs}.`);
   }
+  /*
+   * The write lifetimes. Anthropic bills a 1-hour write at twice the input
+   * and a 5-minute write at 1.25 times; its usage object splits the writes,
+   * and Iris's wrappers carry the split. Without it every write is priced as
+   * a 5-minute one, and for a model whose 1-hour writes cost more the notes
+   * say the estimate may be low by them.
+   */
+  const write1h = t.cacheWrite1h === undefined ? undefined : Math.min(t.cacheWrite1h, t.cacheWrite);
+  const write5m = t.cacheWrite - (write1h ?? 0);
+  const write1hPrice = match.cacheWrite1hUsdPer1M ?? writePrice;
+  if (write1h !== undefined && write1h > 0 && match.cacheWrite1hUsdPer1M === null) {
+    notes.push(`${match.model}: ${fmt(write1h)} 1-hour cache-write tokens are priced at the cache-write price, because no 1-hour write price is known for ${match.pricedAs}.`);
+  }
+  if (t.cacheWrite > 0 && t.cacheWrite1h === undefined && match.cacheWrite1hUsdPer1M !== null) {
+    notes.push(`${match.model}: ${fmt(t.cacheWrite)} cache-write tokens are priced as 5-minute writes; the trace does not say how many had a 1-hour lifetime, which costs more.`);
+  }
   const perM = (n: number, price: number) => (n / 1_000_000) * price;
   return {
     model: match.model,
@@ -205,9 +226,12 @@ function priced(match: PriceMatch, t: Tokens, notes: string[]): CostEstimateCall
           cache_creation_tokens: t.cacheWrite,
           cache_read_usd_per_1m: readPrice,
           cache_write_usd_per_1m: writePrice,
+          ...(write1h !== undefined && t.cacheWrite > 0 ? { cache_creation_1h_tokens: write1h, cache_write_1h_usd_per_1m: write1hPrice } : {}),
         }
       : {}),
-    cost_usd: usd(perM(uncached, match.inputUsdPer1M) + perM(t.cacheRead, readPrice) + perM(t.cacheWrite, writePrice) + perM(t.completion, match.outputUsdPer1M)),
+    cost_usd: usd(
+      perM(uncached, match.inputUsdPer1M) + perM(t.cacheRead, readPrice) + perM(write5m, writePrice) + perM(write1h ?? 0, write1hPrice) + perM(t.completion, match.outputUsdPer1M),
+    ),
     price_source: match.source,
     price_as_of: match.asOf,
   };
@@ -216,10 +240,12 @@ function priced(match: PriceMatch, t: Tokens, notes: string[]): CostEstimateCall
 const count = (n: unknown): number | undefined => (typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : undefined);
 
 /** The cached part of a trace's token_usage: Iris's own fields, else OpenAI's `prompt_tokens_details.cached_tokens` as sent. */
-function cachedOf(usage: TokenUsage | undefined): { cacheRead: number; cacheWrite: number } {
+function cachedOf(usage: TokenUsage | undefined): { cacheRead: number; cacheWrite: number; cacheWrite1h?: number } {
+  const write1h = count(usage?.cache_creation_1h_tokens);
   return {
     cacheRead: count(usage?.cache_read_tokens) ?? count(usage?.prompt_tokens_details?.cached_tokens) ?? 0,
     cacheWrite: count(usage?.cache_creation_tokens) ?? 0,
+    ...(write1h !== undefined ? { cacheWrite1h: write1h } : {}),
   };
 }
 

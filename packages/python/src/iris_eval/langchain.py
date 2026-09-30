@@ -28,6 +28,7 @@ from uuid import UUID
 from langchain_core.callbacks import BaseCallbackHandler
 
 from ._genai import clip
+from ._langchain_usage import usage_attributes
 from .recorder import SPAN_KIND_CLIENT, SPAN_KIND_INTERNAL, IrisRecorder, Span, TraceRecord, default_recorder, new_span_id, new_trace_id, now_nanos, program_name
 
 __all__ = ["IrisCallbackHandler"]
@@ -401,14 +402,8 @@ class IrisCallbackHandler(BaseCallbackHandler):
             run.attributes["gen_ai.response.id"] = response_id
         usage = getattr(message, "usage_metadata", None)
         if isinstance(usage, Mapping):
-            _put_usage(run.attributes, usage.get("input_tokens"), usage.get("output_tokens"))
-            details = usage.get("input_token_details") or {}
-            if isinstance(details, Mapping):
-                _put_int(run.attributes, "gen_ai.usage.cache_read.input_tokens", details.get("cache_read"))
-                _put_int(run.attributes, "gen_ai.usage.cache_creation.input_tokens", details.get("cache_creation"))
-            out_details = usage.get("output_token_details") or {}
-            if isinstance(out_details, Mapping):
-                _put_int(run.attributes, "gen_ai.usage.reasoning.output_tokens", out_details.get("reasoning"))
+            # The cache details differ by integration; _langchain_usage reads both shapes (tests/fixtures/langchain-usage-parity).
+            run.attributes.update(usage_attributes(usage, meta))
         else:
             llm_output = getattr(response, "llm_output", None) or {}
             tokens = llm_output.get("token_usage") or llm_output.get("usage") or {}

@@ -270,6 +270,8 @@ interface Usage {
   output?: number;
   cacheRead?: number;
   cacheCreation?: number;
+  /** Of cacheCreation, the tokens written with a 1-hour lifetime (Anthropic's usage.cache_creation split); priced at twice the input, where a 5-minute write is 1.25 times. */
+  cacheCreation1h?: number;
   reasoning?: number;
 }
 
@@ -296,11 +298,14 @@ function usageOf(api: Api, response: Json): Usage {
   const cacheRead = num(u.cache_read_input_tokens);
   const cacheCreation = num(u.cache_creation_input_tokens);
   const input = num(u.input_tokens);
+  // The write lifetimes, when the API reports them: { ephemeral_5m_input_tokens, ephemeral_1h_input_tokens }.
+  const cacheCreation1h = isObject(u.cache_creation) ? num(u.cache_creation.ephemeral_1h_input_tokens) : undefined;
   return {
     input: input === undefined ? undefined : input + (cacheRead ?? 0) + (cacheCreation ?? 0),
     output: num(u.output_tokens),
     cacheRead,
     cacheCreation,
+    ...(cacheCreation1h !== undefined ? { cacheCreation1h } : {}),
   };
 }
 
@@ -365,6 +370,8 @@ export function genAiSpan(call: CallRecord, extra: Attributes = {}): GenAiSpan {
     if (usage.output !== undefined) attributes['gen_ai.usage.output_tokens'] = usage.output;
     if (usage.cacheRead !== undefined) attributes['gen_ai.usage.cache_read.input_tokens'] = usage.cacheRead;
     if (usage.cacheCreation !== undefined) attributes['gen_ai.usage.cache_creation.input_tokens'] = usage.cacheCreation;
+    // No GenAI convention names the write lifetime yet; Iris's own attribute carries Anthropic's split.
+    if (usage.cacheCreation1h !== undefined) attributes['iris.usage.cache_creation.ephemeral_1h_input_tokens'] = usage.cacheCreation1h;
     if (usage.reasoning !== undefined) attributes['gen_ai.usage.reasoning.output_tokens'] = usage.reasoning;
     const output = outputMessages(api, r);
     if (output.length > 0) attributes['gen_ai.output.messages'] = JSON.stringify(output);

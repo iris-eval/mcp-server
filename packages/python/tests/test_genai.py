@@ -40,6 +40,22 @@ def test_a_long_text_part_is_cut_and_says_how_much_was_left_out() -> None:
     assert len(attrs["iris.input"]) < 17_000
 
 
+def test_the_write_lifetimes_survive_a_stream() -> None:
+    anthropic = assembler_for("messages")
+    anthropic.add({
+        "type": "message_start",
+        "message": {"id": "m1", "model": "claude-sonnet-5", "usage": {"input_tokens": 5, "output_tokens": 1, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 20, "cache_creation": {"ephemeral_5m_input_tokens": 5, "ephemeral_1h_input_tokens": 15}}},
+    })
+    anthropic.add({"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}})
+    anthropic.add({"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "hello"}})
+    anthropic.add({"type": "content_block_stop", "index": 0})
+    anthropic.add({"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 2}})
+    _, attrs = genai_span("messages", {"model": "claude-sonnet-5", "messages": [{"role": "user", "content": "hi"}]}, anthropic.result())
+    assert attrs["gen_ai.usage.cache_creation.input_tokens"] == 20
+    assert attrs["iris.usage.cache_creation.ephemeral_1h_input_tokens"] == 15
+    assert attrs["gen_ai.usage.output_tokens"] == 2
+
+
 def test_a_stream_cut_short_keeps_what_arrived() -> None:
     chat = assembler_for("chat")
     chat.add({"id": "c1", "model": "m", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "The capital"}}]})
