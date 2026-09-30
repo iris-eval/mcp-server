@@ -39,7 +39,7 @@ describe('get_traces q over MCP', () => {
   afterEach(async () => {
     await client.close();
     await storage.close();
-    rmSync(ruleDir, { recursive: true, force: true });
+    rmSync(ruleDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   const log = (args: Record<string, unknown>) => client.callTool({ name: 'log_trace', arguments: { agent_name: 'support-bot', input: 'q', ...args } });

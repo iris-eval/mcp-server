@@ -66,7 +66,7 @@ async function mcp(): Promise<{ client: Client; storage: SqliteAdapter }> {
   cleanups.push(async () => {
     await client.close();
     await storage.close();
-    rmSync(ruleDir, { recursive: true, force: true });
+    rmSync(ruleDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
   return { client, storage };
 }
@@ -258,7 +258,7 @@ let home: string;
 beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), 'iris-estcost-cli-'));
 });
-afterEach(() => rmSync(home, { recursive: true, force: true }));
+afterEach(() => rmSync(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }));
 
 function ingest(stdin: string): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((done, fail) => {

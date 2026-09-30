@@ -34,7 +34,7 @@ afterEach(() => {
     if (saved[v] === undefined) delete process.env[v];
     else process.env[v] = saved[v];
   }
-  rmSync(scratch, { recursive: true, force: true });
+  rmSync(scratch, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 const writeConfig = (value: unknown) => writeFileSync(join(home, 'config.json'), JSON.stringify(value));

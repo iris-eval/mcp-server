@@ -43,7 +43,7 @@ describe('dormant rules', () => {
     await client?.close();
     if (dashboard) await new Promise<void>((resolve) => dashboard!.close(() => resolve()));
     await storage.close();
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   it('dormantRulesFrom keeps only the entries that would have gated', () => {

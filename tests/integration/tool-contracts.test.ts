@@ -76,7 +76,7 @@ describe('tool contracts (MCP surface)', () => {
   afterEach(async () => {
     await client.close();
     await storage.close();
-    rmSync(ruleDir, { recursive: true, force: true });
+    rmSync(ruleDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   describe('get_traces range validation (#373 item 5)', () => {

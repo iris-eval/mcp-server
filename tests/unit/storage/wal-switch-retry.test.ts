@@ -27,7 +27,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.useRealTimers();
-  rmSync(dir, { recursive: true, force: true });
+  rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 /** better-sqlite3's shape. */

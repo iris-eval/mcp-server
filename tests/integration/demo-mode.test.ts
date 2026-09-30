@@ -35,7 +35,7 @@ afterEach(async () => {
     await new Promise((r) => child!.once('exit', r));
   }
   child = undefined;
-  rmSync(home, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 function spawnCli(args: string[]): ChildProcess {
@@ -159,7 +159,7 @@ describe('--demo, against one running demo server', () => {
       proc.kill();
       await new Promise((r) => proc!.once('exit', r));
     }
-    rmSync(demoHome, { recursive: true, force: true });
+    rmSync(demoHome, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   it('seeds the demo db and serves the dashboard against it, real store untouched', async () => {

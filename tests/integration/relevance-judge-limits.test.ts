@@ -99,7 +99,7 @@ afterEach(async () => {
     if (saved[k] === undefined) delete process.env[k];
     else process.env[k] = saved[k];
   }
-  rmSync(dir, { recursive: true, force: true });
+  rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 function env(values: Partial<Record<EnvName, string>>): void {

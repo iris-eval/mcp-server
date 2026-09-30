@@ -21,7 +21,7 @@ let home: string;
 beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), 'iris-refused-db-'));
 });
-afterEach(() => rmSync(home, { recursive: true, force: true }));
+afterEach(() => rmSync(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }));
 
 function start(...args: string[]): Promise<{ code: number | null; stderr: string }> {
   return new Promise((resolvePromise, rejectPromise) => {

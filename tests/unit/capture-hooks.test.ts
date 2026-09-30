@@ -26,8 +26,8 @@ beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), 'iris-capture-home-'));
 });
 afterEach(() => {
-  rmSync(data, { recursive: true, force: true });
-  rmSync(home, { recursive: true, force: true });
+  rmSync(data, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  rmSync(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 function hook(name: string, payload: unknown, env: Record<string, string> = {}): Promise<{ code: number | null; stdout: string; stderr: string }> {

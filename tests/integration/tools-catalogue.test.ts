@@ -52,7 +52,7 @@ describe('the tools catalogue', () => {
   afterEach(async () => {
     await client.close();
     await storage.close();
-    rmSync(ruleDir, { recursive: true, force: true });
+    rmSync(ruleDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   it("Iris's own tools/list result parses as a catalogue, verbatim", async () => {

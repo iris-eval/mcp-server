@@ -25,7 +25,7 @@ const dirs: string[] = [];
 const open: Driver[] = [];
 afterEach(() => {
   for (const d of open.splice(0)) d.close();
-  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 const tempDb = (): string => {
   const dir = mkdtempSync(join(tmpdir(), 'iris-stmt-'));

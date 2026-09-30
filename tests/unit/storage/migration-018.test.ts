@@ -34,7 +34,7 @@ import type { EvalResult } from '../../../src/types/eval.js';
 const dirs: string[] = [];
 beforeEach(() => clearRiskEstimateCache());
 afterEach(() => {
-  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 function tempDb(): string {

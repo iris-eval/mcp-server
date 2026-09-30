@@ -38,7 +38,7 @@ beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), 'iris-gate-'));
 });
 afterEach(() => {
-  rmSync(home, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 function run(args: string[], stdin?: string): Promise<{ code: number | null; stdout: string; stderr: string }> {

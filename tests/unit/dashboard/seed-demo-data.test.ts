@@ -45,7 +45,7 @@ beforeEach(() => {
 
 afterEach(() => {
   process.env.IRIS_HOME = SUITE_IRIS_HOME;
-  rmSync(home, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 function sha256(path: string): string {

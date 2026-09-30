@@ -31,5 +31,5 @@ process.env.IRIS_HOME = scratchHome;
 delete process.env.IRIS_DB_PATH;
 
 afterAll(() => {
-  rmSync(scratchHome, { recursive: true, force: true });
+  rmSync(scratchHome, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });

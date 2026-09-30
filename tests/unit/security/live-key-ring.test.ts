@@ -31,7 +31,7 @@ beforeEach(() => {
   loads = 0;
   events = [];
 });
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
+afterEach(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }));
 
 function ring(fixedApiKey?: string) {
   const initial = load();

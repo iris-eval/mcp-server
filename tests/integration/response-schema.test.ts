@@ -72,7 +72,7 @@ describe('the agent-native contract', () => {
   afterEach(async () => {
     await client.close();
     await storage.close();
-    rmSync(ruleDir, { recursive: true, force: true });
+    rmSync(ruleDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     for (const k of SCRUB) {
       if (saved[k] === undefined) delete process.env[k];
       else process.env[k] = saved[k];

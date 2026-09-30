@@ -23,7 +23,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  rmSync(home, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 const NODE_SQLITE_WARNING = /^\(node:\d+\) ExperimentalWarning: SQLite is an experimental feature.*\r?\n(\(Use `node --trace-warnings \.\.\.` to show where the warning was created\)\r?\n)?/m;

@@ -90,7 +90,7 @@ describe('verify_citations: judge failures under judge_error, source failures un
   afterEach(async () => {
     await client.close();
     await storage.close();
-    rmSync(ruleDir, { recursive: true, force: true });
+    rmSync(ruleDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     global.fetch = savedFetch;
     __clearCitationCacheForTests();
     __setDnsLookupForTests(null);

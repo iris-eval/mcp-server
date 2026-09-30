@@ -29,7 +29,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'iris-selftest-db-'));
   e = { platform: process.platform, home: join(dir, 'home'), env: { APPDATA: join(dir, 'home', 'AppData', 'Roaming') } };
 });
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
+afterEach(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }));
 
 const escapeRegExp = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const sha256 =(path: string) => createHash('sha256').update(readFileSync(path)).digest('hex');

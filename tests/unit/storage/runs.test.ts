@@ -33,7 +33,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await store.close();
-  rmSync(dir, { recursive: true, force: true });
+  rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 describe('the runs registry', () => {

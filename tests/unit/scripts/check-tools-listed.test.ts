@@ -30,7 +30,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  rmSync(scratch, { recursive: true, force: true });
+  rmSync(scratch, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 function check(mode: 'ok' | 'short' | 'exit') {

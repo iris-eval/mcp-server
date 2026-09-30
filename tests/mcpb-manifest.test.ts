@@ -172,7 +172,7 @@ describe('mcpb/manifest.json — the tools', () => {
   afterAll(async () => {
     await client.close();
     await storage.close();
-    rmSync(ruleDir, { recursive: true, force: true });
+    rmSync(ruleDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   it('lists every tool the server registers, in registration order, with the opening of its own description', async () => {

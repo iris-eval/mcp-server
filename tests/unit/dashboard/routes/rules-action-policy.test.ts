@@ -30,7 +30,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  rmSync(tmpDir, { recursive: true, force: true });
+  rmSync(tmpDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 function makeApp(evalEngine: EvalEngine) {

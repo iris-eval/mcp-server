@@ -48,7 +48,7 @@ describe('the boot sweep runs after the transport connects', () => {
   }, 60_000);
 
   afterAll(() => {
-    rmSync(irisHome, { recursive: true, force: true });
+    rmSync(irisHome, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   it('logs "Stdio transport connected" before the sweep reports, and the swept traces are gone', async () => {

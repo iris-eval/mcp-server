@@ -49,7 +49,7 @@ describe('the search index is built after the server starts, not before it answe
   }, 120_000);
 
   afterAll(() => {
-    rmSync(irisHome, { recursive: true, force: true });
+    rmSync(irisHome, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   it('answers on connect and searches during the build, then from the index', async () => {

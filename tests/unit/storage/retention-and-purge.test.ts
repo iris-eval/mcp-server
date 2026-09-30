@@ -122,7 +122,7 @@ describe('purge + checkpoint on a file-backed database', () => {
 
   afterEach(async () => {
     await adapter.close();
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   const fileHolds = (path: string, needle: string): boolean => existsSync(path) && readFileSync(path).includes(needle);

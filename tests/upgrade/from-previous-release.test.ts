@@ -141,7 +141,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 describe(`upgrading from the released ${PREVIOUS}`, () => {

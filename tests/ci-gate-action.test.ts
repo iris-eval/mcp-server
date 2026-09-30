@@ -37,7 +37,7 @@ const SPAWN_TIMEOUT = 30_000;
 
 const dirs: string[] = [];
 afterEach(() => {
-  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 describe('the action file', () => {

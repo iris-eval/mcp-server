@@ -19,7 +19,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  rmSync(tmpDir, { recursive: true, force: true });
+  rmSync(tmpDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   delete process.env.IRIS_NO_AUTO_LAUNCH;
   delete process.env.CI;
 });

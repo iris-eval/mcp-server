@@ -182,7 +182,7 @@ describe(`no background step holds the event loop over ${STALL_LIMIT_MS} ms (${T
   });
 
   afterAll(() => {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   /*

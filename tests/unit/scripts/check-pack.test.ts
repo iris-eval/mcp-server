@@ -28,7 +28,7 @@ describe('missingArtifacts', () => {
     try {
       expect(missingArtifacts(root)).toEqual(REQUIRED_ARTIFACTS);
     } finally {
-      rmSync(root, { recursive: true, force: true });
+      rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
   });
 
@@ -37,7 +37,7 @@ describe('missingArtifacts', () => {
     try {
       expect(missingArtifacts(root)).toEqual(['dist/dashboard/server.js', 'dist/dashboard/index.html', 'dist/engine.js', 'dist/client.js']);
     } finally {
-      rmSync(root, { recursive: true, force: true });
+      rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
   });
 
@@ -46,7 +46,7 @@ describe('missingArtifacts', () => {
     try {
       expect(missingArtifacts(root)).toEqual([]);
     } finally {
-      rmSync(root, { recursive: true, force: true });
+      rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
   });
 });
