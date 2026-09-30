@@ -25,7 +25,12 @@ import type { Driver } from '../../../src/storage/driver.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import { CELL_DRIVER } from './fts5-here.js';
 
-vi.setConfig({ testTimeout: 30_000 });
+/*
+ * The hooks get the tests' time: afterEach closes each store, and close()
+ * now waits for the worker's statement in progress (#750), which after the
+ * heavier cases here ran past the 10 s default on a windows-latest runner.
+ */
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
 
 const dirs: string[] = [];
 const open: SqliteAdapter[] = [];
