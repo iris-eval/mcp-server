@@ -2,7 +2,7 @@
 
 Iris reads the OpenTelemetry traces your framework already emits. Point its exporter at `POST /v1/traces` on the dashboard port — JSON or protobuf, so the Python exporter reaches it without a Collector — and each OTLP trace becomes an Iris trace with its spans, read through the vocabulary the framework speaks ([the mapping](otel-integration.md#traces-arrive-by-otlp)).
 
-Every recipe below is the vendor's own setup lines, read from the page it links on 2026-09-21, with Iris as the endpoint; then what Iris reads out of that vocabulary; then **the fixture in this repository that proves the reading** — an OTLP payload authored to the vendor's documentation and held by `tests/unit/otel/conventions.test.ts`, or a payload captured from the Python SDK. A recipe that named no fixture would be a claim. Where the fixture proves the vocabulary and not the framework's own capture, the recipe says so.
+Every recipe below is the vendor's own setup lines, read from the page it links on 2026-09-21 (the OpenAI Agents SDK and LlamaIndex recipes on 2026-09-28), with Iris as the endpoint; then what Iris reads out of that vocabulary; then **the fixture in this repository that proves the reading** — an OTLP payload authored to the vendor's documentation and held by `tests/unit/otel/conventions.test.ts`, a payload captured from the Python SDK, or a payload captured from the framework itself running the recipe (held by `tests/unit/otel/recipe-captures.test.ts` and `langsmith-capture.test.ts`). A recipe that named no fixture would be a claim. Where the fixture proves the vocabulary and not the framework's own capture, the recipe says so.
 
 ## The lines every recipe shares
 
@@ -26,6 +26,9 @@ The Python OTLP/HTTP exporter is protobuf-only; Iris takes `application/x-protob
 | [Google ADK](#google-adk) | `google-adk.otlp.json` |
 | [LangGraph via LangSmith's export](#langgraph-via-langsmiths-export) | `langsmith-langgraph.otlp.json` (captured) |
 | [CrewAI via OpenInference](#crewai-via-openinference) | `crewai-openinference.otlp.json` |
+| [OpenAI Agents SDK (Python)](#openai-agents-sdk-python) | `openai-agents.otlp.json` (captured, and run in CI) |
+| [OpenAI Agents SDK (JavaScript)](#openai-agents-sdk-javascript) | `openai-agents-js.otlp.json` (captured, and run in CI) |
+| [LlamaIndex](#llamaindex) | `llamaindex.otlp.json` (captured, and run in CI) |
 | [AutoGen](#autogen) | `python-genai.otlp.json` (the vocabulary) |
 | [Microsoft Agent Framework](#microsoft-agent-framework) | `agent-framework.otlp.json` |
 | [Semantic Kernel](#semantic-kernel) | `semantic-kernel.otlp.json` |
@@ -134,6 +137,137 @@ CrewAIInstrumentor().instrument(tracer_provider=provider)
 What Iris reads: the input and output from `input.value` / `output.value`; the usage from `llm.token_count.*`; the model from `llm.model_name`; the session from `session.id`; the tool steps from `openinference.span.kind = TOOL` with `tool.name`.
 
 Source: https://docs.crewai.com/en/observability/tracing · https://github.com/Arize-ai/openinference/blob/main/spec/semantic_conventions.md
+
+### OpenAI Agents SDK (Python)
+
+Proved by: `tests/fixtures/otlp/openai-agents.otlp.json`
+
+The Agents SDK traces every run through its own trace processors, which upload to the OpenAI dashboard. OpenInference's instrumentor replaces them with one that emits OpenTelemetry spans, so no trace goes to OpenAI (`instrument(tracer_provider=provider, exclusive_processor=False)` keeps both).
+
+```bash
+pip install openai-agents openinference-instrumentation-openai-agents opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:6920
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer%20<key>"   # on a keyed server
+export OTEL_SERVICE_NAME=weather-agent                              # the agent name
+```
+
+```python
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
+
+provider = TracerProvider()
+provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))   # reads OTEL_EXPORTER_OTLP_*
+OpenAIAgentsInstrumentor().instrument(tracer_provider=provider)
+```
+
+A session is OpenInference's, not the SDK's: the `group_id` in a `RunConfig` does not reach the spans.
+
+```python
+from openinference.instrumentation import using_session
+
+with using_session("session-paris-1"):
+    result = Runner.run_sync(agent, question)
+```
+
+What Iris reads: the input from the first model call's last user message (`llm.input_messages.*`) and the output from the answer of the call that ended last (`llm.output_messages.*`), because this instrumentor puts neither on the run's root span; the usage as the sum of `llm.token_count.*` over the model calls; the model from `llm.model_name`; the agent from `service.name`, else the `Agent`'s own name from `agent.name`; the session from `session.id`; the tool steps from `openinference.span.kind = TOOL` spans with `tool.name`, their arguments from `input.value`; the tools offered to the model from `llm.tools.N.tool.json_schema`, which `valid_tool_arguments` checks each call against.
+
+The cost: the spans carry none, so Iris estimates it from the token counts and the model's list price and stores it with `cost_source: "estimated"` and the prices it used in `cost_estimate` (the captured run: 50 input and 20 output tokens of `gpt-4o-mini`, $0.0000195).
+
+What it does not carry: the call id on a tool span, so a step is not linked to the model request that asked for it; the agent's instructions, which the SDK sends outside the messages.
+
+The fixture is a capture of this recipe's export for a real tool-calling run (`tests/fixtures/otlp/capture_recipe.py openai-agents` records it, with the versions pinned in `examples/otel-recipes/requirements-openai-agents.txt`). CI runs the recipe itself: `tests/otel-recipes/test_recipes_e2e.py` exports a run to a real Iris server and requires the trace with its words, its tool call, its usage, its session and a verdict, and a leaked SSN failed by `no_pii`.
+
+Source: https://openai.github.io/openai-agents-python/tracing/ · https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-openai-agents
+
+### OpenAI Agents SDK (JavaScript)
+
+Proved by: `tests/fixtures/otlp/openai-agents-js.otlp.json`
+
+The same route for `@openai/agents`: OpenInference's JavaScript instrumentation registers through the SDK's trace-processor API and, by default, replaces the processor that uploads to OpenAI.
+
+```bash
+npm install @openai/agents zod @arizeai/openinference-instrumentation-openai-agents @opentelemetry/sdk-trace-node @opentelemetry/sdk-trace-base @opentelemetry/resources @opentelemetry/exporter-trace-otlp-proto
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:6920
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer%20<key>"   # on a keyed server
+```
+
+```ts
+import * as agents from '@openai/agents';
+import { OpenAIAgentsInstrumentation } from '@arizeai/openinference-instrumentation-openai-agents';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
+import { resourceFromAttributes } from '@opentelemetry/resources';
+import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
+
+const provider = new NodeTracerProvider({
+  resource: resourceFromAttributes({ 'service.name': 'weather-agent' }),
+  spanProcessors: [new BatchSpanProcessor(new OTLPTraceExporter())],   // reads OTEL_EXPORTER_OTLP_*
+});
+provider.register();
+new OpenAIAgentsInstrumentation({ tracerProvider: provider }).manuallyInstrument(agents);
+```
+
+A session, with `@arizeai/openinference-core` and `@opentelemetry/api`:
+
+```ts
+import { context } from '@opentelemetry/api';
+import { setSession } from '@arizeai/openinference-core';
+
+const result = await context.with(setSession(context.active(), { sessionId: 'session-paris-1' }), () => agents.run(agent, question));
+```
+
+What Iris reads: the input and output from the root span's `input.value` / `output.value`, where this instrumentor writes the run's input and its final answer; the usage, the estimated cost, the model, the session, the tool steps and the offered tools as in the Python recipe. The agent comes from `service.name` alone: this instrumentor names the agent in `graph.node.id`, not `agent.name`, so a provider with no service name stores the trace under `"otel"` and the answer says it lacked `service.name`. The resource above is where the name is set.
+
+The fixture is a capture of this recipe's export (`tests/fixtures/otlp/capture_recipe.py openai-agents-js`, with the versions pinned in `examples/otel-recipes/js/package.json`), and CI runs the recipe against a real Iris server in the same test as the Python one.
+
+Source: https://openai.github.io/openai-agents-js/guides/tracing/ · https://github.com/Arize-ai/openinference/tree/main/js/packages/openinference-instrumentation-openai-agents
+
+### LlamaIndex
+
+Proved by: `tests/fixtures/otlp/llamaindex.otlp.json`
+
+OpenInference's LlamaIndex instrumentor traces agents, workflows, query engines and every LLM call as OpenTelemetry spans.
+
+```bash
+pip install llama-index-core llama-index-llms-openai openinference-instrumentation-llama-index opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:6920
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer%20<key>"   # on a keyed server
+export OTEL_SERVICE_NAME=weather-agent                              # the agent name
+```
+
+```python
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from openinference.instrumentation.llama_index import LlamaIndexInstrumentor
+
+provider = TracerProvider()
+provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))   # reads OTEL_EXPORTER_OTLP_*
+LlamaIndexInstrumentor().instrument(tracer_provider=provider)
+```
+
+`FunctionAgent` streams its model calls, and OpenAI sends a streamed call's token usage only when asked; without `stream_options` the trace has no usage. The session is OpenInference's:
+
+```python
+from openinference.instrumentation import using_session
+
+agent = FunctionAgent(
+    llm=OpenAI(model="gpt-4o-mini", additional_kwargs={"stream_options": {"include_usage": True}}),
+    tools=[get_weather],
+)
+with using_session("session-paris-1"):
+    response = await agent.run(user_msg=question)
+```
+
+What Iris reads: the input from the first model call's last user message (`llm.input_messages.*`) and the output from the answer of the call that ended last (`llm.output_messages.*`). A workflow's own steps record their events as Python reprs (`StopEvent(result=AgentOutput(…))`, cut off at 200 characters), the root's output among them; Iris passes a repr over rather than judge a class name. The usage from `llm.token_count.*`; the model from `llm.model_name`; the session from `session.id`; the tool steps from `FunctionTool.acall` spans with `tool.name`, whose `input.value` is the Python call (`{"kwargs": {"city": "Paris"}}`) and is read as its keyword arguments; the tools offered to the model from `llm.tools.N.tool.json_schema`. The cost is estimated from the tokens and the model, as in the OpenAI Agents SDK recipe; without `stream_options` there are no tokens, so there is no cost either. The agent comes from `service.name` alone: nothing on the spans names it, so without `OTEL_SERVICE_NAME` the trace is stored under `"otel"` and the answer says it lacked `service.name`.
+
+LlamaIndex's observability page names its own `llama-index-observability-otel` package for OpenTelemetry. In a capture of the same run (0.7.0) its spans carried each step's input as a truncated Python repr and no model name, messages or token counts: Iris stores those spans with no input, output or usage, and the answer lists what they lacked. Use the OpenInference instrumentor.
+
+The fixture is a capture of this recipe's export (`tests/fixtures/otlp/capture_recipe.py llamaindex`, with the versions pinned in `examples/otel-recipes/requirements-llamaindex.txt`), and CI runs the recipe against a real Iris server in the same test.
+
+Source: https://developers.llamaindex.ai/python/framework/module_guides/observability/ · https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-llama-index
 
 ### AutoGen
 

@@ -59,3 +59,8 @@ packages/python/dist/
 packages/python/**/__pycache__/
 packages/python/.pytest_cache/
 packages/python/**/*.egg-info/
+
+# The OTel recipe scripts and their end-to-end test (examples/otel-recipes, tests/otel-recipes)
+examples/otel-recipes/__pycache__/
+tests/otel-recipes/__pycache__/
+tests/otel-recipes/.pytest_cache/

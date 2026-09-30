@@ -1,0 +1,11 @@
+# The LlamaIndex recipe in docs/otel-recipes.md, pinned to the versions it was
+# proven against (tests/fixtures/otlp/llamaindex.pb was recorded with these).
+# The last two lines are the end-to-end test's own needs.
+llama-index-core==0.14.25
+llama-index-llms-openai==0.8.2
+openai==2.54.0
+openinference-instrumentation-llama-index==4.5.2
+opentelemetry-sdk==1.45.0
+opentelemetry-exporter-otlp-proto-http==1.45.0
+pytest==9.1.1
+httpx==0.28.1

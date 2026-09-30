@@ -1,0 +1,613 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "weather-agent"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "@arizeai/openinference-instrumentation-openai-agents",
+            "version": "0.2.15"
+          },
+          "spans": [
+            {
+              "traceId": "2869653a02e6e83d5c4460ed22a69af8",
+              "spanId": "3627954a8e3d8f1f",
+              "parentSpanId": "a498e1d037e6beea",
+              "name": "response",
+              "kind": 1,
+              "startTimeUnixNano": "1790612339521000000",
+              "endTimeUnixNano": "1790612339575000000",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "LLM"
+                  }
+                },
+                {
+                  "key": "llm.system",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "llm.provider",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "[{\"type\":\"message\",\"role\":\"user\",\"content\":\"What is the weather in Paris?\"}]"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.role",
+                  "value": {
+                    "stringValue": "user"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.content",
+                  "value": {
+                    "stringValue": "What is the weather in Paris?"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "{\"id\":\"resp_scripted_1\",\"object\":\"response\",\"created_at\":1790000000,\"status\":\"completed\",\"model\":\"gpt-4o-mini\",\"output\":[{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\",\"status\":\"completed\"}],\"parallel_tool_calls\":true,\"tool_choice\":\"auto\",\"tools\":[{\"type\":\"function\",\"name\":\"get_weather\",\"description\":\"The current weather for a city.\",\"parameters\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"],\"additionalProperties\":false},\"strict\":true}],\"error\":null,\"incomplete_details\":null,\"usage\":{\"input_tokens\":15,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens\":12,\"output_tokens_details\":{\"reasoning_tokens\":0},\"total_tokens\":27},\"output_text\":\"\"}"
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "llm.model_name",
+                  "value": {
+                    "stringValue": "gpt-4o-mini"
+                  }
+                },
+                {
+                  "key": "llm.finish_reason",
+                  "value": {
+                    "stringValue": "stop"
+                  }
+                },
+                {
+                  "key": "llm.invocation_parameters",
+                  "value": {
+                    "stringValue": "{\"id\":\"resp_scripted_1\",\"created_at\":1790000000,\"model\":\"gpt-4o-mini\",\"parallel_tool_calls\":true,\"tool_choice\":\"auto\"}"
+                  }
+                },
+                {
+                  "key": "llm.token_count.prompt",
+                  "value": {
+                    "intValue": "15"
+                  }
+                },
+                {
+                  "key": "llm.token_count.completion",
+                  "value": {
+                    "intValue": "12"
+                  }
+                },
+                {
+                  "key": "llm.token_count.total",
+                  "value": {
+                    "intValue": "27"
+                  }
+                },
+                {
+                  "key": "llm.token_count.prompt_details.cache_read",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "llm.token_count.completion_details.reasoning",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "llm.tools.0.tool.json_schema",
+                  "value": {
+                    "stringValue": "{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"The current weather for a city.\",\"parameters\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"],\"additionalProperties\":false},\"strict\":true}}"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.role",
+                  "value": {
+                    "stringValue": "assistant"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.tool_calls.0.tool_call.id",
+                  "value": {
+                    "stringValue": "call_1"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.tool_calls.0.tool_call.function.name",
+                  "value": {
+                    "stringValue": "get_weather"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.tool_calls.0.tool_call.function.arguments",
+                  "value": {
+                    "stringValue": "{\"city\":\"Paris\"}"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 257
+            },
+            {
+              "traceId": "2869653a02e6e83d5c4460ed22a69af8",
+              "spanId": "2deeacc6d68eae77",
+              "parentSpanId": "a498e1d037e6beea",
+              "name": "get_weather",
+              "kind": 1,
+              "startTimeUnixNano": "1790612339590000000",
+              "endTimeUnixNano": "1790612339593000000",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "TOOL"
+                  }
+                },
+                {
+                  "key": "llm.system",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "tool.name",
+                  "value": {
+                    "stringValue": "get_weather"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"city\":\"Paris\"}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "18 degrees and sunny in Paris"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 257
+            },
+            {
+              "traceId": "2869653a02e6e83d5c4460ed22a69af8",
+              "spanId": "a498e1d037e6beea",
+              "parentSpanId": "aaa64fe6e61bf832",
+              "name": "turn",
+              "kind": 1,
+              "startTimeUnixNano": "1790612339508000000",
+              "endTimeUnixNano": "1790612339596000000",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                },
+                {
+                  "key": "llm.system",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 257
+            },
+            {
+              "traceId": "2869653a02e6e83d5c4460ed22a69af8",
+              "spanId": "5ad18d5a7c439f2a",
+              "parentSpanId": "442cd77eb3a86a42",
+              "name": "response",
+              "kind": 1,
+              "startTimeUnixNano": "1790612339598000000",
+              "endTimeUnixNano": "1790612339607000000",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "LLM"
+                  }
+                },
+                {
+                  "key": "llm.system",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "llm.provider",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "[{\"type\":\"message\",\"role\":\"user\",\"content\":\"What is the weather in Paris?\"},{\"type\":\"function_call\",\"id\":\"fc_1\",\"callId\":\"call_1\",\"name\":\"get_weather\",\"status\":\"completed\",\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\",\"providerData\":{\"type\":\"function_call\",\"id\":\"fc_1\"}},{\"type\":\"function_call_result\",\"name\":\"get_weather\",\"callId\":\"call_1\",\"status\":\"completed\",\"output\":{\"type\":\"text\",\"text\":\"18 degrees and sunny in Paris\"}}]"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.role",
+                  "value": {
+                    "stringValue": "user"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.content",
+                  "value": {
+                    "stringValue": "What is the weather in Paris?"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.1.message.role",
+                  "value": {
+                    "stringValue": "assistant"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.1.message.tool_calls.0.tool_call.id",
+                  "value": {
+                    "stringValue": "call_1"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.1.message.tool_calls.0.tool_call.function.name",
+                  "value": {
+                    "stringValue": "get_weather"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.1.message.tool_calls.0.tool_call.function.arguments",
+                  "value": {
+                    "stringValue": "{\"city\":\"Paris\"}"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.2.message.role",
+                  "value": {
+                    "stringValue": "tool"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.2.message.tool_call_id",
+                  "value": {
+                    "stringValue": "call_1"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.2.message.content",
+                  "value": {
+                    "stringValue": "18 degrees and sunny in Paris"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "{\"id\":\"resp_scripted_2\",\"object\":\"response\",\"created_at\":1790000000,\"status\":\"completed\",\"model\":\"gpt-4o-mini\",\"output\":[{\"type\":\"message\",\"id\":\"msg_2\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"It is 18 degrees and sunny in Paris.\",\"annotations\":[],\"logprobs\":[]}]}],\"parallel_tool_calls\":true,\"tool_choice\":\"auto\",\"tools\":[{\"type\":\"function\",\"name\":\"get_weather\",\"description\":\"The current weather for a city.\",\"parameters\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"],\"additionalProperties\":false},\"strict\":true}],\"error\":null,\"incomplete_details\":null,\"usage\":{\"input_tokens\":35,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens\":8,\"output_tokens_details\":{\"reasoning_tokens\":0},\"total_tokens\":43},\"output_text\":\"It is 18 degrees and sunny in Paris.\"}"
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "llm.model_name",
+                  "value": {
+                    "stringValue": "gpt-4o-mini"
+                  }
+                },
+                {
+                  "key": "llm.finish_reason",
+                  "value": {
+                    "stringValue": "stop"
+                  }
+                },
+                {
+                  "key": "llm.invocation_parameters",
+                  "value": {
+                    "stringValue": "{\"id\":\"resp_scripted_2\",\"created_at\":1790000000,\"model\":\"gpt-4o-mini\",\"parallel_tool_calls\":true,\"tool_choice\":\"auto\"}"
+                  }
+                },
+                {
+                  "key": "llm.token_count.prompt",
+                  "value": {
+                    "intValue": "35"
+                  }
+                },
+                {
+                  "key": "llm.token_count.completion",
+                  "value": {
+                    "intValue": "8"
+                  }
+                },
+                {
+                  "key": "llm.token_count.total",
+                  "value": {
+                    "intValue": "43"
+                  }
+                },
+                {
+                  "key": "llm.token_count.prompt_details.cache_read",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "llm.token_count.completion_details.reasoning",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "llm.tools.0.tool.json_schema",
+                  "value": {
+                    "stringValue": "{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"The current weather for a city.\",\"parameters\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"],\"additionalProperties\":false},\"strict\":true}}"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.role",
+                  "value": {
+                    "stringValue": "assistant"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.contents.0.message_content.type",
+                  "value": {
+                    "stringValue": "text"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.contents.0.message_content.text",
+                  "value": {
+                    "stringValue": "It is 18 degrees and sunny in Paris."
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 257
+            },
+            {
+              "traceId": "2869653a02e6e83d5c4460ed22a69af8",
+              "spanId": "442cd77eb3a86a42",
+              "parentSpanId": "aaa64fe6e61bf832",
+              "name": "turn",
+              "kind": 1,
+              "startTimeUnixNano": "1790612339596000000",
+              "endTimeUnixNano": "1790612339609000000",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                },
+                {
+                  "key": "llm.system",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 257
+            },
+            {
+              "traceId": "2869653a02e6e83d5c4460ed22a69af8",
+              "spanId": "aaa64fe6e61bf832",
+              "parentSpanId": "0c3908e555ac80f6",
+              "name": "Weather agent",
+              "kind": 1,
+              "startTimeUnixNano": "1790612339508000000",
+              "endTimeUnixNano": "1790612339611000000",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "AGENT"
+                  }
+                },
+                {
+                  "key": "llm.system",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "graph.node.id",
+                  "value": {
+                    "stringValue": "Weather agent"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 257
+            },
+            {
+              "traceId": "2869653a02e6e83d5c4460ed22a69af8",
+              "spanId": "0c3908e555ac80f6",
+              "parentSpanId": "8134c90a34202f55",
+              "name": "Agent workflow",
+              "kind": 1,
+              "startTimeUnixNano": "1790612339504000000",
+              "endTimeUnixNano": "1790612339612000000",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                },
+                {
+                  "key": "llm.system",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 257
+            },
+            {
+              "traceId": "2869653a02e6e83d5c4460ed22a69af8",
+              "spanId": "8134c90a34202f55",
+              "name": "Agent workflow",
+              "kind": 1,
+              "startTimeUnixNano": "1790612339498000000",
+              "endTimeUnixNano": "1790612339611638100",
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "AGENT"
+                  }
+                },
+                {
+                  "key": "llm.system",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "[{\"type\":\"message\",\"role\":\"user\",\"content\":\"What is the weather in Paris?\"}]"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "It is 18 degrees and sunny in Paris."
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              },
+              "flags": 257
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

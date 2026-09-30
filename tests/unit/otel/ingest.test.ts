@@ -151,8 +151,8 @@ describe('fromOtlp — a GenAI-conventions trace', () => {
     expect(trace.spans?.[0]).toMatchObject({ name: 'GET /health', kind: 'SERVER', status_code: 'ERROR', status_message: 'boom', attributes: { 'http.route': '/health' } });
     expect(lacked).toEqual([
       'service.name (agent_name defaulted to "otel"; set service.name on the resource, iris.agent_name, or gen_ai.agent.name)',
-      'input (no iris.input, gen_ai.input.messages, gen_ai.prompt, input.value, traceloop.entity.input or ai.prompt on any span or event)',
-      'output (no iris.output, gen_ai.output.messages, gen_ai.completion, output.value, traceloop.entity.output or ai.response.text on any span or event — the rules that read the output will not run)',
+      'input (no iris.input, gen_ai.input.messages, gen_ai.prompt, input.value, llm.input_messages, traceloop.entity.input or ai.prompt on any span or event; a Python repr is not read as one)',
+      'output (no iris.output, gen_ai.output.messages, gen_ai.completion, output.value, llm.output_messages, traceloop.entity.output or ai.response.text on any span or event; a Python repr is not read as one — the rules that read the output will not run)',
     ]);
     expect(toSteps({ spans: trace.spans })).toEqual([]);
   });
