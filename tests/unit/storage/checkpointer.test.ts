@@ -228,6 +228,9 @@ describe('WAL checkpoints on a worker thread', () => {
      * anti-theater half shows it). At full size, 8,000 evaluations, this took
      * 18 to 50 s on a Windows runner and at times more than 90 s (#756); the
      * stall suite measures the log at full size.
+     * It runs the fill twice. At this size the pair takes about 3 s on a
+     * desktop and took 6.8 s to more than 30 s on the hosted Windows runner (node
+     * driver, Node 24), so it has 90 s rather than the file's 30.
      */
     const PAGES = { tail: TAIL_CHECKPOINT_PAGES / 5, stepTruncate: STEP_TRUNCATE_PAGES / 5 };
     const seed = await store();
@@ -272,7 +275,7 @@ describe('WAL checkpoints on a worker thread', () => {
     blind.mockRestore();
     expect(unstepped.truncates).toBe(0);
     expect(unstepped.maxPages).toBeGreaterThanOrEqual(PAGES.tail);
-  });
+  }, 90_000);
 
   it('says whether a TRUNCATE is in flight, and when it is done', async () => {
     const { s } = await store();
