@@ -68,6 +68,17 @@ export interface IrisConfig {
      * a write-ahead log is `normal`.
      */
     synchronous?: 'normal' | 'full';
+    /**
+     * The full-text search index. `on` (the default): every stored trace is
+     * indexed, and a search reads the index. `off`: nothing is indexed, so a
+     * write costs what it did before the index existed, and a search reads
+     * the traces themselves within searchBudgetMs, newest first, so on a
+     * large store it can answer with part of the matches
+     * (`search.complete: false`). Turning it off erases an index the
+     * database kept; turning it on again builds a new one in the background.
+     * IRIS_SEARCH_INDEX sets it from the environment.
+     */
+    searchIndex?: 'on' | 'off';
   };
   server: {
     name: string;

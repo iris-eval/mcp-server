@@ -48,7 +48,7 @@ import { randomBytes } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 import type { Server } from 'node:http';
 import { openDriver, type Driver } from './storage/driver.js';
-import { searchIndexProgress } from './storage/search-index.js';
+import { searchIndexProgress, SEARCH_TABLE } from './storage/search-index.js';
 import { readPathsMissing } from './storage/read-paths.js';
 import { ensureIrisDirectory, loadConfig } from './config/index.js';
 import { PKG_VERSION } from './config/defaults.js';
@@ -127,6 +127,7 @@ const SCRUBBED_ENV_VARS = [
   'IRIS_ALLOW_UNAUTHENTICATED',
   'IRIS_ALLOWED_ORIGINS',
   'IRIS_LOG_LEVEL',
+  'IRIS_SEARCH_INDEX',
 ] as const;
 
 function ensure(condition: unknown, message: string): asserts condition {
@@ -224,9 +225,10 @@ export function probeConfiguredHome(home: string, dbPath: string): string {
  * whether it is whole, how far a build has got, or that this SQLite has no
  * FTS5. After an upgrade the server builds the index in the background, and
  * a large store takes minutes; this is where to see how far along it is.
- * Informational: a search answers in every state.
+ * Informational: a search answers in every state. `off`: IRIS_SEARCH_INDEX
+ * turns the index off for this install (config.json is not read here).
  */
-export function describeConfiguredSearchIndex(dbPath: string): string {
+export function describeConfiguredSearchIndex(dbPath: string, off = false): string {
   if (!existsSync(dbPath)) return 'no database yet; the index is created with it';
   const n = (v: number | null) => (v ?? 0).toLocaleString('en-US');
   let db: Driver | undefined;
@@ -241,6 +243,10 @@ export function describeConfiguredSearchIndex(dbPath: string): string {
     if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'traces'").get() === undefined) return 'no traces stored yet; the index is created at the first start';
     const s = searchIndexProgress(db);
     if (s.state === 'unavailable') return `this SQLite (driver ${db.name}) has no FTS5, so a search reads the traces (the same results, slower)`;
+    if (off) {
+      const kept = s.retired || db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(SEARCH_TABLE) !== undefined;
+      return `off (IRIS_SEARCH_INDEX), so a search reads the traces within its budget${kept ? '; the server erases the index this database kept after it starts' : ''}`;
+    }
     if (s.state === 'ready') return `ready: ${n(s.total)} trace(s) indexed`;
     const left = [
       ...(s.retired ? ['a previous index to erase first'] : []),
@@ -352,6 +358,7 @@ export async function runSelfTest(write: WriteLine = stdoutLine, options: SelfTe
    */
   const userHome = irisHome();
   const userStoragePath = process.env.IRIS_DB_PATH ?? join(userHome, 'iris.db');
+  const searchIndexOff = process.env.IRIS_SEARCH_INDEX?.trim().toLowerCase() === 'off';
 
   const savedEnv: Record<string, string | undefined> = {};
   for (const key of SCRUBBED_ENV_VARS) {
@@ -406,7 +413,7 @@ export async function runSelfTest(write: WriteLine = stdoutLine, options: SelfTe
     return probe.detail;
   }, { independent: true });
   await step(SELF_TEST_STEPS.clients, () => probeClientPins(plan, options.clientEnvironment ?? currentEnvironment()), { independent: true });
-  await step(SELF_TEST_STEPS.searchIndex, () => describeConfiguredSearchIndex(userStoragePath), { independent: true });
+  await step(SELF_TEST_STEPS.searchIndex, () => describeConfiguredSearchIndex(userStoragePath, searchIndexOff), { independent: true });
 
   /*
    * The judge line, read from THIS shell's environment before the scrub

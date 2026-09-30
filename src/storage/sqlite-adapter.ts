@@ -64,7 +64,7 @@ import { backupDatabase, backupDatabaseWith, type BackupResult } from './backup.
 import { PKG_VERSION } from '../config/defaults.js';
 import { Checkpointer, AUTOCHECKPOINT_PAGES, TAIL_CHECKPOINT_PAGES, STEP_TRUNCATE_PAGES } from './checkpointer.js';
 import { readPathsMissing, DROP_REPLACED, READ_PATH_INDEX_NAMES } from './read-paths.js';
-import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, nextStepSize, eraseRetiredStep, isShadowWriteRefused, retiredRemain, ERASE_ROWS, ERASE_ROWS_RANGE, sweepEraseMode, deleteOwingMerge, mergeOwed, mergeOwedStep, levelMergeStep, filterIndexMissing, CREATE_FILTER_INDEX, MERGE_PAGES, MERGE_PAGES_RANGE, searchIndexProgress, type SearchIndexStatus, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState } from './search-index.js';
+import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, nextStepSize, eraseRetiredStep, isShadowWriteRefused, retiredRemain, ERASE_ROWS, ERASE_ROWS_RANGE, sweepEraseMode, deleteOwingMerge, mergeOwed, mergeOwedStep, levelMergeStep, filterIndexMissing, CREATE_FILTER_INDEX, MERGE_PAGES, MERGE_PAGES_RANGE, searchIndexProgress, type SearchIndexStatus, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState, BUILD_STEP_MS, BUILD_BATCH_RANGE, enqueueTraces, indexQueued, queueWaiting, queuedUpTo, searchFilterIndexExists, dropSearchFilterIndex, QUEUE_TABLE } from './search-index.js';
 import { parseSearch, searchRefusal, describeTerm, mayHoldCjk, type ParsedSearch, type TraceMatch } from './search.js';
 import { installSearchFunctions, matchSearch, type MatchRequest, type MatchResult, type SearchPlan } from './search-match.js';
 import { SearchWorkerClient, SearchWorkerUnavailable, warnSearchWorkerUnavailable } from './search-worker-client.js';
@@ -163,6 +163,13 @@ export interface SqliteAdapterOptions {
   searchWorkerEntry?: URL;
   /** storage.synchronous — when a commit reaches the disk; see initialize(). Default `normal`. */
   synchronous?: SynchronousMode;
+  /**
+   * storage.searchIndex — `off` keeps no full-text index: a write stores the
+   * trace and nothing more, and a search reads the traces within its budget
+   * (search-match.ts, the scan). An index kept before is erased after the
+   * start; `on` again builds a new one. Default `on`.
+   */
+  searchIndex?: 'on' | 'off';
   /** Copy the file before applying a migration to it (default true; backup.ts). */
   backup?: boolean;
   /**
@@ -217,6 +224,29 @@ export type SynchronousMode = 'normal' | 'full';
  * a quarter of it, and the costliest query the limits allow about 600 ms.
  */
 export const SEARCH_BUDGET_MS = 1000;
+
+/**
+ * The queue indexer's timing (#729; scheduleIndexing). Queued traces are
+ * indexed once writes pause for INDEX_IDLE_MS, and not before: a search
+ * indexes the queue itself before it reads the index, so how soon a trace
+ * is indexed changes no answer, and a step run between two writes of a
+ * stream holds the second one for the step. When the queue reaches
+ * INDEX_BACKLOG_TRACES, the indexer starts during the stream, and a write
+ * that finds more than that queued indexes some of it before it returns
+ * (holdBackForIndex), so the queue a search indexes first never holds more.
+ */
+export const INDEX_IDLE_MS = 25;
+export const INDEX_BACKLOG_TRACES = 1000;
+/**
+ * A batch of at least this many traces (an OTLP request, `iris-eval
+ * ingest`) is indexed in the transaction that stores it, as before #729:
+ * it is already a batch, and its index write costs no more there (128 µs a
+ * trace in batches of 100, 95 µs in batches of 1,000, against 558 µs one
+ * at a time). Queueing it too cost 5% of OTLP ingest and made the search
+ * after a burst wait for the queue. Smaller batches are queued.
+ */
+export const INDEX_INLINE_MIN = 100;
+
 /** How often a delete's checkpoint is tried again while a reader holds it off (eraseFromFile). */
 const ERASE_RETRY_MS = 20;
 /** How long a delete waits for its erasure on the checkpoint worker, off the event loop, before it leaves it to the retry (eraseFromFile). */
@@ -418,6 +448,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   /** Whether searches use the FTS5 index or read the traces; settled in initialize(). */
   private searchIndex: SearchIndexState = 'unavailable';
+  private readonly searchIndexWanted: boolean;
   /** The background build of the search index, while one runs; see buildSearchIndex. */
   private searchBuild: Promise<SearchIndexState> | undefined;
   /** The indexes the hot reads name, being built after the start, while they are (buildReadPaths), and whether all of them exist. */
@@ -436,6 +467,12 @@ export class SqliteAdapter implements IStorageAdapter {
   private markClosing: () => void = () => undefined;
   /** Resolves when close() begins: a wait that must not hold a close up races it. Declared after markClosing, whose initializer would otherwise replace the resolver. */
   private readonly closingNow: Promise<void> = new Promise((resolve) => (this.markClosing = resolve));
+  /** The queue indexer (#729; scheduleIndexing): its idle timer, the drain running, its last step (indexStep), and the traces this process queued since the queue was last empty. */
+  private indexTimer: ReturnType<typeof setTimeout> | undefined;
+  private indexing: Promise<void> | undefined;
+  private indexSteps: Promise<unknown> = Promise.resolve();
+  private indexBatch = BUILD_BATCH;
+  private queuedSinceDrain = 0;
   private readonly fts5Override: boolean | undefined;
   /** SqliteAdapterOptions.checkpointPages, or the defaults. */
   private readonly tailCheckpointPages: number;
@@ -467,6 +504,7 @@ export class SqliteAdapter implements IStorageAdapter {
     this.fts5Override = options?.fts5;
     this.tailCheckpointPages = options?.checkpointPages?.tail ?? TAIL_CHECKPOINT_PAGES;
     this.stepTruncatePages = options?.checkpointPages?.stepTruncate ?? STEP_TRUNCATE_PAGES;
+    this.searchIndexWanted = options?.searchIndex !== 'off';
     this.log = options?.log ?? ((level, line) => (level === 'warn' ? process.stderr.write(`[iris.storage] ${line}\n`) : undefined));
     this.searchBudgetMs = options?.searchBudgetMs ?? SEARCH_BUDGET_MS;
     this.backupFirst = options?.backup ?? true;
@@ -677,7 +715,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   /** After the migrations, every start: build, repair or stand down the search index (search-index.ts). The store serves from here. */
   private reconcile(): void {
-    this.searchIndex = reconcileSearchIndex(this.db, fts5Available(this.db));
+    this.searchIndex = reconcileSearchIndex(this.db, fts5Available(this.db), this.searchIndexWanted);
     if (this.searchIndex === 'ready') this.indexedThrough = this.maxTraceRowid();
     this.readyState = { state: 'ready', since: Date.now() };
   }
@@ -697,8 +735,12 @@ export class SqliteAdapter implements IStorageAdapter {
     if (this.searchIndex === 'building') this.searchBuild = this.buildSearchIndex();
     // Evaluations with no stored risk estimate (written before migration 018, or by an older corpus) get one, behind the start.
     this.riskFill = this.fillRiskEstimates();
+    // Turned off: the index this file kept is erased after the start, in steps.
+    if (this.searchIndex === 'off' && (retiredRemain(this.db) || searchFilterIndexExists(this.db))) this.searchBuild = this.eraseIndexTurnedOff();
     // A merge a sweep owed when the last server closed: carried on after the start, too.
-    if (this.searchIndex !== 'unavailable' && mergeOwed(this.db)) void this.settleOwedMerge();
+    if (this.indexKept && mergeOwed(this.db)) void this.settleOwedMerge();
+    // Traces an earlier run, or another process, queued and never indexed.
+    if (this.indexKept && queueWaiting(this.db)) this.scheduleIndexing(0, true);
   }
 
   /**
@@ -737,6 +779,22 @@ export class SqliteAdapter implements IStorageAdapter {
     // An upgrade after the start runs to the end of the step it is in: a copy is not followed by the migrations, and a migration is never cut off.
     await this.ready.catch(() => undefined);
     await Promise.all([this.filterIndex, this.readPaths, this.searchBuild, this.merging, this.riskFill, ...this.sweeps]);
+    /*
+     * The indexer stops at its next step, and what this process queued is
+     * indexed now: a short-lived process (iris-eval ingest) leaves nothing
+     * on the queue for a server to find. What cannot be indexed now waits
+     * for the next start.
+     */
+    if (this.indexTimer) clearTimeout(this.indexTimer);
+    this.indexTimer = undefined;
+    await this.indexing;
+    if (this.indexKept) {
+      try {
+        while (indexQueued(this.db, BUILD_BATCH_RANGE[1]) !== null);
+      } catch {
+        // The next start's indexer takes it.
+      }
+    }
     // The search thread closes its own connection before this one closes.
     await this.searchWorker?.close();
     this.searchWorker = undefined;
@@ -789,8 +847,142 @@ export class SqliteAdapter implements IStorageAdapter {
    * it: until then they read the traces. For tests, the benchmark and any
    * caller that wants to know.
    */
-  whenSearchIndexReady(): Promise<SearchIndexState> {
-    return this.searchBuild ?? Promise.resolve(this.searchIndex);
+  async whenSearchIndexReady(): Promise<SearchIndexState> {
+    const state = await (this.searchBuild ?? Promise.resolve(this.searchIndex));
+    if ((state === 'ready' || state === 'building') && !this.closing) {
+      await this.indexing;
+      await this.drainQueue(Infinity);
+    }
+    return this.searchIndex;
+  }
+
+  /**
+   * Index what waits on the queue (#729), after the write that queued it
+   * rather than inside it. A write only adds the trace's id to the queue;
+   * this writes the index in steps, each under its own write lock and sized
+   * to about BUILD_STEP_MS of work, with the event loop free between them.
+   * It starts once writes pause for INDEX_IDLE_MS, so a burst of writes is
+   * indexed in batches after it, and at once when this process has queued
+   * INDEX_BACKLOG_TRACES, so the queue, and what a search has to index
+   * before it reads the index, stays that small while writes never pause.
+   */
+  private scheduleIndexing(queued: number, now = false): void {
+    if (this.closing) return;
+    this.queuedSinceDrain += queued;
+    if (this.indexing) return;
+    if (this.indexTimer) clearTimeout(this.indexTimer);
+    const start = () => {
+      this.indexTimer = undefined;
+      this.indexing = this.runIndexer().finally(() => {
+        this.indexing = undefined;
+      });
+    };
+    if (now || this.queuedSinceDrain >= INDEX_BACKLOG_TRACES) {
+      start();
+      return;
+    }
+    this.indexTimer = setTimeout(start, INDEX_IDLE_MS);
+    this.indexTimer.unref?.();
+  }
+
+  private async runIndexer(): Promise<void> {
+    try {
+      // Each step's merges after it, as the build does, so writes that never pause never leave a level for FTS5's own crisis merge.
+      while (!this.closing && (await this.indexStep()) !== null) await this.mergeIndexed();
+    } catch (err) {
+      // Another writer held the lock past busy_timeout, or the file failed: the queue keeps its traces, and the next write, search or start tries again.
+      process.stderr.write(`[iris.storage] Indexing queued traces for search stopped (${err instanceof Error ? err.message : String(err)}); they stay queued, and searches index them first.\n`);
+    }
+  }
+
+  /**
+   * One step of the queue indexer (indexQueued), sized to about
+   * BUILD_STEP_MS, on a turn of the event loop of its own after the step
+   * before it, whoever asked for either: the indexer after writes pause, a
+   * search draining the queue, a write held back. Requests run between any
+   * two steps, so the event loop is never held longer than one step. The
+   * traces it took off the queue, or null when none waited (or the store is
+   * closing, whose close indexes the rest).
+   */
+  private indexStep(): Promise<number | null> {
+    return this.indexerStep((): number | null => {
+      if (this.closing) return null;
+      const started = performance.now();
+      const n = indexQueued(this.db, this.indexBatch);
+      if (n === null) {
+        this.queuedSinceDrain = 0;
+        return null;
+      }
+      const took = performance.now() - started;
+      this.indexBatch = nextBuildBatch(this.indexBatch, took);
+      this.queuedSinceDrain = Math.max(0, this.queuedSinceDrain - n);
+      return n;
+    });
+  }
+
+  /**
+   * Run `work` as the indexer's next step: on a turn of the event loop of
+   * its own, after the step before it (indexStep), and never while the
+   * checkpoint worker truncates the log, which holds the write lock (a
+   * step started then would wait for it with the event loop held).
+   */
+  private indexerStep<T>(work: () => T): Promise<T> {
+    const step = this.indexSteps.then(() => this.turnWithoutTruncate()).then(work);
+    this.indexSteps = step.catch(() => undefined);
+    return step;
+  }
+
+  /** A turn of the event loop of its own, where no TRUNCATE is in progress when it resolves: the work after it runs in that same turn. */
+  private async turnWithoutTruncate(): Promise<void> {
+    // The covering index built after the start holds the write lock while it is (createFilterIndex): a step waits for it, as the build's do.
+    if (this.filterIndex) await this.filterIndex;
+    await yieldToRequests();
+    while (this.checkpointer?.truncateInProgress) {
+      await this.checkpointer.whenTruncated();
+      await yieldToRequests();
+    }
+  }
+
+  /**
+   * The merges the queue's steps owe (they write with automerge off,
+   * indexQueued), as indexer steps of their own until no level needs one
+   * (levelMergeStep). The indexer runs them; a search draining the queue
+   * does not, and leaves them to the indexer after it.
+   */
+  private async mergeIndexed(): Promise<void> {
+    while (!this.closing) {
+      const written = await this.indexerStep((): number => {
+        if (this.closing) return 0;
+        const started = performance.now();
+        const n = levelMergeStep(this.db, this.mergePages);
+        if (n > 0) this.mergePages = nextStepSize(Math.min(this.mergePages, n), performance.now() - started, MERGE_PAGES_RANGE);
+        return n;
+      });
+      if (written === 0) return;
+    }
+  }
+
+  /**
+   * Index the queue, in steps (indexStep), for up to `budgetMs`: what a
+   * search does before it reads the index, so it misses no trace stored
+   * before it began. `upTo` is the last trace rowid it must find; traces
+   * stored while it drains are indexed by the indexer after it. Whether
+   * everything up to there is indexed. The queue this process leaves holds
+   * at most INDEX_BACKLOG_TRACES; more waits only when another process
+   * queued traces and has not indexed them.
+   */
+  private async drainQueue(budgetMs: number, upTo = Infinity): Promise<boolean> {
+    const deadline = performance.now() + budgetMs;
+    const waiting = Number.isFinite(upTo) ? () => queuedUpTo(this.db, upTo) : () => queueWaiting(this.db);
+    let stepped = false;
+    while (waiting()) {
+      if (this.closing || performance.now() >= deadline) return false;
+      await this.indexStep();
+      stepped = true;
+    }
+    // The merges those steps owe, after this search (mergeIndexed).
+    if (stepped) this.scheduleIndexing(0, true);
+    return true;
   }
 
   /** Resolves when no background work runs: the build, a merge a sweep owes, a sweep. For tests and the benchmark. */
@@ -1100,6 +1292,31 @@ export class SqliteAdapter implements IStorageAdapter {
     return this.riskFill ?? Promise.resolve();
   }
 
+  /** Whether this store keeps a search index: FTS5 here and storage.searchIndex on. */
+  private get indexKept(): boolean {
+    return this.searchIndex === 'ready' || this.searchIndex === 'building';
+  }
+
+  /** The index a store kept before storage.searchIndex was turned off, erased in steps after the start. */
+  private async eraseIndexTurnedOff(): Promise<SearchIndexState> {
+    await yieldToRequests();
+    this.ensureCheckpointer();
+    const began = performance.now();
+    try {
+      this.log('info', 'Search index: off (storage.searchIndex), so the index this database kept is being erased in the background; a search reads the traces');
+      await this.eraseRetiredIndex();
+      if (this.closing) return this.searchIndex;
+      await yieldToRequests();
+      dropSearchFilterIndex(this.db);
+      this.log('info', `Search index erased in ${((performance.now() - began) / 1000).toFixed(1)} s`);
+    } catch (err) {
+      this.log('warn', `Erasing the search index stopped (${err instanceof Error ? err.message : String(err)}); the next start carries on.`);
+    } finally {
+      this.searchBuild = undefined;
+    }
+    return this.searchIndex;
+  }
+
   /** Erase the index retired at the start, if there is one, in steps (search-index.ts, retiring an index). */
   private async eraseRetiredIndex(): Promise<void> {
     let rows = ERASE_ROWS;
@@ -1157,7 +1374,8 @@ export class SqliteAdapter implements IStorageAdapter {
   /*
    * Traces another process stored without indexing them. Every writer from
    * this release on indexes its own inserts in the transaction that stores
-   * them; a trace inserted any other way — by hand, or by a release from
+   * them, or queues them there for its indexer (#729; a queued trace is not
+   * missing: the search indexes the queue first); a trace inserted any other way — by hand, or by a release from
    * before the index — has no docs row, and a search that trusted the index
    * would miss it until the next start rebuilt it (reconcileSearchIndex).
    * Before each search on a ready index, the traces added since the last
@@ -1173,7 +1391,8 @@ export class SqliteAdapter implements IStorageAdapter {
       this.indexedThrough = max;
       return;
     }
-    const missing = this.db.prepare(`SELECT 1 FROM traces WHERE rowid > ? AND trace_id NOT IN (SELECT trace_id FROM ${SEARCH_DOCS_TABLE}) LIMIT 1`).get(this.indexedThrough) !== undefined;
+    const missing =
+      this.db.prepare(`SELECT 1 FROM traces WHERE rowid > ? AND trace_id NOT IN (SELECT trace_id FROM ${SEARCH_DOCS_TABLE}) AND trace_id NOT IN (SELECT trace_id FROM ${QUEUE_TABLE}) LIMIT 1`).get(this.indexedThrough) !== undefined;
     if (!missing) {
       this.indexedThrough = max;
       return;
@@ -1283,14 +1502,38 @@ export class SqliteAdapter implements IStorageAdapter {
 
     const insertAll = this.db.transaction((batch: Trace[]) => {
       const mayBeCjk = batch.filter((t) => insertOne(t)).map((t) => t.trace_id);
-      // The search index is written here, in the same transaction, not by a trigger, and after the batch's spans (search-index.ts says why).
-      if (this.searchIndex !== 'unavailable') {
-        indexInsertedTraces(this.db, tenantId, batch.map((t) => t.trace_id));
-        // Only traces whose text could hold CJK are read back and streamed; the rest cost that one check.
-        if (mayBeCjk.length > 0) indexCjk(this.db, this.docIds(mayBeCjk));
+      if (!this.indexKept) return;
+      const ids = batch.map((t) => t.trace_id);
+      if (batch.length < INDEX_INLINE_MIN) {
+        // Queued for the search index in the same transaction, and indexed after it (#729; search-index.ts, the queue).
+        enqueueTraces(this.db, ids);
+        return;
       }
+      // A batch this large is already the batch the indexer would write: indexed here, in the transaction that stores it, after its spans (search-index.ts says why).
+      indexInsertedTraces(this.db, tenantId, ids);
+      // Only traces whose text could hold CJK are read back and streamed; the rest cost that one check.
+      if (mayBeCjk.length > 0) indexCjk(this.db, this.docIds(mayBeCjk));
     });
     insertAll(traces);
+    if (this.indexKept && traces.length < INDEX_INLINE_MIN) {
+      this.scheduleIndexing(traces.length);
+      // Past the bound only while writes outrun the indexer: then this write indexes some of the queue first.
+      if (this.queuedSinceDrain > INDEX_BACKLOG_TRACES) await this.holdBackForIndex();
+    }
+  }
+
+  /**
+   * While the queue holds more than INDEX_BACKLOG_TRACES, a write indexes some
+   * of it before it returns: writes that outrun the index proceed at its
+   * pace, so the queue, and what a search after them indexes first, stays
+   * bounded. Never longer than BUSY_TIMEOUT_MS, the wait a write already
+   * accepts for a lock.
+   */
+  private async holdBackForIndex(): Promise<void> {
+    const depth = () => Number((this.db.prepare(`SELECT COUNT(*) AS n FROM ${QUEUE_TABLE}`).get() as { n: number }).n);
+    const deadline = Date.now() + BUSY_TIMEOUT_MS;
+    // Between steps, the requests waiting behind this one run (indexStep).
+    while (!this.closing && depth() > INDEX_BACKLOG_TRACES && Date.now() < deadline) if ((await this.indexStep()) === null) break;
   }
 
   async getTrace(tenantId: TenantId, traceId: string): Promise<Trace | null> {
@@ -1379,6 +1622,11 @@ export class SqliteAdapter implements IStorageAdapter {
     if (plan.search) {
       if (this.searchIndex === 'ready') this.catchUpOtherWriters();
       const index: 'fts5' | 'scan' = this.searchIndex === 'ready' ? 'fts5' : 'scan';
+      // Traces stored a moment ago wait on the queue (#729): every one of them first, however long it takes, as the search below.
+      if (index === 'fts5') {
+        const upTo = this.maxTraceRowid();
+        if (queuedUpTo(this.db, upTo) && !(await this.drainQueue(Infinity, upTo))) throw new Error('The store closed before the export started; try again.');
+      }
       // Every match, however long it takes: an export that stopped at the list's budget would be a cut-off file.
       const { pageIds, complete } = await this.match({ tenantId, parsed: plan.search, plan, index, budgetMs: Infinity, snippets: false });
       // A search thread that failed answers as stopped with nothing read: an error here, never an empty or partial file.
@@ -1583,8 +1831,19 @@ export class SqliteAdapter implements IStorageAdapter {
     let total: number;
     let pageIds: string[];
 
+    /*
+     * Traces stored a moment ago wait on the queue: index them before the
+     * index is read, so the search misses none (#729). In steps, with other
+     * requests answered between them, for at most the search's own budget;
+     * with nothing queued it goes straight on, in the same turn of the
+     * event loop.
+     */
+    const upTo = index === 'fts5' ? this.maxTraceRowid() : 0;
+    const drained = index !== 'fts5' || !queuedUpTo(this.db, upTo) || (await this.drainQueue(this.searchBudgetMs, upTo));
     let matches: Array<TraceMatch | null>;
     ({ total, pageIds, matches, complete } = await this.match({ tenantId, parsed, plan: q, index, budgetMs: this.searchBudgetMs }));
+    // What another process queued and this search could not index in time is not in the answer, and the answer says so.
+    if (!drained) complete = false;
 
     // The snippets came with the page (search-match.ts builds them where it chose it); only the rows are read here.
     const byId = new Map<string, Trace>();
@@ -1645,7 +1904,7 @@ export class SqliteAdapter implements IStorageAdapter {
 
   /** A write of the adapter's own queued the trace for its CJK stream (by trigger): stream it now, in the caller's transaction. */
   private streamCjkQueued(traceId: string): void {
-    if (this.searchIndex === 'unavailable') return;
+    if (!this.indexKept) return;
     const queued = this.db.prepare(`SELECT p.doc_id FROM ${CJK_PENDING_TABLE} p JOIN ${SEARCH_DOCS_TABLE} d ON d.doc_id = p.doc_id WHERE d.trace_id = ?`).get(traceId) as { doc_id: number } | undefined;
     if (queued) indexCjk(this.db, [Number(queued.doc_id)]);
   }
@@ -2871,7 +3130,7 @@ export class SqliteAdapter implements IStorageAdapter {
     if (this.closing) return 0;
     this.ensureCheckpointer();
     if (this.filterIndex || this.readPaths) await this.indexesAfterStart();
-    const indexing = this.searchIndex !== 'unavailable';
+    const indexing = this.indexKept;
     const mode = indexing
       ? sweepEraseMode(
           Number((this.db.prepare(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE} d JOIN traces t ON t.trace_id = d.trace_id WHERE t.tenant_id = ? AND t.timestamp < ?`).get(tid, cut) as { n: number }).n),
@@ -2942,8 +3201,8 @@ export class SqliteAdapter implements IStorageAdapter {
       const evalResults = this.db.prepare('DELETE FROM eval_results WHERE tenant_id = ?').run(tenantId).changes;
       // spans cascade (FK ON DELETE CASCADE).
       const remove = () => this.db.prepare('DELETE FROM traces WHERE tenant_id = ?').run(tenantId).changes;
-      const indexed = this.searchIndex !== 'unavailable' ? Number((this.db.prepare(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE} WHERE tenant_id = ?`).get(tenantId) as { n: number }).n) : 0;
-      const traces = this.searchIndex !== 'unavailable' ? bulkIndexDelete(this.db, indexed, remove) : remove();
+      const indexed = this.indexKept ? Number((this.db.prepare(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE} WHERE tenant_id = ?`).get(tenantId) as { n: number }).n) : 0;
+      const traces = this.indexKept ? bulkIndexDelete(this.db, indexed, remove) : remove();
       return { traces, evalResults };
     });
     const counts = deleteAll();
@@ -2971,6 +3230,8 @@ export class SqliteAdapter implements IStorageAdapter {
    * log can be large and copying it is not a delete's few pages.
    */
   async checkpoint(): Promise<void> {
+    // What waits on the search index queue is written first (#729), so the indexer's next step does not refill the log this empties.
+    if (this.indexKept && !this.closing) await this.drainQueue(Infinity);
     await this.eraseFromFile(true);
   }
 
