@@ -25,7 +25,12 @@ import type { Driver } from '../../../src/storage/driver.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import { CELL_DRIVER } from './fts5-here.js';
 
-vi.setConfig({ testTimeout: 30_000 });
+/*
+ * The hooks get the tests' time: afterEach closes each store, and close()
+ * now waits for the worker's statement in progress (#750), which after the
+ * heavier cases here ran past the 10 s default on a windows-latest runner.
+ */
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
 
 const dirs: string[] = [];
 const open: SqliteAdapter[] = [];
@@ -132,6 +137,43 @@ describe('WAL checkpoints on a worker thread', () => {
     open.splice(open.indexOf(s), 1);
     // Ended by itself: a terminated thread exits with code 1.
     expect(await exited).toBe(0);
+  });
+
+  /*
+   * A statement the thread is in when close() is asked cannot be stopped:
+   * the close message waits behind it, and terminate() only ends the thread
+   * when the statement returns. close() used to return at its timeout with
+   * the thread, and so the file, still open; on Windows the file could then
+   * not be removed (EPERM). It now resolves only once the thread has ended,
+   * and answers the request the thread was in.
+   */
+  it('close() resolves only once the thread has ended, even when it is in a statement past the timeout', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'iris-ckpt-'));
+    dirs.push(dir);
+    const path = join(dir, 'iris.db');
+    const seed = new SqliteAdapter(path, { driver: CELL_DRIVER });
+    await seed.initialize();
+    await seed.insertTraces(LOCAL_TENANT, traces(1));
+    await seed.close();
+    const w = new Checkpointer({ path, driver: CELL_DRIVER === 'node' ? 'node' : 'better-sqlite3', busyMs: 5000, onReady: () => undefined, onFailed: () => undefined, closeTimeoutMs: 100 });
+    expect(await w.started).toBe(true);
+    const thread = (w as unknown as { worker: { once(e: 'exit', f: (code: number) => void): void } }).worker;
+    let ended = false;
+    thread.once('exit', () => (ended = true));
+    // A statement that runs well past the 100 ms timeout on any machine.
+    const slow = w.exec('WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < 20000000) SELECT count(*) FROM c').then(
+      () => 'answered',
+      (err: Error) => err.message,
+    );
+    await new Promise((r) => setTimeout(r, 50));
+    const began = performance.now();
+    await w.close();
+    const waited = performance.now() - began;
+    expect(ended).toBe(true);
+    // It waited for the statement, past its timeout, rather than returning at it.
+    expect(waited).toBeGreaterThan(100);
+    // The request the thread was in is answered, never left waiting (it used to be, once close() had begun).
+    expect(await slow).toMatch(/answered|the checkpoint worker closed/);
   });
 
   it('lets the log start over under writes that never pause', async () => {
