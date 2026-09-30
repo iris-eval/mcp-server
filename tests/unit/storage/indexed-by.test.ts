@@ -22,13 +22,13 @@ afterEach(() => {
 });
 
 const ADAPTER = readFileSync(fileURLToPath(new URL('../../../src/storage/sqlite-adapter.ts', import.meta.url)), 'utf8');
-// Named inline (INDEXED BY idx_...) or held in a string the query interpolates.
-const NAMED = [...new Set([...ADAPTER.matchAll(/\b(idx_[a-z0-9_]+)\b/g)].map((m) => m[1]))].sort();
+// Named inline (INDEXED BY idx_...) or held in a string the query interpolates; a primary key's or a UNIQUE column's own index too (sqlite_autoindex_...).
+const NAMED = [...new Set([...ADAPTER.matchAll(/\b((?:idx|sqlite_autoindex)_[a-z0-9_]+)\b/g)].map((m) => m[1]))].sort();
 
 describe('every index a read names exists after the migrations', () => {
   it('finds the names it checks', () => {
     expect(ADAPTER).toMatch(/INDEXED BY \$\{/);
-    expect(NAMED).toEqual(expect.arrayContaining(['idx_traces_tenant_agent_timestamp', 'idx_traces_tenant_timestamp_cover', 'idx_spans_tenant_error']));
+    expect(NAMED).toEqual(expect.arrayContaining(['idx_traces_tenant_agent_timestamp', 'idx_traces_tenant_timestamp_cover', 'idx_spans_tenant_error', 'sqlite_autoindex_traces_1', 'sqlite_autoindex_eval_results_1']));
   });
 
   for (const fts5 of [true, false]) {

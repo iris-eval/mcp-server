@@ -343,9 +343,10 @@ const RISK_FILL_WORKER_ROWS = 2048;
  * one range of idx_eval_results_risk_version, read only as far as the LIMIT.
  */
 export const RISK_FILL_QUERIES = [
-  'SELECT rowid AS rid, * FROM eval_results WHERE risk_version IS NULL LIMIT ?',
-  'SELECT rowid AS rid, * FROM eval_results WHERE risk_version < ? LIMIT ?',
-  'SELECT rowid AS rid, * FROM eval_results WHERE risk_version > ? LIMIT ?',
+  // Named: with statistics, SQLite read every evaluation for `IS NULL` instead, at every start (query-plans.test.ts).
+  'SELECT rowid AS rid, * FROM eval_results INDEXED BY idx_eval_results_risk_version WHERE risk_version IS NULL LIMIT ?',
+  'SELECT rowid AS rid, * FROM eval_results INDEXED BY idx_eval_results_risk_version WHERE risk_version < ? LIMIT ?',
+  'SELECT rowid AS rid, * FROM eval_results INDEXED BY idx_eval_results_risk_version WHERE risk_version > ? LIMIT ?',
 ] as const;
 function riskColumns(result: EvalResult): [string | null, string | null] {
   if (!result.provenance) return [null, RISK_KEY_VERSION];
@@ -1644,7 +1645,8 @@ export class SqliteAdapter implements IStorageAdapter {
       const chunk = ids.slice(i, i + CHUNK);
       const marks = chunk.map(() => '?').join(', ');
       const rows = this.db
-        .prepare(`SELECT * FROM eval_results WHERE tenant_id = ? AND trace_id IN (${marks}) ORDER BY trace_id, created_at DESC`)
+        // Named, as the export's other batch reads are: the planner chooses this index today, and nothing else would hold it there.
+        .prepare(`SELECT * FROM eval_results INDEXED BY idx_eval_results_tenant_trace WHERE tenant_id = ? AND trace_id IN (${marks}) ORDER BY trace_id, created_at DESC`)
         .all(tenantId, ...chunk) as Array<Record<string, unknown>>;
       for (const row of rows) {
         const result = this.rowToEvalResult(row);

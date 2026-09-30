@@ -252,12 +252,17 @@ function matchIndex(db: Driver, req: MatchRequest, deadline: number): Omit<Match
   const hits = readHits(db, `SELECT m.doc AS doc, m.relevance AS relevance, ${key} AS k ${from} ORDER BY m.doc DESC`, params, deadline);
   const pageDocs = pageOf(hits.doc.length, searchOrder(q, hits), q.offset, q.limit).map((i) => hits.doc[i]);
   const idOf = new Map<number, string>();
-  // In chunks: an export's page is every match, and SQLite binds at most 32,766 values to one statement.
-  for (let i = 0; i < pageDocs.length; i += 1000) {
-    const chunk = pageDocs.slice(i, i + 1000);
-    const idRows = db.prepare(`SELECT doc_id, trace_id FROM ${SEARCH_DOCS_TABLE} WHERE doc_id IN (${chunk.map(() => '?').join(', ')})`).all(...chunk) as Array<{ doc_id: number; trace_id: string }>;
-    for (const r of idRows) idOf.set(Number(r.doc_id), r.trace_id);
-  }
+  /*
+   * The page's doc ids as one JSON array, each looked up by rowid: an
+   * export's page is every match, more than the 32,766 values SQLite binds
+   * to one statement, and the join order is fixed (CROSS JOIN), so SQLite
+   * never reads the whole docs table or its trace_id index instead, as it
+   * did for an IN list under statistics.
+   */
+  const idRows = db
+    .prepare(`SELECT d.doc_id AS doc_id, d.trace_id AS trace_id FROM json_each(?) j CROSS JOIN ${SEARCH_DOCS_TABLE} d ON d.doc_id = j.value`)
+    .all(JSON.stringify(pageDocs)) as Array<{ doc_id: number; trace_id: string }>;
+  for (const r of idRows) idOf.set(Number(r.doc_id), r.trace_id);
   return { total: hits.doc.length, pageIds: pageDocs.flatMap((doc) => idOf.get(doc) ?? []), complete: hits.complete };
 }
 
