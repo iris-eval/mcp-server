@@ -24,6 +24,10 @@ import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import type { Trace } from '../../../src/types/trace.js';
 import { SEARCH_DRIVER } from './fts5-here.js';
 
+// File-backed stores and worker threads: under coverage on a Windows runner, two of these once
+// went past vitest's 5 s default (1 run in 50), with no thread or process dying.
+vi.setConfig({ testTimeout: 30_000 });
+
 const dirs: string[] = [];
 const open: SqliteAdapter[] = [];
 afterEach(async () => {
