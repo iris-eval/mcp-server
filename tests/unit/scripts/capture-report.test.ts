@@ -94,6 +94,28 @@ describe('what a report may not become', () => {
     expect(() => checkReport({ ...clean(3), success: false })).toThrow(/failed \(success: false\) with no failing test and no failing file/);
   });
 
+  /*
+   * What vitest really writes for an unhandled error: `success: true`, every
+   * test passed, and the process exits 1. The rule above never fires on it
+   * (a store-ready branch's capture recorded 4,016 of 4,016 while CI failed
+   * on `Error: the disk said no`); the exit code is what says so.
+   */
+  it('a run that exits non-zero with every test passing is refused, and says where to see the error', () => {
+    expect(() => checkReport(clean(3), { exitCode: 1 })).toThrow(CaptureRefused);
+    expect(() => checkReport(clean(3), { exitCode: 1 })).toThrow(
+      /vitest exited 1 with every counted test passing[\s\S]*run `npx vitest run` in the scope to see it/,
+    );
+  });
+
+  it('a run that wrote no report is not refused by its exit code: its counts stay unknown, and the committed ones are kept', () => {
+    expect(checkReport(null, { scope: 'dashboard', exitCode: 1 })).toEqual({ total: null, passed: null, failed: null });
+  });
+
+  it('a clean exit, or a report read from a file (no exit code), is its counts', () => {
+    expect(checkReport(clean(3), { exitCode: 0 })).toEqual({ total: 3, passed: 3, failed: 0 });
+    expect(checkReport(clean(3), {})).toEqual({ total: 3, passed: 3, failed: 0 });
+  });
+
   it('a skipped test is refused, as before', () => {
     expect(() => checkReport({ ...clean(3), numPassedTests: 2 })).toThrow(/1 test\(s\) skipped/);
   });

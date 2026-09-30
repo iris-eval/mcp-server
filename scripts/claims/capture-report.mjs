@@ -1,7 +1,7 @@
 // What a vitest JSON report says, read for the truthbase capture
 // (capture-tests.mjs), with no I/O so each rule can be tested on a report.
 //
-// Three things refuse a capture rather than record it:
+// These refuse a capture rather than record it:
 //
 //   - A failing test. The truthbase publishes counts from a green suite
 //     only (every committed .claims.json says failed: 0), so a run with a
@@ -84,7 +84,7 @@ export function failedTests(report, root = '') {
 }
 
 /** Refuse a report that must not become counts. Returns the summary when it may. */
-export function checkReport(report, { scope = 'root', root = '' } = {}) {
+export function checkReport(report, { scope = 'root', root = '', exitCode } = {}) {
   const broken = fileLevelFailures(report, root);
   if (broken.length > 0) {
     throw new CaptureRefused(
@@ -110,6 +110,25 @@ export function checkReport(report, { scope = 'root', root = '' } = {}) {
     throw new CaptureRefused(
       `[claims:capture-tests] the vitest run for scope "${scope}" failed (success: false) with no failing test and no failing file ` +
         `(an unhandled error outside the tests); its counts are not captured.`,
+    );
+  }
+  /*
+   * The same run as vitest really reports it: an unhandled error leaves the
+   * JSON report at `success: true` with every test passed, and only the
+   * process's exit code says the run failed (a capture recorded 4,016 of
+   * 4,016 while CI failed on the unhandled error). A report read from a file
+   * (--report) has no exit code, and this does not apply to it. vitest's JSON
+   * reporter writes the error to neither the report nor its output, so the
+   * refusal says where to see it.
+   * A run that wrote no report is not this case: capture-tests.mjs warns and
+   * keeps the committed counts for it (the CI job that cannot install the
+   * dashboard relies on that).
+   */
+  if (typeof exitCode === 'number' && exitCode !== 0 && summary.total !== null && (summary.failed ?? 0) === 0) {
+    throw new CaptureRefused(
+      `[claims:capture-tests] vitest exited ${exitCode} with every counted test passing in scope "${scope}" ` +
+        `(an unhandled error, or an error outside any test); its counts are not captured. ` +
+        `The JSON report and its output do not carry that error: run \`npx vitest run\` in the scope to see it.`,
     );
   }
   if (summary.total !== null && summary.passed !== null && summary.failed === 0) {
