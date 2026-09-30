@@ -153,11 +153,14 @@ describe('the upgrade after the start', () => {
     expect(body.upgrade?.state).toMatch(/^(opening|copying|migrating)$/);
     expect(body.checks.storage).toBe('fail');
     expect(body.search).toBeNull();
+    // A plain value through the gate, never a promise (it read {} once, the gate having wrapped it).
+    expect(body.indexes).toBe('building');
     await s.whenReady();
     const after = await buildHealth({ storage: gate.storage, version: 'test' });
     expect(after.body.upgrade).toBeNull();
     expect(after.body.checks.storage).toBe('ok');
     expect(after.status).toBe(200);
+    expect(['ready', 'building']).toContain(after.body.indexes);
   });
 
   it('an upgrade that fails refuses every request with its reason, and health says so', async () => {
@@ -172,6 +175,7 @@ describe('the upgrade after the start', () => {
     const { status, body } = await buildHealth({ storage: gate.storage, version: 'test' });
     expect(status).toBe(503);
     expect(body.upgrade).toMatchObject({ state: 'failed', reason: 'the disk said no' });
+    expect(typeof body.indexes).toBe('string');
   });
 
   it('an MCP tool call waits at the gate, and is refused with the envelope when it waits too long', async () => {

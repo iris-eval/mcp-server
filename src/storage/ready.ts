@@ -71,8 +71,29 @@ export interface StoreGate {
   readonly open: boolean;
 }
 
-/** Methods that answer while the store is upgraded: health's checks and the store's own lifecycle. */
-const PASS_THROUGH = new Set<string>(['initialize', 'close', 'whenReady', 'readiness', 'upgradeReport', 'migrations', 'searchStatus', 'searchWorkerStatus', 'judgeSpendLedger', 'onEvalResultInserted']);
+/** The methods of IStorageAdapter that answer synchronously. */
+type SyncMethod = {
+  [K in keyof IStorageAdapter]-?: NonNullable<IStorageAdapter[K]> extends (...args: never[]) => infer R ? (R extends PromiseLike<unknown> | AsyncIterable<unknown> ? never : K) : never;
+}[keyof IStorageAdapter];
+
+/*
+ * Every synchronous method passes through: the gate makes a method wait by
+ * making it async, and a caller of a synchronous one would get a promise
+ * instead of its answer (health read `indexes` as {} that way). Typed over
+ * SyncMethod, so a synchronous method added to IStorageAdapter does not
+ * compile until it is listed here.
+ */
+const SYNC_PASS_THROUGH: Record<SyncMethod, true> = {
+  searchWorkerStatus: true,
+  readIndexesState: true,
+  judgeSpendLedger: true,
+  upgradeReport: true,
+  readiness: true,
+  onEvalResultInserted: true,
+};
+
+/** Methods that answer while the store is upgraded: every synchronous one, health's checks and the store's own lifecycle. */
+const PASS_THROUGH = new Set<string>([...Object.keys(SYNC_PASS_THROUGH), 'initialize', 'close', 'whenReady', 'migrations', 'searchStatus']);
 
 export function storeGate(raw: IStorageAdapter, options: { waitMs?: number } = {}): StoreGate {
   const waitMs = options.waitMs ?? STORE_READY_WAIT_MS;
