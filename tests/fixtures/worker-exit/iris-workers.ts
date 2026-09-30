@@ -54,7 +54,18 @@ await seed.whenSearchIndexReady();
 await seed.close();
 
 const plan = { whereClause: 'WHERE tenant_id = ?', params: ['local'], filtered: false, sortBy: 'relevance', sortOrder: 'desc', limit: 50, offset: 0 };
-const threadOf = (c: unknown) => (c as { worker: { terminate(): Promise<number> } }).worker;
+const threadOf = (c: unknown) => (c as { worker: { terminate(): Promise<number>; ref(): void } }).worker;
+/**
+ * Terminate a store's thread as the Checkpointer's own close does: referenced first. The
+ * checkpointer unreferences an idle thread so it never holds a process open; a thread still in
+ * a native statement ends only when the statement returns, and meanwhile an unreferenced thread
+ * leaves the event loop empty, so the process exits 13 with this await unsettled (macOS, Node
+ * 24, 1 process in 10) instead of waiting for the thread to end.
+ */
+async function terminated(worker: { terminate(): Promise<number>; ref(): void }): Promise<void> {
+  worker.ref();
+  await worker.terminate();
+}
 // The workers are unref'd, as in the product; a timer holds this script open while it waits for one to be ready.
 const held = async <T>(p: Promise<T>): Promise<T> => {
   const t = setInterval(() => undefined, 1000);
@@ -86,7 +97,7 @@ for (let i = 0; i < cycles; i++) {
     await store.insertTrace(LOCAL_TENANT, trace(next++));
     const first = (store as unknown as { checkpointer?: InstanceType<typeof Checkpointer> }).checkpointer;
     if (!first || !(await held(first.started))) throw new Error('the checkpoint worker did not start');
-    await threadOf(first).terminate();
+    await terminated(threadOf(first));
     await store.insertTrace(LOCAL_TENANT, trace(next++));
     const second = (store as unknown as { checkpointer?: InstanceType<typeof Checkpointer> }).checkpointer;
     if (!second || second === first || !(await held(second.started))) throw new Error('the crashed checkpoint worker was not replaced');
@@ -95,7 +106,7 @@ for (let i = 0; i < cycles; i++) {
     const cp = new Checkpointer({ path, driver: driverName, busyMs: 5000, onReady: () => undefined, onFailed: () => undefined });
     if (!(await held(cp.started))) throw new Error('the checkpoint worker did not start');
     void cp.truncate().catch(() => undefined);
-    await threadOf(cp).terminate();
+    await terminated(threadOf(cp));
     await cp.close();
   }
 }
