@@ -72,19 +72,22 @@ const GIVEN = givenReports(process.argv.slice(2));
 async function captureScope(scope) {
   const cwd = scope ? resolve(root, scope) : root;
   let report;
+  /** The vitest run behind the report, when this capture ran it: its exit code says what the report does not (capture-report.mjs). */
+  let ran;
   if (GIVEN.has(scope)) {
     report = await readJsonOrNull(GIVEN.get(scope));
     if (report === null) throw new CaptureRefused(`[claims:capture-tests] --report for "${scope || 'root'}" is not a readable JSON report: ${GIVEN.get(scope)}`);
   } else {
     const outFile = resolve(root, `.claims-cache/vitest-report-${scope || 'root'}.json`);
-    const { exitCode, stderrTail } = await runVitestToFile(cwd, outFile);
+    ran = await runVitestToFile(cwd, outFile);
+    const { exitCode, stderrTail } = ran;
     report = await readJsonOrNull(outFile);
     if (report === null) {
       console.warn(`[claims:capture-tests] WARN — could not parse vitest report for scope "${scope || 'root'}" (exit ${exitCode}). stderr tail:`);
       console.warn(stderrTail);
     }
   }
-  const summary = checkReport(report, { scope: scope || 'root', root: cwd });
+  const summary = checkReport(report, { scope: scope || 'root', root: cwd, exitCode: ran?.exitCode });
   return summary;
 }
 
