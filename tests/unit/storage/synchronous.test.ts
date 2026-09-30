@@ -9,7 +9,7 @@
  * drivers, through the config file, and that config.json refuses any
  * other value.
  */
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -19,6 +19,10 @@ import { nodeSqliteAvailable, type Driver } from '../../../src/storage/driver.js
 import { loadConfig } from '../../../src/config/index.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
+
+// Three fresh file-backed stores in one test (one per setting, each running every migration,
+// FULL syncing each commit): about 0.8 s alone, and over 5 s once under the whole suite's disk load.
+vi.setConfig({ testTimeout: 30_000 });
 
 let scratch: string;
 let home: string;
