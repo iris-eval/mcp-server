@@ -16,10 +16,16 @@
  *
  *   API responses are built per request, so they are compressed per
  *   request, at a fast setting, on libuv's thread pool rather than the
- *   event loop, and only when they are big enough for it to pay.
+ *   event loop, and only when they are big enough for it to pay, and only
+ *   for a client on another machine (below).
  *
  * What is never compressed, and why:
  *
+ *   - An API response to a client on this machine (a loopback address).
+ *     There is no network to save: compressing and decoding a 50-trace page
+ *     cost about 2.2 ms, and took `GET /api/v1/traces?limit=50` from 6.3 ms
+ *     to 8.5 ms at 100,000 traces (#761). A reverse proxy on the same host
+ *     also connects over loopback, and compresses for its own clients.
  *   - The answer to a write (POST, PUT, PATCH, DELETE): an acknowledgement,
  *     where compressing costs the writer time and saves nothing that
  *     matters (READS below).
@@ -61,6 +67,13 @@ const GZIP_DYNAMIC_LEVEL = 6;
 
 type Coding = 'br' | 'gzip';
 
+/** Whether an address is this machine: 127.0.0.0/8, ::1, or an IPv4 loopback address mapped into IPv6. */
+export function isLoopback(address: string | undefined): boolean {
+  if (!address) return false;
+  const v4 = address.startsWith('::ffff:') ? address.slice(7) : address;
+  return v4.startsWith('127.') || address === '::1';
+}
+
 /** A browser request from another site, which must not get a compressed body (the BREACH guard above). */
 function crossSite(req: Request): boolean {
   const site = req.headers['sec-fetch-site'];
@@ -88,12 +101,14 @@ const COMPRESSIBLE_TYPE = /^application\/(?:[\w.+-]+\+)?json\b/i;
 
 /**
  * Compresses whole JSON bodies of COMPRESS_MIN_BYTES or more, sent with
- * res.send or res.json, in answer to a GET or HEAD. Mount it before the
- * routes it covers.
+ * res.send or res.json, in answer to a GET or HEAD from another machine.
+ * Mount it before the routes it covers. `compressLoopback` compresses for
+ * loopback clients too: the tests' clients are all on loopback.
  */
-export function compressJsonResponses(): RequestHandler {
+export function compressJsonResponses(options: { compressLoopback?: boolean } = {}): RequestHandler {
   return (req, res, next) => {
     if (!READS.has(req.method)) return next();
+    if (!options.compressLoopback && isLoopback(req.socket.remoteAddress)) return next();
     const send = res.send.bind(res) as (body?: unknown) => Response;
     res.send = function compressedSend(body?: unknown): Response {
       if (!(typeof body === 'string' || Buffer.isBuffer(body))) return send(body);

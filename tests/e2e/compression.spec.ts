@@ -3,7 +3,8 @@
  *
  * The npm package carries a .br and a .gz beside each file the dashboard
  * build emits; the server sends the one the browser accepts, and compresses
- * API responses of 1 KB or more. This checks the shipped build end to end:
+ * API responses of 1 KB or more for a client on another machine (never on
+ * loopback, where this browser is). This checks the shipped build end to end:
  * the browser receives the entry chunk encoded and runs it, and the encoded
  * file is byte-for-byte the plain one once decoded.
  */
@@ -47,10 +48,11 @@ test.describe('compressed responses', () => {
     }
   });
 
-  test('a large API response is compressed for the page, never for a cross-site request', async ({ request }) => {
+  test('a large API response goes to a page on this machine uncompressed, and never compressed for a cross-site request', async ({ request }) => {
     const same = await request.get('/api/v1/capabilities', { headers: { 'accept-encoding': 'br, gzip', 'sec-fetch-site': 'same-origin' } });
     expect(same.status()).toBe(200);
-    expect(same.headers()['content-encoding']).toBe('br');
+    // Loopback: there is no network to save, so the answer goes out as it is (the unit tests cover a client on another machine).
+    expect(same.headers()['content-encoding']).toBeUndefined();
     const cross = await request.get('/api/v1/capabilities', { headers: { 'accept-encoding': 'br, gzip', 'sec-fetch-site': 'cross-site' } });
     expect(cross.headers()['content-encoding']).toBeUndefined();
     expect(await cross.json()).toEqual(await same.json());

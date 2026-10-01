@@ -25,7 +25,7 @@ import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from 'node:
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { brotliCompressSync, brotliDecompressSync, gunzipSync, gzipSync } from 'node:zlib';
-import { compressJsonResponses, COMPRESS_MIN_BYTES, findPrecompressed, precompressedFile, servePrecompressed } from '../../../src/dashboard/compression.js';
+import { compressJsonResponses, COMPRESS_MIN_BYTES, findPrecompressed, isLoopback, precompressedFile, servePrecompressed } from '../../../src/dashboard/compression.js';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { createDashboardServer } from '../../../src/dashboard/server.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
@@ -206,7 +206,8 @@ describe('compressed JSON responses', () => {
   beforeAll(async () => {
     const app = express();
     app.use(express.json());
-    app.use(compressJsonResponses());
+    // Every client in this file is on loopback, which the server does not compress for (below): these cases opt in.
+    app.use(compressJsonResponses({ compressLoopback: true }));
     app.get('/big', (_req, res) => res.json(big));
     // The same body as the answer to each kind of write.
     for (const method of ['post', 'put', 'patch', 'delete'] as const) app[method]('/big', (_req, res) => res.status(method === 'post' ? 201 : 200).json(big));
@@ -328,6 +329,26 @@ describe('compressed JSON responses', () => {
 
 // ---- The real server ----
 
+describe('a client on this machine', () => {
+  it('is 127.0.0.0/8, ::1 or an IPv4 loopback address mapped into IPv6; a LAN or public address is not', () => {
+    for (const a of ['127.0.0.1', '127.1.2.3', '::1', '::ffff:127.0.0.1']) expect(isLoopback(a), a).toBe(true);
+    for (const a of ['192.168.1.20', '10.0.0.5', '::ffff:10.0.0.5', '203.0.113.9', '2001:db8::1', '::', '', undefined]) expect(isLoopback(a), String(a)).toBe(false);
+  });
+
+  it('gets a large read uncompressed, with no Vary, whatever it accepts: there is no network to save', async () => {
+    const big = { rows: Array.from({ length: 200 }, (_, i) => ({ id: `trace-${i}`, output: 'The order has shipped.' })) };
+    const app = express();
+    app.use(compressJsonResponses());
+    app.get('/big', (_req, res) => res.json(big));
+    const base = await listen(app);
+    const r = await get(base, '/big', { 'accept-encoding': 'br, gzip' });
+    expect(r.status).toBe(200);
+    expect(r.headers['content-encoding']).toBeUndefined();
+    expect(r.headers.vary).toBeUndefined();
+    expect(JSON.parse(r.body.toString('utf8'))).toEqual(big);
+  });
+});
+
 describe('the dashboard server', () => {
   let storage: SqliteAdapter;
   let server: Server;
@@ -354,18 +375,17 @@ describe('the dashboard server', () => {
     await storage.close();
   });
 
-  it('compresses its API responses, and they decode to what an uncompressed client gets', async () => {
+  it('answers a client on this machine uncompressed, byte for byte what a client that accepts no encoding gets', async () => {
     const plain = await get(base, '/api/v1/capabilities');
     expect(plain.status).toBe(200);
     expect(plain.headers['content-encoding']).toBeUndefined();
     expect(plain.body.length).toBeGreaterThan(COMPRESS_MIN_BYTES);
-    const br = await get(base, '/api/v1/capabilities', { 'accept-encoding': 'br' });
-    expect(br.headers['content-encoding']).toBe('br');
-    expect(br.body.length).toBeLessThan(plain.body.length);
-    expect(JSON.parse(decode(br).toString('utf8'))).toEqual(JSON.parse(plain.body.toString('utf8')));
+    const offered = await get(base, '/api/v1/capabilities', { 'accept-encoding': 'br, gzip' });
+    expect(offered.headers['content-encoding']).toBeUndefined();
+    expect(JSON.parse(offered.body.toString('utf8'))).toEqual(JSON.parse(plain.body.toString('utf8')));
   });
 
-  it('answers an evaluated ingest uncompressed, and compresses the trace when it is read back', async () => {
+  it('answers an evaluated ingest and the read of the trace uncompressed on this machine', async () => {
     const trace = { agent_name: 'bot', input: 'Where is my order?', output: `The order shipped on Monday. ${'It is on its way. '.repeat(40)}`, evaluate: true };
     const posted = await get(base, '/api/v1/traces', { 'accept-encoding': 'br, gzip' }, 'POST', JSON.stringify(trace));
     expect(posted.status).toBe(201);
@@ -375,7 +395,7 @@ describe('the dashboard server', () => {
     const { trace_id } = JSON.parse(posted.body.toString('utf8')) as { trace_id: string };
     const read = await get(base, `/api/v1/traces/${trace_id}`, { 'accept-encoding': 'br, gzip' });
     expect(read.status).toBe(200);
-    expect(read.headers['content-encoding']).toBe('br');
-    expect((JSON.parse(decode(read).toString('utf8')) as { trace: { trace_id: string } }).trace.trace_id).toBe(trace_id);
+    expect(read.headers['content-encoding']).toBeUndefined();
+    expect((JSON.parse(read.body.toString('utf8')) as { trace: { trace_id: string } }).trace.trace_id).toBe(trace_id);
   });
 });
