@@ -60,6 +60,7 @@ import { statSync } from 'node:fs';
 import { Worker } from 'node:worker_threads';
 import type { DriverName } from './driver.js';
 import type { CheckpointWorkerData } from './checkpoint-worker.js';
+import { sourceThread } from './source-thread.js';
 
 /** How long after one copy of the log into the file the worker starts the next. */
 export const CHECKPOINT_INTERVAL_MS = 250;
@@ -119,13 +120,11 @@ export class Checkpointer {
     /*
      * The built package runs checkpoint-worker.js beside this file. From the
      * TypeScript sources (tests, `npx tsx`), the thread registers tsx's
-     * loader itself, as the search worker does (search-worker-client.ts).
+     * loader itself (source-thread.ts).
      */
     const source = import.meta.url.endsWith('.ts');
     const entry = new URL(source ? './checkpoint-worker.ts' : './checkpoint-worker.js', import.meta.url);
-    this.worker = source
-      ? new Worker(`import('tsx/esm/api').then((tsx) => { tsx.register(); return import(${JSON.stringify(entry.href)}); })`, { eval: true, workerData: data })
-      : new Worker(entry, { workerData: data });
+    this.worker = source ? sourceThread(entry, { workerData: data }) : new Worker(entry, { workerData: data });
     this.worker.on('message', (m: { ready?: boolean; id?: number; busy?: number; error?: string }) => {
       if (m.ready) {
         this.ready = true;
