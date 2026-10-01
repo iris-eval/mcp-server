@@ -34,6 +34,7 @@
 import { Worker } from 'node:worker_threads';
 import type { MatchRequest, MatchResult } from './search-match.js';
 import type { SearchWorkerData } from './search-worker.js';
+import { sourceThread } from './source-thread.js';
 
 /** How long past its budget a search may go unanswered before its thread is treated as stuck. Covers the thread's start. */
 export const WORKER_GRACE_MS = 10_000;
@@ -120,10 +121,9 @@ export class SearchWorkerClient {
      */
     const source = import.meta.url.endsWith('.ts');
     const entry = new URL(source ? './search-worker.ts' : './search-worker.js', import.meta.url);
-    // A thread does not take --import, so from the sources it registers tsx's loader itself, then loads the entry.
     let w: Worker;
     if (this.entry) w = new Worker(this.entry, { workerData: this.data });
-    else if (source) w = new Worker(`import('tsx/esm/api').then((tsx) => { tsx.register(); return import(${JSON.stringify(entry.href)}); })`, { eval: true, workerData: this.data });
+    else if (source) w = sourceThread(entry, { workerData: this.data });
     else w = new Worker(entry, { workerData: this.data });
     this.worker = w;
     this.ready = false;
