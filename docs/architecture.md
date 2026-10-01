@@ -347,7 +347,7 @@ The rule for every connection, and for every future worker thread:
 - `openDriver` keeps, per thread, which copy holds each open file. It refuses the other copy before opening anything, and a connection with no driver chosen follows the copy that holds the file. It cannot see across threads, so `tests/unit/storage/driver.test.ts` pins both workers to the adapter's copy on both drivers.
 - A test's stand-in worker opens the store with `workerData.driver`, as the real one does.
 
-Ending a worker is not a hazard. The `worker exit` CI job ends worker threads that hold a connection every way Iris ends them, on Linux, macOS and Windows, Node 22 and 24, both drivers: 9,000 per cell, and no process died. The endings are: the worker closes its own connection; it throws; `terminate()` while idle, inside a JS function a statement calls, inside a statement in SQLite alone, or inside a JS loop; and Iris's own two workers from the sources and from the build.
+Ending a worker is not a hazard. The `worker exit` CI job (`.github/workflows/worker-exit.yml`: on pull requests that touch storage, its fixtures or the dependencies, on every push to `main`, and nightly) ends worker threads that hold a connection every way Iris ends them, on Linux, macOS and Windows, Node 22 and 24, both drivers: 9,000 per cell, and no process died. The endings are: the worker closes its own connection; it throws; `terminate()` while idle, inside a JS function a statement calls, inside a statement in SQLite alone, or inside a JS loop; and Iris's own two workers from the sources and from the build.
 
 ### Schema
 
