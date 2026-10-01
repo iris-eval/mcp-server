@@ -15,7 +15,7 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.galileo.ai/sdk-api/logging/logging-basics",
       "quote": "You can decorate or wrap functions with the log decorator to have spans created automatically.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -24,7 +24,7 @@
       "verdict": "iris",
       "sourceUrl": "https://galileo.ai/pricing",
       "quote": "Deploy: Hosted, VPC, or on-prem",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -33,7 +33,7 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.galileo.ai/sdk-api/third-party-integrations/overview",
       "quote": "Galileo's third-party SDK integrations automatically capture prompts, responses, and performance metrics without requiring you to add explicit logging code throughout your application.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -42,7 +42,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.galileo.ai/concepts/metrics/overview",
       "quote": "You can then expand these metrics with custom metrics, using LLM-as-a-judge, or custom code-based metrics.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -51,7 +51,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.galileo.ai/concepts/experiments/compare",
       "quote": "Galileo allows you to compare up to five different experiments, showing the difference in outputs, metrics, latency, and token usage.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -60,7 +60,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.galileo.ai/getting-started/mcp/setup-galileo-mcp",
       "quote": "The Galileo MCP server works with both Cursor and VS Code.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -69,7 +69,7 @@
       "verdict": "neither",
       "sourceUrl": "https://raw.githubusercontent.com/rungalileo/galileo-python/main/LICENSE",
       "quote": "Apache License Version 2.0, January 2004",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -78,7 +78,7 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.galileo.ai/",
       "quote": "As of August 7, 2026, Galileo is now Splunk Agent Observability.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -87,7 +87,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.galileo.ai/sdk-api/logging/logging-basics",
       "quote": "Log streams belong to a project, with one project containing one or more Log streams.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -96,7 +96,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.galileo.ai/sdk-api/third-party-integrations/overview",
       "quote": "Automatically log all the steps in your LangChain or LangGraph application with the Galileo callback.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -105,7 +105,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.galileo.ai/sdk-api/experiments/prompts",
       "quote": "Prompts in Galileo allow you to create, store, and reuse LLM prompts across your experiments.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -114,7 +114,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://galileo.ai/trust-security",
       "quote": "We maintain SOC 2 Type II certification, demonstrating our commitment to security, availability, processing integrity, confidentiality, and privacy controls.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -123,7 +123,7 @@
       "verdict": "neither",
       "sourceUrl": "https://galileo.ai/pricing",
       "quote": "Our Free plan includes: 5,000 traces per month Unlimited users Unlimited custom evals",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     }
   ],
@@ -165,99 +165,99 @@
     {
       "label": "Galileo homepage",
       "url": "https://galileo.ai/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Galileo pricing",
       "url": "https://galileo.ai/pricing",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Galileo trust & security",
       "url": "https://galileo.ai/trust-security",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Galileo docs home (Splunk Agent Observability banner)",
       "url": "https://docs.galileo.ai/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Galileo docs: Galileo MCP Server",
       "url": "https://docs.galileo.ai/getting-started/mcp/setup-galileo-mcp",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Galileo docs: Logging basics",
       "url": "https://docs.galileo.ai/sdk-api/logging/logging-basics",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Galileo docs: Third-party integrations",
       "url": "https://docs.galileo.ai/sdk-api/third-party-integrations/overview",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Galileo docs: Evaluate and improve",
       "url": "https://docs.galileo.ai/getting-started/evaluate-and-improve/evaluate-and-improve",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Galileo docs: Quickstart",
       "url": "https://docs.galileo.ai/getting-started/quickstart",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Galileo docs: Metrics overview",
       "url": "https://docs.galileo.ai/concepts/metrics/overview",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Galileo docs: Luna-2 overview",
       "url": "https://docs.galileo.ai/concepts/luna/luna",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Galileo docs: Compare experiments",
       "url": "https://docs.galileo.ai/concepts/experiments/compare",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Galileo docs: Prompts (SDK)",
       "url": "https://docs.galileo.ai/sdk-api/experiments/prompts",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Galileo docs: Run experiments in Playgrounds",
       "url": "https://docs.galileo.ai/concepts/experiments/running-experiments-in-console",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "galileo-python GitHub repository (README)",
       "url": "https://github.com/rungalileo/galileo-python",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "galileo-python LICENSE (raw)",
       "url": "https://raw.githubusercontent.com/rungalileo/galileo-python/main/LICENSE",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Cisco blog: intent to acquire Galileo (2026-04-09)",
       "url": "https://blogs.cisco.com/news/cisco-announces-the-intent-to-acquire-galileo",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Splunk: Galileo acquisition page",
       "url": "https://www.splunk.com/en_us/about-splunk/acquisitions/galileo.html",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Splunk: Agent Observability product page (galileo.ai/products redirect target)",
       "url": "https://www.splunk.com/en_us/products/agent-observability.html",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     }
   ],
-  "lastVerified": "2026-09-21",
+  "lastVerified": "2026-10-01",
   "quotesCheckedOn": "2026-09-22"
 }

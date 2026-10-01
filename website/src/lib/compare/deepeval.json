@@ -15,7 +15,7 @@
       "verdict": "iris",
       "sourceUrl": "https://deepeval.com/docs/getting-started",
       "quote": "deepeval test run collects and runs your eval files the same way pytest would.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -24,25 +24,25 @@
       "verdict": "neither",
       "sourceUrl": "https://deepeval.com/docs/getting-started",
       "quote": "pip install -U deepeval",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
       "id": "overhead",
-      "vendor": "Almost all metrics are LLM-as-a-judge calls to a model provider; tracing via the @observe decorator in-process",
+      "vendor": "Metrics call a judge model: an LLM by default, or TypeSafe's Jev in the optional eval modes; tracing via the @observe decorator in-process",
       "verdict": "iris",
       "sourceUrl": "https://deepeval.com/docs/metrics-introduction",
-      "quote": "Almost all predefined metrics on deepeval use LLM-as-a-judge, with techniques such as QAG (question-answer-generation), DAG (deep acyclic graphs), and G-Eval.",
-      "lastVerified": "2026-09-21",
+      "quote": "Every built-in LLM-as-a-judge metric can be judged by an LLM alone, by an LLM and Jev together, or by Jev alone.",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
       "id": "eval",
-      "vendor": "50+ ready-to-use metrics, almost all LLM-as-a-judge (QAG, DAG, G-Eval); Tool Correctness and JSON Correctness need no judge; custom via G-Eval or BaseMetric",
+      "vendor": "50+ metrics, almost all LLM-as-a-judge (QAG, DAG, G-Eval), optionally judged by Jev; JSON Correctness needs no judge; custom: G-Eval, DAG, JevEval, BaseMetric",
       "verdict": "neither",
       "sourceUrl": "https://deepeval.com/docs/metrics-introduction",
       "quote": "deepeval offers 50+ SOTA, ready-to-use metrics for you to quickly get started with.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -51,7 +51,7 @@
       "verdict": "neither",
       "sourceUrl": "https://deepeval.com/docs/evaluation-llm-tracing",
       "quote": "cost_per_input_token, cost_per_output_token (decorator); input_token_count, output_token_count via update_llm_span",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -60,7 +60,7 @@
       "verdict": "neither",
       "sourceUrl": "https://deepeval.com/docs/evaluation-mcp",
       "quote": "The MCPServer class is an abstraction provided by deepeval to contain information about different MCP servers and the primitives they provide",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -69,7 +69,7 @@
       "verdict": "neither",
       "sourceUrl": "https://github.com/confident-ai/deepeval/blob/main/LICENSE.md",
       "quote": "Apache License Version 2.0, January 2004",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -77,8 +77,8 @@
       "vendor": "Created and maintained by Confident AI (independent, Y Combinator-backed; $2.2M seed round)",
       "verdict": "neither",
       "sourceUrl": "https://www.confident-ai.com/frameworks/deepeval",
-      "quote": "The team behind Confident AI created and maintains DeepEval.",
-      "lastVerified": "2026-09-21",
+      "quote": "Confident AI created DeepEval and maintains it today.",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -87,7 +87,7 @@
       "verdict": "neither",
       "sourceUrl": "https://deepeval.com/docs/getting-started",
       "quote": "Confident AI is free and allows you to keep all evaluation results on the cloud.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -96,7 +96,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://deepeval.com/integrations",
       "quote": "Framework integrations let DeepEval evaluate entire execution traces without manually instrumenting every intermediate step.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -105,7 +105,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://deepeval.com/docs/evaluation-prompts",
       "quote": "Prompts work entirely locally from files or code.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -114,7 +114,7 @@
       "verdict": "neither",
       "sourceUrl": "https://www.confident-ai.com/pricing",
       "quote": "Dedicated On-Prem Deployment",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -123,7 +123,7 @@
       "verdict": "neither",
       "sourceUrl": "https://deepeval.com/docs/getting-started",
       "quote": "Confident AI is free and allows you to keep all evaluation results on the cloud",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     }
   ],
@@ -161,89 +161,99 @@
     {
       "label": "DeepEval homepage / docs index",
       "url": "https://deepeval.com/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "DeepEval GitHub README",
       "url": "https://github.com/confident-ai/deepeval",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "DeepEval LICENSE.md (Apache 2.0)",
       "url": "https://github.com/confident-ai/deepeval/blob/main/LICENSE.md",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "DeepEval getting started",
       "url": "https://deepeval.com/docs/getting-started",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "DeepEval metrics introduction",
       "url": "https://deepeval.com/docs/metrics-introduction",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "DeepEval MCP Use metric",
       "url": "https://deepeval.com/docs/metrics-mcp-use",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "DeepEval MCP evaluation",
       "url": "https://deepeval.com/docs/evaluation-mcp",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "DeepEval test cases",
       "url": "https://deepeval.com/docs/evaluation-test-cases",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "DeepEval LLM tracing",
       "url": "https://deepeval.com/docs/evaluation-llm-tracing",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "DeepEval prompts",
       "url": "https://deepeval.com/docs/evaluation-prompts",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "DeepEval integrations",
       "url": "https://deepeval.com/integrations",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "DeepEval changelog 2026",
       "url": "https://deepeval.com/changelog/changelog-2026",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "DeepEval TypeScript beta post",
       "url": "https://deepeval.com/blog/introducing-deepeval-typescript",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI: DeepEval framework page",
       "url": "https://www.confident-ai.com/frameworks/deepeval",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI pricing",
       "url": "https://www.confident-ai.com/pricing",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI seed round post",
       "url": "https://www.confident-ai.com/blog/how-i-closed-confident-ais-2-2m-seed-round-in-5-days",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI MCP server for coding agents",
       "url": "https://www.confident-ai.com/docs/coding-agents/mcp",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "DeepEval docs: eval modes (LLM, LLM and Jev, Jev)",
+      "url": "https://deepeval.com/docs/evaluation-eval-modes",
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "DeepEval docs: Tool Correctness",
+      "url": "https://deepeval.com/docs/metrics-tool-correctness",
+      "lastVerified": "2026-10-01"
     }
   ],
-  "lastVerified": "2026-09-21",
+  "lastVerified": "2026-10-01",
   "quotesCheckedOn": "2026-09-22"
 }

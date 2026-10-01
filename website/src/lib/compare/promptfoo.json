@@ -15,7 +15,7 @@
       "verdict": "iris",
       "sourceUrl": "https://www.promptfoo.dev/docs/intro/",
       "quote": "promptfoo is an open-source CLI and library for evaluating and red-teaming LLM apps.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -24,25 +24,25 @@
       "verdict": "neither",
       "sourceUrl": "https://www.promptfoo.dev/docs/usage/self-hosting/",
       "quote": "Promptfoo provides a basic Docker image that allows you to host a server that stores evals.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
       "id": "overhead",
-      "vendor": "No in-app instrumentation; evals run on your machine and call the LLM directly. The Enterprise MCP Proxy is in-path.",
+      "vendor": "No in-app instrumentation for output checks; evals run locally and call the LLM. Trajectory assertions read OTel spans the app sends. MCP Proxy is in-path.",
       "verdict": "iris",
       "sourceUrl": "https://www.promptfoo.dev/docs/intro/",
       "quote": "This software runs completely locally. The evals run on your machine and talk directly with the LLM.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
       "id": "eval",
-      "vendor": "Deterministic assertions including trajectory and tool-call assertions, plus model-graded (LLM rubric) assertions; custom JavaScript and Python assertions",
+      "vendor": "Deterministic assertions including trajectory and tool-call assertions, plus model-graded (LLM rubric) assertions; custom JavaScript, Python and Ruby assertions",
       "verdict": "neither",
       "sourceUrl": "https://www.promptfoo.dev/docs/configuration/expected-outputs/",
       "quote": "Ensure a traced agent trajectory used specific tools",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -51,7 +51,7 @@
       "verdict": "neither",
       "sourceUrl": "https://www.promptfoo.dev/docs/configuration/expected-outputs/deterministic/",
       "quote": "The cost assertion checks whether the cost reported by the selected provider is at or below a specified threshold.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -60,7 +60,7 @@
       "verdict": "neither",
       "sourceUrl": "https://www.promptfoo.dev/docs/providers/mcp/",
       "quote": "The mcp provider calls Model Context Protocol (MCP) tools directly, so you can test or red team the server itself.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -69,7 +69,7 @@
       "verdict": "neither",
       "sourceUrl": "https://github.com/promptfoo/promptfoo",
       "quote": "Promptfoo remains open source and MIT licensed.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -78,7 +78,7 @@
       "verdict": "iris",
       "sourceUrl": "https://www.promptfoo.dev/blog/promptfoo-joining-openai/",
       "quote": "Today we are announcing that Promptfoo has agreed to be acquired by OpenAI.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -87,7 +87,7 @@
       "verdict": "neither",
       "sourceUrl": "https://www.promptfoo.dev/docs/usage/web-ui/",
       "quote": "After running an eval, view results in your browser: npx promptfoo@latest view",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -96,7 +96,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.promptfoo.dev/docs/intro/",
       "quote": "Use OpenAI, Anthropic, Azure, Google, HuggingFace, open-source models like Llama, or integrate custom API providers",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -105,7 +105,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.promptfoo.dev/docs/configuration/prompts/",
       "quote": "Store prompts in external files for better organization",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -114,7 +114,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.promptfoo.dev/pricing/",
       "quote": "SSO and granular permission profiles",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -123,7 +123,7 @@
       "verdict": "neither",
       "sourceUrl": "https://www.promptfoo.dev/pricing/",
       "quote": "Community Free Forever Our open-source tool, perfect for individual developers and small teams",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     }
   ],
@@ -165,104 +165,114 @@
     {
       "label": "Promptfoo homepage",
       "url": "https://www.promptfoo.dev/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo docs: Intro",
       "url": "https://www.promptfoo.dev/docs/intro/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo pricing",
       "url": "https://www.promptfoo.dev/pricing/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo GitHub repository (README)",
       "url": "https://github.com/promptfoo/promptfoo",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo LICENSE (raw)",
       "url": "https://raw.githubusercontent.com/promptfoo/promptfoo/main/LICENSE",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo docs: Self-hosting",
       "url": "https://www.promptfoo.dev/docs/usage/self-hosting/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo docs: MCP provider",
       "url": "https://www.promptfoo.dev/docs/providers/mcp/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo docs: Using MCP",
       "url": "https://www.promptfoo.dev/docs/integrations/mcp/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo docs: Promptfoo MCP Server",
       "url": "https://www.promptfoo.dev/docs/integrations/mcp-server/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo MCP Proxy",
       "url": "https://www.promptfoo.dev/mcp/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo docs: Assertions & metrics",
       "url": "https://www.promptfoo.dev/docs/configuration/expected-outputs/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo docs: Deterministic assertions (cost, latency)",
       "url": "https://www.promptfoo.dev/docs/configuration/expected-outputs/deterministic/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo docs: Web viewer",
       "url": "https://www.promptfoo.dev/docs/usage/web-ui/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo docs: Enterprise",
       "url": "https://www.promptfoo.dev/docs/enterprise/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo about page",
       "url": "https://www.promptfoo.dev/about/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo docs: Node package",
       "url": "https://www.promptfoo.dev/docs/usage/node-package/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo docs: Providers index",
       "url": "https://www.promptfoo.dev/docs/providers/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo docs: Prompts",
       "url": "https://www.promptfoo.dev/docs/configuration/prompts/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo blog: Promptfoo is joining OpenAI (2026-03-09)",
       "url": "https://www.promptfoo.dev/blog/promptfoo-joining-openai/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Promptfoo security page",
       "url": "https://www.promptfoo.dev/security/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "Promptfoo docs: Tracing",
+      "url": "https://www.promptfoo.dev/docs/tracing/",
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "Promptfoo Guardrails",
+      "url": "https://www.promptfoo.dev/guardrails/",
+      "lastVerified": "2026-10-01"
     }
   ],
-  "lastVerified": "2026-09-21",
+  "lastVerified": "2026-10-01",
   "quotesCheckedOn": "2026-09-22"
 }

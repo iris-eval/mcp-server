@@ -6,25 +6,25 @@
   "tagline": "MCP-Native Agent Eval vs Decorator-Instrumented Agent Observability Platform",
   "oneLine": "An observability and evaluation platform from Weights & Biases that helps you track, evaluate, and improve your agents and LLM applications.",
   "ogImage": null,
-  "tldrVendor": "Weave is Weights & Biases' observability and evaluation platform for agents and LLM applications, integrated through a Python or TypeScript SDK with @weave.op decorators. It traces calls with token usage and cost, runs evaluations with custom or predefined scorers, versions prompts, and can trace MCP servers and clients; W&B announced its acquisition by CoreWeave on 2025-05-05.",
-  "tldrSourceUrl": "https://docs.wandb.ai/weave/",
+  "tldrVendor": "Weave is Weights & Biases' observability and evaluation platform for agents and LLM applications, integrated through a Python or TypeScript SDK with @weave.op decorators or existing OpenTelemetry spans. It traces calls with token usage and cost, runs evaluations with custom or predefined scorers, versions prompts, and can trace MCP servers and clients. CoreWeave acquired W&B on 2025-05-05; since 2026-09-30 W&B is a product within CoreWeave Forge, where Agent Lens (public preview) is the recommended experience for tracing agents.",
+  "tldrSourceUrl": "https://docs.coreweave.com/products/wandb/weave/concepts/what-is-weave",
   "rows": [
     {
       "id": "integration",
-      "vendor": "Python/TypeScript SDK: install weave, call weave.init, add @weave.op to functions; supported LLM clients auto-tracked",
+      "vendor": "Python/TypeScript SDK: install weave, call weave.init, add @weave.op to functions; supported LLM clients auto-tracked; or send existing OpenTelemetry spans",
       "verdict": "iris",
-      "sourceUrl": "https://docs.wandb.ai/weave/quickstart/",
+      "sourceUrl": "https://docs.coreweave.com/products/wandb/weave/quickstart",
       "quote": "Add the @weave.op() decorator to functions you want to track",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
       "id": "self_hosting",
       "vendor": "Self-managed: Kubernetes 1.29+, Helm, ClickHouse, S3-compatible storage, existing W&B Platform, Weave-enabled license",
       "verdict": "neither",
-      "sourceUrl": "https://docs.wandb.ai/weave/guides/platform/weave-self-managed/",
-      "quote": "W&B license: Weave-enabled license from W&B Support",
-      "lastVerified": "2026-09-21",
+      "sourceUrl": "https://docs.coreweave.com/products/wandb/weave/guides/platform/weave-self-managed",
+      "quote": "Weave-enabled license from Weights & Biases Support",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -33,7 +33,7 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.wandb.ai/weave/guides/integrations/",
       "quote": "After you import the Weave SDK into your code and initialize it with weave.init, Weave records each request as a Call with inputs, outputs, latency, token usage, and cost.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -42,7 +42,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.wandb.ai/weave/guides/evaluation/scorers/",
       "quote": "Although this guide shows you how to create custom scorers, Weave comes with predefined scorers and local SLM scorers that you can use right away",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -51,7 +51,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.wandb.ai/weave/guides/tracking/costs/",
       "quote": "Weave automatically records token usage and calculates cost for each call",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -60,7 +60,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.wandb.ai/weave/guides/integrations/mcp/",
       "quote": "The Weave integration works with both the MCP server and client.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -69,7 +69,7 @@
       "verdict": "neither",
       "sourceUrl": "https://github.com/wandb/weave/blob/master/LICENSE",
       "quote": "Apache License Version 2.0, January 2004",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -78,7 +78,7 @@
       "verdict": "iris",
       "sourceUrl": "https://www.coreweave.com/blog/coreweave-completes-acquisition-of-weights-biases",
       "quote": "We are thrilled to share that we have completed our acquisition of Weights & Biases.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -87,7 +87,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.wandb.ai/weave/guides/evaluation/monitors",
       "quote": "For new implementations, use Signals under Weave for Agents.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -96,7 +96,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.wandb.ai/weave/guides/integrations/",
       "quote": "Weave integrates with these frameworks to trace the entire pipeline",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -105,7 +105,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.wandb.ai/weave/guides/core-types/prompts/",
       "quote": "When you publish a prompt with weave.publish, it appears in your Weave project on the Prompts page",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -114,7 +114,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://wandb.ai/site/security",
       "quote": "We are certified under ISO/IEC 27001:2022, ISO/IEC 27017:2015, and ISO/IEC 27018:2019, and remain compliant with SOC 2 Type 2 and HIPAA standards.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -123,7 +123,7 @@
       "verdict": "neither",
       "sourceUrl": "https://wandb.ai/site/pricing/",
       "quote": "Starts at $60/month, billed monthly",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     }
   ],
@@ -152,8 +152,8 @@
   "faq": [
     {
       "question": "What is the difference between Iris and Weave?",
-      "vendorPart": "Weave is Weights & Biases' observability and evaluation platform for agents and LLM applications. You instrument Python or TypeScript code with the weave SDK and @weave.op decorators, and it records traces, runs evaluations with scorers, and tracks token usage and cost.",
-      "sourceUrl": "https://docs.wandb.ai/weave/"
+      "vendorPart": "Weave is Weights & Biases' observability and evaluation platform for agents and LLM applications. You instrument Python or TypeScript code with the weave SDK and @weave.op decorators, or send existing OpenTelemetry spans, and it records traces, runs evaluations with scorers, and tracks token usage and cost.",
+      "sourceUrl": "https://docs.coreweave.com/products/wandb/weave/concepts/what-is-weave"
     },
     {
       "question": "Is Iris better than Weave for MCP agent evaluation?",
@@ -165,109 +165,134 @@
     {
       "label": "Weave product page",
       "url": "https://wandb.ai/site/weave",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Weave docs home",
       "url": "https://docs.wandb.ai/weave/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Weave quickstart",
       "url": "https://docs.wandb.ai/weave/quickstart/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Weave integrations",
       "url": "https://docs.wandb.ai/weave/guides/integrations/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Weave MCP integration",
       "url": "https://docs.wandb.ai/weave/guides/integrations/mcp/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Weave cost tracking",
       "url": "https://docs.wandb.ai/weave/guides/tracking/costs/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Weave tracing",
       "url": "https://docs.wandb.ai/weave/guides/tracking/tracing/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Weave evaluations",
       "url": "https://docs.wandb.ai/weave/guides/core-types/evaluations/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Weave scorers",
       "url": "https://docs.wandb.ai/weave/guides/evaluation/scorers/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Weave prompts",
       "url": "https://docs.wandb.ai/weave/guides/core-types/prompts/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Weave self-managed deployment",
       "url": "https://docs.wandb.ai/weave/guides/platform/weave-self-managed/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "wandb/weave repository",
       "url": "https://github.com/wandb/weave",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "wandb/weave LICENSE",
       "url": "https://github.com/wandb/weave/blob/master/LICENSE",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "W&B MCP server repository",
       "url": "https://github.com/wandb/wandb-mcp-server",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "W&B pricing",
       "url": "https://wandb.ai/site/pricing",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "W&B security",
       "url": "https://wandb.ai/site/security",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "W&B deployment options",
       "url": "https://wandb.ai/site/for-enterprise/deployment-options/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "W&B acquisition by CoreWeave announcement",
       "url": "https://wandb.ai/wandb_fc/cw-announcement/reports/Weights-Biases-completes-acquisition-by-CoreWeave--VmlldzoxMjU4MzE5OQ",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "CoreWeave: acquisition of Weights & Biases completed",
       "url": "https://www.coreweave.com/blog/coreweave-completes-acquisition-of-weights-biases",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Weave: monitor using built-in signals",
       "url": "https://docs.wandb.ai/weave/guides/evaluation/monitors",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Weights & Biases pricing",
       "url": "https://wandb.ai/site/pricing/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "Weave docs: what is Weave (CoreWeave docs)",
+      "url": "https://docs.coreweave.com/products/wandb/weave/concepts/what-is-weave",
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "CoreWeave Agent Lens",
+      "url": "https://docs.coreweave.com/products/agent-lens/what-is-agent-lens",
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "CoreWeave: Weights & Biases within CoreWeave Forge",
+      "url": "https://www.coreweave.com/companies/weights-and-biases",
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "Weave quickstart (CoreWeave docs)",
+      "url": "https://docs.coreweave.com/products/wandb/weave/quickstart",
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "Weave self-managed (CoreWeave docs)",
+      "url": "https://docs.coreweave.com/products/wandb/weave/guides/platform/weave-self-managed",
+      "lastVerified": "2026-10-01"
     }
   ],
-  "lastVerified": "2026-09-21",
+  "lastVerified": "2026-10-01",
   "quotesCheckedOn": "2026-09-22"
 }
