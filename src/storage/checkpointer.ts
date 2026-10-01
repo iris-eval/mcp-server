@@ -136,7 +136,9 @@ export class Checkpointer {
       if (m.id !== undefined) {
         this.waiting.get(m.id)?.(m);
         this.waiting.delete(m.id);
-        if (this.waiting.size === 0) this.worker.unref();
+        // Not once close() has begun (it sets failed, then holds the thread until it ends): a reply that empties the queue
+        // then would let a CLI's event loop empty while close() still waits for the thread, and Node exits 13 under it.
+        if (this.waiting.size === 0 && !this.failed) this.worker.unref();
       }
     });
     this.worker.on('error', (err) => this.fail(err instanceof Error ? err.message : String(err)));
@@ -158,7 +160,7 @@ export class Checkpointer {
     try {
       return await this.started;
     } finally {
-      if (this.waiting.size === 0) this.worker.unref();
+      if (this.waiting.size === 0 && !this.failed) this.worker.unref();
     }
   }
 

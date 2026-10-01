@@ -24,6 +24,10 @@ import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import type { Trace } from '../../../src/types/trace.js';
 import { SEARCH_DRIVER } from './fts5-here.js';
 
+// File-backed stores and worker threads: under coverage on a Windows runner, two of these once
+// went past vitest's 5 s default (1 run in 50), with no thread or process dying.
+vi.setConfig({ testTimeout: 30_000 });
+
 const dirs: string[] = [];
 const open: SqliteAdapter[] = [];
 afterEach(async () => {
@@ -82,11 +86,17 @@ function slowCorpus(n: number): Trace[] {
  * A search that is held open until the test lets it go (#703). Timing a
  * slow search against something else made these tests depend on how busy
  * the machine was. Instead, a stand-in thread (the adapter's tests-only
- * searchWorkerEntry) opens the store read-only with node:sqlite, and on a
- * search begins a read transaction, reads, says `held`, and stays in it:
+ * searchWorkerEntry) opens the store read-only with the SQLite the store's
+ * own connection uses (workerData.driver, as the real thread does), and on
+ * a search begins a read transaction, reads, says `held`, and stays in it:
  * the file has a reader in the middle of a read, as during a long search,
  * for as long as the test chooses. `release` ends the transaction and
  * answers the search with an empty page.
+ *
+ * It opened the store with node:sqlite whatever the store used, and that
+ * put two copies of SQLite on one WAL file in this process: the test
+ * process died of SIGBUS in 2 of 30 runs on macOS (the worker-exit CI job;
+ * driver.ts, "One copy of SQLite per file").
  */
 function heldSearchEntry(): URL {
   const dir = mkdtempSync(join(tmpdir(), 'iris-search-worker-held-'));
@@ -96,8 +106,10 @@ function heldSearchEntry(): URL {
     file,
     [
       "import { parentPort, workerData } from 'node:worker_threads';",
+      "import { createRequire } from 'node:module';",
       "import { DatabaseSync } from 'node:sqlite';",
-      'const db = new DatabaseSync(workerData.path, { readOnly: true });',
+      `const Native = workerData.driver === 'native' ? createRequire(${JSON.stringify(import.meta.url)})('better-sqlite3') : undefined;`,
+      "const db = Native ? new Native(workerData.path, { readonly: true }) : new DatabaseSync(workerData.path, { readOnly: true });",
       'let held;',
       "parentPort.postMessage({ type: 'ready' });",
       "parentPort.on('message', (msg) => {",

@@ -205,6 +205,26 @@ describe('WAL checkpoints on a worker thread', () => {
     expect(await slow).toMatch(/answered|the checkpoint worker closed/);
   });
 
+  it('holds the thread from close() on, even when the answer to a request in flight empties its queue', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'iris-ckpt-'));
+    dirs.push(dir);
+    const path = join(dir, 'iris.db');
+    const seed = new SqliteAdapter(path, { driver: CELL_DRIVER });
+    await seed.initialize();
+    await seed.insertTraces(LOCAL_TENANT, traces(1));
+    await seed.close();
+    const w = new Checkpointer({ path, driver: CELL_DRIVER === 'node' ? 'node' : 'better-sqlite3', busyMs: 5000, onReady: () => undefined, onFailed: () => undefined });
+    expect(await w.started).toBe(true);
+    const thread = (w as unknown as { worker: { unref(): void } }).worker;
+    const truncated = w.truncate().catch(() => false);
+    const unref = vi.spyOn(thread, 'unref');
+    await w.close();
+    await truncated;
+    // An unref once close() has begun would let a CLI's event loop empty while close() still waits for the
+    // thread, and Node would exit 13 with the close unsettled (seen in the worker-exit job, 1 process in 10).
+    expect(unref).not.toHaveBeenCalled();
+  });
+
   it('lets the log start over under writes that never pause', async () => {
     /** The write-ahead log header's checkpoint sequence number: SQLite adds one each time the log starts over. */
     const restarts = (path: string): number => {

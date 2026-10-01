@@ -334,6 +334,21 @@ Registered rules are appended to the built-in set for that eval type and include
 - **Foreign keys enabled** (`PRAGMA foreign_keys = ON`): Ensures span and eval_result integrity.
 - **Database path**: Default `~/.iris/iris.db`. Configurable via `--db-path`, `IRIS_DB_PATH`, or config file.
 
+### One copy of SQLite per file
+
+The store holds more than one connection to its file: the adapter's own, and one on each worker thread (the search worker, `src/storage/search-worker.ts`, and the checkpoint worker, `src/storage/checkpointer.ts`). All of them must be opened by the same copy of SQLite. better-sqlite3 carries its own SQLite, and `node:sqlite` is Node's, so they are two copies of the library in one process.
+
+SQLite's locks on a file are POSIX advisory locks, and those belong to the process. When both copies open one WAL database in one process, neither sees the other's locks. Each can take itself for the file's only user and reset the `-shm` file the other has mapped, and the other's next read of it is a SIGBUS. Closing a descriptor in one copy also drops the locks the other holds, which is how a file gets corrupted ([How To Corrupt An SQLite Database File, "Multiple copies of SQLite linked into the same application"](https://www.sqlite.org/howtocorrupt.html#multiple_copies_of_sqlite_linked_into_the_same_application)). Measured on Linux with Node 24.21.0 (`tests/fixtures/worker-exit/two-sqlites.cjs`): with `node:sqlite` on the main thread and better-sqlite3 on a worker, the process died of SIGBUS in 3 runs of 5. With one copy on both threads, 0 of 10. Windows locks belong to the file handle, and there 0 of 20 died in any pairing.
+
+The rule for every connection, and for every future worker thread:
+
+- A worker is handed the driver the adapter's connection actually got (`Driver.name`), never the configured one. On a machine where the adapter fell back to `node:sqlite`, a worker told `native` would open the other copy.
+- A worker opens through `openDriver`, never `require('better-sqlite3')` or `node:sqlite` directly.
+- `openDriver` keeps, per thread, which copy holds each open file. It refuses the other copy before opening anything, and a connection with no driver chosen follows the copy that holds the file. It cannot see across threads, so `tests/unit/storage/driver.test.ts` pins both workers to the adapter's copy on both drivers.
+- A test's stand-in worker opens the store with `workerData.driver`, as the real one does.
+
+Ending a worker is not a hazard. The `worker exit` CI job ends worker threads that hold a connection every way Iris ends them, on Linux, macOS and Windows, Node 22 and 24, both drivers: 9,000 per cell, and no process died. The endings are: the worker closes its own connection; it throws; `terminate()` while idle, inside a JS function a statement calls, inside a statement in SQLite alone, or inside a JS loop; and Iris's own two workers from the sources and from the build.
+
 ### Schema
 
 Every data table carries a `tenant_id TEXT NOT NULL DEFAULT 'local'` column (added in migration 004, v0.4.0). OSS single-node deployments only ever see `'local'`; the column means shared or hosted storage could be added later without a painful data migration. No such deployment exists today. See §8 for the four-layer defense-in-depth enforcement.
