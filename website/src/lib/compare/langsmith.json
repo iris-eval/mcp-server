@@ -7,15 +7,15 @@
   "oneLine": "LangChain's framework-agnostic observability and evaluation platform for agents, instrumented via the langsmith SDK; self-hosting is Enterprise-only.",
   "ogImage": "/og-compare-langsmith.png",
   "tldrVendor": "LangSmith is LangChain's observability and evaluation platform with integrations for many frameworks and providers, LLM-as-judge evaluation, and SOC 2 Type II, GDPR and HIPAA compliance; self-hosting is an Enterprise-plan add-on. If you need advanced evaluation workflows, Insights auto-clustering, or enterprise compliance today, LangSmith is the more established platform.",
-  "tldrSourceUrl": "https://www.langchain.com/langsmith",
+  "tldrSourceUrl": "https://docs.langchain.com/langsmith/shared-responsibility-model",
   "rows": [
     {
       "id": "integration",
-      "vendor": "SDK imports + @traceable decorators",
+      "vendor": "SDK imports + @traceable decorators, or an OpenTelemetry exporter",
       "verdict": "iris",
       "sourceUrl": "https://docs.langchain.com/langsmith/observability-quickstart",
       "quote": "Use @traceable in Python, traceable in TypeScript and Kotlin, and Tracing.traceFunction in Java.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -24,7 +24,7 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.langchain.com/langsmith/self-hosted",
       "quote": "Self-hosted LangSmith is an add-on to the Enterprise plan designed for our largest, most security-conscious customers.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -33,7 +33,7 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.langchain.com/langsmith/mask-inputs-outputs",
       "quote": "LangSmith processes runs in a background thread, which does not block your application.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -42,7 +42,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.langchain.com/langsmith/evaluation-concepts",
       "quote": "LLM-as-judge evaluators use LLMs to score application outputs.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -51,16 +51,16 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.langchain.com/langsmith/log-llm-trace",
       "quote": "Token counts enable cost calculation, which LangSmith displays in the Tracing Projects UI.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
       "id": "mcp_support",
-      "vendor": "MCP server reads runs, projects, datasets, experiments (run_experiment is docs-only); Agent Server exposes MCP + A2A",
+      "vendor": "Hosted Remote MCP reads runs, prompts, datasets, experiments (run_experiment is docs-only); the standalone server is deprecated; Agent Server exposes MCP + A2A",
       "verdict": "neither",
-      "sourceUrl": "https://github.com/langchain-ai/langsmith-mcp-server",
-      "quote": "run_experiment Documentation-only: how to run experiments and evaluations in LangSmith.",
-      "lastVerified": "2026-09-21",
+      "sourceUrl": "https://docs.langchain.com/langsmith/langsmith-remote-mcp",
+      "quote": "It exposes the same tools as the standalone LangSmith MCP Server (conversation history, prompts, runs and traces, datasets, experiments, billing) without a separate deployment.",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -69,7 +69,7 @@
       "verdict": "neither",
       "sourceUrl": "https://github.com/langchain-ai/langsmith-sdk",
       "quote": "MIT license",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -78,7 +78,7 @@
       "verdict": "iris",
       "sourceUrl": "https://www.langchain.com/about",
       "quote": "Harrison teamed up with co-founder Ankush Gola to start LangChain, the company, in early 2023",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -87,7 +87,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.langchain.com/langsmith/insights",
       "quote": "Insights automatically analyzes your traces to detect usage patterns, common agent behaviors, and failure modes, so you do not need to review thousands of traces manually.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -96,7 +96,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.langchain.com/langsmith/integrations",
       "quote": "LangSmith provides integrations for a growing set of popular LLM providers and agent frameworks",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -105,7 +105,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.langchain.com/langsmith/prompt-engineering-concepts",
       "quote": "Every saved update to a prompt creates a new commit with a unique commit hash.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -114,7 +114,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.langchain.com/langsmith/shared-responsibility-model",
       "quote": "We maintain SOC 2 Type II, GDPR, and HIPAA compliance and undergo annual third-party audits and penetration testing.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -123,7 +123,7 @@
       "verdict": "neither",
       "sourceUrl": "https://www.langchain.com/pricing",
       "quote": "$39 / seat per month then pay as you go",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     }
   ],
@@ -152,12 +152,12 @@
   "faq": [
     {
       "question": "What is the difference between Iris and LangSmith?",
-      "vendorPart": "LangSmith is LangChain's observability and evaluation platform, instrumented with @traceable decorators and SDK wrappers and integrated with many frameworks; self-hosting is an Enterprise-plan add-on. LangSmith provides LLM-as-judge and human evaluation workflows, Insights auto-clustering, and SOC 2 Type II, GDPR and HIPAA compliance.",
-      "sourceUrl": "https://www.langchain.com/langsmith"
+      "vendorPart": "LangSmith is LangChain's observability and evaluation platform, instrumented with @traceable decorators, SDK wrappers or OpenTelemetry and integrated with many frameworks; self-hosting is an Enterprise-plan add-on. LangSmith provides LLM-as-judge and human evaluation workflows, Insights auto-clustering, and SOC 2 Type II, GDPR and HIPAA compliance.",
+      "sourceUrl": "https://docs.langchain.com/langsmith/shared-responsibility-model"
     },
     {
       "question": "Is Iris better than LangSmith for MCP agent evaluation?",
-      "vendorPart": "LangSmith requires @traceable decorators or SDK wrappers but offers LLM-as-judge evaluation, human review through annotation queues, and native LangChain and LangGraph integration.",
+      "vendorPart": "LangSmith requires @traceable decorators, SDK wrappers or an OpenTelemetry exporter but offers LLM-as-judge evaluation, human review through annotation queues, and native LangChain and LangGraph integration.",
       "sourceUrl": "https://docs.langchain.com/langsmith/evaluation-concepts"
     }
   ],
@@ -165,99 +165,114 @@
     {
       "label": "LangSmith product page",
       "url": "https://www.langchain.com/langsmith",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangSmith docs home",
       "url": "https://docs.langchain.com/langsmith/home",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangSmith observability quickstart",
       "url": "https://docs.langchain.com/langsmith/observability-quickstart",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangSmith self-hosted",
       "url": "https://docs.langchain.com/langsmith/self-hosted",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangSmith mask inputs/outputs (background thread statement)",
       "url": "https://docs.langchain.com/langsmith/mask-inputs-outputs",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangSmith evaluation concepts",
       "url": "https://docs.langchain.com/langsmith/evaluation-concepts",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangSmith log LLM calls (token and cost)",
       "url": "https://docs.langchain.com/langsmith/log-llm-trace",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangSmith dashboards",
       "url": "https://docs.langchain.com/langsmith/dashboards",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangSmith Insights",
       "url": "https://docs.langchain.com/langsmith/insights",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangSmith integrations",
       "url": "https://docs.langchain.com/langsmith/integrations",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangSmith prompt engineering concepts",
       "url": "https://docs.langchain.com/langsmith/prompt-engineering-concepts",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangSmith shared responsibility model (compliance)",
       "url": "https://docs.langchain.com/langsmith/shared-responsibility-model",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangSmith hybrid deployment",
       "url": "https://docs.langchain.com/langsmith/hybrid",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangSmith Agent Server MCP endpoint",
       "url": "https://docs.langchain.com/langsmith/server-mcp",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangSmith Agent Server A2A endpoint",
       "url": "https://docs.langchain.com/langsmith/server-a2a",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
-      "label": "LangSmith MCP server README",
+      "label": "LangSmith MCP server repository (archived 2026-08-14)",
       "url": "https://github.com/langchain-ai/langsmith-mcp-server",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangSmith SDK README (MIT)",
       "url": "https://github.com/langchain-ai/langsmith-sdk",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangChain pricing",
       "url": "https://www.langchain.com/pricing",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "LangChain about",
       "url": "https://www.langchain.com/about",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "LangSmith Remote MCP",
+      "url": "https://docs.langchain.com/langsmith/langsmith-remote-mcp",
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "LangSmith tracing with OpenTelemetry",
+      "url": "https://docs.langchain.com/langsmith/trace-with-opentelemetry",
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "LangSmith shared responsibility model (compliance)",
+      "url": "https://docs.langchain.com/langsmith/shared-responsibility-model",
+      "lastVerified": "2026-10-01"
     }
   ],
-  "lastVerified": "2026-09-21",
+  "lastVerified": "2026-10-01",
   "quotesCheckedOn": "2026-09-22"
 }

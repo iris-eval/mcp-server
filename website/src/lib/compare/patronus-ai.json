@@ -15,7 +15,7 @@
       "verdict": "iris",
       "sourceUrl": "https://www.patronus.ai/announcements/patronus-ai-launches-industry-first-self-serve-api-for-ai-evaluation-and-guardrails",
       "quote": "programming language-agnostic, with a Python SDK available for easy integration",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -24,7 +24,7 @@
       "verdict": "iris",
       "sourceUrl": "https://www.patronus.ai/pricing",
       "quote": "On-prem / dedicated VPC, custom data retention, SSO.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -33,7 +33,7 @@
       "verdict": "iris",
       "sourceUrl": "https://patronus-ai.github.io/patronus-py/getting-started/quickstart/",
       "quote": "The OpenInference instrumentation automatically adds spans for all OpenAI API calls, capturing prompts, responses, and model parameters without any code changes.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -42,7 +42,7 @@
       "verdict": "neither",
       "sourceUrl": "https://patronus-ai.github.io/patronus-py/evaluations/patronus-evaluators/",
       "quote": "You can use Patronus evaluators through the RemoteEvaluator class",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -51,16 +51,16 @@
       "verdict": "neither",
       "sourceUrl": "https://www.patronus.ai/",
       "quote": "Not stated: No fetched vendor page mentions cost tracking. Looked at: homepage, /products, /pricing, /percival, /company, /llm-testing/llm-observability, the self-serve API announcement, the Series B announcement, the MCP server post, and the SDK quickstart/index on patronus-ai.github.io. docs.patronus.ai returned 401 on every path. A negative cannot be sourced, so the cell is kept and flagged.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": null
     },
     {
       "id": "mcp_support",
-      "vendor": "Patronus MCP server (evaluate, batch_evaluate, custom_evaluate, run_experiment, create_criteria); API key required",
+      "vendor": "Patronus blog describes an MCP server (evaluate, batch_evaluate, run_experiment, create_criteria) needing an API key; its repo returned 404 on 2026-10-01",
       "verdict": "neither",
       "sourceUrl": "https://www.patronus.ai/blog/introducing-the-patronus-mcp-server",
       "quote": "Create an account at https://app.patronus.ai and grab an API key. You need this because the Patronus MCP Server is interacting with the Patronus API under the hood.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -69,7 +69,7 @@
       "verdict": "iris",
       "sourceUrl": "https://www.patronus.ai/pricing",
       "quote": "$10 / 1k small evaluator API calls",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -78,7 +78,7 @@
       "verdict": "neither",
       "sourceUrl": "https://www.patronus.ai/announcements",
       "quote": "Announcing our $50M Series B to Simulate the Entire World's Intelligence and Unveiling our First Digital World Model for AI Agent Training and Simulation",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -87,7 +87,7 @@
       "verdict": "neither",
       "sourceUrl": "https://www.patronus.ai/announcements/patronus-ai-launches-industry-first-self-serve-api-for-ai-evaluation-and-guardrails",
       "quote": "Developers can also access a web dashboard to track and filter Patronus API logs, compare AI product performance snapshots, and experiment with different LLM systems.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -96,16 +96,16 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.patronus.ai/llm-testing/llm-observability",
       "quote": "Integrates with OpenTelemetry, OpenAI, LangChain, etc. via SDK",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
       "id": "prompt_management",
-      "vendor": "Not a documented standalone feature; Percival proposes prompt rewrites as remedies",
+      "vendor": "SDK prompt management: push and load prompts by revision or label; Percival also proposes prompt rewrites as remedies",
       "verdict": "vendor",
-      "sourceUrl": "https://www.patronus.ai/llm-testing/llm-observability",
-      "quote": "Actionable remedies, such as rewriting prompts or reassigning tools",
-      "lastVerified": "2026-09-21",
+      "sourceUrl": "https://patronus-ai.github.io/patronus-py/prompts/",
+      "quote": "The Patronus SDK provides tools to version, retrieve, and render prompts in your LLM applications.",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -114,7 +114,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.patronus.ai/pricing",
       "quote": "On-prem / dedicated VPC, custom data retention, SSO.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -123,7 +123,7 @@
       "verdict": "neither",
       "sourceUrl": "https://www.patronus.ai/pricing",
       "quote": "Patronus API (optional) Get started with $10 in free credits!",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     }
   ],
@@ -152,7 +152,7 @@
   "faq": [
     {
       "question": "What is the difference between Iris and Patronus AI?",
-      "vendorPart": "Patronus AI now describes itself as 'Simulating the World's Intelligence' — developing simulation research and infrastructure (Digital World Models) toward human-aligned AGI — while still offering its evaluation models Lynx (hallucination detection) and GLIDER, Percival for agent-trace debugging, and a usage-priced evaluation API with a Python SDK and an MCP server.",
+      "vendorPart": "Patronus AI now describes itself as 'Simulating the World's Intelligence' — developing simulation research and infrastructure (Digital World Models) toward human-aligned AGI — while still offering its evaluation models Lynx (hallucination detection) and GLIDER, Percival for agent-trace debugging, and a usage-priced evaluation API with a Python SDK.",
       "sourceUrl": "https://www.patronus.ai/"
     },
     {
@@ -165,84 +165,89 @@
     {
       "label": "Patronus AI homepage",
       "url": "https://www.patronus.ai/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Patronus AI pricing",
       "url": "https://www.patronus.ai/pricing",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Patronus AI products",
       "url": "https://www.patronus.ai/products",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Patronus AI Percival",
       "url": "https://www.patronus.ai/percival",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Patronus AI company page",
       "url": "https://www.patronus.ai/company",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Patronus AI announcements index",
       "url": "https://www.patronus.ai/announcements",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Patronus AI $50M Series B announcement",
       "url": "https://www.patronus.ai/announcements/announcing-our-50m-series-b",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Patronus AI self-serve API announcement (Oct 2024)",
       "url": "https://www.patronus.ai/announcements/patronus-ai-launches-industry-first-self-serve-api-for-ai-evaluation-and-guardrails",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Patronus AI GLIDER judge model announcement (Dec 2024)",
       "url": "https://www.patronus.ai/announcements/patronus-ai-launches-small-high-performance-judge-model-for-fast-and-explainable-ai-evaluations",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Patronus AI Lynx blog post",
       "url": "https://www.patronus.ai/blog/lynx-state-of-the-art-open-source-hallucination-detection-model",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Patronus AI MCP server blog post",
       "url": "https://www.patronus.ai/blog/introducing-the-patronus-mcp-server",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Patronus AI LLM observability page",
       "url": "https://www.patronus.ai/llm-testing/llm-observability",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Patronus Python SDK docs index (vendor GitHub Pages)",
       "url": "https://patronus-ai.github.io/patronus-py/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Patronus Python SDK quickstart (vendor GitHub Pages)",
       "url": "https://patronus-ai.github.io/patronus-py/getting-started/quickstart/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Patronus AI GitHub organization",
       "url": "https://github.com/patronus-ai",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Patronus SDK: Patronus evaluators",
       "url": "https://patronus-ai.github.io/patronus-py/evaluations/patronus-evaluators/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "Patronus SDK: prompt management",
+      "url": "https://patronus-ai.github.io/patronus-py/prompts/",
+      "lastVerified": "2026-10-01"
     }
   ],
-  "lastVerified": "2026-09-21",
+  "lastVerified": "2026-10-01",
   "quotesCheckedOn": "2026-09-22"
 }

@@ -6,7 +6,7 @@
   "tagline": "MCP-Native Agent Eval vs SDK-Traced Hosted Agent Judge Platform",
   "oneLine": "The continuous-improvement stack for agents. Monitor and improve your agent's behavior at scale.",
   "ogImage": null,
-  "tldrVendor": "Judgment Labs calls Judgment the continuous-improvement stack for agents: the open-source judgeval SDK (Apache-2.0, Python and TypeScript) traces agents into a hosted platform where Agent Judges and Code Judges score traces and track behaviors, with a hosted MCP server for coding agents. The company, Judgment, Inc. of San Francisco, announced a $32M round led by Lightspeed on 2026-05-12; self-hosting is listed as coming soon.",
+  "tldrVendor": "Judgment Labs calls Judgment the continuous-improvement stack for agents: the open-source judgeval SDK (Apache-2.0, Python and TypeScript) traces agents into a hosted platform where Agent Judges and Code Judges score traces and track behaviors, with a hosted MCP server for coding agents. The company, Judgment, Inc. of San Francisco, announced $32M in Seed and Series A funding led by Lightspeed on 2026-05-12; self-hosting is listed as coming soon.",
   "tldrSourceUrl": "https://github.com/JudgmentLabs/judgeval",
   "rows": [
     {
@@ -15,7 +15,7 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.judgmentlabs.ai/documentation/quickstart",
       "quote": "openai = Tracer.wrap(OpenAI())",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -24,7 +24,7 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.judgmentlabs.ai/documentation/self-hosting",
       "quote": "Self-hosting capabilities for the Judgment Platform are coming soon.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -33,7 +33,7 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.judgmentlabs.ai/documentation/tracing/instrumentation",
       "quote": "Initialize once in every process that creates spans, before constructing wrapped clients, observed functions, workers, or the application.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -42,7 +42,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.judgmentlabs.ai/documentation/judges",
       "quote": "An Agent Judge follows a natural-language rubric and reasons over the supplied trace or example.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -51,7 +51,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.judgmentlabs.ai/documentation/tracing/instrumentation",
       "quote": "Provider calls, token usage, and cost",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -60,7 +60,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.judgmentlabs.ai/documentation/mcp-and-agent-tools/mcp-tools",
       "quote": "Evaluate up to 100 named traces, optionally with selected judges.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -69,16 +69,16 @@
       "verdict": "neither",
       "sourceUrl": "https://raw.githubusercontent.com/JudgmentLabs/judgeval/main/LICENSE.md",
       "quote": "Apache License Version 2.0, January 2004",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
       "id": "ownership",
-      "vendor": "Judgment, Inc. (Judgment Labs), San Francisco; VC-backed, $32M round led by Lightspeed announced 2026-05-12",
+      "vendor": "Judgment, Inc. (Judgment Labs), San Francisco; VC-backed, $32M across Seed and Series A led by Lightspeed, announced 2026-05-12",
       "verdict": "iris",
       "sourceUrl": "https://judgmentlabs.ai/blogs/announcing-32m-led-by-lightspeed",
-      "quote": "Announcing $32M in Funding Led by Lightspeed",
-      "lastVerified": "2026-09-21",
+      "quote": "Our Seed and Series A funding were led by Lightspeed Venture Partners",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -87,7 +87,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.judgmentlabs.ai/documentation/monitoring/trace-investigation",
       "quote": "Switch to Tree to inspect the span tree and execution timing.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -96,7 +96,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://github.com/JudgmentLabs/judgeval",
       "quote": "Auto-instrumentation for OpenAI, Anthropic, Google GenAI, and Together AI. Framework support for LangGraph, OpenLit, and Claude Agent SDK.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -105,25 +105,25 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.judgmentlabs.ai/sdk-reference/python/prompts/prompt",
       "quote": "A versioned prompt template with variable substitution.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
       "id": "enterprise",
-      "vendor": "Not stated in the vendor's documentation as of 2026-09-21",
+      "vendor": "Not stated in the vendor's documentation as of 2026-10-01",
       "verdict": "neither",
       "sourceUrl": "https://judgmentlabs.ai/",
-      "quote": "Not stated: The docs index (docs.judgmentlabs.ai/llms.txt) has no security or compliance page. docs.judgmentlabs.ai/documentation/compliance (still titled \"Security & Compliance\" in search engines, with snippets claiming SOC 2 Type 1 complete and HIPAA) returned 404 on 2026-09-21, as did judgmentlabs.ai/security, judgmentlabs.ai/pricing and the careers page; trust.judgmentlabs.ai redirects to the homepage, which contains no SOC, HIPAA, GDPR, SSO or enterprise strings. Do not publish a compliance claim either way.",
-      "lastVerified": "2026-09-21",
+      "quote": "Not stated: The docs index (docs.judgmentlabs.ai/llms.txt) has no security or compliance page. docs.judgmentlabs.ai/documentation/compliance (still titled \"Security & Compliance\" in search engines, with snippets claiming SOC 2 Type 1 complete and HIPAA) returned 404 on 2026-09-21 and again on 2026-10-01, as did judgmentlabs.ai/security, judgmentlabs.ai/pricing and the careers page; trust.judgmentlabs.ai redirects to the homepage, which contains no SOC, HIPAA, GDPR, SSO or enterprise strings. Do not publish a compliance claim either way.",
+      "lastVerified": "2026-10-01",
       "quoteVerified": null
     },
     {
       "id": "cost_to_run",
-      "vendor": "Not stated in the vendor's pages read on 2026-09-21",
+      "vendor": "Not stated in the vendor's pages read on 2026-10-01",
       "verdict": "neither",
       "sourceUrl": "https://docs.judgmentlabs.ai/llms.txt",
-      "quote": "Not stated: judgmentlabs.ai/pricing and www.judgmentlabs.ai/pricing returned 404 on 2026-09-21, and the docs index lists no pricing page.",
-      "lastVerified": "2026-09-21",
+      "quote": "Not stated: judgmentlabs.ai/pricing and www.judgmentlabs.ai/pricing returned 404 on 2026-09-21 and again on 2026-10-01, and the docs index lists no pricing page.",
+      "lastVerified": "2026-10-01",
       "quoteVerified": null
     }
   ],
@@ -165,114 +165,114 @@
     {
       "label": "Judgment Labs homepage",
       "url": "https://judgmentlabs.ai/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment Labs blog index",
       "url": "https://judgmentlabs.ai/blog",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Funding announcement ($32M led by Lightspeed)",
       "url": "https://judgmentlabs.ai/blogs/announcing-32m-led-by-lightspeed",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment privacy policy (legal entity)",
       "url": "https://app.judgmentlabs.ai/privacy",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment docs home",
       "url": "https://docs.judgmentlabs.ai/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment docs index (llms.txt)",
       "url": "https://docs.judgmentlabs.ai/llms.txt",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment quickstart",
       "url": "https://docs.judgmentlabs.ai/documentation/quickstart",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment tracing data model",
       "url": "https://docs.judgmentlabs.ai/documentation/tracing",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment instrumentation",
       "url": "https://docs.judgmentlabs.ai/documentation/tracing/instrumentation",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment judges",
       "url": "https://docs.judgmentlabs.ai/documentation/judges",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment integrations",
       "url": "https://docs.judgmentlabs.ai/documentation/integrations",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment integrations introduction",
       "url": "https://docs.judgmentlabs.ai/documentation/integrations/introduction",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment MCP and agent tools",
       "url": "https://docs.judgmentlabs.ai/documentation/mcp-and-agent-tools",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment monitoring",
       "url": "https://docs.judgmentlabs.ai/documentation/monitoring",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment trace investigation",
       "url": "https://docs.judgmentlabs.ai/documentation/monitoring/trace-investigation",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment self-hosting",
       "url": "https://docs.judgmentlabs.ai/documentation/self-hosting",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment SDK reference: Prompt",
       "url": "https://docs.judgmentlabs.ai/sdk-reference/python/prompts/prompt",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment CLI reference: prompts",
       "url": "https://docs.judgmentlabs.ai/cli-reference/prompts",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "JudgmentLabs/judgeval repository",
       "url": "https://github.com/JudgmentLabs/judgeval",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "judgeval repository metadata (GitHub API)",
       "url": "https://api.github.com/repos/JudgmentLabs/judgeval",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "judgeval LICENSE.md (Apache-2.0)",
       "url": "https://raw.githubusercontent.com/JudgmentLabs/judgeval/main/LICENSE.md",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Judgment MCP tools",
       "url": "https://docs.judgmentlabs.ai/documentation/mcp-and-agent-tools/mcp-tools",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     }
   ],
-  "lastVerified": "2026-09-21",
+  "lastVerified": "2026-10-01",
   "quotesCheckedOn": "2026-09-21"
 }

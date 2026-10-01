@@ -15,7 +15,7 @@
       "verdict": "iris",
       "sourceUrl": "https://github.com/Arize-ai/phoenix",
       "quote": "built on top of OpenTelemetry and is vendor, language, and framework agnostic",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -24,25 +24,25 @@
       "verdict": "neither",
       "sourceUrl": "https://arize.com/docs/phoenix/self-hosting/configuration",
       "quote": "If URL is not specified, by default Phoenix starts with a file-based SQLite database in a temporary folder",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
       "id": "overhead",
       "vendor": "OpenTelemetry SDK + OpenInference auto-instrumentation in the app, exporting to the Phoenix collector endpoint",
       "verdict": "iris",
-      "sourceUrl": "https://arize.com/docs/phoenix/tracing/llm-traces-1",
+      "sourceUrl": "https://arize.com/docs/phoenix/get-started/get-started-tracing",
       "quote": "the OpenInference CrewAI auto-instrumentation package, which handles tracing for us without requiring manual instrumentation.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
       "id": "eval",
-      "vendor": "LLM-as-a-Judge, agent-as-a-judge or code evaluators (AX); Phoenix response and retrieval evals",
+      "vendor": "Phoenix: server-side LLM-as-a-judge and code evaluators, response and retrieval evals; AX: LLM-as-a-Judge, agent-as-a-judge or code evaluators",
       "verdict": "neither",
-      "sourceUrl": "https://arize.com/docs/ax",
-      "quote": "Evaluate agent performance with LLM-as-a-Judge, agent-as-a-judge, or code evaluators.",
-      "lastVerified": "2026-09-21",
+      "sourceUrl": "https://arize.com/docs/phoenix/evaluation/server-evals",
+      "quote": "LLM-as-a-judge evaluators backed by Phoenix-managed prompts.",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -51,16 +51,16 @@
       "verdict": "neither",
       "sourceUrl": "https://arize.com/docs/phoenix/tracing/how-to-tracing/cost-tracking",
       "quote": "The costs are calculated from token counts and model pricing data, then rolled up to the trace and project level for comprehensive cost analysis.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
       "id": "mcp_support",
-      "vendor": "Phoenix MCP server (prompts, traces, datasets, experiments, SQL); no Phoenix MCP tool runs an eval; the AX pages say coding agents can set Arize up over MCP",
+      "vendor": "Remote MCP built into Phoenix 19+, generated from its REST API (traces, datasets, experiments, prompts), with SQL over traces; the npm server is in maintenance",
       "verdict": "neither",
-      "sourceUrl": "https://github.com/Arize-ai/phoenix/blob/main/js/packages/phoenix-mcp/README.md",
-      "quote": "Phoenix MCP Server is an implementation of the Model Context Protocol for the Arize Phoenix platform. It provides a unified interface to Phoenix's capabilities.",
-      "lastVerified": "2026-09-21",
+      "sourceUrl": "https://arize.com/docs/phoenix/integrations/remote-mcp",
+      "quote": "The operation catalog is generated from the Phoenix REST API",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -69,7 +69,7 @@
       "verdict": "iris",
       "sourceUrl": "https://github.com/Arize-ai/phoenix/blob/main/LICENSE",
       "quote": "You may not provide the software to third parties as a hosted or managed service, where the service provides users with access to any substantial set of the features or functionality of the software.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -78,7 +78,7 @@
       "verdict": "iris",
       "sourceUrl": "https://arize.com/blog/a-new-chapter-with-dynatrace/",
       "quote": "Today we are announcing the signing of a definitive agreement for the acquisition of Arize by Dynatrace to accelerate that proposition.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -87,7 +87,7 @@
       "verdict": "neither",
       "sourceUrl": "https://arize.com/docs/ax/observe/dashboards",
       "quote": "Two ways to get started: pick a pre-configured template or start with a blank dashboard.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -96,7 +96,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://arize.com/",
       "quote": "Arize integrates with 40+ models, frameworks, and AI tools",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -105,7 +105,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://arize.com/docs/ax/concepts/prompts/optimizing-prompts",
       "quote": "Every iteration is committed back to the Prompt Hub as a new version, so the optimization history is auditable and the winner is deployable like any other version.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -114,7 +114,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://arize.com/pricing/",
       "quote": "Organization and space RBAC",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -123,7 +123,7 @@
       "verdict": "neither",
       "sourceUrl": "https://arize.com/pricing/",
       "quote": "Trace spans 25k spans per month Ingestion volume 1 GB per month Retention 15 days",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     }
   ],
@@ -169,104 +169,119 @@
     {
       "label": "Arize homepage",
       "url": "https://arize.com/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Arize AX pricing",
       "url": "https://arize.com/pricing/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Phoenix GitHub README",
       "url": "https://github.com/Arize-ai/phoenix",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Phoenix LICENSE (ELv2)",
       "url": "https://github.com/Arize-ai/phoenix/blob/main/LICENSE",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
-      "label": "Phoenix MCP server README",
-      "url": "https://github.com/Arize-ai/phoenix/blob/main/js/packages/phoenix-mcp/README.md",
-      "lastVerified": "2026-09-21"
+      "label": "Phoenix remote MCP server",
+      "url": "https://arize.com/docs/phoenix/integrations/remote-mcp",
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Phoenix MCP SQL blog (Aug 2026)",
       "url": "https://arize.com/blog/phoenix-mcp-sql-code-mode/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Phoenix self-hosting overview",
       "url": "https://arize.com/docs/phoenix/self-hosting",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Phoenix self-hosting configuration (database)",
       "url": "https://arize.com/docs/phoenix/self-hosting/configuration",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Phoenix tracing setup (register / auto-instrument)",
-      "url": "https://arize.com/docs/phoenix/tracing/llm-traces-1",
-      "lastVerified": "2026-09-21"
+      "url": "https://arize.com/docs/phoenix/get-started/get-started-tracing",
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Phoenix cost tracking",
       "url": "https://arize.com/docs/phoenix/tracing/how-to-tracing/cost-tracking",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Phoenix integrations list",
       "url": "https://arize.com/docs/phoenix/integrations",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Arize AX docs overview",
       "url": "https://arize.com/docs/ax",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Arize AX Alyx",
       "url": "https://arize.com/docs/ax/alyx",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Arize AX dashboards",
       "url": "https://arize.com/docs/ax/observe/dashboards",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Arize AX optimizing prompts",
       "url": "https://arize.com/docs/ax/concepts/prompts/optimizing-prompts",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Arize AX compliance",
       "url": "https://arize.com/docs/ax/security-and-settings/compliance",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Arize Trust Center",
       "url": "https://arize.com/trust-center/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Arize ML/CV observability (embedding drift)",
       "url": "https://arize.com/products/ml-cv-observability/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Arize AX embedding drift docs",
       "url": "https://arize.com/docs/ax/machine-learning/computer-vision/how-to-cv/embedding-drift",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Arize blog: A new chapter with Dynatrace (acquisition)",
       "url": "https://arize.com/blog/a-new-chapter-with-dynatrace/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "Phoenix server-side evals",
+      "url": "https://arize.com/docs/phoenix/evaluation/server-evals",
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "Phoenix code evaluators",
+      "url": "https://arize.com/docs/phoenix/evaluation/server-evals/code-evaluators",
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "Phoenix self-hosting: terminal (pip install)",
+      "url": "https://arize.com/docs/phoenix/self-hosting/deployment-options/terminal",
+      "lastVerified": "2026-10-01"
     }
   ],
-  "lastVerified": "2026-09-21",
+  "lastVerified": "2026-10-01",
   "quotesCheckedOn": "2026-09-22"
 }

@@ -15,7 +15,7 @@
       "verdict": "iris",
       "sourceUrl": "https://docs.helicone.ai/getting-started/quick-start",
       "quote": "Use the familiar OpenAI SDK to access 100+ LLM models across OpenAI, Anthropic, Google, and more with automatic logging, observability, and fallbacks built in.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -24,7 +24,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.helicone.ai/getting-started/self-host/docker",
       "quote": "To run all services in a single Docker container, you can use the helicone-all-in-one image.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -33,7 +33,7 @@
       "verdict": "iris",
       "sourceUrl": "https://github.com/Helicone/ai-gateway",
       "quote": "P95 Latency <5ms",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -42,7 +42,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.helicone.ai/features/advanced-usage/scores",
       "quote": "Helicone doesn't run evaluations for you - we're not an evaluation framework.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -51,7 +51,7 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.helicone.ai/features/advanced-usage/custom-properties",
       "quote": "Calculate cost per user, conversation, or feature to understand your application's profitability",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -60,16 +60,16 @@
       "verdict": "neither",
       "sourceUrl": "https://docs.helicone.ai/integrations/tools/mcp",
       "quote": "debug errors, search logs, analyze performance, and examine request/response bodies without leaving your AI assistant",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
       "id": "license",
-      "vendor": "Apache 2.0 (permissive)",
+      "vendor": "Apache 2.0 for the platform; the separate Rust AI Gateway repository is GPL-3.0",
       "verdict": "neither",
       "sourceUrl": "https://github.com/Helicone/helicone",
       "quote": "Apache-2.0",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -78,7 +78,7 @@
       "verdict": "iris",
       "sourceUrl": "https://www.helicone.ai/blog/joining-mintlify",
       "quote": "Helicone has been acquired by Mintlify, and our team will be joining them in San Francisco.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -87,7 +87,7 @@
       "verdict": "neither",
       "sourceUrl": "https://www.helicone.ai/",
       "quote": "The world's fastest-growing AI companies rely on Helicone to route, debug, and analyze their applications.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -96,7 +96,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.helicone.ai/gateway/integrations/overview",
       "quote": "Integrate Helicone AI Gateway with popular frameworks and tools to access 100+ LLM providers with top tier observability",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -105,7 +105,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://docs.helicone.ai/features/advanced-usage/prompts/overview",
       "quote": "Track every change, compare versions, and rollback instantly if something goes wrong",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -114,7 +114,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.helicone.ai/pricing",
       "quote": "SOC-2 & HIPAA compliance",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -123,7 +123,7 @@
       "verdict": "neither",
       "sourceUrl": "https://www.helicone.ai/pricing",
       "quote": "10,000 free requests 1 GB storage 1 seat, 1 organization",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     }
   ],
@@ -165,94 +165,99 @@
     {
       "label": "Helicone homepage",
       "url": "https://www.helicone.ai/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone quick start",
       "url": "https://docs.helicone.ai/getting-started/quick-start",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone self-host with Docker",
       "url": "https://docs.helicone.ai/getting-started/self-host/docker",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone self-host on Kubernetes (Helm)",
       "url": "https://docs.helicone.ai/getting-started/self-host/kubernetes",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone latency impact",
       "url": "https://docs.helicone.ai/references/latency-affect",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone scores",
       "url": "https://docs.helicone.ai/features/advanced-usage/scores",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone custom properties",
       "url": "https://docs.helicone.ai/features/advanced-usage/custom-properties",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone caching",
       "url": "https://docs.helicone.ai/features/advanced-usage/caching",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone MCP server",
       "url": "https://docs.helicone.ai/integrations/tools/mcp",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone gateway integrations overview",
       "url": "https://docs.helicone.ai/gateway/integrations/overview",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone prompt management overview",
       "url": "https://docs.helicone.ai/features/advanced-usage/prompts/overview",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone compliance FAQ",
       "url": "https://docs.helicone.ai/faq/compliance",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone pricing",
       "url": "https://www.helicone.ai/pricing",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone changelog",
       "url": "https://www.helicone.ai/changelog",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone blog: Helicone is joining Mintlify (2026-03-03)",
       "url": "https://www.helicone.ai/blog/joining-mintlify",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Mintlify blog: Mintlify acquires Helicone (2026-03-03)",
       "url": "https://www.mintlify.com/blog/mintlify-acquires-helicone",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone GitHub README",
       "url": "https://github.com/Helicone/helicone",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Helicone AI Gateway GitHub README",
       "url": "https://github.com/Helicone/ai-gateway",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "Helicone AI Gateway LICENSE (GPL-3.0)",
+      "url": "https://github.com/Helicone/ai-gateway/blob/main/LICENSE",
+      "lastVerified": "2026-10-01"
     }
   ],
-  "lastVerified": "2026-09-21",
+  "lastVerified": "2026-10-01",
   "quotesCheckedOn": "2026-09-22"
 }

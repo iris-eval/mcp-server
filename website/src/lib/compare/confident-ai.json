@@ -15,7 +15,7 @@
       "verdict": "iris",
       "sourceUrl": "https://www.confident-ai.com/docs/setup-and-installation",
       "quote": "Set your project API key as an environment variable",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -24,7 +24,7 @@
       "verdict": "iris",
       "sourceUrl": "https://www.confident-ai.com/docs/self-hosting",
       "quote": "Self-hosting is available on Enterprise plans.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -33,16 +33,16 @@
       "verdict": "iris",
       "sourceUrl": "https://www.confident-ai.com/docs/llm-tracing/introduction",
       "quote": "in real-time as they're ingested, or retrospectively",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
       "id": "eval",
-      "vendor": "LLM-as-Judge metrics (semantic)",
+      "vendor": "LLM-as-Judge metrics (semantic); Jev-as-a-Judge, a decision model, available since 2026-09-25",
       "verdict": "neither",
-      "sourceUrl": "https://deepeval.com/docs/metrics-introduction",
-      "quote": "Almost all predefined metrics on deepeval use LLM-as-a-judge, with techniques such as QAG (question-answer-generation), DAG (deep acyclic graphs), and G-Eval.",
-      "lastVerified": "2026-09-21",
+      "sourceUrl": "https://www.confident-ai.com/blog/launch-week-q3-2026-day-5-jev-as-a-judge",
+      "quote": "Jev-as-a-Judge is live on Confident AI now.",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -51,16 +51,16 @@
       "verdict": "neither",
       "sourceUrl": "https://www.confident-ai.com/docs/llm-tracing/features/token-usage-cost",
       "quote": "If you provide a supported model on your LLM span and neither SDK-level nor project-level costs are configured, Confident AI will automatically look up the per-token pricing and calculate the cost",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
       "id": "mcp_support",
-      "vendor": "MCP server for coding agents (75 tools: run evals, evaluate traces, simulate conversations); needs Confident AI account",
+      "vendor": "MCP server for coding agents (run evals, evaluate traces, simulate conversations); needs Confident AI account",
       "verdict": "neither",
       "sourceUrl": "https://www.confident-ai.com/docs/coding-agents/mcp",
       "quote": "The Confident AI MCP server connects your coding agent to your Confident AI project over the Model Context Protocol",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -69,7 +69,7 @@
       "verdict": "neither",
       "sourceUrl": "https://www.confident-ai.com/frameworks/deepeval",
       "quote": "DeepEval is fully open-source under the Apache 2.0 license and free to use for any purpose.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -78,7 +78,7 @@
       "verdict": "neither",
       "sourceUrl": "https://www.confident-ai.com/blog/how-i-closed-confident-ais-2-2m-seed-round-in-5-days",
       "quote": "what started off as a bootstrapped open-source package became the thing that got us into YC.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -87,7 +87,7 @@
       "verdict": "neither",
       "sourceUrl": "https://www.confident-ai.com/products/llm-observability",
       "quote": "Get notified the moment eval scores drop, latency spikes, or error rates climb. Slack, PagerDuty, email — wherever your team already lives.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -96,7 +96,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.confident-ai.com/products/llm-observability",
       "quote": "native SDKs for Python and TypeScript and full OpenTelemetry support",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -105,7 +105,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.confident-ai.com/docs/llm-evaluation/prompt-management/version-prompts",
       "quote": "Every change you make to a prompt is tracked as a commit. This ensures complete history and traceability of all prompt modifications.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -114,7 +114,7 @@
       "verdict": "vendor",
       "sourceUrl": "https://www.confident-ai.com/pricing",
       "quote": "Dedicated On-Prem Deployment",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     },
     {
@@ -123,7 +123,7 @@
       "verdict": "neither",
       "sourceUrl": "https://www.confident-ai.com/pricing",
       "quote": "Starter and Team are billed per organization per month at $200 and $2,000 respectively.",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-10-01",
       "quoteVerified": true
     }
   ],
@@ -142,7 +142,7 @@
     },
     {
       "text": "You want synthetic dataset generation for comprehensive test coverage",
-      "sourceUrl": "https://www.confident-ai.com/"
+      "sourceUrl": "https://www.confident-ai.com/pricing"
     },
     {
       "text": "You prefer a managed platform without infrastructure overhead",
@@ -165,79 +165,84 @@
     {
       "label": "Confident AI homepage",
       "url": "https://www.confident-ai.com/",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI pricing",
       "url": "https://www.confident-ai.com/pricing",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI docs index",
       "url": "https://www.confident-ai.com/docs",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI setup and installation",
       "url": "https://www.confident-ai.com/docs/setup-and-installation",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI tracing introduction",
       "url": "https://www.confident-ai.com/docs/llm-tracing/introduction",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI token usage and cost",
       "url": "https://www.confident-ai.com/docs/llm-tracing/features/token-usage-cost",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI users (per-user cost)",
       "url": "https://www.confident-ai.com/docs/llm-tracing/features/users",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI self-hosting",
       "url": "https://www.confident-ai.com/docs/self-hosting",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI MCP server for coding agents",
       "url": "https://www.confident-ai.com/docs/coding-agents/mcp",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI version prompts",
       "url": "https://www.confident-ai.com/docs/llm-evaluation/prompt-management/version-prompts",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI LLM observability product page",
       "url": "https://www.confident-ai.com/products/llm-observability",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI: DeepEval framework page",
       "url": "https://www.confident-ai.com/frameworks/deepeval",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "Confident AI seed round post",
       "url": "https://www.confident-ai.com/blog/how-i-closed-confident-ais-2-2m-seed-round-in-5-days",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "DeepEval metrics introduction (vendor-owned docs)",
       "url": "https://deepeval.com/docs/metrics-introduction",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
     },
     {
       "label": "DeepEval integrations (vendor-owned docs)",
       "url": "https://deepeval.com/integrations",
-      "lastVerified": "2026-09-21"
+      "lastVerified": "2026-10-01"
+    },
+    {
+      "label": "Confident AI blog: Jev-as-a-Judge (2026-09-25)",
+      "url": "https://www.confident-ai.com/blog/launch-week-q3-2026-day-5-jev-as-a-judge",
+      "lastVerified": "2026-10-01"
     }
   ],
-  "lastVerified": "2026-09-21",
+  "lastVerified": "2026-10-01",
   "quotesCheckedOn": "2026-09-22"
 }
