@@ -264,7 +264,7 @@ describe('release.yml — the MCPB bundle', () => {
 
 /*
  * 2026-09 release review. The image kept only the database in /data, so a
- * recreated container lost the deployed rules and the audit log (S18); and
+ * recreated container lost the deployed rules and the audit log; and
  * the real-clients job installed its MCP clients with `npm install -g`,
  * outside any lockfile.
  */
