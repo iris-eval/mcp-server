@@ -295,7 +295,9 @@ describe('the time budget', () => {
 
   for (const fts5 of [true, false]) {
     const how = fts5 ? 'with the index' : 'without FTS5';
-    it(`stops at the budget and answers with the best of the newest matches it read, ${how}`, async () => {
+    // Four stores on files, each starting its own search thread, which loads tsx from the sources: 0.8 s on an
+    // idle machine, past vitest's 5 s default inside a full parallel run on a loaded Windows one.
+    it(`stops at the budget and answers with the best of the newest matches it read, ${how}`, { timeout: 30_000 }, async () => {
       // Budget 0: the index path stops at its first clock check (64 rows), the scan after its first batch (100 traces).
       const full = new SqliteAdapter(join(dir, `full-${fts5}.db`), { driver: SEARCH_DRIVER, fts5 });
       await full.initialize();
