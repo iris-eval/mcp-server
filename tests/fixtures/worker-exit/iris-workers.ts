@@ -64,7 +64,15 @@ const threadOf = (c: unknown) => (c as { worker: { terminate(): Promise<number>;
  */
 async function terminated(worker: { terminate(): Promise<number>; ref(): void }): Promise<void> {
   worker.ref();
-  await worker.terminate();
+  // The Checkpointer unreferences its thread again when an answer empties its queue (a TRUNCATE's, here), so the
+  // process is held while terminate() runs, as a server's would be: a thread that never ends then hangs this
+  // process, which the stress harness counts, instead of the event loop emptying first (exit 13, 1 process in 10).
+  const held = setInterval(() => undefined, 1000);
+  try {
+    await worker.terminate();
+  } finally {
+    clearInterval(held);
+  }
 }
 // The workers are unref'd, as in the product; a timer holds this script open while it waits for one to be ready.
 const held = async <T>(p: Promise<T>): Promise<T> => {
