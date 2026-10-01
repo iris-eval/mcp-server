@@ -1,15 +1,12 @@
 /*
- * The four-way article draft holds to its sources and stays a draft.
+ * The four-way article holds to its sources.
  *
- * docs/blog/030-iris-vs-langfuse-vs-phoenix-vs-promptfoo.md is written to be
- * published when the maintainers choose to, not before.
- * Two gates keep it unpublished: `published: false`, which the site honours,
- * and a future `date:`, which the Dev.to crossposter honours — and since
- * 0.16.0 the crossposter honours `published: false` too, held here. The
- * article's every vendor statement carries a URL, every vendor URL is one
- * the vendor's compare file lists as a source (so a claim on the article
- * cannot outrun the sourced table), and it grades with words a reader can
- * check, never a superlative.
+ * docs/blog/030-iris-vs-langfuse-vs-phoenix-vs-promptfoo.md is published:
+ * `published: true` and a `date:` that has arrived, the two fields the site
+ * and the Dev.to crossposter read. Its every vendor statement carries a URL,
+ * every vendor URL is one the vendor's compare file lists as a source (so a
+ * claim on the article cannot outrun the sourced table), and it grades with
+ * words a reader can check, never a superlative.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -37,7 +34,7 @@ const sources = (slug: string): Set<string> => {
   return new Set(data.sources.map((s) => s.url));
 };
 
-describe('the four-way article draft', () => {
+describe('the four-way article', () => {
   it('exists with front matter, names the four in its title, and holds a blog number no other post shares', () => {
     expect(frontmatter, ARTICLE).toBeDefined();
     expect(frontmatter).toMatch(/^title: "Iris vs Langfuse vs Phoenix vs Promptfoo/m);
@@ -50,14 +47,12 @@ describe('the four-way article draft', () => {
     expect(numbers.filter((n) => n === '030')).toHaveLength(1);
   });
 
-  it('is held unpublished by both gates: `published: false` for the site and a future date for the crossposter, which now honours `published: false` as well', () => {
-    expect(frontmatter).toMatch(/^published: false$/m);
+  it('is published: `published: true`, with a date that has arrived', () => {
+    expect(frontmatter).toMatch(/^published: true$/m);
     const date = /^date: (\d{4}-\d{2}-\d{2})$/m.exec(frontmatter)?.[1];
     expect(date, 'date').toBeDefined();
-    expect(date! > today, `date ${date} is not after ${today}`).toBe(true);
-    const crosspost = read('scripts/devto-crosspost.mjs');
-    expect(crosspost).toMatch(/published[\s\S]{0,80}=== 'false'/);
-    expect(crosspost).toContain('SKIP: ${filename} (published: false)');
+    expect(date! <= today, `date ${date} is after ${today}`).toBe(true);
+    expect(body).not.toMatch(/Draft — not published/);
   });
 
   it('every paragraph that names a vendor carries a URL, and every vendor URL is a source the vendor’s compare file lists', () => {

@@ -1,8 +1,8 @@
 ---
 title: "Iris vs Langfuse vs Phoenix vs Promptfoo: where each wins, where each loses"
 description: "Four ways to evaluate an AI agent, read from each vendor's own pages on 2026-10-01: how each gets into your stack, where the evaluation runs, what it costs to run, how it self-hosts, and what it does with MCP."
-date: 2027-12-31
-published: false
+date: 2026-10-01
+published: true
 seoDescription: "Iris, Langfuse, Arize Phoenix and Promptfoo compared on integration, evaluation, cost to run, self-hosting and MCP — every vendor statement linked to the page it was read from."
 author: Ian Parent
 tags: [agent-eval, comparison, langfuse, phoenix, promptfoo, mcp]
@@ -15,7 +15,7 @@ Four tools, four different answers to the same question: how do you know what an
 
 They are not four flavours of one thing. Two are observability platforms that added evaluation, one is a test runner, and one is an evaluation server that speaks the agent's own protocol. The differences that matter to a team choosing between them are the boring ones: how it gets into the stack, where the evaluation runs, what it costs, and what happens when the agent uses tools.
 
-> **Draft — not published.** The date in the front matter is a placeholder that keeps the site and the crossposter from publishing this until it is released. Every vendor statement below links the vendor's own page, read on 2026-10-01; the [compare pages](https://iris-eval.com/compare) carry the same cells with the sentence each was read from and whether that sentence was found on the page.
+Every vendor statement below links the vendor's own page, read on 2026-10-01; the [compare pages](https://iris-eval.com/compare) carry the same cells with the sentence each was read from and whether that sentence was found on the page.
 
 ## How it gets into your stack
 
