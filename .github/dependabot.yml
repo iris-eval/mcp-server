@@ -96,6 +96,10 @@ updates:
     ignore:
       - dependency-name: "typescript"
         versions: [">=6.0.0"]  # the same ceiling as the root (see #58)
+      # The package supports Node >=22 (engines), so its Node types stay on 22:
+      # newer types would let the SDK call an API its oldest supported runtime lacks.
+      - dependency-name: "@types/node"
+        versions: [">=23.0.0"]
     groups:
       providers:
         patterns:
