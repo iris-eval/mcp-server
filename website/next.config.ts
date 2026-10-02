@@ -43,8 +43,9 @@ const nextConfig: NextConfig = {
       permanent: true,
     },
     {
+      // The waitlist is gone; an old link to it lands on what Iris costs.
       source: "/waitlist",
-      destination: "/#waitlist",
+      destination: "/pricing",
       permanent: true,
     },
     // The capability map IS the roadmap: every question Iris

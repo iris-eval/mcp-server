@@ -51,8 +51,8 @@ export async function generate() {
    * a planning intention baked into a file whose entire purpose is to be
    * DERIVED truth, and because .claims.json feeds every public surface, it
    * kept re-injecting a roadmap that had been retired — the Cloud-tier
-   * ladder was replaced by three tracks (see the roadmap on the site) and the
-   * hosted work is explicitly "under consideration, not under construction".
+   * ladder is gone, and there is no hosted version (see /pricing on the
+   * site).
    *
    * Work is now tracked by track, not by a predicted version number, and
    * nothing here should assert a next version until one is actually cut.

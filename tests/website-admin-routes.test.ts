@@ -51,8 +51,8 @@ describe('the waitlist count answer', () => {
   });
 
   it('is not fetched or printed by the site', () => {
-    const cloud = readFileSync(join(root, 'website', 'src', 'components', 'cloud.tsx'), 'utf8');
-    expect(cloud).not.toContain('waitlist-count');
-    expect(cloud).not.toMatch(/on the waitlist/);
+    const pricing = readFileSync(join(root, 'website', 'src', 'components', 'pricing.tsx'), 'utf8');
+    expect(pricing).not.toContain('waitlist-count');
+    expect(pricing).not.toMatch(/on the waitlist/);
   });
 });

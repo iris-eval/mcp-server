@@ -48,7 +48,8 @@ export default function Privacy(): React.ReactElement {
             <h2 className="mb-3 font-display text-xl font-bold text-text-primary">What we collect</h2>
             <h3 className="mb-2 text-[16px] font-semibold text-text-primary">Website (iris-eval.com)</h3>
             <ul className="list-disc space-y-2 pl-6">
-              <li><strong>Waitlist email address:</strong> If you join the cloud tier waitlist, we store your email address. This is the only personal data we collect.</li>
+              <li><strong>Waitlist email address:</strong> The site had a waitlist form for a hosted version until October 2026. The form is removed and no new addresses are collected. If you joined while it was open, we still hold the email address you gave, and nothing else about you.</li>
+              <li><strong>Playground text:</strong> What you paste into the live playground is sent to our server, scored and returned. It is not stored and not logged.</li>
               <li><strong>Hashed IP address:</strong> For rate limiting only. We store a one-way SHA-256 hash of your IP — we cannot reverse this to identify you.</li>
               <li><strong>Analytics:</strong> We use Vercel Web Analytics, which collects anonymous page view data. No cookies, no personal data, no cross-site tracking.</li>
             </ul>
@@ -62,7 +63,7 @@ export default function Privacy(): React.ReactElement {
           <section>
             <h2 className="mb-3 font-display text-xl font-bold text-text-primary">How we use your data</h2>
             <ul className="list-disc space-y-2 pl-6">
-              <li><strong>Waitlist emails:</strong> Solely to notify you when the cloud tier launches. We do not sell, share, or use your email for any other purpose.</li>
+              <li><strong>Waitlist emails:</strong> Solely to tell you if a hosted version is ever offered. None is being built. We do not sell, share, or use your email for any other purpose, and we delete it when you ask.</li>
               <li><strong>IP hashes:</strong> Solely for rate limiting to prevent abuse. Automatically expire after 1 hour.</li>
             </ul>
           </section>
@@ -71,7 +72,7 @@ export default function Privacy(): React.ReactElement {
             <h2 className="mb-3 font-display text-xl font-bold text-text-primary">Data storage and security</h2>
             <ul className="list-disc space-y-2 pl-6">
               <li>Waitlist data is stored in Upstash Redis (encrypted at rest, served over TLS).</li>
-              <li>We use CORS restrictions, rate limiting, and input validation to protect the waitlist API.</li>
+              <li>We use CORS restrictions, rate limiting, and input validation to protect the site&rsquo;s API routes.</li>
               <li>We do not store passwords, payment information, or sensitive credentials.</li>
             </ul>
           </section>

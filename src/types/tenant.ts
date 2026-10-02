@@ -1,11 +1,11 @@
 /*
  * tenant — tenant identity primitives.
  *
- * Every storage read/write in Iris takes a TenantId. For OSS / single-
- * user installs the value is always `LOCAL_TENANT` (the literal string
- * `'local'`). For the future Cloud SKU, the value is resolved by the
- * authentication middleware from the session and carried on the
- * request context.
+ * Every storage read/write in Iris takes a TenantId. The server resolves
+ * it to `LOCAL_TENANT` (the literal string `'local'`) on every request:
+ * one install is one tenant. The parameter is carried everywhere so that
+ * a deployment serving more than one tenant has the boundary already in
+ * the storage layer instead of retrofitting it.
  *
  * Design constraints (from the 2026-04-23 threat model §5.1):
  *   1. Tenant context is a REQUIRED parameter on every storage method;

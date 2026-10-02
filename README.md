@@ -405,13 +405,11 @@ From the very next `evaluate_output` with `eval_type: "safety"`, an output that 
 
 Full tool schemas and configuration: [iris-eval.com](https://iris-eval.com)
 
-## Hosted features
+## Hosted version
 
-Iris runs entirely on your machine today, and everything it does is free and MIT licensed with no limits and no account.
+There is none. Iris runs entirely on your machine, and everything it does is free and MIT licensed with no limits and no account. There is no hosted version, no paid plan and nothing to buy.
 
-Hosted storage, shared team history and alerting are **under consideration, not under construction**. There is no pricing, and nothing to buy. If shared history would be useful to you, [the waitlist](https://iris-eval.com#waitlist) is how we find out whether it's worth building — it commits you to nothing.
-
-Two commitments hold regardless: **nothing that is free today will move behind a paywall**, and **no compliance certification will be claimed before it is held**.
+Two commitments hold: **nothing that is free today will move behind a paywall**, and **no compliance certification will be claimed before it is held**.
 
 ## Examples
 
@@ -494,7 +492,7 @@ Every variable `--help` documents. CLI flags take precedence over environment va
 | `IRIS_OTEL_SERVICE_NAME` | `service.name` resource attribute for OTel export (default `iris-eval`) |
 | `IRIS_OTEL_HEADERS` | Comma-separated `k=v` headers for OTel export (e.g. `authorization=Bearer abc`) |
 | `IRIS_OTEL_TIMEOUT_MS` | Per-export timeout (default `15000`) |
-| `RATE_LIMIT_SALT` | Website waitlist API only — required when the iris-eval.com site is deployed; the server never reads it |
+| `RATE_LIMIT_SALT` | Website only — salts the address hash the iris-eval.com playground rate limit keeps; the server never reads it |
 
 ### Security
 

@@ -283,7 +283,7 @@ Environment variables (CLI flags take precedence):
   IRIS_OTEL_SERVICE_NAME               service.name resource attribute for OTel export (default: iris-eval)
   IRIS_OTEL_HEADERS                    Comma-separated k=v headers for OTel export (e.g. "authorization=Bearer abc")
   IRIS_OTEL_TIMEOUT_MS                 Per-export timeout (default: 15000)
-  RATE_LIMIT_SALT                      (waitlist API only — required when website is deployed)
+  RATE_LIMIT_SALT                      (website only: salts the playground rate limit; the server never reads it)
 
 Dashboard preferences ($IRIS_HOME/preferences.json, default ~/.iris/preferences.json):
   Edit autoLaunch: false to permanently disable first-run dashboard auto-launch.

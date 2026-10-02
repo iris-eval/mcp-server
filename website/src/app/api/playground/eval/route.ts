@@ -12,9 +12,8 @@
  *     Zod schema execution); for v0.4 we only run the vendored library
  *   - Telemetry: anonymized "playground used" event for product metrics
  *
- * Rate limit: 30 requests / minute / IP. Hashed with RATE_LIMIT_SALT
- * (the same env var the waitlist route requires) so the IP itself is
- * never persisted to KV. When KV is unconfigured or fails, the same limit
+ * Rate limit: 30 requests / minute / IP. Hashed with RATE_LIMIT_SALT so
+ * the IP itself is never persisted to KV. When KV is unconfigured or fails, the same limit
  * is enforced per server instance (lib/rate-limit.ts) instead of not at all.
  */
 import { Redis } from '@upstash/redis';

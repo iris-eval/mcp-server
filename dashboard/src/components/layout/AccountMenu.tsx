@@ -11,8 +11,8 @@
  * reserved for page identity + live status + notifications — account-
  * level prefs cluster into this one menu so the header stays quiet.
  *
- * Signing out / switching workspaces belong in Cloud tier and are
- * intentionally absent here. OSS is single-user single-workspace.
+ * Signing out and switching workspaces are intentionally absent: the
+ * server is single-user and single-workspace.
  */
 import { useState, type KeyboardEvent } from 'react';
 import type { LucideIcon } from 'lucide-react';

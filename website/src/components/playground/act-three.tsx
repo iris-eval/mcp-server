@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { EvalScoreGauge } from "./eval-score-gauge";
 import { TrendChartSvg } from "./trend-chart-svg";
@@ -285,23 +284,6 @@ export function ActThree({ track }: { track: (event: string, data?: Record<strin
                 ))}
               </motion.div>
 
-              {/* Cloud tier seed */}
-              <motion.div
-                className="mt-4 text-center"
-                initial={reduce ? {} : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1.4, duration: 0.3 }}
-              >
-                <p className="text-[12px] text-text-muted">
-                  Want to share eval results with your team?{" "}
-                  <Link
-                    href="/#pricing"
-                    className="text-text-accent transition-colors hover:text-iris-300"
-                  >
-                    Cloud team dashboards coming soon →
-                  </Link>
-                </p>
-              </motion.div>
             </div>
           </div>
         </div>

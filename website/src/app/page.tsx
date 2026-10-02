@@ -11,7 +11,7 @@ import { ProductTabs } from "@/components/product-tabs";
 import { BuiltFor } from "@/components/customers";
 import { Stats } from "@/components/stats";
 import { Install } from "@/components/install";
-import { Pricing } from "@/components/cloud";
+import { Pricing } from "@/components/pricing";
 import { FounderQuote } from "@/components/founder-quote";
 import { Research } from "@/components/research";
 import { Roadmap } from "@/components/roadmap";

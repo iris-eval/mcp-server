@@ -81,9 +81,6 @@ export function Hero(): React.ReactElement {
               Get Started
               <svg className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
             </a>
-            <a href="#waitlist" className="inline-flex items-center rounded-xl border border-border-default px-8 py-4 text-[15px] font-semibold text-text-secondary transition-all hover:border-border-glow hover:text-text-primary hover:shadow-[0_0_24px_var(--glow-primary)]">
-              Join Cloud Waitlist
-            </a>
           </div>
 
           {/* Install command */}

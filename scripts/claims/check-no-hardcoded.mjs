@@ -196,10 +196,10 @@ const PATTERNS = [
     fix: 'Drop the latency number, or link it to a measurement on the same line or the line before (https://iris-eval.com/proof, docs/proof.md or proof/results.json). "In-process, no provider call" is a true sentence; "~5-50ms" is a number nobody measured.',
   },
   /*
-   * The hosted tier that is not being built. Four tool descriptions said
+   * The hosted tier that does not exist. Four tool descriptions said
    * "Tenant-scoped in Cloud tier" / "Postgres in Cloud tier" to every agent
-   * that listed the tools, while the roadmap says hosted features are
-   * "under consideration, not under construction". Value-free; dated
+   * that listed the tools, and the site showed three planned tiers behind a
+   * waitlist, while nothing hosted was being built. Value-free; dated
    * artifacts keep their period voice; code comments are engineering notes.
    */
   {
@@ -223,14 +223,14 @@ const PATTERNS = [
   },
   {
     name: 'retired-cloud-tier',
-    re: /\bCloud\s+tier\b/gi,
-    // The agent-facing and documentation surfaces. The website's legal pages
-    // (terms, privacy) describe a waitlist in their own register and are a
-    // separately owned surface, not a product claim this scanner adjudicates.
-    onlyPrefixes: ['src/', 'docs/', 'README.md', 'server.json', 'skills/', 'claude-plugin/', '.claude-plugin/', 'packages/'],
-    skipPrefixes: ['docs/blog/', 'docs/launch/'],
+    re: /\b(?:Cloud|hosted)\s+tiers?\b/gi,
+    // The agent-facing and documentation surfaces, and the site. The
+    // compare pages quote other vendors' tiers, and the rendered release
+    // notes keep what each release said at the time.
+    onlyPrefixes: ['src/', 'docs/', 'README.md', 'server.json', 'skills/', 'claude-plugin/', '.claude-plugin/', 'packages/', 'website/src/'],
+    skipPrefixes: ['docs/blog/', 'docs/launch/', 'website/src/lib/compare/', 'website/src/lib/changelog.generated.json'],
     skipComments: true,
-    fix: 'No hosted tier exists or is under construction (https://iris-eval.com/#roadmap). Describe what the local server does; delete the tier.',
+    fix: 'There is no hosted version of Iris (https://iris-eval.com/pricing). Describe what the local server does; delete the tier.',
   },
   /*
    * Era stamps inside the MCP tool descriptions. "v0.4 adds an llm_as_judge

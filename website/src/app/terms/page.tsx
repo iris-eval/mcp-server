@@ -113,15 +113,6 @@ export default function Terms(): React.ReactElement {
             </ul>
           </section>
 
-          <section>
-            <h2 className="mb-3 font-display text-xl font-bold text-text-primary">Cloud tier (future)</h2>
-            <p>
-              When the Iris cloud tier launches, additional terms will apply to paid services
-              including service level agreements, data processing agreements, and billing terms.
-              These will be published separately and will not retroactively change the terms for
-              the open-source software.
-            </p>
-          </section>
 
           <section>
             <h2 className="mb-3 font-display text-xl font-bold text-text-primary">Changes to these terms</h2>
