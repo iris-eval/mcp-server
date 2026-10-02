@@ -487,7 +487,7 @@ export async function runSelfTest(write: WriteLine = stdoutLine, options: SelfTe
       retention.sweepIntervalHours === 0
         ? 'at startup only'
         : `at startup and every ${retention.sweepIntervalHours} hours`;
-    return `traces and evaluations older than ${retention.days} days are deleted ${cadence} (${where})`;
+    return `traces and evaluations older than ${retention.days} days are deleted ${cadence}, except the pinned baseline run (${where})`;
   }, { independent: true });
 
   /*

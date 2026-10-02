@@ -27,7 +27,8 @@ Two things to know before pointing production traffic at it:
   [api-reference.md → Dashboard API Routes](api-reference.md#dashboard-api-routes)).
 - **Stored text is verbatim.** `input` and `output` land in `iris.db` exactly as sent,
   including anything `no_pii` goes on to flag. Traces and evaluations older than
-  `retention.days` (default 30, `0` disables, in `config.json`) are deleted at startup;
+  `retention.days` (default 30, `0` disables, in `config.json`) are deleted at startup,
+  except those of the pinned baseline run, which are kept until it is unpinned;
   `--purge` removes everything stored and compacts the file. There is no other redaction.
 - **Demo mode refuses ingest.** A server started with `--demo` answers `403` here, so
   demo data never mixes with yours — start the real server (`--dashboard`) to store

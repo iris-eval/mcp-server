@@ -448,6 +448,13 @@ export interface IStorageAdapter {
    */
   deleteEvalResultsOlderThan(tenantId: TenantId, days: number): Promise<number>;
   /**
+   * What the sweep leaves in place though it is older than the window: the
+   * pinned baseline run's traces and evaluations. Null when no run is
+   * pinned or none of it is that old. The sweep reports it, so the window
+   * is never quietly longer than its number says.
+   */
+  keptPastRetention(tenantId: TenantId, days: number): Promise<{ runId: string; traces: number; evaluations: number } | null>;
+  /**
    * Delete EVERY trace, span and eval result for the tenant, then compact
    * the database so the deleted text does not linger in free pages or in
    * the write-ahead log. Returns what was removed. Deployed rules, the
@@ -485,6 +492,13 @@ export interface IStorageAdapter {
   getLabelsForEval(tenantId: TenantId, evalId: string): Promise<VerdictLabel[]>;
   /** Right and wrong counts per rule over every label the tenant has written. */
   labelTallies(tenantId: TenantId): Promise<LabelTallyRow[]>;
+  /**
+   * A string that differs whenever the tenant's labels do: how many there
+   * are and when the newest was written. A process that keeps something
+   * derived from the labels compares it to the one it last saw, so a label
+   * another process wrote is read by this one's next evaluation.
+   */
+  labelsStamp(tenantId: TenantId): Promise<string>;
   /** Per rule, how many of the newest `window` evaluations it ran on and fired on — the fire rate the prior estimate reads. */
   ruleFireStats(tenantId: TenantId, window: number): Promise<RuleFireStat[]>;
   /** Fires over the newest `window` evaluations grouped by (rule, evidence signature), largest group first. */

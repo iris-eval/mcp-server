@@ -18,12 +18,17 @@
  * Audit log stays SHARED across tenants: every entry already carries
  * `tenantId` so readers can scope at query time.
  *
- * The v0.4 cut is single-user local. Concurrent writes from multiple
- * iris-eval instances against the same tenant file are not protected.
- * For now we use atomic write-via-rename so a crashed write doesn't
- * leave a half-file.
+ * Several processes share one file. `install` gives every MCP client its
+ * own server process, and they all point at the same home, so the file is
+ * read by many and written by any of them. Each read first stats the file
+ * and re-reads it when it changed, so a rule deployed through one process
+ * is the next thing every other process sees. Each change is made under a
+ * lock file, on what the file holds at that moment: until this, a process
+ * wrote back the copy it loaded at start, and its next deploy deleted every
+ * rule another process had added since. The write itself is a rename, so a
+ * crashed write leaves the old file whole.
  */
-import { mkdirSync, readFileSync, existsSync, appendFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, existsSync, appendFileSync, statSync, openSync, writeSync, closeSync, unlinkSync } from 'node:fs';
 import { writeAtomic, ensureOwnerOnly, OWNER_ONLY_FILE_MODE } from './utils/write-atomic.js';
 import { irisHome } from './utils/iris-home.js';
 import { join, dirname } from 'node:path';
@@ -301,9 +306,19 @@ export interface CustomRuleStore {
   pathFor(tenantId: TenantId): string;
   auditPath: string;
   /**
-   * Deploys, deletes and toggles made through this store since it was
-   * created (the server's start), or null when there were none. Read by
-   * the verdict surfaces so a verdict says the rules under it moved.
+   * A number that moves whenever this tenant's rules do: a change made
+   * through this store, or one another process made to the file. Asking
+   * re-reads the file when it changed, so a caller that kept something
+   * derived from the rules (the engine's registrations) compares this to
+   * what it last saw and rebuilds only then.
+   */
+  revision(tenantId: TenantId): number;
+  /**
+   * Deploys, deletes and toggles since this store was created (the
+   * server's start), or null when there were none: those made through this
+   * store, and those another process made to the same file, counted when
+   * this one reads them. Read by the verdict surfaces so a verdict says the
+   * rules under it moved.
    */
   changesSinceStart(tenantId: TenantId): RuleChangesSinceStart | null;
   /**
@@ -448,6 +463,88 @@ function loadRulesFromDisk(rulesPath: string): LoadedRules {
   return { rules, quarantined, readable: true };
 }
 
+/** What changes when the file is written, replaced or removed (security/live-key-ring.ts reads its files the same way). Missing is a state of its own. */
+function fileFingerprint(path: string): string {
+  try {
+    const s = statSync(path, { bigint: true });
+    return `${s.mtimeNs}:${s.ctimeNs}:${s.size}:${s.ino}`;
+  } catch {
+    return 'missing';
+  }
+}
+
+/** How many rules differ between two reads of the file: added, removed, switched on or off, or rewritten under the same id. */
+function rulesChangedBetween(before: DeployedCustomRule[], after: DeployedCustomRule[]): number {
+  const face = (r: DeployedCustomRule): string => `${r.enabled ? 1 : 0}:${r.evalType}:${contentOf(r)}`;
+  const was = new Map(before.map((r) => [r.id, face(r)] as const));
+  let n = 0;
+  for (const r of after) {
+    if (was.get(r.id) !== face(r)) n += 1;
+    was.delete(r.id);
+  }
+  return n + was.size;
+}
+
+/*
+ * One writer at a time, across processes. The lock is a file created with
+ * the exclusive flag next to the rules file; whoever creates it holds it
+ * and removes it when done. A change takes a few milliseconds, so a wait
+ * is short, and a lock older than LOCK_STALE_MS belongs to a process that
+ * died holding it and is taken over. The wait is synchronous because the
+ * store is: its callers register the rule with the engine in the same tick.
+ */
+const LOCK_WAIT_MS = 5_000;
+const LOCK_STALE_MS = 30_000;
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function withFileLock<T>(rulesPath: string, change: () => T): T {
+  const lock = `${rulesPath}.lock`;
+  mkdirSync(dirname(lock), { recursive: true });
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  for (;;) {
+    try {
+      const fd = openSync(lock, 'wx', OWNER_ONLY_FILE_MODE);
+      try {
+        writeSync(fd, `${process.pid} ${new Date().toISOString()}\n`);
+      } finally {
+        closeSync(fd);
+      }
+      break;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      // EPERM: Windows, while the holder is deleting the lock it just released.
+      if (code !== 'EEXIST' && code !== 'EPERM') throw err;
+      try {
+        if (Date.now() - statSync(lock).mtimeMs > LOCK_STALE_MS) {
+          unlinkSync(lock);
+          continue;
+        }
+      } catch {
+        continue; // released between the open and the stat
+      }
+      if (Date.now() > deadline) {
+        throw new Error(
+          `The rules file ${rulesPath} is being changed by another Iris process and stayed locked for ${LOCK_WAIT_MS / 1000} seconds (${lock}). ` +
+            'Nothing was changed. Try again; if no other Iris process is running, delete the lock file.',
+        );
+      }
+      sleepSync(15);
+    }
+  }
+  try {
+    return change();
+  } finally {
+    try {
+      unlinkSync(lock);
+    } catch {
+      // Taken over as stale by another process, or already gone.
+    }
+  }
+}
+
 export function createCustomRuleStore(opts?: {
   /**
    * Returns the file path for a tenant's rules. Defaults to
@@ -462,9 +559,13 @@ export function createCustomRuleStore(opts?: {
   const pathFor = opts?.pathFor ?? defaultPathFor;
   const auditPath = opts?.auditPath ?? defaultAuditPath();
 
-  // In-memory cache keyed by tenant. Lazy-loaded on first access per
-  // tenant; subsequent calls hit the cache.
-  const tenantState = new Map<TenantId, LoadedRules>();
+  /*
+   * What each tenant's file held when it was last read, with the file's
+   * fingerprint at that read. Every access stats the file (no read) and
+   * re-reads it when the fingerprint moved, so this is a copy of the file,
+   * never a second source of truth beside it.
+   */
+  const tenantState = new Map<TenantId, LoadedRules & { fingerprint: string; revision: number }>();
 
   /*
    * Rule changes since this store was created. An agent that can deploy
@@ -472,26 +573,51 @@ export function createCustomRuleStore(opts?: {
    * and receive a verdict that reads clean; the audit log records each
    * change, and this count lets every verdict point at it. In memory on
    * purpose: "since the server started" is the window a reader can check
-   * against iris://audit, and it never alters a verdict.
+   * against iris://audit, and it never alters a verdict. A change another
+   * process made is counted when this one reads it, one per rule that
+   * differs.
    */
   let startedAt = new Date().toISOString();
   const changes = new Map<TenantId, { count: number; last: string }>();
-  function recordChange(tenantId: TenantId, at: string): void {
+  function recordChange(tenantId: TenantId, at: string, n = 1): void {
     const prior = changes.get(tenantId);
-    changes.set(tenantId, { count: (prior?.count ?? 0) + 1, last: at });
+    changes.set(tenantId, { count: (prior?.count ?? 0) + n, last: at });
   }
 
-  function state(tenantId: TenantId): LoadedRules {
-    let loaded = tenantState.get(tenantId);
-    if (loaded === undefined) {
-      const path = pathFor(tenantId);
-      loaded = loadRulesFromDisk(path);
+  function state(tenantId: TenantId, reread = false): LoadedRules & { fingerprint: string; revision: number } {
+    const path = pathFor(tenantId);
+    const held = tenantState.get(tenantId);
+    if (held === undefined) {
       // Repair permissions on files created before the owner-only change
       // (and on the audit log, which appendFileSync only modes at creation).
+      // Before the fingerprint: a chmod moves the file's change time.
       ensureOwnerOnly(path, auditPath);
-      tenantState.set(tenantId, loaded);
     }
+    // The fingerprint is taken before the read: a write that lands between
+    // the two leaves a fingerprint older than the content, and the next
+    // access reads again.
+    const fingerprint = fileFingerprint(path);
+    if (!reread && held !== undefined && held.fingerprint === fingerprint) return held;
+    const loaded = { ...loadRulesFromDisk(path), fingerprint, revision: (held?.revision ?? 0) + 1 };
+    if (held !== undefined) {
+      const moved = rulesChangedBetween(held.rules, loaded.rules);
+      if (moved > 0) recordChange(tenantId, new Date().toISOString(), moved);
+    }
+    tenantState.set(tenantId, loaded);
     return loaded;
+  }
+
+  /**
+   * One change to a tenant's rules, made under the lock on what the file
+   * holds now. The file is read again inside the lock whatever its
+   * fingerprint says: two writes in one clock tick can leave a file whose
+   * size, times and inode all match the one this store last read.
+   */
+  function changing<T>(tenantId: TenantId, change: () => T): T {
+    return withFileLock(pathFor(tenantId), () => {
+      state(tenantId, true);
+      return change();
+    });
   }
 
   function load(tenantId: TenantId): DeployedCustomRule[] {
@@ -519,12 +645,19 @@ export function createCustomRuleStore(opts?: {
       rules: [...loaded.rules, ...loaded.quarantined] as DeployedCustomRule[],
     };
     writeAtomic(pathFor(tenantId), JSON.stringify(file, null, 2));
+    // This store's own write: what it holds IS the file, so the next access does not read it back.
+    loaded.fingerprint = fileFingerprint(pathFor(tenantId));
+    loaded.revision += 1;
   }
 
   return {
     auditPath,
     pathFor,
+    revision(tenantId: TenantId): number {
+      return state(tenantId).revision;
+    },
     changesSinceStart(tenantId: TenantId): RuleChangesSinceStart | null {
+      state(tenantId); // counts what another process changed since the last read
       const c = changes.get(tenantId);
       return c ? { count: c.count, last_change_at: c.last, since: startedAt, audit: 'iris://audit' } : null;
     },
@@ -562,57 +695,61 @@ export function createCustomRuleStore(opts?: {
       };
       // Validate before persisting.
       const validated = DeployedRuleSchema.parse(rule);
-      const rules = load(tenantId);
-      // Recorded first, with what the rule IS: a deploy that cannot be recorded is not made.
-      appendAudit(auditPath, {
-        ts: now,
-        tenantId,
-        action: 'rule.deploy',
-        user: input.user ?? 'local',
-        ruleId: id,
-        ruleName: rule.name,
-        details: {
-          severity: rule.severity,
-          contentSha256: contentOf(validated),
-          ...(input.sourceMomentId ? { sourceMomentId: input.sourceMomentId } : {}),
-          ...(input.replaces?.length ? { replaces: input.replaces } : {}),
-        },
+      return changing(tenantId, () => {
+        const rules = load(tenantId);
+        // Recorded first, with what the rule IS: a deploy that cannot be recorded is not made.
+        appendAudit(auditPath, {
+          ts: now,
+          tenantId,
+          action: 'rule.deploy',
+          user: input.user ?? 'local',
+          ruleId: id,
+          ruleName: rule.name,
+          details: {
+            severity: rule.severity,
+            contentSha256: contentOf(validated),
+            ...(input.sourceMomentId ? { sourceMomentId: input.sourceMomentId } : {}),
+            ...(input.replaces?.length ? { replaces: input.replaces } : {}),
+          },
+        });
+        rules.push(validated);
+        try {
+          persist(tenantId);
+        } catch (err) {
+          rules.pop();
+          throw err;
+        }
+        recordChange(tenantId, now);
+        return validated;
       });
-      rules.push(validated);
-      try {
-        persist(tenantId);
-      } catch (err) {
-        rules.pop();
-        throw err;
-      }
-      recordChange(tenantId, now);
-      return validated;
     },
     delete(tenantId: TenantId, id: string, user = 'local'): boolean {
-      const rules = load(tenantId);
-      const idx = rules.findIndex((r) => r.id === id);
-      if (idx === -1) return false;
-      const removed = rules[idx];
-      const at = new Date().toISOString();
-      // Recorded first, with the hash of what is being removed, so the entry still says what the rule was once it is gone.
-      appendAudit(auditPath, {
-        ts: at,
-        tenantId,
-        action: 'rule.delete',
-        user,
-        ruleId: id,
-        ruleName: removed.name,
-        details: { severity: removed.severity, contentSha256: contentOf(removed) },
+      return changing(tenantId, () => {
+        const rules = load(tenantId);
+        const idx = rules.findIndex((r) => r.id === id);
+        if (idx === -1) return false;
+        const removed = rules[idx];
+        const at = new Date().toISOString();
+        // Recorded first, with the hash of what is being removed, so the entry still says what the rule was once it is gone.
+        appendAudit(auditPath, {
+          ts: at,
+          tenantId,
+          action: 'rule.delete',
+          user,
+          ruleId: id,
+          ruleName: removed.name,
+          details: { severity: removed.severity, contentSha256: contentOf(removed) },
+        });
+        rules.splice(idx, 1);
+        try {
+          persist(tenantId);
+        } catch (err) {
+          rules.splice(idx, 0, removed);
+          throw err;
+        }
+        recordChange(tenantId, at);
+        return true;
       });
-      rules.splice(idx, 1);
-      try {
-        persist(tenantId);
-      } catch (err) {
-        rules.splice(idx, 0, removed);
-        throw err;
-      }
-      recordChange(tenantId, at);
-      return true;
     },
     setEnabled(
       tenantId: TenantId,
@@ -620,32 +757,34 @@ export function createCustomRuleStore(opts?: {
       enabled: boolean,
       user = 'local',
     ): DeployedCustomRule | undefined {
-      const rules = load(tenantId);
-      const rule = rules.find((r) => r.id === id);
-      if (!rule) return undefined;
-      if (rule.enabled === enabled) return rule;
-      const at = new Date().toISOString();
-      appendAudit(auditPath, {
-        ts: at,
-        tenantId,
-        action: 'rule.toggle',
-        user,
-        ruleId: id,
-        ruleName: rule.name,
-        details: { enabled, severity: rule.severity, contentSha256: contentOf(rule) },
+      return changing(tenantId, () => {
+        const rules = load(tenantId);
+        const rule = rules.find((r) => r.id === id);
+        if (!rule) return undefined;
+        if (rule.enabled === enabled) return rule;
+        const at = new Date().toISOString();
+        appendAudit(auditPath, {
+          ts: at,
+          tenantId,
+          action: 'rule.toggle',
+          user,
+          ruleId: id,
+          ruleName: rule.name,
+          details: { enabled, severity: rule.severity, contentSha256: contentOf(rule) },
+        });
+        const was = { enabled: rule.enabled, updatedAt: rule.updatedAt };
+        rule.enabled = enabled;
+        rule.updatedAt = at;
+        try {
+          persist(tenantId);
+        } catch (err) {
+          rule.enabled = was.enabled;
+          rule.updatedAt = was.updatedAt;
+          throw err;
+        }
+        recordChange(tenantId, at);
+        return rule;
       });
-      const was = { enabled: rule.enabled, updatedAt: rule.updatedAt };
-      rule.enabled = enabled;
-      rule.updatedAt = at;
-      try {
-        persist(tenantId);
-      } catch (err) {
-        rule.enabled = was.enabled;
-        rule.updatedAt = was.updatedAt;
-        throw err;
-      }
-      recordChange(tenantId, at);
-      return rule;
     },
   };
 }

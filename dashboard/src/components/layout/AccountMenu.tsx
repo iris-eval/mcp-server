@@ -250,7 +250,7 @@ export function AccountMenu({ serverVersion = null, retention = null }: AccountM
             {retention && (
               <span
                 data-retention-days={retention.days}
-                title={`Traces older than ${retention.days} days are deleted; the sweep runs every ${retention.sweepIntervalHours} hours.`}
+                title={`Traces older than ${retention.days} days are deleted, except the pinned baseline run; the sweep runs every ${retention.sweepIntervalHours} hours.`}
               >
                 keeps {retention.days} days
               </span>

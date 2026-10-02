@@ -3,6 +3,7 @@ import type { Server } from 'node:http';
 import helmet from 'helmet';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import type { IrisConfig } from '../types/config.js';
 import type { Logger } from '../utils/logger.js';
 import { createAuthMiddleware } from '../middleware/auth.js';
@@ -15,20 +16,65 @@ import { buildHealth, type HealthDeps } from '../health.js';
 import { requestSizeLimitBytes } from '../utils/size-limit.js';
 
 export interface HttpTransportResult {
-  transport: StreamableHTTPServerTransport;
   httpServer: Server;
+  /** How many MCP sessions are open now. */
+  sessionCount: () => number;
+  /** End every session (their event streams close), for shutdown. */
+  closeSessions: () => Promise<void>;
 }
+
+/**
+ * One MCP server for one session. A function is called once per session, so
+ * any number of clients connect; a single instance can speak to one client
+ * at a time, and is handed to the next once the first is gone.
+ */
+export type McpServerSource = McpServer | (() => McpServer | Promise<McpServer>);
+
+/*
+ * Sessions.
+ *
+ * One `StreamableHTTPServerTransport` is one session, and an MCP server
+ * speaks through one transport. This endpoint used to create a single
+ * transport for the life of the process: the first client to `initialize`
+ * owned it, a second got `400 Server already initialized`, and once the
+ * first ended its session every later client got `404 Session not found`
+ * until the server was restarted. Each `initialize` now gets a transport
+ * and an MCP server of its own, over the same engine and store.
+ *
+ * Clients often leave without `DELETE /mcp`, so sessions are bounded
+ * rather than trusted to end: at MAX_SESSIONS a new client takes the place
+ * of the session used least recently, provided that session has no event
+ * stream open (a connected client keeps one) and has been quiet for
+ * SESSION_IDLE_MS; when every session is in use the new client is told so
+ * (503, Retry-After) and nothing is dropped. A client
+ * whose session was given away gets `404 Session not found`, which the
+ * protocol answers by initializing again.
+ */
+const MAX_SESSIONS = 256;
+const SESSION_IDLE_MS = 60_000;
+
+interface Session {
+  transport: StreamableHTTPServerTransport;
+  server: McpServer;
+  lastSeen: number;
+  /** Event streams this session holds open (GET /mcp). */
+  streams: number;
+}
+
+const jsonRpcError = (code: number, message: string) => ({ jsonrpc: '2.0', error: { code, message }, id: null });
 
 /** What `/health` on this port reports on; the version comes from `config.server`. */
 export type HttpTransportHealthDeps = Omit<HealthDeps, 'version'>;
 
 export async function createHttpTransport(
-  mcpServer: McpServer,
+  mcpServer: McpServerSource,
   config: IrisConfig,
   logger: Logger,
   health: HttpTransportHealthDeps = {},
   /** The server's live key ring (security/live-key-ring.ts), shared with the dashboard; built from the config when absent. */
   keyRing?: KeyRing,
+  /** The session bounds, for a test that needs to reach them with a handful of clients. */
+  limits: { maxSessions?: number; sessionIdleMs?: number } = {},
 ): Promise<HttpTransportResult> {
   /*
    * Refuse, don't warn: a bind beyond loopback with no API key is
@@ -189,30 +235,118 @@ export async function createHttpTransport(
     ? [`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`]
     : undefined;
 
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => crypto.randomUUID(),
-    enableDnsRebindingProtection: true,
-    allowedOrigins,
-    ...(allowedHosts ? { allowedHosts } : {}),
-  });
+  const sessions = new Map<string, Session>();
+  const single = typeof mcpServer === 'function' ? null : mcpServer;
+  const maxSessions = single ? 1 : (limits.maxSessions ?? MAX_SESSIONS);
+  const idleMs = limits.sessionIdleMs ?? SESSION_IDLE_MS;
+  const serverFor = async (): Promise<McpServer> => (typeof mcpServer === 'function' ? mcpServer() : mcpServer);
+
+  const end = async (id: string): Promise<void> => {
+    const session = sessions.get(id);
+    if (!session) return;
+    sessions.delete(id);
+    // Closing the server closes its transport, which ends the session's streams.
+    await session.server.close().catch(() => undefined);
+  };
+
+  /** Room for one more session: true when there is, after giving away the least recently used idle one if it had to. */
+  const makeRoom = async (): Promise<boolean> => {
+    if (sessions.size < maxSessions) return true;
+    const now = Date.now();
+    let idle: [string, Session] | undefined;
+    for (const entry of sessions) {
+      const [, s] = entry;
+      if (s.streams > 0 || now - s.lastSeen < idleMs) continue;
+      if (!idle || s.lastSeen < idle[1].lastSeen) idle = entry;
+    }
+    if (!idle) return false;
+    await end(idle[0]);
+    return true;
+  };
+
+  /** The session a request names, or the answer that says why there is none. Null when it answered. */
+  const sessionOf = (req: express.Request, res: express.Response): Session | null => {
+    const id = req.headers['mcp-session-id'];
+    const session = typeof id === 'string' ? sessions.get(id) : undefined;
+    if (session) {
+      session.lastSeen = Date.now();
+      return session;
+    }
+    if (typeof id === 'string') res.status(404).json(jsonRpcError(-32001, 'Session not found. It ended or the server restarted: send initialize again, without the session id.'));
+    else res.status(400).json(jsonRpcError(-32000, 'Bad Request: no Mcp-Session-Id header. Send initialize first and repeat the id it returns.'));
+    return null;
+  };
 
   // Rate limiter for MCP POST/DELETE (not GET — SSE streaming)
   const mcpLimiter = createMcpRateLimiter(config);
 
   app.post('/mcp', mcpLimiter, async (req, res) => {
-    await transport.handleRequest(req, res, req.body);
+    if (req.headers['mcp-session-id'] === undefined && isInitializeRequest(req.body)) {
+      if (!(await makeRoom())) {
+        res
+          .status(503)
+          .set('Retry-After', String(Math.max(1, Math.ceil(idleMs / 1000))))
+          .json(
+            jsonRpcError(
+              -32000,
+              single
+                ? 'This server speaks to one MCP client at a time and that client is connected. Try again when it has ended its session (DELETE /mcp) or gone quiet.'
+                : `This server has ${maxSessions} MCP sessions open and every one is in use. Try again shortly, or end a session (DELETE /mcp).`,
+            ),
+          );
+        return;
+      }
+      const server = await serverFor();
+      const session: Session = {
+        server,
+        lastSeen: Date.now(),
+        streams: 0,
+        transport: new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => crypto.randomUUID(),
+          enableDnsRebindingProtection: true,
+          allowedOrigins,
+          ...(allowedHosts ? { allowedHosts } : {}),
+          onsessioninitialized: (id) => {
+            sessions.set(id, session);
+          },
+          // The client ended it (DELETE /mcp).
+          onsessionclosed: (id) => end(id),
+        }),
+      };
+      await server.connect(session.transport);
+      await session.transport.handleRequest(req, res, req.body);
+      // An initialize the transport refused (a rejected Origin, a malformed body) opened no session: let the pair go.
+      if (session.transport.sessionId === undefined || !sessions.has(session.transport.sessionId)) await server.close().catch(() => undefined);
+      return;
+    }
+    const session = sessionOf(req, res);
+    if (session) await session.transport.handleRequest(req, res, req.body);
   });
 
   app.get('/mcp', async (req, res) => {
-    await transport.handleRequest(req, res);
+    const session = sessionOf(req, res);
+    if (!session) return;
+    session.streams += 1;
+    res.on('close', () => {
+      session.streams -= 1;
+      session.lastSeen = Date.now();
+    });
+    await session.transport.handleRequest(req, res);
   });
 
   app.delete('/mcp', mcpLimiter, async (req, res) => {
-    await transport.handleRequest(req, res);
+    const session = sessionOf(req, res);
+    if (session) await session.transport.handleRequest(req, res);
   });
 
   // Error handler (must be last)
   app.use(createErrorHandler(logger));
 
-  return { transport, httpServer };
+  return {
+    httpServer,
+    sessionCount: () => sessions.size,
+    closeSessions: async () => {
+      await Promise.all([...sessions.keys()].map((id) => end(id)));
+    },
+  };
 }

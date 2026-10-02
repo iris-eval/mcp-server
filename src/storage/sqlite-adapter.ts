@@ -252,6 +252,14 @@ const ERASE_RETRY_MS = 20;
 /** How long a delete waits for its erasure on the checkpoint worker, off the event loop, before it leaves it to the retry (eraseFromFile). */
 const ERASE_WAIT_MS = 250;
 
+/**
+ * SQL for "this row's run is not the tenant's pinned baseline": the
+ * retention sweep keeps that run. Binds one parameter, the tenant id. A row
+ * with no run is never the baseline. `runExpr` names its table: a bare
+ * `run_id` inside the subquery would be the runs table's own.
+ */
+const NOT_THE_BASELINE_RUN = (runExpr: string): string => `NOT EXISTS (SELECT 1 FROM runs b WHERE b.tenant_id = ? AND b.baseline = 1 AND b.run_id = ${runExpr})`;
+
 /** The retention sweep's step, in traces: from one, because erasing one trace row by row can take 120 ms by itself. */
 const SWEEP_BATCH = 1;
 const SWEEP_BATCH_RANGE = [1, 1024] as const;
@@ -2919,6 +2927,7 @@ export class SqliteAdapter implements IStorageAdapter {
         .run(label.id, tenantId, label.evalId, label.ruleName, label.label, label.note, labelledAt);
     });
     write();
+    this.labelStamp = undefined;
     return { id: label.id, evalId: label.evalId, ruleName: label.ruleName, label: label.label, note: label.note, labelledAt };
   }
 
@@ -2942,6 +2951,26 @@ export class SqliteAdapter implements IStorageAdapter {
       )
       .all(tenantId) as Array<{ rule_name: string; right: number; wrong: number }>;
     return rows.map((r) => ({ ruleName: r.rule_name, right: Number(r.right), wrong: Number(r.wrong) }));
+  }
+
+  /*
+   * `PRAGMA data_version` moves when another connection commits to the
+   * database and stays put for this connection's own writes, so it answers
+   * "did someone else write?" for the price of reading one counter. The
+   * stamp is computed again only then, and after this connection's own
+   * label write.
+   */
+  private labelStamp: { tenantId: TenantId; version: number; stamp: string } | undefined;
+
+  async labelsStamp(tenantId: TenantId): Promise<string> {
+    assertTenant(tenantId);
+    const version = Number((this.db.prepare('PRAGMA data_version').get() as { data_version: number | bigint }).data_version);
+    const held = this.labelStamp;
+    if (held !== undefined && held.tenantId === tenantId && held.version === version) return held.stamp;
+    const row = this.db.prepare('SELECT COUNT(*) AS n, MAX(labelled_at) AS newest FROM verdict_labels WHERE tenant_id = ?').get(tenantId) as { n: number | bigint; newest: string | null };
+    const stamp = `${Number(row.n)}:${row.newest ?? ''}`;
+    this.labelStamp = { tenantId, version, stamp };
+    return stamp;
   }
 
   /** The newest `window` evaluations' rule results, each with its id, time and agent — the one scan the fire rate and the issues share. */
@@ -3153,6 +3182,13 @@ export class SqliteAdapter implements IStorageAdapter {
    * how each step erases the index). Resumable: a closing server stops it at
    * its next step, and the next sweep deletes what is still past the window.
    * Resolves when the swept traces are erased from the index too.
+   *
+   * The pinned baseline run is kept. A baseline is the `before` every later
+   * run is compared against, pinned on purpose, and the sweep used to delete
+   * it like any other trace: a run pinned 31 days ago compared against
+   * nothing. Each step reads which run is pinned inside its own
+   * transaction, so a pin made while a sweep runs is honoured from the next
+   * step. Unpinning the run, `delete_trace` and `--purge` still remove it.
    */
   async deleteTracesOlderThan(tenantId: TenantId, days: number): Promise<number> {
     assertTenant(tenantId);
@@ -3167,15 +3203,25 @@ export class SqliteAdapter implements IStorageAdapter {
     const indexing = this.indexKept;
     const mode = indexing
       ? sweepEraseMode(
-          Number((this.db.prepare(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE} d JOIN traces t ON t.trace_id = d.trace_id WHERE t.tenant_id = ? AND t.timestamp < ?`).get(tid, cut) as { n: number }).n),
+          Number((this.db.prepare(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE} d JOIN traces t ON t.trace_id = d.trace_id WHERE t.tenant_id = ? AND t.timestamp < ? AND ${NOT_THE_BASELINE_RUN('t.run_id')}`).get(tid, cut, tid) as { n: number }).n),
           Number((this.db.prepare(`SELECT COUNT(*) AS n FROM ${SEARCH_DOCS_TABLE}`).get() as { n: number }).n),
         )
       : 'rows';
-    const pick = this.db.prepare('SELECT rowid AS r, trace_id FROM traces WHERE tenant_id = ? AND timestamp < ? LIMIT ?');
+    /*
+     * Oldest first, from where the last step stopped. Without the cursor
+     * every step would walk past the kept baseline traces again before it
+     * found one to delete. `>=` because a step can stop inside a group of
+     * traces that share one timestamp.
+     */
+    const pick = this.db.prepare(
+      `SELECT rowid AS r, trace_id, timestamp FROM traces WHERE tenant_id = ? AND timestamp >= ? AND timestamp < ? AND ${NOT_THE_BASELINE_RUN('traces.run_id')} ORDER BY timestamp LIMIT ?`,
+    );
     const remove = this.db.prepare('DELETE FROM traces WHERE rowid IN (SELECT value FROM json_each(?))');
+    let from = '';
     const step = this.db.transaction((max: number): number => {
-      const rows = pick.all(tid, cut, max) as Array<{ r: number; trace_id: string }>;
+      const rows = pick.all(tid, from, cut, tid, max) as Array<{ r: number; trace_id: string; timestamp: string }>;
       if (rows.length === 0) return 0;
+      from = String(rows[rows.length - 1].timestamp);
       // Same erasure as deleteTrace: an evaluation younger than the window
       // whose trace is swept keeps its verdict and loses its text.
       this.eraseEvaluationsOfTraces(tid, rows.map((r) => r.trace_id));
@@ -3212,19 +3258,58 @@ export class SqliteAdapter implements IStorageAdapter {
      * Rows are ISO-8601 here (write path + migration 005), so the string
      * comparison against an ISO cutoff is exact.
      */
-    const remove = this.db.prepare('DELETE FROM eval_results WHERE rowid IN (SELECT rowid FROM eval_results WHERE tenant_id = ? AND created_at < ? LIMIT ?)');
+    /*
+     * The pinned baseline run's evaluations are kept with its traces. The
+     * run of an evaluation is its own run_id when set and its trace's
+     * otherwise (listRuns says why), so both are read.
+     */
+    const pick = this.db.prepare(
+      `SELECT e.rowid AS r, e.created_at AS c FROM eval_results e
+        WHERE e.tenant_id = ? AND e.created_at >= ? AND e.created_at < ?
+          AND ${NOT_THE_BASELINE_RUN('COALESCE(e.run_id, (SELECT t.run_id FROM traces t WHERE t.tenant_id = e.tenant_id AND t.trace_id = e.trace_id))')}
+        ORDER BY e.created_at LIMIT ?`,
+    );
+    const remove = this.db.prepare('DELETE FROM eval_results WHERE rowid IN (SELECT value FROM json_each(?))');
+    // Oldest first, from where the last step stopped (sweepTraces says why).
+    let from = '';
+    const step = this.db.transaction((max: number): number => {
+      const rows = pick.all(tid, from, cut, tid, max) as Array<{ r: number; c: string }>;
+      if (rows.length === 0) return 0;
+      from = String(rows[rows.length - 1].c);
+      return remove.run(JSON.stringify(rows.map((r) => Number(r.r)))).changes;
+    });
     let deleted = 0;
     let batch = EVAL_SWEEP_BATCH;
     while (!this.closing) {
       await this.beforeWriteStep();
       const started = performance.now();
-      const n = remove.run(tid, cut, batch).changes;
+      const n = step.immediate(batch);
       if (n === 0) break;
       deleted += n;
       batch = nextStepSize(batch, performance.now() - started, EVAL_SWEEP_BATCH_RANGE);
       await yieldToRequests();
     }
     return deleted;
+  }
+
+  async keptPastRetention(tenantId: TenantId, days: number): Promise<{ runId: string; traces: number; evaluations: number } | null> {
+    assertTenant(tenantId);
+    const runId = await this.getBaselineRun(tenantId);
+    if (runId === null) return null;
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const traces = Number((this.db.prepare('SELECT COUNT(*) AS n FROM traces WHERE tenant_id = ? AND timestamp < ? AND run_id = ?').get(tenantId, cutoff, runId) as { n: number }).n);
+    const evaluations = Number(
+      (
+        this.db
+          .prepare(
+            `SELECT COUNT(*) AS n FROM eval_results e
+              WHERE e.tenant_id = ? AND e.created_at < ?
+                AND COALESCE(e.run_id, (SELECT t.run_id FROM traces t WHERE t.tenant_id = e.tenant_id AND t.trace_id = e.trace_id)) = ?`,
+          )
+          .get(tenantId, cutoff, runId) as { n: number }
+      ).n,
+    );
+    return traces + evaluations > 0 ? { runId, traces, evaluations } : null;
   }
 
   async purge(tenantId: TenantId): Promise<{ traces: number; evalResults: number }> {
