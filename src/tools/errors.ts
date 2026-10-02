@@ -179,6 +179,13 @@ export function toIrisError(err: unknown): IrisError {
     });
   }
 
+  if (name === 'AuditWriteError') {
+    // The audit log could not be written, so the change it would have recorded was not made (custom-rule-store.ts).
+    return irisError('IRIS_STORAGE_ERROR', message, {
+      recovery: ['Nothing was changed. Make the audit log writable (the Iris home exists, is yours, and has free space), then retry.'],
+    });
+  }
+
   if (isSqliteError(err)) {
     const code = (err as { code?: string }).code ?? '';
     return irisError('IRIS_STORAGE_ERROR', `Iris storage failed: ${message}`, {

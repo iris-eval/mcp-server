@@ -13,6 +13,8 @@ import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput, strictNested } from './strict-input.js';
 import { toolCallSchema, toolDescriptorSchema } from './log-trace.js';
 import { getTraceOrThrow, insertLinkedEvalResult } from './trace-link.js';
+import { differsFromRecord } from '../eval/of-record.js';
+import { irisError } from './errors.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { advertisedOutput, NESTED_SHAPES_NOTE } from './advertise.js';
 import { evaluationLinks, guarded, respond } from './respond.js';
@@ -44,7 +46,7 @@ const CustomRuleSchema = strictNested(
 );
 
 const inputSchema = {
-  output: z.string().describe('The output text to evaluate (the agent\'s response that gets scored against rules)'),
+  output: z.string().optional().describe('The output text to evaluate (the agent\'s response that gets scored against rules). Omit it with trace_id to score the trace\'s stored output'),
   // .optional() rather than .default('all') so the handler can tell "caller
   // chose all" apart from "caller never chose" — the second case gets a
   // note in the response saying the default ran every bundle. The effective
@@ -63,7 +65,7 @@ const inputSchema = {
   ).optional().describe('What the agent was expected to DO: tool_calls with mode and args (tool_sequence); step_budget and tolerance (step_budget)'),
   expected: z.string().optional().describe('Expected output for comparison — consulted only by the completeness bundle\'s expected_coverage rule; NOT used by relevance (the relevance rules compare the output against `input`)'),
   input: z.string().optional().describe('The ask and any source material given — REQUIRED when eval_type="relevance"; also grounds the hallucination signals'),
-  trace_id: z.string().optional().describe('Link evaluation to a trace — surfaces this eval in the dashboard\'s trace drill-through and lets the tool reuse the trace\'s stored tool_calls. Must be the id of a stored trace (from log_trace / get_traces); an unknown id is rejected before anything is evaluated'),
+  trace_id: z.string().optional().describe('A stored trace (from log_trace / get_traces). Alone, it scores the trace as stored and the result is the trace\'s verdict. With output, input, tool_calls, tools, cost_usd or token_usage that differ from the record, or one eval_type, the result is kept beside the trace (reference_trace_id) and never replaces its verdict. An unknown id is rejected before anything is evaluated'),
   // .max(10): inline rules skip the deploy-time probe, and the engine runs
   // rules synchronously — without a cap, one request carrying N sandbox-
   // defeating regex rules stalls the server linearly in N (measured 9.3s at
@@ -102,16 +104,16 @@ export function registerEvaluateOutputTool(
       title: 'Evaluate Output',
       description: describeTool({
         summary:
-          'Score an agent output with the deterministic rules: a ship verdict with its basis, per-rule evidence, and what was not judged.',
+          'Score an output with deterministic rules: a ship verdict with its basis, per-rule evidence, what was unjudged.',
         does:
-          'Local by default. eval_type picks a bundle or all (the default). A rule missing its input SKIPS, never passes: input is REQUIRED when eval_type="relevance"; tool_calls and tools (or a trace_id), cost_usd and expected feed the rest.',
+          'eval_type picks a bundle or all (the default). A rule missing its input SKIPS, never passes: input is REQUIRED when eval_type="relevance"; tool_calls, tools, cost_usd, expected feed the rest. trace_id alone scores the stored trace.',
         whenNot:
           'For semantic judgment (evaluate_with_llm_judge). As an input firewall: the rules read the output.',
         returns: evaluateOutputResponseSchema,
         errors:
           'IRIS_UNKNOWN_TRACE (nothing written); IRIS_STORAGE_ERROR. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
-          log_trace: 'record the execution first',
+          log_trace: 'record the run first',
           list_rules: 'what each rule needs',
         },
       }),
@@ -157,6 +159,30 @@ export function registerEvaluateOutputTool(
       if (callContext && args.trace_id && trace && storedTraceContext(trace.metadata) === undefined) {
         await storage.updateTraceMetadata(LOCAL_TENANT, args.trace_id, { trace_context: callContext });
       }
+      /*
+       * The text: the caller's, or the trace's own. `output` used to be
+       * required, so "re-score the trace with its trace_id" (which four
+       * surfaces told a reader to do) was a call that failed validation.
+       */
+      const output = args.output ?? trace?.output ?? undefined;
+      if (output === undefined || output === '') {
+        throw irisError(
+          'IRIS_INVALID_ARGUMENT',
+          trace
+            ? `trace_id "${args.trace_id}" recorded no output, so there is nothing stored to score. Nothing was evaluated or written.`
+            : 'evaluate_output needs output, or a trace_id whose trace recorded one. Nothing was evaluated or written.',
+          { field: 'output', recovery: ['Pass output.', 'Or pass the trace_id of a trace logged with its output.'] },
+        );
+      }
+      /*
+       * Whose evaluation this is (eval/of-record.ts). A call that names a
+       * trace and passes nothing that differs from it scores the RECORD, and
+       * its result is the trace's verdict. Any difference (other text, other
+       * evidence, one bundle) makes it the caller's: stored beside the
+       * trace, never as its verdict, with a sentence saying so.
+       */
+      const beside = trace ? differsFromRecord(args, trace) : [];
+      const ofRecord = trace !== undefined && beside.length === 0;
       const toolCalls = args.tool_calls ?? trace?.tool_calls;
       const tools = args.tools ?? trace?.tools;
       /*
@@ -179,10 +205,11 @@ export function registerEvaluateOutputTool(
       const evalTypeOmitted = args.eval_type === undefined;
       const evalType = args.eval_type ?? DEFAULT_EVAL_TYPE;
       const context = {
-        output: args.output,
+        output,
         expected: args.expected,
         expectedTrajectory: args.expected_trajectory as ExpectedTrajectory | undefined,
-        input: args.input,
+        // The record's own ask when the call scores the record, as the ingest path reads it (eval/ingest.ts).
+        input: args.input ?? (ofRecord ? trace.input : undefined),
         // The caller's cost wins; with none, the linked trace's (reported or
         // estimated at ingest), as tool_calls and tools fall back above.
         ...cost,
@@ -192,7 +219,7 @@ export function registerEvaluateOutputTool(
           trace !== undefined && cost.costUsd !== undefined
             ? await costHistoryFor(storage, LOCAL_TENANT, { ...trace, cost_usd: cost.costUsd })
             : undefined,
-        tokenUsage: args.token_usage,
+        tokenUsage: args.token_usage ?? (ofRecord ? trace.token_usage : undefined),
         toolCalls,
         spans,
         tools,
@@ -207,7 +234,12 @@ export function registerEvaluateOutputTool(
           : await evalEngine.evaluate(evalType as EvalType, context, customRules);
 
       if (args.trace_id) {
-        result.trace_id = args.trace_id;
+        if (ofRecord) {
+          result.trace_id = args.trace_id;
+        } else {
+          result.reference_trace_id = args.trace_id;
+          if (result.provenance) result.provenance = { ...result.provenance, beside };
+        }
       }
 
       // OSS single-tenant: MCP tool callers are the local user. Cloud
@@ -220,7 +252,7 @@ export function registerEvaluateOutputTool(
       // reader at once.
       return respond(
         evaluateOutputResponseSchema,
-        toEvaluationResponse(result, { traceId: args.trace_id, dormant: options?.dormant?.(), rulesChanged: options?.rulesChanged?.(), ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}) }),
+        toEvaluationResponse(result, { traceId: ofRecord ? args.trace_id : undefined, dormant: options?.dormant?.(), rulesChanged: options?.rulesChanged?.(), ...(evalTypeOmitted ? { note: DEFAULT_EVAL_TYPE_NOTE } : {}) }),
         evaluationLinks(result.id, args.trace_id),
       );
     }),

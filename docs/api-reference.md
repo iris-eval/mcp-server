@@ -202,12 +202,12 @@ Evaluate agent output quality using configurable rules. Runs a set of built-in o
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `output` | `string` | Yes | -- | The output text to evaluate |
+| `output` | `string` | No, with `trace_id` | -- | The output text to evaluate. Omit it with `trace_id` to score the trace's stored output |
 | `eval_type` | `enum` | No | `"all"` | One of: `completeness`, `relevance`, `safety`, `cost`, `custom`, `all` (every bundle in one pass, with a per-category breakdown). Omitted → every bundle runs and the response carries a `note` saying the default ran |
 | `expected` | `string` | No | -- | Expected output for comparison (used by completeness rules) |
 | `expected_trajectory` | `object` | No | -- | What the agent was expected to DO: `tool_calls` `[{ tool_name, input? }]` with `mode` (`strict` \| `unordered` \| `subset` \| `superset` \| `ordered_subset`, default `ordered_subset`) and `args` (`exact` \| `subset`, default `subset`) for `tool_sequence`; `step_budget` and `tolerance` (default 1.5) for `step_budget`. Both rules skip without it |
 | `input` | `string` | No | -- | Original input for context (used by relevance rules) |
-| `trace_id` | `string` | No | -- | Link this evaluation to an existing trace |
+| `trace_id` | `string` | No | -- | A stored trace. Alone, the call scores the trace as stored and the result is the trace's verdict; with anything that differs from the record, the result is kept beside the trace ([below](#a-trace-has-one-verdict-and-a-caller-cannot-replace-it)) |
 | `custom_rules` | `CustomRule[]` | No | -- | Custom evaluation rules (required when `eval_type` is `custom`) |
 | `cost_usd` | `number` | No | -- | Cost in USD (used by cost rules) |
 | `token_usage` | `TokenUsage` | No | -- | Token usage breakdown (used by cost rules) |
@@ -250,6 +250,14 @@ Every rule result carries `role` — what the composer did with it here: `gate` 
 **Critical rules hard-fail.** `score` is a quality gradient; `passed` is the verdict. A failing (non-skipped) critical rule forces `passed: false` regardless of the weighted score, and the response lists the culprits in `critical_failures`. The critical rules are `no_pii`, `no_injection_patterns`, and `no_blocklist_words`, plus any deployed custom rule with severity `high` or `critical` — a leaked SSN cannot be averaged away by the other rules passing.
 
 The response echoes the `eval_type` that ran. When `eval_type` is omitted, every bundle runs (`eval_type: "all"` — completeness, relevance, safety, cost and any custom rules) and the response carries a `note` saying the default ran; name a bundle to narrow the run. Inside `categories`, a bundle that evaluated no rule (cost without `cost_usd`, relevance without `input`) reports `passed: null` and `score: null` with `insufficient_data: true` — not judged, neither passing nor failing, and not counted toward the overall verdict. The top-level `passed` stays boolean and is `false` when nothing at all was evaluated, so a gate keyed on it fails closed; read `insufficient_data` to tell "failed" from "not judged".
+
+#### A trace has one verdict, and a caller cannot replace it
+
+The verdict of a trace is the server's own scoring of the trace as stored: at ingest (`log_trace` with `evaluate: true`, `POST /api/v1/traces`, `iris-eval ingest`), by `evaluate_runs`, by `POST /api/v1/evaluations/:id/reevaluate`, or by `evaluate_output` called with the `trace_id` and nothing that differs from the record. Such an evaluation carries `trace_id`, and a later one supersedes an earlier one, which is what re-scoring under changed rules is for. Every reader of a trace's verdict takes the newest of these: a run's results, `compare_runs`, `compare_traces`, the score filter on `get_traces`, the `latest_*` export columns.
+
+Anything else linked to a trace is kept **beside** it: `evaluate_output` with `output`, `input`, `tool_calls`, `tools`, `cost_usd` or `token_usage` that differs from what the trace stored, or with one `eval_type`; a trace that recorded no output; and every `evaluate_with_llm_judge` and `verify_citations` row, which answer their own question. The response then carries `reference_trace_id` instead of `trace_id`, `provenance.beside` names what differed, and `interpretations` says so in a sentence. The evaluation is listed with the trace (`iris://traces/{trace_id}`, `GET /api/v1/traces/:id`, the dashboard) and is erased with it, and it is never the trace's verdict.
+
+Before this, every linked evaluation carried `trace_id`, so an agent whose trace failed on a leaked credential could call `evaluate_output` with that `trace_id` and clean text (or the leaking text and `eval_type: "cost"`, or an empty `tool_calls`) and the trace read `pass` in its run, with no flag. Evaluations stored by earlier releases are left as they are: which of them judged the stored record cannot be told from the row.
 
 **Rules that changed while the server ran are named.** When a custom rule was deployed, deleted, enabled or disabled since the server started, the response carries `rules_changed`: `{ count, last_change_at, since, audit: "iris://audit" }` — how many changes, when the last one was, when counting began, and where each change is recorded with who made it. An agent that can deploy or disable rules can shape the rules it is then judged by; this is how a reader of the verdict sees that it might have. It never changes `passed`, `score` or `verdict`, and it is absent when the rules are the ones the server started with (in demo mode, the rules the demo seeds are its starting set). It belongs to the verdict as produced: `log_trace` with `evaluate: true`, `evaluate_runs` and `POST /api/v1/traces` carry it too, and a stored evaluation read back later (`iris://evaluations/{id}`) does not. Changes made by another process against the same rules file are not counted, because this server does not run them until it restarts.
 
@@ -585,7 +593,7 @@ When the two runs share case keys it **pairs** them and runs McNemar exact on th
 
 It is allowed to say it cannot tell, and says so with a number attached: when the evidence cannot exclude "no change" it reports the smallest change that many cases could have detected. `worse` and `better` are separate booleans rather than one direction field, so *neither* is representable and is the default.
 
-Runs that measure different things — a different ruleset, configuration, engine minor or agent — are refused, naming which. `force` compares anyway and still names what changed: a pass rate that moved because the RULES changed is not a regression in your agent.
+Runs that measure different things — a different ruleset, configuration, engine minor or agent — are refused, naming which. The ruleset fingerprint covers each rule's name, version, kind, criticality and weight, and the content of every deployed, inline or plugin rule; the configuration fingerprint covers the thresholds, which rules are critical, the judge in force, and every composer setting that decides a verdict when it is not the shipped one (`eval.defaultsGate`, `eval.falsePassCost`, `eval.onCriticalSkipped`, `eval.requiredEvidence`, a prior set in config or estimated from your labels, `eval.priorMode`). `force` compares anyway and still names what changed: a pass rate that moved because the RULES changed is not a regression in your agent.
 
 **Per rule, with a test behind every row (0.14.0).** Each rule that fired in either run is tested one-sided in the regression direction — McNemar exact on that rule's own discordant pairs when the runs pair, else the z read off its Newcombe difference — and the p-values are corrected together with Benjamini–Hochberg, so twenty rules cannot manufacture a regression: on twenty rules that did not change, some rule reads "worse" uncorrected in about half of comparisons and in about 2% after the correction (the seeded guard in `tests/unit/eval/per-rule-stats.test.ts`). Every row carries `p`, `q`, the `test` and its own `difference`; `worse` on a row is true only at `q ≤ 0.05`; `rules_tested` is the family the correction ran over.
 
@@ -728,7 +736,7 @@ Score output using an LLM as the judge (Anthropic or OpenAI). Seven templates. C
 | `expected` | `string` | Required for `correctness` template | Reference answer |
 | `source_material` | `string` | Required for `faithfulness` template | RAG sources |
 | `max_cost_usd` | `number` | No | Cost cap; default `IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL` or $0.25 |
-| `trace_id` | `string` | No | Link to a trace |
+| `trace_id` | `string` | No | Keep the judgment beside a stored trace: the response carries `reference_trace_id`, and a judgment is never the trace's verdict |
 | `agent_model` | `string` | No | The model that produced the output, when no linked trace records it (a trace carries it as `metadata.model` or a span's `gen_ai.request.model`). Used only for the same-family warning |
 
 #### Response (summary)
@@ -775,7 +783,7 @@ Extract citations from output, fetch sources behind an SSRF-guarded resolver, ru
 | `max_citations` | `number` | No | Cap extraction count (default 20, max 50) |
 | `per_source_timeout_ms` | `number` | No | Per-URL timeout (default 10000) |
 | `per_source_max_bytes` | `number` | No | Per-URL body cap (default 5MB) |
-| `trace_id` | `string` | No | Link to a trace |
+| `trace_id` | `string` | No | Keep the result beside a stored trace: the response carries `reference_trace_id`, and it is never the trace's verdict |
 
 #### Response (summary)
 
@@ -893,7 +901,7 @@ Returns dashboard summary with key metrics and trends.
 
 ### iris://audit
 
-The newest 100 audit entries, newest first, as `{ total, entries }`: every rule deploy, delete, toggle and update, and every trace deletion. Each entry carries `ts`, `action` (`rule.deploy` · `rule.delete` · `rule.toggle` · `rule.update` · `trace.delete`), `user`, and `ruleId` (with `ruleName`) for a rule change or `traceId` for a trace deletion. The same file the dashboard's Audit page shows (in demo mode, the demo's own audit log, never the real one), readable by the agent that made the change and by whoever reviews it. A verdict produced after a rule change points here through its `rules_changed` field.
+The newest 100 audit entries, newest first, as `{ total, entries }`: every rule deploy, delete, toggle and update, and every trace deletion. Each entry carries `ts`, `action` (`rule.deploy` · `rule.delete` · `rule.toggle` · `rule.update` · `trace.delete`), `user`, and `ruleId` (with `ruleName`) for a rule change or `traceId` for a trace deletion. A rule entry's `details.contentSha256` is the sha256 of the rule's definition and severity as it was deployed, disabled or removed, so a rule replaced by another under the same name leaves two different hashes; the same hash enters every verdict's `provenance.rulesetHash`. The entry is written **before** the change, and a change that cannot be recorded is refused (`IRIS_STORAGE_ERROR`, nothing changed): the log cannot be skipped by filling the disk or making the file read-only. The same file the dashboard's Audit page shows (in demo mode, the demo's own audit log, never the real one), readable by the agent that made the change and by whoever reviews it. A verdict produced after a rule change points here through its `rules_changed` field.
 
 ---
 
@@ -1249,14 +1257,14 @@ Every evaluation the [evaluation list](#get-apiv1evaluations) would page through
 
 | Column | Value |
 |--------|-------|
-| `eval_id`, `created_at`, `trace_id`, `run_id`, `eval_type` | The evaluation's own fields |
+| `eval_id`, `created_at`, `trace_id`, `reference_trace_id`, `run_id`, `eval_type` | The evaluation's own fields; `reference_trace_id` is set in place of `trace_id` when the evaluation was made beside a trace and is not its verdict |
 | `score`, `passed` | A number, and `true`/`false` |
 | `verdict`, `verdict_basis`, `verdict_by`, `verdict_also` | The verdict's state, basis, the rules that decided it joined by `; `, and the basis of every later layer that would have decided it too, joined by `; ` |
 | `rules_evaluated`, `rules_skipped` | Counts |
 | `failed_rules`, `critical_failures`, `critical_skipped` | Rule names joined by `; ` |
 | `insufficient_data` | `true`/`false` |
 | `eval_cost_usd`, `eval_tokens` | What the evaluation itself cost; empty for the free rules |
-| `iris_version`, `ruleset_hash` | From the evaluation's provenance |
+| `iris_version`, `ruleset_hash` | From the evaluation's provenance. The ruleset hash covers each rule's name, version, kind, criticality and weight, and for a deployed, inline or plugin rule the sha256 of its content |
 | `erased_at` | When the evaluation's text was erased with its trace |
 | `output_text`, `expected_text` | The stored text |
 

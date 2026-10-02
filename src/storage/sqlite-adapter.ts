@@ -402,6 +402,13 @@ export const RISK_FILL_QUERIES = [
   'SELECT rowid AS rid, * FROM eval_results INDEXED BY idx_eval_results_risk_version WHERE risk_version < ? LIMIT ?',
   'SELECT rowid AS rid, * FROM eval_results INDEXED BY idx_eval_results_risk_version WHERE risk_version > ? LIMIT ?',
 ] as const;
+/** Newest first by `created_at`; equal times keep the order they were read in. */
+const newestFirst = (a: EvalResult, b: EvalResult): number => {
+  const x = a.created_at ?? '';
+  const y = b.created_at ?? '';
+  return x === y ? 0 : x < y ? 1 : -1;
+};
+
 function riskColumns(result: EvalResult): [string | null, string | null] {
   if (!result.provenance) return [null, RISK_KEY_VERSION];
   const cfg = composeConfigOf(result.provenance);
@@ -1945,8 +1952,8 @@ export class SqliteAdapter implements IStorageAdapter {
      * rule_results plus that threshold, so they are not columns.
      */
     this.db.prepare(`
-      INSERT INTO eval_results (tenant_id, id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data, critical_failures, created_at, provenance, engine_version, ruleset_hash, config_hash, threshold, eval_cost_usd, eval_tokens, run_id, risk_estimate, risk_version)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO eval_results (tenant_id, id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data, critical_failures, created_at, provenance, engine_version, ruleset_hash, config_hash, threshold, eval_cost_usd, eval_tokens, run_id, risk_estimate, risk_version, reference_trace_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       tenantId,
       result.id,
@@ -1986,6 +1993,8 @@ export class SqliteAdapter implements IStorageAdapter {
       result.run_id ?? null,
       // The risk estimate the verdict was composed from, so reading the row back does not run the draws again (migration 018).
       ...riskColumns(result),
+      // The trace it was made beside, when it is not that trace's verdict (migration 020). Never both: a row is one or the other.
+      result.trace_id ? null : (result.reference_trace_id ?? null),
     );
     // The row is durable; tell whoever asked. A listener's failure is its own.
     for (const listener of this.evalListeners) {
@@ -1997,12 +2006,23 @@ export class SqliteAdapter implements IStorageAdapter {
     }
   }
 
+  /*
+   * Every evaluation about a trace: its verdicts (`trace_id`) and the ones
+   * made beside it (`reference_trace_id`, migration 020), newest first. Two
+   * reads, one per index, rather than an OR the planner would answer with a
+   * scan. A caller that wants the trace's VERDICT takes the newest row that
+   * carries `trace_id` (verdictOfRecord, eval/of-record.ts), never `[0]`.
+   */
   async getEvalsByTraceId(tenantId: TenantId, traceId: string): Promise<EvalResult[]> {
     assertTenant(tenantId);
     const rows = this.db
       .prepare('SELECT * FROM eval_results WHERE tenant_id = ? AND trace_id = ? ORDER BY created_at DESC')
       .all(tenantId, traceId) as Array<Record<string, unknown>>;
-    return rows.map((row) => this.rowToEvalResult(row));
+    const beside = this.db
+      .prepare('SELECT * FROM eval_results WHERE tenant_id = ? AND reference_trace_id = ? ORDER BY created_at DESC')
+      .all(tenantId, traceId) as Array<Record<string, unknown>>;
+    const all = [...rows, ...beside].map((row) => this.rowToEvalResult(row));
+    return beside.length === 0 ? all : all.sort(newestFirst);
   }
 
   async getEvalsByTraceIds(tenantId: TenantId, traceIds: readonly string[]): Promise<Map<string, EvalResult[]>> {
@@ -2025,6 +2045,20 @@ export class SqliteAdapter implements IStorageAdapter {
         if (list) list.push(result);
         else out.set(key, [result]);
       }
+      // The evaluations made beside these traces (migration 020), merged into each list in time order.
+      const beside = this.db
+        .prepare(`SELECT * FROM eval_results WHERE tenant_id = ? AND reference_trace_id IN (${marks}) ORDER BY reference_trace_id, created_at DESC`)
+        .all(tenantId, ...chunk) as Array<Record<string, unknown>>;
+      const touched = new Set<string>();
+      for (const row of beside) {
+        const result = this.rowToEvalResult(row);
+        const key = result.reference_trace_id ?? '';
+        const list = out.get(key);
+        if (list) list.push(result);
+        else out.set(key, [result]);
+        touched.add(key);
+      }
+      for (const key of touched) out.get(key)!.sort(newestFirst);
     }
     return out;
   }
@@ -3372,12 +3406,20 @@ export class SqliteAdapter implements IStorageAdapter {
     if (traceIds.length === 0) return 0;
     const now = new Date().toISOString();
     const select = this.db.prepare('SELECT id, rule_results FROM eval_results WHERE tenant_id = ? AND trace_id = ?');
+    /*
+     * And the evaluations made beside the trace (migration 020). They hold
+     * text a caller passed about this trace, often the same text, and no
+     * foreign key reaches them: left out, deleting a trace would leave what
+     * no_pii had flagged readable in a row that still names the trace.
+     */
+    const selectBeside = this.db.prepare('SELECT id, rule_results FROM eval_results WHERE tenant_id = ? AND reference_trace_id = ?');
     const update = this.db.prepare(
       'UPDATE eval_results SET output_text = ?, expected_text = NULL, suggestions = ?, rule_results = ?, erased_at = ? WHERE tenant_id = ? AND id = ?',
     );
     let erased = 0;
     for (const traceId of traceIds) {
-      for (const row of select.all(tenantId, traceId) as Array<{ id: string; rule_results: string }>) {
+      const linked = [...select.all(tenantId, traceId), ...selectBeside.all(tenantId, traceId)] as Array<{ id: string; rule_results: string }>;
+      for (const row of linked) {
         const rules = parseRuleResults<EvalRuleResult>(row.rule_results);
         const erasedRules = rules.map((r) => ({
           ...r,
@@ -3512,6 +3554,7 @@ export class SqliteAdapter implements IStorageAdapter {
     const result: EvalResult = {
       id: row.id as string,
       trace_id: row.trace_id as string | undefined,
+      ...(row.reference_trace_id ? { reference_trace_id: row.reference_trace_id as string } : {}),
       eval_type: row.eval_type as EvalResult['eval_type'],
       /*
        * `categories` is not a column: an eval_type="all" row carries a

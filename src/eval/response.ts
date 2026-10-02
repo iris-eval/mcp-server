@@ -10,11 +10,12 @@
  * the drift-lock validates it against the real handlers.
  */
 import type { EvalResult } from '../types/eval.js';
+import { besideNote, type BesideReason } from './of-record.js';
 import type { DormantRule } from './dormant.js';
 import type { RuleChangesSinceStart } from '../custom-rule-store.js';
 
 export interface EvaluationResponseOptions {
-  /** The trace the evaluation was linked to, echoed so a caller can join the two without a second read. */
+  /** The trace the evaluation is a verdict on, echoed so a caller can join the two without a second read. Ignored for an evaluation made beside a trace. */
   traceId?: string;
   /** Present only when `eval_type` was omitted and the default ran. */
   note?: string;
@@ -45,10 +46,21 @@ export interface EvaluationResponseOptions {
 export const PRIVATE_RESULT_KEYS = ['output_text', 'expected_text', 'created_at', 'eval_cost_usd', 'eval_tokens'] as const;
 
 export function toEvaluationResponse(result: EvalResult, options: EvaluationResponseOptions = {}): Record<string, unknown> {
-  const traceId = options.traceId ?? result.trace_id;
+  // One or the other, never both: `trace_id` says "the verdict of that trace", and an evaluation made beside a trace is not one.
+  const beside = result.reference_trace_id;
+  const traceId = beside ? undefined : (options.traceId ?? result.trace_id);
+  /*
+   * The sentence that says so rides with the composer's own, built here from
+   * what the row stores, so the live response and every later read carry it.
+   */
+  const interpretations = [
+    ...(beside ? [besideNote(beside, (result.provenance?.beside ?? []) as BesideReason[])] : []),
+    ...(result.interpretations ?? []),
+  ];
   return {
     id: result.id,
     ...(traceId ? { trace_id: traceId } : {}),
+    ...(beside ? { reference_trace_id: beside } : {}),
     // Echo which bundle actually ran. Without this, a caller who omitted
     // eval_type could not tell a "safety pass" from a completeness eval
     // that never ran a single safety rule.
@@ -77,7 +89,7 @@ export function toEvaluationResponse(result: EvalResult, options: EvaluationResp
      * beside passed: true and nothing else. Invariant 13: nothing the
      * composer computes is dropped on the way out.
      */
-    ...(result.interpretations?.length ? { interpretations: result.interpretations } : {}),
+    ...(interpretations.length ? { interpretations } : {}),
     // Per-bundle breakdown — eval_type="all" only.
     ...(result.categories ? { categories: result.categories } : {}),
     ...(options.note ? { note: options.note } : {}),

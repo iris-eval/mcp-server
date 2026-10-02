@@ -28,6 +28,25 @@ function evalResult(extra: Partial<EvalResult> = {}): EvalResult {
   };
 }
 
+describe('EvalDetailCard — an evaluation made beside a trace', () => {
+  it('says it is not the trace’s verdict, and why', () => {
+    const { container } = render(
+      <EvalDetailCard evalResult={evalResult({ trace_id: undefined, reference_trace_id: 'trace-1', passed: true, provenance: { beside: ['output', 'eval_type'] } as EvalResult['provenance'] })} />,
+    );
+    const note = container.querySelector('[data-beside-trace="trace-1"]');
+    expect(note?.textContent).toContain('It is not the trace’s verdict and does not replace it');
+    expect(note?.textContent).toContain('the call passed output that differed from the stored trace');
+    expect(note?.textContent).toContain('it ran one bundle rather than every bundle');
+  });
+
+  it('a judgment names the judge; a verdict of the trace carries no such line', () => {
+    const judged = render(<EvalDetailCard evalResult={evalResult({ trace_id: undefined, reference_trace_id: 'trace-1', provenance: { beside: ['judge'] } as EvalResult['provenance'] })} />);
+    expect(judged.container.querySelector('[data-beside-trace]')?.textContent).toContain('the LLM judge’s answer to its own question');
+    const verdict = render(<EvalDetailCard evalResult={evalResult()} />);
+    expect(verdict.container.querySelector('[data-beside-trace]')).toBeNull();
+  });
+});
+
 describe('EvalDetailCard — labels and re-scoring', () => {
   it('draws no control and no actions without handlers', () => {
     const { container } = render(<EvalDetailCard evalResult={evalResult()} />);

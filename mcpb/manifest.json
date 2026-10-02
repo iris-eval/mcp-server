@@ -44,7 +44,7 @@
     },
     {
       "name": "evaluate_output",
-      "description": "Score an agent output with the deterministic rules: a ship verdict with its basis, per-rule evidence, and what was not judged."
+      "description": "Score an output with deterministic rules: a ship verdict with its basis, per-rule evidence, what was unjudged."
     },
     {
       "name": "get_traces",
@@ -80,7 +80,7 @@
     },
     {
       "name": "evaluate_with_llm_judge",
-      "description": "Score an output with an LLM judge on your own key: a 0..1 score, a rationale and the spend."
+      "description": "Score an output with an LLM judge on your own key: a 0..1 score, a rationale, the spend."
     },
     {
       "name": "verify_citations",

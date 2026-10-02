@@ -7,6 +7,7 @@ import type {
   EvalType,
   EvalCategoryResult,
   CustomRuleDefinition,
+  Provenance,
 } from '../types/eval.js';
 import { getRulesForType, createCustomRule } from './rules/index.js';
 import { criticalityResolver, type CriticalityOverrides, type EffectiveCriticality } from './criticality.js';
@@ -202,6 +203,48 @@ export class EvalEngine {
   }
 
   /**
+   * The composer facts a stored row re-composes its verdict from
+   * (Provenance.composer). One writer for the two places that stamp a row,
+   * and every setting the composer reads: `requiredEvidence` was missing,
+   * so a verdict that was `unknown` for missing evidence read back as a
+   * pass.
+   */
+  private composerFacts(): NonNullable<Provenance['composer']> {
+    const prior = this.effectivePrior();
+    return {
+      defaultsGate: this.compose.defaultsGate,
+      falsePassCost: this.compose.falsePassCost,
+      onCriticalSkipped: this.compose.onCriticalSkipped,
+      prior: prior.pi,
+      priorSource: prior.source,
+      priorMode: this.compose.priorMode,
+      calibration: PUBLISHED_CALIBRATION.compositeVersion,
+      ...(this.compose.requiredEvidence.length > 0 ? { requiredEvidence: [...this.compose.requiredEvidence] } : {}),
+    };
+  }
+
+  /** The configuration hash for a verdict produced now: thresholds, criticality, the judge, and every composer setting that is not the shipped one. */
+  private configHashNow(): string {
+    const prior = this.effectivePrior();
+    return configHash({
+      threshold: this.threshold,
+      ruleThresholds: this.ruleThresholds,
+      criticalRules: this.criticalityOverrides?.criticalRules,
+      nonCriticalRules: this.criticalityOverrides?.nonCriticalRules,
+      judge: this.judgeIdentity(),
+      composer: {
+        defaultsGate: this.compose.defaultsGate,
+        falsePassCost: this.compose.falsePassCost,
+        onCriticalSkipped: this.compose.onCriticalSkipped,
+        requiredEvidence: this.compose.requiredEvidence,
+        prior: prior.pi,
+        priorSource: prior.source,
+        priorMode: this.compose.priorMode,
+      },
+    });
+  }
+
+  /**
    * `criticalityOverrides` are `config.eval` — the criticalRules /
    * nonCriticalRules lists. Validated here as well as in loadConfig, so an
    * engine built directly (a test, an embedder) cannot silently ignore a
@@ -255,24 +298,10 @@ export class EvalEngine {
     result.provenance ??= buildProvenance({
       irisVersion: PKG_VERSION,
       rulesetHash: this.rulesetHashForAll(),
-      configHash: configHash({
-        threshold: this.threshold,
-        ruleThresholds: this.ruleThresholds,
-        criticalRules: this.criticalityOverrides?.criticalRules,
-        nonCriticalRules: this.criticalityOverrides?.nonCriticalRules,
-        judge: this.judgeIdentity(),
-      }),
+      configHash: this.configHashNow(),
       threshold: this.threshold,
       ruleThresholds: this.ruleThresholds,
-      composer: {
-        defaultsGate: this.compose.defaultsGate,
-        falsePassCost: this.compose.falsePassCost,
-        onCriticalSkipped: this.compose.onCriticalSkipped,
-        prior: this.effectivePrior().pi,
-        priorSource: this.effectivePrior().source,
-        priorMode: this.compose.priorMode,
-        calibration: PUBLISHED_CALIBRATION.compositeVersion,
-      },
+      composer: this.composerFacts(),
       judgedAt: new Date().toISOString(),
     });
     return this.decide(result);
@@ -606,24 +635,10 @@ export class EvalEngine {
       toolsHash: toolsHash(context.tools),
       irisVersion: PKG_VERSION,
       rulesetHash: rulesetHash(rules, (r) => this.criticality(r), this.judgeIdentity()),
-      configHash: configHash({
-        threshold: this.threshold,
-        ruleThresholds: this.ruleThresholds,
-        criticalRules: this.criticalityOverrides?.criticalRules,
-        nonCriticalRules: this.criticalityOverrides?.nonCriticalRules,
-        judge: this.judgeIdentity(),
-      }),
+      configHash: this.configHashNow(),
       threshold: this.threshold,
       ruleThresholds: this.ruleThresholds,
-      composer: {
-        defaultsGate: this.compose.defaultsGate,
-        falsePassCost: this.compose.falsePassCost,
-        onCriticalSkipped: this.compose.onCriticalSkipped,
-        prior: this.effectivePrior().pi,
-        priorSource: this.effectivePrior().source,
-        priorMode: this.compose.priorMode,
-        calibration: PUBLISHED_CALIBRATION.compositeVersion,
-      },
+      composer: this.composerFacts(),
       judgedAt: new Date().toISOString(),
     });
     const coverage = deriveCoverage(ruleResults, inputsPresent(context));

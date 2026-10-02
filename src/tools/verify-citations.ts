@@ -9,6 +9,7 @@ import { generateEvalId } from '../utils/ids.js';
 import { JUDGE_KEY_VARS } from '../judge-enablement.js';
 import { strictInput } from './strict-input.js';
 import { assertTraceExists, insertLinkedEvalResult } from './trace-link.js';
+import { besideNote } from '../eval/of-record.js';
 import type { EvalEngine } from '../eval/engine.js';
 import { verdictSchema } from '../eval/response-schema.js';
 import { inferProvider, resolveApiKey } from './evaluate-with-llm-judge.js';
@@ -34,7 +35,7 @@ const inputSchema = {
   max_citations: z.number().int().positive().max(50).optional().describe('Max citations to verify (extras skipped, not errored); default 20, at most 50'),
   per_source_timeout_ms: z.number().int().positive().optional().describe('Per-URL fetch timeout; default 10_000'),
   per_source_max_bytes: z.number().int().positive().optional().describe('Per-URL body cap; default 5MB'),
-  trace_id: z.string().optional().describe('Link verification result to a stored trace (id from log_trace / get_traces); an unknown id is rejected before any fetch or judge call'),
+  trace_id: z.string().optional().describe('Keep the verification result beside a stored trace (id from log_trace / get_traces). It is listed with the trace and never replaces its verdict; an unknown id is rejected before any fetch or judge call'),
 };
 
 function resolveAllowFetch(paramValue?: boolean): boolean {
@@ -125,7 +126,7 @@ export function unjudgedSummary(citations: CitationFailures): string {
 
 export const verifyCitationsOutputSchema = z.looseObject({
   id: z.string().describe('the evaluation id; read it back at iris://evaluations/{id}'),
-  trace_id: z.string().optional().describe('the linked trace, when one was named'),
+  reference_trace_id: z.string().optional().describe('the trace this result is kept beside, when one was named; it is not that trace\'s verdict'),
   overall_score: z.number().nullable().describe('supported / judged; null when nothing was judged'),
   passed: z
     .boolean()
@@ -159,7 +160,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
         errors:
           'IRIS_JUDGE_NOT_ENABLED, IRIS_JUDGE_UNKNOWN_MODEL, IRIS_UNKNOWN_TRACE (before any spend); IRIS_JUDGE_FAILED when every judge call failed. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
-          evaluate_with_llm_judge: 'general semantic scoring',
+          evaluate_with_llm_judge: 'semantic scoring',
           evaluate_output: 'the free deterministic path',
         },
       }),
@@ -208,7 +209,6 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
       // composer's verdict is stored with it.
       const row = engine.verdictOf({
         id: evalId,
-        trace_id: args.trace_id,
         eval_type: 'custom',
         output_text: args.output,
         score,
@@ -260,13 +260,19 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
           },
         ];
       }
+      // Kept beside the trace, never as its verdict (eval/of-record.ts): the verifier answers its own question.
+      if (args.trace_id) {
+        row.reference_trace_id = args.trace_id;
+        if (row.provenance) row.provenance = { ...row.provenance, beside: ['citations'] };
+        row.interpretations = [besideNote(args.trace_id, ['citations']), ...(row.interpretations ?? [])];
+      }
       await insertLinkedEvalResult(storage, LOCAL_TENANT, row);
 
       return respond(
         verifyCitationsOutputSchema,
         {
           id: evalId,
-          ...(args.trace_id ? { trace_id: args.trace_id } : {}),
+          ...(args.trace_id ? { reference_trace_id: args.trace_id } : {}),
           overall_score: result.overallScore,
           passed: result.passed,
           ...(row.verdict ? { verdict: row.verdict } : {}),

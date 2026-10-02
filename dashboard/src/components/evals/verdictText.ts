@@ -19,6 +19,24 @@ export const BASIS_TEXT: Record<VerdictBasis, string> = {
   no_rules: 'No rule could judge this output, so there is no verdict.',
 };
 
+/**
+ * The line on an evaluation that sits beside a trace and is not its verdict:
+ * what made it the caller's rather than the record's.
+ */
+export function besideText(reasons: readonly string[] | undefined): string {
+  const lead = 'Made beside this trace. It is not the trace’s verdict and does not replace it';
+  const r = reasons ?? [];
+  if (r.includes('judge')) return `${lead}: it is the LLM judge’s answer to its own question.`;
+  if (r.includes('citations')) return `${lead}: it is the citation verifier’s answer to its own question.`;
+  const fields = r.filter((x) => x !== 'eval_type' && x !== 'no_stored_output');
+  const why = [
+    ...(r.includes('no_stored_output') ? ['the trace recorded no output'] : []),
+    ...(fields.length > 0 ? [`the call passed ${fields.join(', ')} that differed from the stored trace`] : []),
+    ...(r.includes('eval_type') ? ['it ran one bundle rather than every bundle'] : []),
+  ];
+  return why.length > 0 ? `${lead}: ${why.join('; ')}.` : `${lead}.`;
+}
+
 /** The line under the verdict when a later layer would have decided it too. */
 export const ALSO_TEXT = {
   lead: 'Would also have decided it:',

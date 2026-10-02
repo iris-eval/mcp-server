@@ -38,7 +38,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
       'When IRIS_OTEL_ENDPOINT is set the trace is also exported to that collector, best-effort and asynchronous; the local write never waits on it. ' +
       'Traces are immutable: there is no update path. In stdio mode nothing authenticates the caller; over HTTP a Bearer token is required only when an API key is configured.',
     whenNot:
-      'For a transient log line (use your logger). To score a trace you already stored: evaluate_output with its trace_id, which reuses the stored tool_calls and tools. To change a stored trace: delete_trace and log again.',
+      'For a transient log line (use your logger). To score a trace you already stored: evaluate_output with its trace_id and nothing else, which reads the stored output, input, tool_calls, tools and cost. To change a stored trace: delete_trace and log again.',
     errors:
       'IRIS_STORAGE_ERROR when the database cannot be written. IRIS_INVALID_ARGUMENT when evaluate is true without output, or on a server with no eval engine — nothing is stored in either case. ' +
       'An unknown argument or a malformed span or tool_calls entry is refused before the handler runs, naming the valid keys.',
@@ -64,13 +64,16 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
       'In-process, no network, no key — unless the deployment set IRIS_RELEVANCE_JUDGE_MODEL: then answers_the_ask asks that LLM judge (one call on the deployment key, under IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL) whenever input is present and gates on its relevance verdict; without it answers_the_ask reads the ask lexically and advises. eval_type picks one bundle (completeness, relevance, safety, cost, custom) or all (the default): every bundle plus deployed and inline custom rules, with a per-bundle breakdown; an omitted eval_type runs every bundle, safety included, and the response carries a note saying the default ran. ' +
       'Inputs decide what can be judged: input is REQUIRED when eval_type="relevance" (keyword_overlap, topic_consistency and answers_the_ask compare the output against it, tool_choice reads it beside tool_calls and tools; all four skip without it) and grounds the hallucination signals; ' +
       'tool_calls (or a trace_id) feed the trajectory rules, and tools lets them check argument validity; cost_usd and token_usage feed the cost rules; expected feeds expected_coverage. ' +
-      'A rule without its input SKIPS, is named, and never counts as a pass: an evaluation with no trajectory data reports "not judged", never "clean". custom_rules always fire, whatever eval_type says. One row is stored, linked to trace_id.',
+      'A rule without its input SKIPS, is named, and never counts as a pass: an evaluation with no trajectory data reports "not judged", never "clean". custom_rules always fire, whatever eval_type says. ' +
+      'trace_id names a stored trace. Passed alone (output, input, tool_calls, tools, cost_usd and token_usage are then read from the trace, under every bundle), the call scores the trace as stored and the row is the trace\'s verdict, superseding its earlier one. ' +
+      'Passed with any of those that differs from what the trace stored, or with one eval_type, the row is kept beside the trace instead: the response carries reference_trace_id, not trace_id, and a sentence saying what differed, and the trace\'s verdict is unchanged in every run, comparison and export. ' +
+      'An evaluation cannot replace the verdict of the trace it names. One row is stored either way.',
     whenNot:
       'To validate a document (the json_schema custom rule does that). ' +
       `To screen inputs before they reach an agent: ${INJECTION_SCOPE_SENTENCE} ` +
       'For semantic judgment, evaluate_with_llm_judge and verify_citations need a key you supply.',
     errors:
-      'IRIS_UNKNOWN_TRACE when trace_id names no stored trace — checked first, nothing scored or written. IRIS_STORAGE_ERROR when the row cannot be written. ' +
+      'IRIS_UNKNOWN_TRACE when trace_id names no stored trace — checked first, nothing scored or written. IRIS_INVALID_ARGUMENT when output is omitted and no trace_id supplies one (the trace recorded no output, or none was named). IRIS_STORAGE_ERROR when the row cannot be written. ' +
       'Unknown arguments or keys are refused before the handler runs, naming the valid ones; a regex rule over its budget or with a broken config reports skipped, not an error.',
     parameters: {
       eval_type:
@@ -218,7 +221,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
       `Calls Anthropic or OpenAI directly with the key in this process's environment (${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai}); Iris never proxies. ` +
       'template picks the question: accuracy, helpfulness, safety, correctness (needs expected), faithfulness (needs source_material), task_completed (pass the trajectory as source_material when you have it) or relevance (needs input: does the output address this request, not another); input improves helpfulness and safety. model is required; provider is inferred from it. ' +
       `The worst-case spend — both attempts, full max_output_tokens — is computed BEFORE the call and refused if it exceeds max_cost_usd (default ${JUDGE_COST_CAP_VAR} or ${JUDGE_DEFAULT_COST_CAP_USD}). ` +
-      'temperature defaults to 0; a rate-limited call is retried once. One evaluation row is stored with the provider response id, tokens, cost and latency, linked to trace_id when given. ' +
+      'temperature defaults to 0; a rate-limited call is retried once. One evaluation row is stored with the provider response id, tokens, cost and latency. With trace_id it is kept beside that trace (reference_trace_id) and listed with it; a judgment is never the trace\'s verdict and cannot replace it. ' +
       'A judge from the same model family as the agent (agent_model, or the linked trace) is warned about, never refused. ' +
       "The judge's own accuracy is measurable on a key you supply and is not yet published (see iris://proof).",
     whenNot:

@@ -31,6 +31,7 @@
  */
 import type { EvalResult } from '../types/eval.js';
 import type { TraceRecord } from '../types/query.js';
+import { verdictOfRecord } from '../eval/of-record.js';
 
 export const EXPORT_FORMATS = ['csv', 'jsonl'] as const;
 export type ExportFormat = (typeof EXPORT_FORMATS)[number];
@@ -89,13 +90,19 @@ export const TRACE_COLUMNS: ReadonlyArray<Column<TraceRecord>> = [
   { name: 'tool_names', value: (r) => r.trace.tool_calls?.map((t) => t.tool_name).join('; ') },
   { name: 'span_count', value: (r) => r.spans.length },
   { name: 'eval_count', value: (r) => r.evals.length },
-  { name: 'latest_eval_id', value: (r) => r.evals[0]?.id },
-  { name: 'latest_score', value: (r) => r.evals[0]?.score },
-  { name: 'latest_passed', value: (r) => r.evals[0]?.passed },
-  { name: 'latest_verdict', value: (r) => r.evals[0]?.verdict?.state },
-  { name: 'latest_verdict_basis', value: (r) => r.evals[0]?.verdict?.basis },
-  { name: 'latest_verdict_also', value: (r) => alsoBases(r.evals[0]) },
-  { name: 'latest_failed_rules', value: (r) => (r.evals[0] ? failedRules(r.evals[0]) : undefined) },
+  /*
+   * The trace's VERDICT, not the newest thing said about it: `evals` also
+   * holds evaluations made beside the trace (a judge's answer, a call that
+   * passed other text), and taking `evals[0]` let one of those stand as the
+   * trace's result (eval/of-record.ts).
+   */
+  { name: 'latest_eval_id', value: (r) => verdictOfRecord(r.evals)?.id },
+  { name: 'latest_score', value: (r) => verdictOfRecord(r.evals)?.score },
+  { name: 'latest_passed', value: (r) => verdictOfRecord(r.evals)?.passed },
+  { name: 'latest_verdict', value: (r) => verdictOfRecord(r.evals)?.verdict?.state },
+  { name: 'latest_verdict_basis', value: (r) => verdictOfRecord(r.evals)?.verdict?.basis },
+  { name: 'latest_verdict_also', value: (r) => alsoBases(verdictOfRecord(r.evals)) },
+  { name: 'latest_failed_rules', value: (r) => (verdictOfRecord(r.evals) ? failedRules(verdictOfRecord(r.evals)!) : undefined) },
   { name: 'metadata', value: (r) => json(r.trace.metadata) },
   { name: 'tool_calls', value: (r) => json(r.trace.tool_calls) },
 ];
@@ -109,6 +116,8 @@ export const EVAL_COLUMNS: ReadonlyArray<Column<EvalResult>> = [
   { name: 'eval_id', value: (e) => e.id },
   { name: 'created_at', value: (e) => e.created_at },
   { name: 'trace_id', value: (e) => e.trace_id },
+  // Set instead of trace_id when the evaluation was made beside a trace and is not its verdict.
+  { name: 'reference_trace_id', value: (e) => e.reference_trace_id },
   { name: 'run_id', value: (e) => e.run_id },
   { name: 'eval_type', value: (e) => e.eval_type },
   { name: 'score', value: (e) => e.score },
