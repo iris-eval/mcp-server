@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import isSafeRegex from 'safe-regex2';
 import type { EvalRule, EvalContext, EvalRuleResult, CustomRuleDefinition, CustomRuleType, Evidence, Mechanism, Need } from '../../types/eval.js';
 import type { RuleSeverity } from '../../types/custom-rule.js';
@@ -265,10 +266,32 @@ const CUSTOM_TYPE_META: Record<CustomRuleType, { mechanism: Mechanism; needs: re
   action_policy: { mechanism: 'formula', needs: ['tool_calls'] },
 };
 
+/** JSON with object keys in one order, so a definition hashes the same however its keys were written. */
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_key, v: unknown) =>
+    v !== null && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+      : v,
+  );
+}
+
+/**
+ * The sha256 of a custom rule: its definition and the severity it runs at.
+ * The ruleset hash carries it (EvalRule.contentHash) and the audit log
+ * records it on every deploy, delete and toggle, so a rule swapped for
+ * another under the same name is visible in both. The name alone was the
+ * rule's whole identity before: a failing rule replaced by one that matches
+ * nothing left every fingerprint unchanged.
+ */
+export function ruleContentHash(definition: CustomRuleDefinition, severity?: RuleSeverity): string {
+  return createHash('sha256').update(canonical({ definition, severity: severity ?? null })).digest('hex');
+}
+
 export function createCustomRule(definition: CustomRuleDefinition, severity?: RuleSeverity): EvalRule {
   const meta = CUSTOM_TYPE_META[definition.type];
   return {
     name: definition.name,
+    contentHash: ruleContentHash(definition, severity),
     description: `Custom rule: ${definition.name}`,
     evalType: 'custom',
     weight: definition.weight ?? 1,

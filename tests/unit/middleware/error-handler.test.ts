@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import express from 'express';
 import { createErrorHandler } from '../../../src/middleware/error-handler.js';
+import { AuditWriteError } from '../../../src/custom-rule-store.js';
 import { recordOf } from '../../helpers/json.js';
 
 const mockLogger = {
@@ -22,6 +23,19 @@ async function testError(app: express.Application, path: string) {
 }
 
 describe('error handler middleware', () => {
+  it('a change refused because the audit log could not be written is a 503 that names no path', async () => {
+    const app = express();
+    app.get('/test', async () => {
+      throw new AuditWriteError('/home/someone/.iris/audit.log', new Error('EACCES: permission denied'));
+    });
+    app.use(createErrorHandler(mockLogger));
+    const { status, body } = await testError(app, '/test');
+    expect(status).toBe(503);
+    expect(body.code).toBe('IRIS_STORAGE_ERROR');
+    expect(String(body.error)).toContain('so the change was refused');
+    expect(JSON.stringify(body)).not.toMatch(/someone|audit\.log|EACCES/);
+  });
+
   /*
    * CWE-209 regression. res.sendFile on a missing index.html raises an
    * ENOENT whose message embeds an ABSOLUTE path, and the handler returned

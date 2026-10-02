@@ -239,7 +239,11 @@ export async function registerPlugins(
   options: { home?: string; log?: (line: string) => void } = {},
 ): Promise<LoadedPlugin[]> {
   const plugins = await loadPlugins(config.eval.plugins, { home: options.home });
-  for (const p of plugins) engine.registerRule(p.evalType, p.rule, p.id);
+  // The file's pinned hash is the rule's content hash: a plugin swapped for another file changes the ruleset hash.
+  for (const p of plugins) {
+    if (p.rule.contentHash === undefined && Object.isExtensible(p.rule)) p.rule.contentHash = p.entry.sha256.toLowerCase();
+    engine.registerRule(p.evalType, p.rule, p.id);
+  }
   registry = plugins;
   if (plugins.length > 0) options.log?.(`Loaded ${plugins.length} plugin rule(s): ${plugins.map((p) => `${p.rule.name} (${p.entry.path})`).join(', ')}`);
   return plugins;

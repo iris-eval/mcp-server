@@ -220,7 +220,8 @@ export const interpretationSchema = z.looseObject({
 /** The `evaluate_output` response — the same object the engine returns plus the tool's own fields. */
 export const evaluateOutputResponseSchema = z.looseObject({
     id: z.string().describe('the evaluation id, readable at iris://evaluations/{id}'),
-    trace_id: z.string().optional().describe('the linked trace, when named'),
+    trace_id: z.string().optional().describe('the trace this is the verdict of'),
+    reference_trace_id: z.string().optional().describe('the trace it was made beside when it is NOT that trace verdict; never with trace_id'),
     verdict: verdictSchema.optional().describe('state, passed, basis (which layer decided), by (the rules), risk'),
     coverage: coverageSchema.optional().describe('per question: judged, unjudged and why, or not_applicable; plus the inputs carried'),
     provenance: provenanceSchema.optional().describe('Iris version, ruleset and config hashes, thresholds, composer facts, corpus version, time'),

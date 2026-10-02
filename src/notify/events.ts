@@ -28,7 +28,10 @@ export interface WebhookMoment {
   /** One sentence, the one a Slack line shows. */
   summary: string;
   evaluation_id: string;
+  /** The trace this evaluation is the verdict of; null for an unlinked evaluation and for one made beside a trace. */
   trace_id: string | null;
+  /** The trace the evaluation was made beside, when it is not that trace's verdict. */
+  reference_trace_id?: string;
   agent_name: string | null;
   run_id: string | null;
   case_key: string | null;
@@ -58,8 +61,16 @@ const fired = (r: EvalRuleResult): boolean => !r.passed && !r.skipped;
  */
 export async function momentsOf(storage: MomentSource, tenantId: TenantId, result: EvalResult, wanted: ReadonlySet<WebhookEventName>): Promise<WebhookMoment[]> {
   if (wanted.size === 0) return [];
+  /*
+   * `trace` is the trace this evaluation is the VERDICT of. An evaluation
+   * made beside a trace (eval/of-record.ts) still names its agent in an
+   * alert, and takes nothing else from the trace: it is not an attempt at
+   * the trace's case and not a point in the agent's failure log, so the
+   * flaky-case and regression moments below never fire for it.
+   */
   const trace = result.trace_id ? await storage.getTrace(tenantId, result.trace_id) : null;
-  const agent = trace?.agent_name ?? null;
+  const beside = !result.trace_id && result.reference_trace_id ? result.reference_trace_id : null;
+  const agent = trace?.agent_name ?? (beside ? ((await storage.getTrace(tenantId, beside))?.agent_name ?? null) : null);
   const failed = result.rule_results
     .filter(fired)
     .map((r) => r.ruleName)
@@ -69,6 +80,7 @@ export async function momentsOf(storage: MomentSource, tenantId: TenantId, resul
   const base = {
     evaluation_id: result.id,
     trace_id: result.trace_id ?? null,
+    ...(beside ? { reference_trace_id: beside } : {}),
     agent_name: agent,
     run_id: result.run_id ?? trace?.run_id ?? null,
     case_key: trace?.case_key ?? null,

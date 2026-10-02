@@ -230,6 +230,8 @@ export interface Provenance {
   };
   /** The evaluation this one re-scored (0.14.0); the earlier row is kept. */
   supersedes?: string;
+  /** Why the evaluation sits beside a trace: record fields that differed, `eval_type`, `no_stored_output`, `judge` or `citations`. */
+  beside?: string[];
   [key: string]: unknown;
 }
 
@@ -399,7 +401,10 @@ export interface RuleProofSummary {
 
 export interface EvalResult {
   id: string;
+  /** The trace this evaluation is the verdict of. */
   trace_id?: string;
+  /** The trace it was made beside, when it is not that trace's verdict (the caller chose the text, the evidence or the bundle, or another tool judged its own question). Never set with trace_id. */
+  reference_trace_id?: string;
   run_id?: string;
   eval_type: string;
   output_text: string;

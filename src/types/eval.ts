@@ -82,6 +82,15 @@ export interface EvalRule {
   /** Bumped when the rule's meaning changes, so a stored result names the definition that produced it. */
   version?: number;
   /**
+   * A hash of what the rule IS, for a rule whose definition is data the
+   * deployment supplied: a deployed or inline rule's definition and
+   * severity, a plugin's file. It enters the ruleset hash, so replacing a
+   * rule with another under the same name changes the fingerprint of every
+   * verdict that follows. A built-in rule has none: its definition is this
+   * release, which `version` and the release version name.
+   */
+  contentHash?: string;
+  /**
    * Who wrote this rule. `custom` marks anything `createCustomRule`
    * produced — a deployed rule or one passed inline in the call. The
    * composer needs it: for OUR rule a shipped threshold is a guess and only
@@ -471,9 +480,25 @@ export interface Provenance {
      * with a note saying why, rather than silently taking today's.
      */
     calibration?: string;
+    /**
+     * The inputs the deployment requires (eval.requiredEvidence), when it
+     * requires any. Stored because a read re-composes the verdict from
+     * this object: without it a verdict that was `unknown` for missing
+     * evidence read back as whatever the remaining layers said.
+     */
+    requiredEvidence?: Need[];
   };
   /** The evaluation this one re-scored, when it was produced by a re-evaluation of a stored row. The earlier row is kept: the change is the finding. */
   supersedes?: string;
+  /**
+   * Why this evaluation sits beside a trace rather than being its verdict
+   * (eval/of-record.ts): the record fields the call passed that differed
+   * (`output`, `input`, `tool_calls`, `tools`, `cost_usd`, `token_usage`),
+   * `eval_type` for a narrowed bundle, `no_stored_output`, or the tool that
+   * asked another question (`judge`, `citations`). Present exactly when the
+   * evaluation carries `reference_trace_id`.
+   */
+  beside?: string[];
   /**
    * Which toolset the calls were checked against, when one was supplied.
    *
@@ -690,7 +715,22 @@ export interface EvalCategoryResult {
 
 export interface EvalResult {
   id: string;
+  /**
+   * The trace this evaluation is a VERDICT on. Set only when the server
+   * scored the trace as stored (at ingest, by evaluate_runs, by the
+   * re-evaluate route, or by evaluate_output passing nothing that differs
+   * from the record). Every reader of "a trace's verdict" takes the newest
+   * evaluation carrying it.
+   */
   trace_id?: string;
+  /**
+   * The trace this evaluation was made BESIDE, when it is not that trace's
+   * verdict: the caller chose the text, the evidence or the bundle, or
+   * another tool (the LLM judge, the citation verifier) judged a different
+   * question. Listed with the trace's evaluations; never its verdict, so it
+   * cannot replace one (migration 020). Never set together with `trace_id`.
+   */
+  reference_trace_id?: string;
   /**
    * The run this EVALUATION belongs to, when it differs from the run of the
    * trace it evaluated.

@@ -33,7 +33,7 @@ import isSafeRegex from 'safe-regex2';
 import { regexBacktrackingBudgetExceeded } from './eval/rules/regex-budget.js';
 import { compileToolSchema } from './eval/schema-validator.js';
 import { compileActionPolicy } from './eval/action-policy.js';
-import { normalizeRegexSource } from './eval/rules/custom.js';
+import { normalizeRegexSource, ruleContentHash } from './eval/rules/custom.js';
 import { CUSTOM_RULE_CONFIG_KEYS, readNumericConfig, describeKeys } from './eval/rules/config-keys.js';
 import type {
   DeployedCustomRule,
@@ -343,15 +343,38 @@ function generateRuleId(): string {
 }
 
 /**
+ * The audit log could not be written, so the change it would have recorded
+ * was refused. Named so a caller can tell it from a storage fault.
+ */
+export class AuditWriteError extends Error {
+  constructor(auditPath: string, cause: unknown) {
+    super(
+      `The audit log (${auditPath}) could not be written, so the change was refused: ${cause instanceof Error ? cause.message : String(cause)}. ` +
+        'A change to the rules or the stored evidence is made only when it can be recorded. Fix the file or its directory (permissions, free space) and try again.',
+    );
+    this.name = 'AuditWriteError';
+  }
+}
+
+/**
  * Append one entry to the audit log at its default path. Exported for the
  * actions that are not rule changes but still need a record: delete_trace
  * wrote none, so an agent could remove the evidence against it without a
  * trace of the removal (2026-09-23 security review).
+ *
+ * Throws AuditWriteError when the entry cannot be written. Call it BEFORE
+ * the change it records, so a change that cannot be recorded is not made.
  */
 export function appendAuditEntry(entry: AuditLogEntry, auditPath: string = defaultAuditPath()): void {
   appendAudit(auditPath, entry);
 }
 
+/*
+ * The append used to sit inside `try { } catch { }`: a read-only or full
+ * disk let a rule be deployed, swapped or deleted with no record at all,
+ * and the audit log is the only place that says who changed the rules a
+ * verdict was produced under. A failed write now refuses the change.
+ */
 function appendAudit(auditPath: string, entry: AuditLogEntry): void {
   try {
     mkdirSync(dirname(auditPath), { recursive: true });
@@ -362,11 +385,13 @@ function appendAudit(auditPath: string, entry: AuditLogEntry): void {
       encoding: 'utf-8',
       mode: OWNER_ONLY_FILE_MODE,
     });
-  } catch {
-    // Audit best-effort. If filesystem is read-only or full, the deploy
-    // still succeeds; the operator just loses the audit trail.
+  } catch (err) {
+    throw new AuditWriteError(auditPath, err);
   }
 }
+
+/** What a rule was, for an audit entry: the hash the ruleset fingerprint carries for it (eval/rules/custom.ts). */
+const contentOf = (rule: Pick<DeployedCustomRule, 'definition' | 'severity'>): string => ruleContentHash(rule.definition, rule.severity);
 
 interface LoadedRules {
   /** Rules that validated — these are the ones that fire. */
@@ -538,9 +563,7 @@ export function createCustomRuleStore(opts?: {
       // Validate before persisting.
       const validated = DeployedRuleSchema.parse(rule);
       const rules = load(tenantId);
-      rules.push(validated);
-      persist(tenantId);
-      recordChange(tenantId, now);
+      // Recorded first, with what the rule IS: a deploy that cannot be recorded is not made.
       appendAudit(auditPath, {
         ts: now,
         tenantId,
@@ -550,10 +573,19 @@ export function createCustomRuleStore(opts?: {
         ruleName: rule.name,
         details: {
           severity: rule.severity,
+          contentSha256: contentOf(validated),
           ...(input.sourceMomentId ? { sourceMomentId: input.sourceMomentId } : {}),
           ...(input.replaces?.length ? { replaces: input.replaces } : {}),
         },
       });
+      rules.push(validated);
+      try {
+        persist(tenantId);
+      } catch (err) {
+        rules.pop();
+        throw err;
+      }
+      recordChange(tenantId, now);
       return validated;
     },
     delete(tenantId: TenantId, id: string, user = 'local'): boolean {
@@ -561,10 +593,8 @@ export function createCustomRuleStore(opts?: {
       const idx = rules.findIndex((r) => r.id === id);
       if (idx === -1) return false;
       const removed = rules[idx];
-      rules.splice(idx, 1);
-      persist(tenantId);
       const at = new Date().toISOString();
-      recordChange(tenantId, at);
+      // Recorded first, with the hash of what is being removed, so the entry still says what the rule was once it is gone.
       appendAudit(auditPath, {
         ts: at,
         tenantId,
@@ -572,7 +602,16 @@ export function createCustomRuleStore(opts?: {
         user,
         ruleId: id,
         ruleName: removed.name,
+        details: { severity: removed.severity, contentSha256: contentOf(removed) },
       });
+      rules.splice(idx, 1);
+      try {
+        persist(tenantId);
+      } catch (err) {
+        rules.splice(idx, 0, removed);
+        throw err;
+      }
+      recordChange(tenantId, at);
       return true;
     },
     setEnabled(
@@ -585,19 +624,27 @@ export function createCustomRuleStore(opts?: {
       const rule = rules.find((r) => r.id === id);
       if (!rule) return undefined;
       if (rule.enabled === enabled) return rule;
-      rule.enabled = enabled;
-      rule.updatedAt = new Date().toISOString();
-      persist(tenantId);
-      recordChange(tenantId, rule.updatedAt);
+      const at = new Date().toISOString();
       appendAudit(auditPath, {
-        ts: rule.updatedAt,
+        ts: at,
         tenantId,
         action: 'rule.toggle',
         user,
         ruleId: id,
         ruleName: rule.name,
-        details: { enabled },
+        details: { enabled, severity: rule.severity, contentSha256: contentOf(rule) },
       });
+      const was = { enabled: rule.enabled, updatedAt: rule.updatedAt };
+      rule.enabled = enabled;
+      rule.updatedAt = at;
+      try {
+        persist(tenantId);
+      } catch (err) {
+        rule.enabled = was.enabled;
+        rule.updatedAt = was.updatedAt;
+        throw err;
+      }
+      recordChange(tenantId, at);
       return rule;
     },
   };

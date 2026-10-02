@@ -109,11 +109,16 @@ describe('response shape — every built-in result carries its receipt', () => {
     expect(r.provenance!.thresholds.default).toBe(defaultConfig.eval.defaultThreshold);
   });
 
-  it('trace_id is echoed on the response when the evaluation was linked', async () => {
+  it('trace_id is echoed when the evaluation is the trace\'s verdict; one made beside the trace echoes reference_trace_id instead', async () => {
     const logged = await client.callTool({ name: 'log_trace', arguments: { agent_name: 'echo-test', input: t13.input, output: t13.output } });
     const { trace_id } = JSON.parse((logged.content as Array<{ type: string; text: string }>)[0].text) as { trace_id: string };
-    const r = await evaluate({ output: t13.output, eval_type: 'safety', trace_id });
+    // The stored record, scored as stored.
+    const r = await evaluate({ output: t13.output, trace_id });
     expect(r.trace_id).toBe(trace_id);
+    // One bundle is the caller's shape, not the record's verdict (tests/integration/verdict-of-record.test.ts).
+    const narrowed = (await evaluate({ output: t13.output, eval_type: 'safety', trace_id })) as typeof r & { reference_trace_id?: string };
+    expect(narrowed.trace_id).toBeUndefined();
+    expect(narrowed.reference_trace_id).toBe(trace_id);
     const unlinked = await evaluate({ output: t13.output, eval_type: 'safety' });
     expect(unlinked.trace_id).toBeUndefined();
   });

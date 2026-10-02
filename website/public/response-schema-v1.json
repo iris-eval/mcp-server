@@ -10,7 +10,11 @@
       "description": "the evaluation id, readable at iris://evaluations/{id}"
     },
     "trace_id": {
-      "description": "the linked trace, when named",
+      "description": "the trace this is the verdict of",
+      "type": "string"
+    },
+    "reference_trace_id": {
+      "description": "the trace it was made beside when it is NOT that trace verdict; never with trace_id",
       "type": "string"
     },
     "verdict": {

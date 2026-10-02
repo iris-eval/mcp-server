@@ -91,10 +91,21 @@ export function deriveCriticalSkipped(ruleResults: readonly EvalRuleResult[]): s
   return names.length > 0 ? names : undefined;
 }
 
-/** sha256 over the rules that ran — name, definition version, kind, effective criticality, weight — so two evaluations under the same ruleset hash the same. */
+/**
+ * sha256 over the rules that ran — name, definition version, kind, effective
+ * criticality, weight, and for a rule the deployment supplied the hash of
+ * its content — so two evaluations under the same ruleset hash the same,
+ * and two under different rules do not.
+ *
+ * The content hash is appended only where a rule carries one (a deployed or
+ * inline rule, a plugin): a ruleset of built-in rules hashes exactly as it
+ * did. Without it the hash named a custom rule by its name alone, and a rule
+ * replaced by one that checks nothing kept the fingerprint of the rule it
+ * replaced.
+ */
 export function rulesetHash(rules: readonly EvalRule[], resolve: (rule: EvalRule) => EffectiveCriticality, judge?: string): string {
   const rows = rules
-    .map((r) => [r.name, r.version ?? 0, r.kind ?? '', resolve(r).critical ? 1 : 0, r.weight] as const)
+    .map((r) => [r.name, r.version ?? 0, r.kind ?? '', resolve(r).critical ? 1 : 0, r.weight, ...(r.contentHash !== undefined ? [r.contentHash] : [])] as const)
     .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   /*
    * A relevance judge changes what answers_the_ask decides (#649), so a
@@ -105,8 +116,58 @@ export function rulesetHash(rules: readonly EvalRule[], resolve: (rule: EvalRule
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex').slice(0, 16);
 }
 
-/** sha256 over the evaluation configuration that shapes a verdict. */
-export function configHash(config: { threshold: number; ruleThresholds?: Record<string, unknown>; criticalRules?: readonly string[]; nonCriticalRules?: readonly string[]; judge?: string }): string {
+/** The composer settings that decide a verdict, as the configuration hash reads them. */
+export interface ComposerSettings {
+  defaultsGate: boolean;
+  falsePassCost: number;
+  onCriticalSkipped: string;
+  requiredEvidence: readonly string[];
+  prior: number;
+  priorSource: string;
+  priorMode: string;
+}
+
+/** What the composer does when a deployment sets nothing (compose.ts, DEFAULT_COMPOSE; risk.ts). Restated here so this module imports neither. */
+const SHIPPED_COMPOSER: ComposerSettings = {
+  defaultsGate: false,
+  falsePassCost: 1,
+  onCriticalSkipped: 'unknown',
+  requiredEvidence: [],
+  prior: 0.5,
+  priorSource: 'default',
+  priorMode: 'per-output',
+};
+
+/** The composer settings that differ from the shipped ones, keys in a fixed order; empty at the defaults. */
+function composerMoved(c: ComposerSettings): Record<string, unknown> {
+  const moved: Record<string, unknown> = {};
+  if (c.defaultsGate !== SHIPPED_COMPOSER.defaultsGate) moved.defaultsGate = c.defaultsGate;
+  if (c.falsePassCost !== SHIPPED_COMPOSER.falsePassCost) moved.falsePassCost = c.falsePassCost;
+  if (c.onCriticalSkipped !== SHIPPED_COMPOSER.onCriticalSkipped) moved.onCriticalSkipped = c.onCriticalSkipped;
+  if (c.requiredEvidence.length > 0) moved.requiredEvidence = [...c.requiredEvidence].sort();
+  // The prior in force when it is not the shipped one: set in config, or estimated from the deployment's own labels.
+  if (c.priorSource !== SHIPPED_COMPOSER.priorSource || c.prior !== SHIPPED_COMPOSER.prior) {
+    moved.prior = c.prior;
+    moved.priorSource = c.priorSource;
+  }
+  if (c.priorMode !== SHIPPED_COMPOSER.priorMode) moved.priorMode = c.priorMode;
+  return moved;
+}
+
+/**
+ * sha256 over the evaluation configuration that shapes a verdict.
+ *
+ * `composer` carries the settings that decide a verdict without touching a
+ * rule: whether a shipped threshold gates, the loss ratio, what a critical
+ * check that could not answer does, the evidence required, the prior. They
+ * were not in the hash, so the same output could pass and fail under one
+ * fingerprint, and compare_runs called two runs comparable when the only
+ * difference between them was the setting that flipped their verdicts.
+ * They are appended only where they differ from the shipped ones: a
+ * deployment that set none of them hashes exactly as it did.
+ */
+export function configHash(config: { threshold: number; ruleThresholds?: Record<string, unknown>; criticalRules?: readonly string[]; nonCriticalRules?: readonly string[]; judge?: string; composer?: ComposerSettings }): string {
+  const moved = config.composer ? composerMoved(config.composer) : {};
   const stable = JSON.stringify({
     threshold: config.threshold,
     ruleThresholds: Object.fromEntries(Object.entries(config.ruleThresholds ?? {}).sort(([a], [b]) => (a < b ? -1 : 1))),
@@ -114,6 +175,7 @@ export function configHash(config: { threshold: number; ruleThresholds?: Record<
     nonCriticalRules: [...(config.nonCriticalRules ?? [])].sort(),
     // The relevance judge in force, when there is one; absent keeps every judge-less hash as it was.
     ...(config.judge !== undefined ? { judge: config.judge } : {}),
+    ...(Object.keys(moved).length > 0 ? { composer: moved } : {}),
   });
   return createHash('sha256').update(stable).digest('hex').slice(0, 16);
 }

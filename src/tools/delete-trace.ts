@@ -67,13 +67,20 @@ export function registerDeleteTraceTool(
       },
     },
     guarded(async (args) => {
-      const deleted = await storage.deleteTrace(LOCAL_TENANT, args.trace_id);
-      if (deleted) {
-        appendAuditEntry(
-          { ts: new Date().toISOString(), tenantId: LOCAL_TENANT, action: 'trace.delete', user: 'local', traceId: args.trace_id },
-          auditPath,
-        );
+      /*
+       * Recorded before it is done, and only for a trace that exists: a
+       * deletion that cannot be recorded is refused (AuditWriteError), so
+       * the evidence against an agent cannot be removed without a line
+       * saying it was. The entry used to be written afterwards, best effort.
+       */
+      if ((await storage.getTrace(LOCAL_TENANT, args.trace_id)) === null) {
+        return respond(deleteTraceOutputSchema, { deleted: false, trace_id: args.trace_id });
       }
+      appendAuditEntry(
+        { ts: new Date().toISOString(), tenantId: LOCAL_TENANT, action: 'trace.delete', user: 'local', traceId: args.trace_id },
+        auditPath,
+      );
+      const deleted = await storage.deleteTrace(LOCAL_TENANT, args.trace_id);
       return respond(deleteTraceOutputSchema, { deleted, trace_id: args.trace_id });
     }),
   );

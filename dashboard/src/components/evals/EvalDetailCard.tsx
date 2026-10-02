@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import type { BuiltInRuleMeta, EvalResult, RuleProofSummary, VerdictLabelValue } from '../../api/types';
 import { RuleResultRow } from './RuleResultRow';
 import { VerdictPanel } from './VerdictPanel';
+import { besideText } from './verdictText';
 import { Tooltip } from '../shared/Tooltip';
 import { TT } from '../shared/tooltipText';
 
@@ -62,6 +63,11 @@ export function EvalDetailCard({
   const supersedes = typeof evalResult.provenance?.supersedes === 'string' ? evalResult.provenance.supersedes : null;
   return (
     <div className="iris-card eval-card" data-eval-id={evalResult.id}>
+      {evalResult.reference_trace_id && (
+        <p style={styles.note} data-beside-trace={evalResult.reference_trace_id}>
+          {besideText(evalResult.provenance?.beside)}
+        </p>
+      )}
       <VerdictPanel
         evalType={evalResult.eval_type}
         passed={evalResult.passed}

@@ -64,8 +64,8 @@ const trace = (id: string, agent: string, extra: Record<string, unknown> = {}) =
 });
 
 describe('migration 019 — the read-path indexes', () => {
-  it('is the last known migration, after 018', () => {
-    expect(KNOWN_MIGRATION_IDS).toHaveLength(19);
+  it('is the nineteenth migration, after 018', () => {
+    expect(KNOWN_MIGRATION_IDS.indexOf('019-read-paths')).toBe(18);
     expect(KNOWN_MIGRATION_IDS[18]).toBe('019-read-paths');
     expect(KNOWN_MIGRATION_IDS[17]).toBe('018-eval-risk-estimate');
   });

@@ -78,6 +78,7 @@ export async function insertLinkedEvalResult(
     if (result.trace_id && (code === 'SQLITE_CONSTRAINT_FOREIGNKEY' || /FOREIGN KEY constraint failed/i.test(message))) {
       throw unknownTraceError(result.trace_id);
     }
+    // An evaluation made beside a trace carries no foreign key (migration 020), so it has no such race: the pre-check is its only refusal.
     throw err;
   }
 }

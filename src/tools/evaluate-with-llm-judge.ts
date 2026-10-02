@@ -13,6 +13,7 @@ import { generateEvalId } from '../utils/ids.js';
 import { JUDGE_COST_CAP_VAR, JUDGE_DEFAULT_COST_CAP_USD, JUDGE_KEY_VARS, judgeCostCapUsd, judgeRecovery } from '../judge-enablement.js';
 import { strictInput } from './strict-input.js';
 import { getTraceOrThrow, insertLinkedEvalResult } from './trace-link.js';
+import { besideNote } from '../eval/of-record.js';
 import { agentModelOf, sameFamily, sameFamilyWarning } from '../eval/llm-judge/family.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { advertisedOutput } from './advertise.js';
@@ -36,7 +37,7 @@ const inputSchema = {
   input: z.string().optional().describe('User question / prompt that produced the output (required for relevance; improves helpfulness and safety)'),
   expected: z.string().optional().describe('Reference answer (required for correctness template)'),
   source_material: z.string().optional().describe('Provided RAG sources (required for faithfulness template)'),
-  trace_id: z.string().optional().describe('Link this evaluation to a stored trace (id from log_trace / get_traces); an unknown id is rejected BEFORE the judge is called'),
+  trace_id: z.string().optional().describe('Keep this evaluation beside a stored trace (id from log_trace / get_traces). It is listed with the trace and never replaces its verdict; an unknown id is rejected BEFORE the judge is called'),
   agent_model: z
     .string()
     .min(1)
@@ -91,7 +92,7 @@ function resolveMaxCost(paramValue?: number): number {
 
 export const judgeOutputSchema = z.looseObject({
   id: z.string().describe('the evaluation id; read it back at iris://evaluations/{id}'),
-  trace_id: z.string().optional().describe('the linked trace, when one was named'),
+  reference_trace_id: z.string().optional().describe('the trace this judgment is kept beside, when one was named; it is not that trace\'s verdict'),
   score: z.number().describe('0..1 from the judge'),
   passed: z.boolean().describe('the verdict: the score against the template\'s threshold, which is pass_threshold below. Not the model\'s own boolean — that is self_reported_pass'),
   verdict: verdictSchema.optional().describe('composer verdict, as evaluate_output prints'),
@@ -125,9 +126,9 @@ export function registerEvaluateWithLLMJudgeTool(
       title: 'Evaluate With LLM Judge',
       description: describeTool({
         summary:
-          'Score an output with an LLM judge on your own key: a 0..1 score, a rationale and the spend.',
+          'Score an output with an LLM judge on your own key: a 0..1 score, a rationale, the spend.',
         does:
-          `Calls Anthropic or OpenAI with ${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai}; Iris never proxies. correctness needs expected, relevance input, faithfulness source_material. The worst-case cost is checked against max_cost_usd first.`,
+          `Calls Anthropic or OpenAI with ${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai}; Iris never proxies. correctness needs expected, relevance input, faithfulness source_material. Worst-case cost is checked against max_cost_usd first.`,
         whenNot:
           'For length, keyword, PII or cost checks (evaluate_output, free).',
         returns: judgeOutputSchema,
@@ -200,7 +201,6 @@ export function registerEvaluateWithLLMJudgeTool(
       const row = engine.verdictOf(
         judgeEvalResult({
           id: evalId,
-          traceId: args.trace_id,
           output: args.output,
           expected: args.expected,
           template: result.template,
@@ -215,17 +215,29 @@ export function registerEvaluateWithLLMJudgeTool(
           outputTokens: result.outputTokens,
         }),
       );
+      /*
+       * A judgment answers the judge's question about the text the caller
+       * passed. Named beside a trace, it is listed with the trace's
+       * evaluations and is never the trace's verdict (eval/of-record.ts): a
+       * lenient template must not be able to turn a failed trace into a
+       * passed one.
+       */
+      if (args.trace_id) {
+        row.reference_trace_id = args.trace_id;
+        if (row.provenance) row.provenance = { ...row.provenance, beside: ['judge'] };
+      }
       await insertLinkedEvalResult(storage, LOCAL_TENANT, row);
+      const interpretations = [...(args.trace_id ? [besideNote(args.trace_id, ['judge'])] : []), ...(row.interpretations ?? [])];
 
       return respond(
         judgeOutputSchema,
         {
           id: evalId,
-          ...(args.trace_id ? { trace_id: args.trace_id } : {}),
+          ...(args.trace_id ? { reference_trace_id: args.trace_id } : {}),
           score: result.score,
           passed: row.passed,
           ...(row.verdict ? { verdict: row.verdict } : {}),
-          ...(row.interpretations?.length ? { interpretations: row.interpretations } : {}),
+          ...(interpretations.length ? { interpretations } : {}),
           pass_threshold: result.passThreshold,
           ...(result.selfReportedPass !== undefined ? { self_reported_pass: result.selfReportedPass } : {}),
           ...(result.disagreement ? { disagreement: true } : {}),

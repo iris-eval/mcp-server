@@ -12,6 +12,21 @@ export function createErrorHandler(logger: Logger): ErrorRequestHandler {
       return;
     }
 
+    /*
+     * A rule change or trace deletion refused because its audit entry could
+     * not be written (custom-rule-store.ts). Said in words, without the
+     * error's own message: that one names the audit log's path, which is
+     * for the server log and the local MCP caller, not an HTTP client.
+     */
+    if (err?.name === 'AuditWriteError') {
+      logger.error(`Request error: ${err.message}`, { status: 503 });
+      res.status(503).json({
+        error: 'The audit log could not be written, so the change was refused. Nothing was changed. The server log names the file and the cause.',
+        code: 'IRIS_STORAGE_ERROR',
+      });
+      return;
+    }
+
     const status = err.status ?? err.statusCode ?? 500;
 
     /*
