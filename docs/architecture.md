@@ -443,7 +443,7 @@ Every stored thing has one of two lifetimes. Telemetry expires: traces, spans an
 
 ### Several processes on one home
 
-`install` gives each MCP client its own server process, and they share one Iris home. The database is shared by construction (WAL mode, one writer at a time). Two things a process used to read once at start are now checked before every evaluation (`src/eval/shared-state.ts`): the deployed-rules file, by one `stat`, and the labels, by the database's change counter (`PRAGMA data_version`, which moves when another connection commits). Either is re-read only when it moved. Changes to the rules file are made under a lock file on what the file holds at that moment (`src/custom-rule-store.ts`). What still needs a restart: `config.json` settings other than the API keys, and code plugins.
+`install` gives each MCP client its own server process, and they share one Iris home. The database is shared by construction (WAL mode, one writer at a time). Two things a process used to read once at start are now checked before an evaluation (`src/eval/shared-state.ts`): the deployed-rules file, by one `stat`, and the labels, by the database's change counter (`PRAGMA data_version`, which moves when another connection commits). Either is re-read only when it moved. The checks run at most once every 20 ms: together they cost about 50 µs on Windows against an evaluation of about 450 µs, so a burst of evaluations pays for one look per interval and a change made elsewhere is read within it. Changes to the rules file are made under a lock file on what the file holds at that moment (`src/custom-rule-store.ts`). What still needs a restart: `config.json` settings other than the API keys, and code plugins.
 
 ### Migration system
 

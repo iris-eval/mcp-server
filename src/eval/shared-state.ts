@@ -11,9 +11,17 @@
  * hashes for the same moment, and a label written in one process moved the
  * risk estimate in that process alone.
  *
- * Both are now checked before every evaluation: one `stat` of the rules
- * file, and one read of the database's change counter. Nothing is re-read
- * unless one of them moved.
+ * Both are now checked before an evaluation: one `stat` of the rules file,
+ * and one read of the database's change counter. Nothing is re-read unless
+ * one of them moved.
+ *
+ * The server checks at most once every CHECK_EVERY_MS. The two checks cost
+ * about 50 µs together on Windows (a `stat` there is 30 µs), against an
+ * evaluation of about 450 µs, so checking on every one of a burst of
+ * evaluations slowed a batch by a tenth. Evaluations further apart than the
+ * interval, which is every call an agent or a person makes one at a time,
+ * are each checked; inside a burst, a change another process made is read
+ * within the interval.
  */
 import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { IStorageAdapter } from '../types/query.js';
@@ -21,6 +29,21 @@ import type { TenantId } from '../types/tenant.js';
 import type { EvalEngine } from './engine.js';
 import { refreshLocalLabels } from './local-labels.js';
 import { createCustomRule, ruleContentHash } from './rules/custom.js';
+
+/** How often, at most, the server looks for another process's changes. */
+export const CHECK_EVERY_MS = 20;
+
+/** `check`, skipped when it last ran less than `everyMs` ago. With 0 it runs every time. */
+function atMostEvery<T extends void | Promise<void>>(everyMs: number, check: () => T, skipped: T): () => T {
+  if (!(everyMs > 0)) return check;
+  let last = -Infinity;
+  return () => {
+    const now = performance.now();
+    if (now - last < everyMs) return skipped;
+    last = now;
+    return check();
+  };
+}
 
 /**
  * The function that makes the engine's registrations match the store's
@@ -68,9 +91,14 @@ export function labelsInStep(engine: EvalEngine, storage: IStorageAdapter, tenan
   };
 }
 
-/** Install both on the engine. Returns the rules function, which the caller runs once to register what is deployed now. */
-export function keepInStep(engine: EvalEngine, store: CustomRuleStore, storage: IStorageAdapter, tenantId: TenantId): () => void {
+/**
+ * Install both on the engine, each checked at most once every `everyMs`.
+ * Returns the unthrottled rules function, which the caller runs once to
+ * register what is deployed now.
+ */
+export function keepInStep(engine: EvalEngine, store: CustomRuleStore, storage: IStorageAdapter, tenantId: TenantId, everyMs: number = CHECK_EVERY_MS): () => void {
   const rules = deployedRulesInStep(engine, store, tenantId);
-  engine.setSharedState({ rules, labels: labelsInStep(engine, storage, tenantId) });
+  const labels = labelsInStep(engine, storage, tenantId);
+  engine.setSharedState({ rules: atMostEvery(everyMs, rules, undefined), labels: atMostEvery(everyMs, labels, Promise.resolve()) });
   return rules;
 }

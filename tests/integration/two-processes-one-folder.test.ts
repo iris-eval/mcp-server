@@ -14,6 +14,11 @@
  * one ruleset hash, a deploy through B keeps A's rule, a rule switched off
  * through A stops firing in B, and B's verdict says the rules under it
  * changed.
+ *
+ * A server looks for another process's changes at most once every 20 ms
+ * (eval/shared-state.ts, CHECK_EVERY_MS), so each step here that crosses
+ * from one server to the other waits that long first. A person or an agent
+ * moving between clients never arrives sooner.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -24,6 +29,8 @@ import { join, resolve } from 'node:path';
 
 type Json = Record<string, unknown>;
 const serverPath = resolve(import.meta.dirname, '../../src/index.ts');
+/** Longer than CHECK_EVERY_MS: the other server's next evaluation looks at the file again. */
+const acrossProcesses = (): Promise<void> => new Promise((r) => setTimeout(r, 40));
 
 function body(result: unknown): Json {
   const text = (result as { content: Array<{ type: string; text: string }> }).content[0].text;
@@ -80,6 +87,7 @@ describe('two server processes on one data folder', () => {
     expect(ran(await judge(b, 'We recommend Acme.'))).toEqual([]);
 
     const first = await deploy(a, 'no-competitor', 'Acme');
+    await acrossProcesses();
 
     // B never restarted. Its next evaluation runs A's rule and fails on it.
     const inB = await judge(b, 'We recommend Acme.');
@@ -97,12 +105,14 @@ describe('two server processes on one data folder', () => {
     await deploy(b, 'no-other-competitor', 'Globex');
     await deploy(a, 'no-third-competitor', 'Initech');
     expect(stored()).toEqual(['no-competitor', 'no-other-competitor', 'no-third-competitor']);
+    await acrossProcesses();
     for (const client of [a, b]) {
       expect(ran(await judge(client, 'A plain answer.')).sort()).toEqual(['no-competitor', 'no-other-competitor', 'no-third-competitor']);
     }
 
     // Switched off through A, it stops firing in B.
     await call(a, 'delete_rule', { rule_id: first.id ?? (first.rule as Json | undefined)?.id, enabled: false });
+    await acrossProcesses();
     const after = await judge(b, 'We recommend Acme.');
     expect(ran(after).sort()).toEqual(['no-other-competitor', 'no-third-competitor']);
     expect(after.passed).toBe(true);

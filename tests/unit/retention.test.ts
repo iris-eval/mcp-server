@@ -50,6 +50,17 @@ describe('retention', () => {
     expect(quiet).not.toHaveBeenCalled();
   });
 
+  it('a sweep whose report of what was kept fails still reports what it deleted', async () => {
+    const storage = fakeStorage();
+    (storage as unknown as { keptPastRetention: () => Promise<never> }).keptPastRetention = async () => {
+      throw new Error('database is locked');
+    };
+    const warn = vi.fn();
+    const out = await runRetentionSweep(storage, defaultConfig, { info: vi.fn(), warn });
+    expect(out).toEqual({ deletedTraces: 2, deletedEvals: 1, deletedBackups: 0, kept: null });
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/could not count what the pinned baseline run keeps past the window: database is locked/));
+  });
+
   it('the timer fires the same sweep every sweepIntervalHours and is unref\'d so it never holds the process open', async () => {
     const storage = fakeStorage();
     const config = structuredClone(defaultConfig);

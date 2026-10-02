@@ -71,7 +71,13 @@ export async function runRetentionSweep(storage: IStorageAdapter, config: IrisCo
      */
     const deletedBackups = config.storage.path === ':memory:' ? 0 : pruneBackups(config.storage.path, { olderThan: new Date(Date.now() - config.retention.days * 86_400_000) }).length;
     if (deletedBackups > 0) logger.info(`Retention cleanup: deleted ${deletedBackups} copy(ies) of the database taken before an upgrade, older than ${config.retention.days} days`);
-    const kept = await storage.keptPastRetention(LOCAL_TENANT, config.retention.days);
+    // What was kept is a report on a sweep that already ran: a failure to count it does not undo the sweep or hide what it deleted.
+    let kept: SweepOutcome['kept'] = null;
+    try {
+      kept = await storage.keptPastRetention(LOCAL_TENANT, config.retention.days);
+    } catch (err) {
+      logger.warn(`Retention cleanup: could not count what the pinned baseline run keeps past the window: ${err instanceof Error ? err.message : String(err)}`);
+    }
     if (kept) {
       logger.info(
         `Retention cleanup: kept ${kept.traces} trace(s) and ${kept.evaluations} evaluation(s) older than ${config.retention.days} days: they belong to the pinned baseline run ${kept.runId}. ` +

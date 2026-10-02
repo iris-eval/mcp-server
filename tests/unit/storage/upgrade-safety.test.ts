@@ -175,7 +175,7 @@ describe('the copy taken before a migration', () => {
     writeFileSync(old, 'x');
     writeFileSync(recent, 'x');
     const config = { ...defaultConfig, storage: { ...defaultConfig.storage, path } } as IrisConfig;
-    const storage = { deleteTracesOlderThan: async () => 0, deleteEvalResultsOlderThan: async () => 0, checkpoint: async () => undefined } as never;
+    const storage = { deleteTracesOlderThan: async () => 0, deleteEvalResultsOlderThan: async () => 0, keptPastRetention: async () => null, checkpoint: async () => undefined } as never;
     const out = await runRetentionSweep(storage, config, { info: () => undefined, warn: () => undefined });
     expect(out?.deletedBackups).toBe(1);
     expect(existsSync(old)).toBe(false);

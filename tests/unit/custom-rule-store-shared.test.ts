@@ -13,7 +13,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createCustomRuleStore, type CustomRuleStore } from '../../src/custom-rule-store.js';
 import { EvalEngine } from '../../src/eval/engine.js';
-import { deployedRulesInStep } from '../../src/eval/shared-state.js';
+import { CHECK_EVERY_MS, deployedRulesInStep, keepInStep } from '../../src/eval/shared-state.js';
+import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
 import type { CustomRuleDefinition } from '../../src/types/eval.js';
 
@@ -238,6 +239,32 @@ describe('the engine follows the file', () => {
 
     a.delete(LOCAL_TENANT, made.id);
     expect(await ran(engine)).toEqual(['a-plugin-rule']);
+  });
+
+  it('the server looks at most once every 20 ms: a burst of evaluations costs one look, and a change is read once the interval has passed', async () => {
+    expect(CHECK_EVERY_MS).toBe(20);
+    const a = store();
+    const b = store();
+    let looks = 0;
+    const counted: CustomRuleStore = { ...b, revision: (t) => ((looks += 1), b.revision(t)) };
+    const storage = new SqliteAdapter(':memory:');
+    await storage.initialize();
+    try {
+      const engine = new EvalEngine(0.7);
+      keepInStep(engine, counted, storage, LOCAL_TENANT, 5_000)();
+      looks = 0;
+      for (let i = 0; i < 50; i++) await engine.evaluate('custom', output);
+      expect(looks).toBe(1);
+
+      const soon = new EvalEngine(0.7);
+      keepInStep(soon, b, storage, LOCAL_TENANT, 60)();
+      expect(await ran(soon)).toEqual([]);
+      a.deploy(LOCAL_TENANT, rule('no-competitor', 'Acme'));
+      await new Promise((r) => setTimeout(r, 90));
+      expect(await ran(soon)).toEqual(['no-competitor']);
+    } finally {
+      await storage.close();
+    }
   });
 
   it('a rules file that cannot be read keeps the evaluation working', async () => {
