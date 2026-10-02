@@ -2,8 +2,8 @@
  * Every package in the repository is exactly one thing.
  *
  * scripts/claims/packages.mjs walks every package.json and pyproject.toml
- * (not node_modules, and not website/, dashboard/ or examples/,
- * which ship nothing on a registry of their own) and classifies each from its
+ * (not node_modules, not anything git ignores, and not website/, dashboard/
+ * or examples/, which ship nothing on a registry of their own) and classifies each from its
  * own manifest: the server release.yml publishes to npm, the Python client
  * publish-python.yml publishes to PyPI, an npm library release.yml's
  * publish-packages job publishes, a "private": true package, or the
@@ -13,7 +13,9 @@
  * them and publish workflows that could not publish, because nothing asked
  * which of these each one was.
  */
-import { readFileSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 // @ts-ignore — plain .mjs module
@@ -40,6 +42,26 @@ describe('the package inventory', () => {
     expect(manifests).toContain(`${PYPI_DIR}/pyproject.toml`);
     expect(manifests).toContain(`${LAUNCHER_DIR}/package.json`);
     for (const m of manifests) expect(m, m).not.toMatch(/^(website|dashboard|examples)\/|(^|\/)node_modules\//);
+  });
+
+  it('leaves out a manifest git ignores, and keeps one that is new and not ignored', () => {
+    // A leftover directory the repository ignores is not a package Iris
+    // ships: a manifest inside one once reached the truthbase from a
+    // checkout that happened to hold it.
+    const root = mkdtempSync(join(tmpdir(), 'iris-inventory-'));
+    try {
+      const git = (...args: string[]): void => void execFileSync('git', ['-C', root, ...args], { stdio: 'ignore' });
+      git('init', '-q');
+      writeFileSync(join(root, '.gitignore'), 'leftover/');
+      writeFileSync(join(root, 'package.json'), '{}');
+      for (const dir of ['leftover', 'fresh']) {
+        mkdirSync(join(root, dir));
+        writeFileSync(join(root, dir, 'package.json'), '{}');
+      }
+      expect(findManifests(root)).toEqual(['fresh/package.json', 'package.json']);
+    } finally {
+      rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    }
   });
 
   it('has exactly one package of each released kind', () => {

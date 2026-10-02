@@ -33,6 +33,7 @@
 // version` → 1.0.0), without provenance; 1.0.1 is the same launcher, published
 // by release.yml with provenance.
 
+import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -58,7 +59,33 @@ const SKIP_ANYWHERE = new Set(['node_modules', 'dist', 'build', 'coverage']);
 const MANIFESTS = new Set(['package.json', 'pyproject.toml']);
 const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies', 'bundleDependencies', 'bundledDependencies'];
 
-/** Every package.json / pyproject.toml under the root, as forward-slash paths relative to it. */
+/**
+ * The paths among `paths` that git ignores under `root`. A tracked file is
+ * never ignored, whatever .gitignore says. Outside a git work tree, or with
+ * no git on the PATH, nothing is: the walk then stands as it is, which is
+ * what a clean checkout holds anyway.
+ */
+function gitIgnored(root, paths) {
+  if (paths.length === 0) return new Set();
+  try {
+    const stdout = execFileSync('git', ['-C', root, 'check-ignore', '--stdin'], {
+      input: paths.join('\n'),
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+      timeout: 10_000,
+    });
+    return new Set(stdout.split(/\r?\n/).filter(Boolean));
+  } catch {
+    // Exit 1 is "none of them is ignored"; anything else is no usable git.
+    return new Set();
+  }
+}
+
+/**
+ * Every package.json / pyproject.toml under the root, as forward-slash paths
+ * relative to it. A manifest git ignores is left out: a leftover directory
+ * in one checkout is not a package the repository holds.
+ */
 export function findManifests(root = ROOT) {
   const out = [];
   const walk = (dir) => {
@@ -75,7 +102,8 @@ export function findManifests(root = ROOT) {
     }
   };
   walk(root);
-  return out.sort();
+  const ignored = gitIgnored(root, out);
+  return out.filter((m) => !ignored.has(m)).sort();
 }
 
 /** `version = "x"` from a pyproject.toml's [project] table. */
