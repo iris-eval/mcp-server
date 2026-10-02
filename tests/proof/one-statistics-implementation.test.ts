@@ -19,7 +19,7 @@ import { join, resolve } from 'node:path';
 
 const root = resolve(__dirname, '..', '..');
 
-const STATISTICS = ['wilson', 'newcombeDifference', 'mcnemarExact', 'clusterBootstrap', 'smallestDetectableDifference'];
+const STATISTICS = ['wilson', 'newcombeDifference', 'newcombePairedDifference', 'mcnemarExact', 'mcnemarDifference', 'clopperPearson', 'clusterInterval', 'smallestDetectableDifference'];
 
 function tsFilesUnder(dir: string): string[] {
   const out: string[] = [];

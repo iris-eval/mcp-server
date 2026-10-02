@@ -85,7 +85,7 @@ function makeSampleMoment(daysAgo: number = 1): DecisionMoment {
     verdict: 'pass',
     overallScore: 0.9,
     evalCount: 3,
-    ruleSnapshot: { failed: [], skipped: [], passedCount: 3, totalCount: 3 },
+    ruleSnapshot: { failed: [], skipped: [], passed: [], passedCount: 3, totalCount: 3 },
     significance: { kind: 'normal-pass', score: 0.1, label: 'Pass', reason: 'all rules passed' },
   };
 }

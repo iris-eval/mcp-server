@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import { compareRuns, RULE_ALPHA } from '../../../src/eval/compare.js';
 import { compareRunsOutputSchema, compareStoredRuns } from '../../../src/tools/compare-runs.js';
-import { newcombeDifference, smallestDetectableDifference, Z_90 } from '../../../src/eval/stats.js';
+import { newcombePairedDifference, Z_90 } from '../../../src/eval/stats.js';
 import type { RunResultRow } from '../../../src/storage/sqlite-adapter.js';
 import type { IStorageAdapter } from '../../../src/types/query.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
@@ -23,6 +23,8 @@ function row(over: Partial<RunResultRow> = {}): RunResultRow {
     agentName: 'bot',
     passed: true,
     failedRules: [],
+    judgedRules: ['no_pii', 'no_tool_loop', 'min_output_length'],
+    criticalFailed: [],
     engineVersion: '0.13.0',
     rulesetHash: 'rs',
     configHash: 'cfg',
@@ -37,46 +39,56 @@ function run(n: number, fails: number, rule = 'no_pii', keyed = true): RunResult
 }
 
 describe('equivalent within a margin — the third answer', () => {
-  it('holds when the 90% interval on the difference sits inside ±δ, with δ defaulting to the smallest detectable difference', () => {
-    const before = run(200, 20);
-    const after = run(200, 22);
-    const c = compareRuns('a', before, 'b', after);
+  it('without a margin, equivalence is not tested: a comparison does not choose one for the reader', () => {
+    const c = compareRuns('a', run(200, 20), 'b', run(200, 22));
     expect(c.worse).toBe(false);
     expect(c.better).toBe(false);
-    const e = c.equivalentWithin!;
-    expect(e.marginSource).toBe('smallest-detectable');
-    expect(e.margin).toBe(smallestDetectableDifference(200, 200));
-    const d90 = newcombeDifference(178, 200, 180, 200, Z_90)!;
-    expect(e.interval).toEqual({ lo: d90.lo, hi: d90.hi });
-    expect(e.holds).toBe(true);
-    expect(c.summary).toContain('Equivalent within');
-    expect(c.summary).toContain('the smallest difference these sizes could detect');
+    expect(c.equivalentWithin).toBeNull();
+    expect(c.call).toBe('undetermined');
+    expect(c.summary).not.toContain('quivalent');
   });
 
-  it('a supplied margin is honoured and named, and a tight one fails where the default held', () => {
+  it('two runs of eight cases, all passing, are not called equivalent', () => {
+    // This read "Equivalent within 40.3 points": a margin nobody chose, wide enough to hold almost any change.
+    const c = compareRuns('a', run(8, 0), 'b', run(8, 0));
+    expect(c.equivalentWithin).toBeNull();
+    expect(c.call).toBe('undetermined');
+    expect(c.summary).not.toContain('quivalent');
+    expect(c.summary).toContain('Not enough evidence to call it either way');
+  });
+
+  it('a supplied margin is honoured and named: a loose one holds, a tight one does not', () => {
     const before = run(200, 20);
     const after = run(200, 22);
     const loose = compareRuns('a', before, 'b', after, { equivalenceMargin: 0.2 });
     expect(loose.equivalentWithin).toMatchObject({ margin: 0.2, marginSource: 'caller', holds: true });
+    // The interval on how far apart the runs are, over every pair: 178 passed both, two fell, none recovered, 20 failed both.
+    const d = newcombePairedDifference(178, 2, 0, 20, Z_90)!;
+    expect(loose.equivalentWithin!.interval).toEqual({ lo: d.lo, hi: d.hi });
+    expect(loose.call).toBe('equivalent');
+    expect(loose.summary).toContain('Equivalent within 20.0 points, the margin you supplied');
     const tight = compareRuns('a', before, 'b', after, { equivalenceMargin: 0.005 });
     expect(tight.equivalentWithin).toMatchObject({ margin: 0.005, marginSource: 'caller', holds: false });
-    expect(tight.summary).toContain('Not equivalent within 0.5 points');
-    expect(tight.summary).toContain('the margin you supplied');
+    expect(tight.call).toBe('undetermined');
+    expect(tight.summary).toContain('Not equivalent within 0.5 points, the margin you supplied');
     expect(tight.summary).toContain('a different statement from "not distinguishable"');
   });
 
-  it('is distinct from "not distinguishable": six against six is neither worse nor equivalent', () => {
-    const c = compareRuns('a', run(6, 1), 'b', run(6, 2));
+  it('is distinct from "not distinguishable": six against six is neither worse nor equivalent within thirty points', () => {
+    const c = compareRuns('a', run(6, 1), 'b', run(6, 2), { equivalenceMargin: 0.3 });
     expect(c.worse).toBe(false);
-    expect(c.smallestDetectable).toBeGreaterThan(0.4);
-    // The default δ IS the smallest detectable difference, and six cases
-    // cannot even establish that: the 90% interval is wider than the 95%
-    // half-width at the observed rates.
+    expect(c.smallestDetectable).toBeCloseTo(0.7178, 3);
     expect(c.equivalentWithin!.holds).toBe(false);
   });
 
+  it('a regression is never also equivalent, however wide the margin', () => {
+    const c = compareRuns('a', run(12, 0), 'b', run(12, 5), { equivalenceMargin: 0.9 });
+    expect(c.worse).toBe(true);
+    expect(c.call).toBe('worse');
+  });
+
   it('is null when a run is empty, like everything else', () => {
-    expect(compareRuns('a', [], 'b', run(10, 1)).equivalentWithin).toBeNull();
+    expect(compareRuns('a', [], 'b', run(10, 1), { equivalenceMargin: 0.1 }).equivalentWithin).toBeNull();
   });
 });
 
@@ -152,10 +164,26 @@ describe('the tool\'s shape carries the new fields on both doors', () => {
     expect(out.worse).toBe(true);
   });
 
-  it('without a margin the response names the default', async () => {
+  it('without a margin equivalent_within is null, and the response carries what it was judged on', async () => {
     const out = await compareStoredRuns(storage, LOCAL_TENANT, { before: 'before', after: 'after' });
-    expect(out.equivalent_within?.margin_source).toBe('smallest-detectable');
-    expect(out.equivalent_within?.margin).toBe(smallestDetectableDifference(60, 60));
+    expect(compareRunsOutputSchema.safeParse(out).success).toBe(true);
+    expect(out.equivalent_within).toBeNull();
+    expect(out).toMatchObject({ call: 'worse', improvement_withheld: false, coverage: { lost: [], gained: [] }, critical_rises: [] });
+    expect(out.regressions[0]).toMatchObject({ judged_before: 60, judged_after: 60 });
+    expect(out.discordant[0]).toMatchObject({ direction: 'regressed', not_judged_after: [] });
+  });
+
+  it('lost coverage and a critical rise reach the response in its own field names', async () => {
+    const less: Record<string, RunResultRow[]> = {
+      before: Array.from({ length: 12 }, (_, i) => row({ caseKey: `case-${i}`, passed: i >= 7, failedRules: i < 7 ? ['no_tool_loop'] : [] })),
+      after: Array.from({ length: 12 }, (_, i) => row({ caseKey: `case-${i}`, passed: i !== 0, judgedRules: ['no_pii', 'min_output_length'], failedRules: i === 0 ? ['no_pii'] : [], criticalFailed: i === 0 ? ['no_pii'] : [] })),
+    };
+    const out = await compareStoredRuns({ getRunResults: async (_t: unknown, id: string) => less[id] ?? [] } as unknown as IStorageAdapter, LOCAL_TENANT, { before: 'before', after: 'after' });
+    expect(compareRunsOutputSchema.safeParse(out).success).toBe(true);
+    expect(out.better).toBe(false);
+    expect(out.improvement_withheld).toBe(true);
+    expect(out.coverage.lost).toEqual([{ rule: 'no_tool_loop', judged_before: 12, of_before: 12, judged_after: 0, of_after: 12, on_shared: 12 }]);
+    expect(out.critical_rises).toEqual([{ rule: 'no_pii', before: 0, after: 1, new_on: ['case-0'] }]);
   });
 });
 

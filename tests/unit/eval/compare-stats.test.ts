@@ -12,7 +12,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-  clusterBootstrap,
+  clusterInterval,
   mcnemarExact,
   newcombeDifference,
   smallestDetectableDifference,
@@ -127,7 +127,7 @@ describe('C3 — McNemar exact, on the pairs that disagree', () => {
 });
 
 describe('repeats of one case are one question, not many', () => {
-  it('the cluster bootstrap resamples CASES, so repeats cannot shrink the interval', () => {
+  it('the interval is over CASES, so repeats cannot shrink it', () => {
     /*
      * Five questions, asked ten times each. Pooling them would claim n = 50
      * and report an interval built on fifty independent observations, which
@@ -141,31 +141,31 @@ describe('repeats of one case are one question, not many', () => {
       { passed: 9, total: 10 },
       { passed: 2, total: 10 },
     ];
-    const b = clusterBootstrap(cases, 'seed-a')!;
+    const b = clusterInterval(cases)!;
     expect(b.rate).toBeCloseTo(0.68, 10);
     const pooled = wilson(34, 50)!;
-    // Twice as wide as the pooled interval, and that width is the honesty.
+    // More than twice as wide as the pooled interval, and that width is the honesty.
     expect(b.hi - b.lo).toBeGreaterThan(2 * (pooled.hi - pooled.lo));
   });
 
-  it('five identical cases carry no between-case variance, and the interval says so', () => {
-    // Not a degenerate result: five cases that behave identically really do
-    // pin the rate. The width is zero because the resampling has nothing to
-    // vary, which is the correct reading of that evidence.
+  it('five cases that behave identically are still five cases: the interval has the width five cases earn', () => {
+    // A resampling interval has no width here, because every resample is the
+    // same. Five questions cannot pin a rate to a point, and this one says so.
     const same = Array.from({ length: 5 }, () => ({ passed: 8, total: 10 }));
-    const b = clusterBootstrap(same, 'seed-a')!;
+    const b = clusterInterval(same)!;
     expect(b.rate).toBeCloseTo(0.8, 10);
-    expect(b.hi - b.lo).toBe(0);
+    expect(b.lo).toBeLessThan(0.4);
+    expect(b.hi).toBeGreaterThan(0.99);
   });
 
-  it('is seeded, so the same input always gives the same interval', () => {
+  it('the same input always gives the same interval, with no seed to carry', () => {
     const cases = [{ passed: 3, total: 5 }, { passed: 5, total: 5 }, { passed: 1, total: 5 }];
-    expect(clusterBootstrap(cases, 'k')).toEqual(clusterBootstrap(cases, 'k'));
+    expect(clusterInterval(cases)).toEqual(clusterInterval(cases));
   });
 
-  it('returns null when there is nothing to resample', () => {
-    expect(clusterBootstrap([], 's')).toBeNull();
-    expect(clusterBootstrap([{ passed: 0, total: 0 }], 's')).toBeNull();
+  it('returns null when there is no case to count', () => {
+    expect(clusterInterval([])).toBeNull();
+    expect(clusterInterval([{ passed: 0, total: 0 }])).toBeNull();
   });
 });
 
@@ -179,8 +179,9 @@ describe('C6 — not enough evidence is an answer, and it says how much would be
     const small = smallestDetectableDifference(6, 6)!;
     const large = smallestDetectableDifference(500, 500)!;
     // The number that turns a shrug into an instruction: run more cases.
-    expect(small).toBeGreaterThan(0.4);
-    expect(large).toBeLessThan(0.07);
+    // At 80% power for a one-sided 5% test, at a pass rate of one half.
+    expect(small).toBeCloseTo(0.7178, 3);
+    expect(large).toBeCloseTo(0.0786, 3);
     expect(small).toBeGreaterThan(large);
   });
 

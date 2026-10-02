@@ -22,7 +22,14 @@ import { irisError } from './errors.js';
  * `worse` and `better` are separate booleans rather than one direction
  * field precisely so that "neither" is representable and is the default.
  * Since 0.14.0 there is a third answer, `equivalent_within`, which is
- * not the absence of a difference but a positive finding with a margin.
+ * not the absence of a difference but a positive finding with a margin,
+ * and only against a margin the caller chose. `call` is the one word that
+ * carries all of it: worse, better, equivalent or undetermined.
+ *
+ * A rule that did not run on a case is neither a pass nor a failure there.
+ * Each rule row carries how many cases it ran on, `coverage` names the
+ * rules that ran on fewer cases in the second run, and `better` is not
+ * declared while any did.
  */
 
 const runSummarySchema = z.looseObject({
@@ -38,25 +45,43 @@ const runSummarySchema = z.looseObject({
   superseded: z.number().describe('older evaluations collapsed away, so a re-run case is not counted twice'),
 });
 
-const differenceSchema = z.looseObject({ delta: z.number(), lo: z.number(), hi: z.number(), significant: z.boolean() });
+const differenceSchema = z.looseObject({ delta: z.number(), lo: z.number(), hi: z.number(), significant: z.boolean().describe('the interval excludes zero') });
 
 const ruleDeltaSchema = z.looseObject({
   rule: z.string(),
   failed_before: z.number(),
   failed_after: z.number(),
   delta: z.number(),
-  difference: differenceSchema.nullable().describe("this rule's pass-rate difference, 95% Newcombe; null when a side is empty"),
-  test: z.enum(['mcnemar-exact', 'newcombe-z']).nullable().describe("behind p: McNemar exact on this rule's discordant pairs when paired, else a Newcombe z"),
-  p: z.number().nullable().describe('one-sided in the regression direction'),
+  judged_before: z.number().describe('cases the rule ran on in the first run; its rate and test are over these'),
+  judged_after: z.number().describe('cases the rule ran on in the second run'),
+  difference: differenceSchema.nullable().describe("this rule's pass-rate difference where it ran, 90% Newcombe; null when it ran on no case in one run"),
+  test: z.enum(['mcnemar-exact', 'newcombe-z']).nullable().describe("behind p: McNemar exact on this rule's discordant pairs when paired, else the Newcombe interval inverted"),
+  p: z.number().nullable().describe('one-sided in the regression direction; null when the rule ran in only one run'),
   q: z.number().nullable().describe('Benjamini–Hochberg over every rule tested; read this, not p'),
   worse: z.boolean().describe(`true ONLY at q ≤ ${RULE_ALPHA} in the regression direction`),
 });
 
 const equivalenceSchema = z.looseObject({
   margin: z.number().describe('δ, a pass-rate difference'),
-  margin_source: z.enum(['caller', 'smallest-detectable']).describe('supplied, or the smallest detectable difference'),
-  interval: z.looseObject({ lo: z.number(), hi: z.number() }).describe('the 90% Newcombe interval on the difference'),
+  margin_source: z.enum(['caller']).describe('always the margin the caller supplied'),
+  interval: z.looseObject({ lo: z.number(), hi: z.number() }).describe('the 90% Newcombe interval on the difference, over every case (the paired method when the runs pair)'),
   holds: z.boolean().describe('the whole 90% interval lies inside (−δ, +δ)'),
+});
+
+const coverageChangeSchema = z.looseObject({
+  rule: z.string(),
+  judged_before: z.number().describe('cases it ran on in the first run'),
+  of_before: z.number().describe('cases in the first run'),
+  judged_after: z.number(),
+  of_after: z.number(),
+  on_shared: z.number().nullable().describe('shared cases it ran on in one run and not the other; null unpaired'),
+});
+
+const criticalRiseSchema = z.looseObject({
+  rule: z.string(),
+  before: z.number().describe('cases it fired on in the first run'),
+  after: z.number(),
+  new_on: z.array(z.string()).describe('shared case keys where it fires now and did not before'),
 });
 
 const discordantSchema = z.looseObject({
@@ -65,6 +90,7 @@ const discordantSchema = z.looseObject({
   after: z.looseObject({ eval_id: z.string(), trace_id: z.string().nullable(), passed: z.boolean() }),
   direction: z.enum(['regressed', 'recovered']).describe('regressed: passed before, failed after'),
   rules: z.array(z.looseObject({ rule: z.string(), before: z.boolean(), after: z.boolean() })).describe('the rules whose pass/fail differ'),
+  not_judged_after: z.array(z.string()).describe('rules that judged this case before and did not after'),
 });
 
 export const compareRunsOutputSchema = z.looseObject({
@@ -74,18 +100,38 @@ export const compareRunsOutputSchema = z.looseObject({
   method: z.enum(['paired-mcnemar', 'unpaired-newcombe', 'none']).describe('paired when the runs share case keys'),
   before: runSummarySchema.describe('the baseline run and its provenance'),
   after: runSummarySchema.describe('the run compared against it'),
-  difference: differenceSchema.nullable().describe('after minus before, 95% Newcombe interval'),
+  difference: differenceSchema
+    .nullable()
+    .describe('after minus before, with the 90% interval that matches the one-sided test: it excludes zero exactly when the test does. Paired, it is conditional on the pairs that changed'),
   paired: z
-    .looseObject({ method: z.string(), b: z.number(), c: z.number(), concordant: z.number(), pairs: z.number(), p_value: z.number(), significant: z.boolean() })
+    .looseObject({
+      method: z.string(),
+      b: z.number().describe('passed before, failed after'),
+      c: z.number().describe('failed before, passed after'),
+      concordant: z.number(),
+      pairs: z.number(),
+      p_value: z.number().describe('two-sided exact; worse and better read the one-sided tests'),
+      significant: z.boolean(),
+      fell: z
+        .looseObject({ share: z.number(), lo: z.number(), hi: z.number() })
+        .nullable()
+        .describe('of the pairs that changed, the share that fell, with its exact 90% interval; above 0.5 is a regression'),
+    })
     .nullable()
     .describe('McNemar exact on the disagreeing cases; null unpaired'),
   worse: z.boolean().describe('true ONLY when a one-sided test shows the rate fell; NOT better inverted'),
-  better: z.boolean().describe('the same, in the other direction'),
+  better: z.boolean().describe('the same, in the other direction, and only when the second run was judged on no less'),
+  improvement_withheld: z.boolean().describe('the rate rose by more than chance and better was not declared, because coverage was lost'),
+  call: z.enum(['worse', 'better', 'equivalent', 'undetermined']).describe('the one word to branch on'),
   smallest_detectable: z
     .number()
     .nullable()
-    .describe('when neither: the smallest change these cases could detect'),
-  equivalent_within: equivalenceSchema.nullable().describe('equivalent within a margin; null when a run is empty'),
+    .describe('when neither: the smallest change these cases would have detected four times in five (80% power)'),
+  equivalent_within: equivalenceSchema.nullable().describe('equivalence within the margin you supplied; null without equivalence_margin'),
+  coverage: z
+    .looseObject({ lost: z.array(coverageChangeSchema), gained: z.array(coverageChangeSchema) })
+    .describe('rules that ran on fewer (lost) or more (gained) cases in the second run; a rule that did not run is neither a pass nor a failure'),
+  critical_rises: z.array(criticalRiseSchema).describe('critical rules firing on more cases than before: counted, not tested'),
   rules_tested: z.number().describe('rules the per-rule tests covered'),
   regressions: z.array(ruleDeltaSchema).describe('rules failing more often, worst first, with p and q'),
   improvements: z.array(ruleDeltaSchema).describe('rules failing less often, kept separate from regressions'),
@@ -107,7 +153,7 @@ export function registerCompareRunsTool(server: McpServer, storage: IStorageAdap
         summary:
           'Did this change make the agent worse? Compares two runs: worse, better, equivalent, or too little evidence to tell.',
         does:
-          'Pairs cases by case_key (McNemar exact), else uses a Newcombe interval; flags a rule worse only after a multiple-testing correction. Refuses runs that measure different things unless force is true. Local, no model call.',
+          'Pairs by case_key (McNemar exact), else Newcombe. A rule counts only where it ran; no `better` if the second run was judged on less. Refuses unlike runs unless force. Local, no model call.',
         whenNot:
           'To score one output (evaluate_output). As a gate: it reports; blocking is your policy.',
         returns: compareRunsOutputSchema,
@@ -131,7 +177,7 @@ export function registerCompareRunsTool(server: McpServer, storage: IStorageAdap
             .gt(0)
             .lte(1)
             .optional()
-            .describe('δ for the equivalence test, as a difference in pass rate (0.05 = five points). Absent: the smallest difference these sizes could detect, and the response says so'),
+            .describe('δ for the equivalence test, as a difference in pass rate (0.05 = five points). Absent: equivalence is not tested; how far apart two runs may be and still count as the same is yours to choose'),
           dataset: z
             .string()
             .min(1)
@@ -221,11 +267,21 @@ export async function compareStoredRuns(
     config_hashes: s.configHashes,
     superseded: s.superseded,
   });
+  const coverageChange = (x: (typeof c.coverage.lost)[number]): z.infer<typeof coverageChangeSchema> => ({
+    rule: x.rule,
+    judged_before: x.judgedBefore,
+    of_before: x.ofBefore,
+    judged_after: x.judgedAfter,
+    of_after: x.ofAfter,
+    on_shared: x.onShared,
+  });
   const rule = (r: (typeof c.regressions)[number]): z.infer<typeof ruleDeltaSchema> => ({
     rule: r.rule,
     failed_before: r.failedBefore,
     failed_after: r.failedAfter,
     delta: r.delta,
+    judged_before: r.judgedBefore,
+    judged_after: r.judgedAfter,
     // Spread: the output schema is loose (index-signed) and an interface value is not assignable to it as-is.
     difference: r.difference ? { ...r.difference } : null,
     test: r.test,
@@ -243,14 +299,27 @@ export async function compareStoredRuns(
     after: summary(c.after),
     difference: c.difference ? { ...c.difference } : null,
     paired: c.paired
-      ? { method: c.paired.method, b: c.paired.b, c: c.paired.c, concordant: c.paired.concordant, pairs: c.paired.pairs, p_value: c.paired.pValue, significant: c.paired.significant }
+      ? {
+          method: c.paired.method,
+          b: c.paired.b,
+          c: c.paired.c,
+          concordant: c.paired.concordant,
+          pairs: c.paired.pairs,
+          p_value: c.paired.pValue,
+          significant: c.paired.significant,
+          fell: c.paired.fell ? { ...c.paired.fell } : null,
+        }
       : null,
     worse: c.worse,
     better: c.better,
+    improvement_withheld: c.improvementWithheld,
+    call: c.call,
     smallest_detectable: c.smallestDetectable,
     equivalent_within: c.equivalentWithin
       ? { margin: c.equivalentWithin.margin, margin_source: c.equivalentWithin.marginSource, interval: { ...c.equivalentWithin.interval }, holds: c.equivalentWithin.holds }
       : null,
+    coverage: { lost: c.coverage.lost.map(coverageChange), gained: c.coverage.gained.map(coverageChange) },
+    critical_rises: c.criticalRises.map((r) => ({ rule: r.rule, before: r.before, after: r.after, new_on: r.newOn })),
     rules_tested: c.rulesTested,
     regressions: c.regressions.map(rule),
     improvements: c.improvements.map(rule),
@@ -260,6 +329,7 @@ export async function compareStoredRuns(
       after: { eval_id: d.after.evalId, trace_id: d.after.traceId, passed: d.after.passed },
       direction: d.direction,
       rules: d.rules.map((r) => ({ ...r })),
+      not_judged_after: d.notJudgedAfter,
     })),
     discordant_total: c.discordantTotal,
     summary: dataset

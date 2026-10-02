@@ -11,6 +11,8 @@ import {
   comparisonVerdict,
   fmtDifference,
   fmtEquivalence,
+  fmtFailedOfJudged,
+  fmtFell,
   fmtP,
   fmtQ,
   fmtRate,
@@ -25,6 +27,10 @@ describe('compareText', () => {
     expect(comparisonVerdict({ ...base, better: true })).toBe('better');
     expect(comparisonVerdict({ ...base, comparable: false })).toBe('incomparable');
     expect(comparisonVerdict({ ...base, comparable: false, forced: true, worse: true })).toBe('worse');
+    // A rise the tool would not call better, because the second run was judged on less.
+    expect(comparisonVerdict({ ...base, improvement_withheld: true, call: 'undetermined' })).toBe('withheld');
+    expect(comparisonVerdict({ ...base, call: 'equivalent' })).toBe('equivalent');
+    expect(comparisonVerdict({ ...base, call: 'undetermined' })).toBe('same');
   });
 
   it('every method and every verdict has a sentence', () => {
@@ -37,6 +43,13 @@ describe('compareText', () => {
     expect(fmtRate(null, null)).toBe('no evaluations');
     expect(fmtDifference({ delta: -0.1, lo: -0.35, hi: 0.15, significant: false })).toBe('-10.0 pts [-35.0, 15.0]');
     expect(fmtDifference(null)).toBe('—');
+    // Paired: the point alone; the interval the test read is on the share that fell.
+    expect(fmtDifference({ delta: -0.1, lo: -0.1, hi: -0.02, significant: true }, true)).toBe('-10.0 pts');
+    expect(fmtFell({ method: 'mcnemar-exact', b: 6, c: 0, concordant: 44, pairs: 50, p_value: 0.031, significant: true, fell: { share: 1, lo: 0.607, hi: 1 } })).toBe('6 of 6 changed cases fell [60.7%, 100.0%]');
+    expect(fmtFell({ method: 'mcnemar-exact', b: 0, c: 0, concordant: 12, pairs: 12, p_value: 1, significant: false, fell: null })).toBe('no case changed');
+    expect(fmtFailedOfJudged(3, 20)).toBe('3 of 20');
+    expect(fmtFailedOfJudged(0, 0)).toBe('not run');
+    expect(fmtFailedOfJudged(3, undefined)).toBe('3');
     expect(fmtP(0.0004)).toBe('p < 0.001');
     expect(fmtP(0.25)).toBe('p = 0.250');
     expect(fmtSmallestDetectable(0.42)).toBe('42.0 pts');
@@ -47,8 +60,8 @@ describe('compareText', () => {
     expect(fmtQ(0.0004)).toBe('q < 0.001');
     expect(fmtQ(0.0667)).toBe('q = 0.067');
     expect(fmtQ(null)).toBe('—');
-    expect(fmtEquivalence({ margin: 0.12, margin_source: 'smallest-detectable', interval: { lo: -0.1, hi: 0.05 }, holds: true })).toBe('equivalent within ±12.0 pts');
-    expect(fmtEquivalence({ margin: 0.05, margin_source: 'caller', interval: { lo: -0.1, hi: 0.05 }, holds: false })).toBe('not equivalent within ±5.0 pts');
+    expect(fmtEquivalence({ margin: 0.12, margin_source: 'caller', interval: { lo: -0.1, hi: 0.05 }, holds: true })).toBe('interval inside ±12.0 pts');
+    expect(fmtEquivalence({ margin: 0.05, margin_source: 'caller', interval: { lo: -0.1, hi: 0.05 }, holds: false })).toBe('interval reaches outside ±5.0 pts');
     expect(fmtEquivalence(null)).toBe('—');
     for (const s of [PER_RULE_TEXT, ...Object.values(EQUIVALENCE_TEXT)]) expect(s).toMatch(/\.$/);
     expect(PER_RULE_TEXT).toContain('Benjamini–Hochberg');

@@ -21,6 +21,9 @@ const row = (over: Partial<RunResultRow> = {}): RunResultRow => ({
   agentName: 'agent',
   passed: true,
   failedRules: [],
+  // Every rule these tests name ran on every case, unless a test says otherwise.
+  judgedRules: ['no_pii', 'no_tool_loop', 'min_output_length'],
+  criticalFailed: [],
   engineVersion: '0.12.0',
   rulesetHash: 'rs-1',
   configHash: 'cfg-1',
@@ -93,12 +96,20 @@ describe('C3 — a paired comparison names its test and its pair count', () => {
   });
 
   it('sees a regression the unpaired reading of the same data cannot', () => {
-    // 44/50 against 38/50: unpaired the interval straddles zero. Paired,
-    // the six discordant cases all went the same way.
+    // 44/50 against 38/50: as two independent samples the interval straddles
+    // zero. Paired, the six discordant cases all went the same way.
+    const unpaired = compareRuns('before', run(50, 44), 'after', run(50, 38));
+    expect(unpaired.worse).toBe(false);
+    expect(unpaired.difference!.significant).toBe(false);
     const c = compareRuns('before', run(50, 44, { paired: true }), 'after', run(50, 38, { paired: true }));
-    expect(c.difference!.significant).toBe(false);
     expect(c.paired!.significant).toBe(true);
     expect(c.worse).toBe(true);
+    // The interval reported is the paired one, and it agrees with the word.
+    expect(c.difference!.significant).toBe(true);
+    expect(c.difference!.hi).toBeLessThan(0);
+    expect(c.paired).toMatchObject({ b: 6, c: 0, bothPass: 38, bothFail: 6 });
+    expect(c.paired!.fell!.share).toBe(1);
+    expect(c.paired!.fell!.lo).toBeGreaterThan(0.5);
   });
 
   it('falls back to the unpaired test when nothing pairs, and says why that is worse', () => {
@@ -116,8 +127,10 @@ describe('C6 — not enough evidence is an answer, and it says what would be eno
     expect(c.worse).toBe(false);
     expect(c.better).toBe(false);
     expect(c.summary).toContain('Not enough evidence');
-    expect(c.summary).toContain('could not have detected a change smaller than');
-    expect(c.smallestDetectable).toBeGreaterThan(0.4);
+    expect(c.summary).toContain('would have missed, more often than one time in five, a change smaller than about 72 points');
+    expect(c.smallestDetectable).toBeCloseTo(0.7178, 3);
+    expect(c.detectablePower).toBe(0.8);
+    expect(c.call).toBe('undetermined');
   });
 
   it('the phrase "regression" appears ONLY when the evidence licenses it', () => {
@@ -161,7 +174,8 @@ describe('C7 — regressions per rule, worst first, and improvements kept separa
     expect(c.regressions.map((r) => r.rule)).not.toContain('no_tool_loop');
     expect(c.improvements[0].rule).toBe('no_tool_loop');
     expect(c.improvements[0].delta).toBe(-4);
-    expect(c.summary).toContain('no_pii (3 → 9)');
+    expect(c.summary).toContain('no_pii (3 of 20 → 9 of 20)');
+    expect(c.regressions[0]).toMatchObject({ judgedBefore: 20, judgedAfter: 20 });
   });
 
   it('a skipped rule is not a failure, so it never appears as a regression', () => {
@@ -181,12 +195,15 @@ describe('the run summary carries what a reader needs to judge it', () => {
     expect(c.after.interval!.hi).toBeCloseTo(0.781, 2);
   });
 
-  it('C1 — the difference is the hand-computed Newcombe interval', () => {
+  it('C1 — the difference is the hand-computed Newcombe interval, at the level that matches the one-sided test', () => {
     const c = compareRuns('before', run(20, 12), 'after', run(20, 18));
-    // after − before = 0.9 − 0.6, the interval from the statistics tests.
+    // after − before = 0.9 − 0.6, with the 90% interval: the two-sided interval a one-sided 5% test reads.
+    expect(c.intervalLevel).toBe(0.9);
     expect(c.difference!.delta).toBeCloseTo(0.3, 10);
-    expect(c.difference!.lo).toBeCloseTo(0.0294, 3);
-    expect(c.difference!.hi).toBeCloseTo(0.5252, 3);
+    expect(c.difference!.lo).toBeCloseTo(0.0742, 3);
+    expect(c.difference!.hi).toBeCloseTo(0.4932, 3);
+    expect(c.better).toBe(true);
+    expect(c.summary).toContain('Difference in pass rate: +30.0 points, 90% interval [+7.4, +49.3] on two independent samples.');
   });
 });
 
@@ -223,6 +240,7 @@ describe('the discordant cases are named', () => {
       { rule: 'no_pii', before: false, after: true },
       { rule: 'no_tool_loop', before: false, after: true },
     ]);
+    expect(recovered.notJudgedAfter).toEqual([]);
   });
 
   it('is empty when the runs do not pair, and the total says so', () => {
@@ -240,5 +258,210 @@ describe('the discordant cases are named', () => {
     expect(c.discordant).toHaveLength(MAX_DISCORDANT);
     expect(c.discordantTotal).toBe(n);
     expect(c.discordant[0].caseKey).toBe('case-0000');
+  });
+});
+
+/*
+ * A rule that did not run on a case is neither a pass nor a failure there.
+ * A run row once held only the rules that fired, so a skip read as a pass:
+ * an after-run that stopped sending tool calls had every trajectory rule
+ * "recover", and the summary said "This is an improvement".
+ */
+describe('what was not checked is not counted as a pass', () => {
+  const TEXT = ['no_pii', 'min_output_length'];
+  const ALL = [...TEXT, 'no_tool_loop', 'no_silent_tool_failure'];
+  /** 12 paired cases. Before: every rule ran, and the two trajectory rules fired on `trajectoryFails` of them. */
+  const instrumented = (trajectoryFails: number): RunResultRow[] =>
+    Array.from({ length: 12 }, (_, i) =>
+      row({ caseKey: `case-${String(i).padStart(2, '0')}`, passed: i >= trajectoryFails, judgedRules: ALL, failedRules: i < trajectoryFails ? ['no_silent_tool_failure'] : [] }),
+    );
+  /** The same 12 cases with no tool calls sent: the trajectory rules skipped, so nothing fired. */
+  const withheld = (): RunResultRow[] => Array.from({ length: 12 }, (_, i) => row({ caseKey: `case-${String(i).padStart(2, '0')}`, passed: true, judgedRules: TEXT, failedRules: [] }));
+
+  it('a run that stops sending evidence is not called an improvement, and the response says what it was judged on', () => {
+    const c = compareRuns('before', instrumented(7), 'after', withheld());
+    // Seven cases "recovered", which a one-sided test reads as a rise.
+    expect(c.paired).toMatchObject({ b: 0, c: 7 });
+    expect(c.better).toBe(false);
+    expect(c.improvementWithheld).toBe(true);
+    expect(c.call).toBe('undetermined');
+    expect(c.worse).toBe(false);
+    expect(c.coverage.lost.map((l) => l.rule)).toEqual(['no_silent_tool_failure', 'no_tool_loop']);
+    expect(c.coverage.lost[0]).toEqual({ rule: 'no_silent_tool_failure', judgedBefore: 12, ofBefore: 12, judgedAfter: 0, ofAfter: 12, onShared: 12 });
+    expect(c.coverage.gained).toEqual([]);
+    expect(c.summary).toContain('The second run was judged on less: 2 rules ran on fewer cases than before: no_silent_tool_failure (ran on 12 of 12 before, 0 of 12 after), no_tool_loop (ran on 12 of 12 before, 0 of 12 after).');
+    expect(c.summary).toContain('this is not called an improvement');
+    expect(c.summary).not.toContain('This is an improvement');
+    // The coverage sentence comes before the verdict sentence.
+    expect(c.summary.indexOf('judged on less')).toBeLessThan(c.summary.indexOf('not called an improvement'));
+  });
+
+  it('the rule that stopped running is not a recovery: it has no difference and no test', () => {
+    const c = compareRuns('before', instrumented(7), 'after', withheld());
+    const rule = c.improvements.find((r) => r.rule === 'no_silent_tool_failure')!;
+    expect(rule).toMatchObject({ failedBefore: 7, failedAfter: 0, judgedBefore: 12, judgedAfter: 0, difference: null, test: null, p: null, q: null, worse: false });
+    expect(c.rulesTested).toBe(0);
+    // Each recovered case names the checks that did not run on it.
+    expect(c.discordant).toHaveLength(7);
+    expect(c.discordant[0]).toMatchObject({ direction: 'recovered', notJudgedAfter: ['no_silent_tool_failure', 'no_tool_loop'] });
+  });
+
+  it('the same evidence in both runs and fewer failures is an improvement, as before', () => {
+    const fixed = instrumented(0);
+    const c = compareRuns('before', instrumented(7), 'after', fixed);
+    expect(c.better).toBe(true);
+    expect(c.improvementWithheld).toBe(false);
+    expect(c.call).toBe('better');
+    expect(c.coverage).toEqual({ lost: [], gained: [] });
+    expect(c.summary).toContain('This is an improvement');
+  });
+
+  it('a regression is declared even when the second run was judged on less', () => {
+    const before = instrumented(0);
+    const after = Array.from({ length: 12 }, (_, i) => row({ caseKey: `case-${String(i).padStart(2, '0')}`, passed: i >= 8, judgedRules: TEXT, failedRules: i < 8 ? ['no_pii'] : [] }));
+    const c = compareRuns('before', before, 'after', after);
+    expect(c.worse).toBe(true);
+    expect(c.call).toBe('worse');
+    expect(c.coverage.lost).toHaveLength(2);
+    expect(c.summary).toContain('This is a regression');
+    expect(c.summary).toContain('judged on less');
+  });
+
+  it('a rule is tested only over the cases it ran on in both runs', () => {
+    // no_tool_loop ran on the first six cases in both runs and fired on five of them after; on the other six it ran in neither.
+    const make = (fails: number): RunResultRow[] =>
+      Array.from({ length: 12 }, (_, i) =>
+        row({ caseKey: `case-${i}`, passed: !(i < fails), judgedRules: i < 6 ? ['no_pii', 'no_tool_loop'] : ['no_pii'], failedRules: i < fails ? ['no_tool_loop'] : [] }),
+      );
+    const c = compareRuns('before', make(0), 'after', make(5));
+    const rule = c.regressions.find((r) => r.rule === 'no_tool_loop')!;
+    expect(rule).toMatchObject({ failedBefore: 0, failedAfter: 5, judgedBefore: 6, judgedAfter: 6, test: 'mcnemar-exact' });
+    // Its pass rate fell from 6 of 6 to 1 of 6, not from 12 of 12 to 7 of 12.
+    expect(rule.difference!.delta).toBeCloseTo(-5 / 6, 10);
+    expect(rule.p).toBeCloseTo(0.03125, 6);
+    expect(c.coverage).toEqual({ lost: [], gained: [] });
+  });
+
+  it('gained coverage is reported and does not withhold anything', () => {
+    const c = compareRuns('before', withheld(), 'after', instrumented(0));
+    expect(c.coverage.lost).toEqual([]);
+    expect(c.coverage.gained.map((g) => g.rule)).toEqual(['no_silent_tool_failure', 'no_tool_loop']);
+    expect(c.improvementWithheld).toBe(false);
+  });
+
+  it('unpaired: a rule that ran on a clearly smaller share of cases is lost coverage; an ordinary difference in the mix of cases is not', () => {
+    const sample = (n: number, withTrajectory: number): RunResultRow[] => Array.from({ length: n }, (_, i) => row({ passed: true, judgedRules: i < withTrajectory ? ALL : TEXT }));
+    const dropped = compareRuns('before', sample(40, 40), 'after', sample(40, 0));
+    expect(dropped.method).toBe('unpaired-newcombe');
+    expect(dropped.coverage.lost.map((l) => l.rule)).toEqual(['no_silent_tool_failure', 'no_tool_loop']);
+    expect(dropped.coverage.lost[0].onShared).toBeNull();
+    const mix = compareRuns('before', sample(40, 30), 'after', sample(40, 27));
+    expect(mix.coverage).toEqual({ lost: [], gained: [] });
+  });
+});
+
+/*
+ * A critical rule firing on a case it did not fire on before is one output
+ * that must not ship. Five of those among twelve cases is not a question of
+ * significance, and it must never sit under the word "equivalent".
+ */
+describe('a critical failure is counted, not tested', () => {
+  const leak = (i: number, leaks: boolean): RunResultRow =>
+    row({ caseKey: `case-${String(i).padStart(2, '0')}`, passed: false, failedRules: ['min_output_length', ...(leaks ? ['no_pii'] : [])], criticalFailed: leaks ? ['no_pii'] : [] });
+
+  it('a fivefold rise in leaks is named with its cases, whatever the pass rate did', () => {
+    // Every case fails in both runs on an unrelated rule, so no pair disagrees and no test sees anything.
+    const before = Array.from({ length: 12 }, (_, i) => leak(i, i === 0));
+    const after = Array.from({ length: 12 }, (_, i) => leak(i, i < 5));
+    const c = compareRuns('before', before, 'after', after, { equivalenceMargin: 0.3 });
+    expect(c.paired).toMatchObject({ b: 0, c: 0, concordant: 12 });
+    expect(c.worse).toBe(false);
+    expect(c.criticalRises).toEqual([{ rule: 'no_pii', before: 1, after: 5, newOn: ['case-01', 'case-02', 'case-03', 'case-04'] }]);
+    expect(c.summary).toContain('Critical: no_pii fires on 5 cases in the second run and 1 in the first, newly on 4 cases: case-01, case-02, case-03, case-04.');
+    // The pass-rate interval sits inside the margin, and the runs are still not called equivalent.
+    expect(c.equivalentWithin!.holds).toBe(true);
+    expect(c.call).toBe('undetermined');
+    expect(c.summary).toContain('the runs are not called equivalent: a critical rule fires on cases it did not before');
+    expect(c.summary).not.toMatch(/^Equivalent within| Equivalent within/);
+  });
+
+  it('a critical rule that fires on the same cases, or fewer, is not a rise', () => {
+    const before = Array.from({ length: 12 }, (_, i) => leak(i, i < 5));
+    expect(compareRuns('before', before, 'after', before.map((r) => ({ ...r }))).criticalRises).toEqual([]);
+    const fewer = Array.from({ length: 12 }, (_, i) => leak(i, i < 2));
+    expect(compareRuns('before', before, 'after', fewer).criticalRises).toEqual([]);
+  });
+
+  it('unpaired: more fires than before is a rise, with no cases to name', () => {
+    const sample = (n: number, leaks: number): RunResultRow[] => Array.from({ length: n }, (_, i) => row({ passed: i >= leaks, failedRules: i < leaks ? ['no_pii'] : [], criticalFailed: i < leaks ? ['no_pii'] : [] }));
+    expect(compareRuns('before', sample(20, 1), 'after', sample(20, 3)).criticalRises).toEqual([{ rule: 'no_pii', before: 1, after: 3, newOn: [] }]);
+  });
+});
+
+/*
+ * "This is a regression" once sat beside "95% interval [−28.6, +0.9]" and a
+ * field `significant: false`: the test was one-sided at 5% and the interval
+ * printed was the two-sided 95% one. The interval is now the one the test
+ * implies, so the word and the interval cannot disagree.
+ */
+describe('every word matches its number', () => {
+  it('45 of 50 against 38 of 50: the word, the field and the interval all say regression', () => {
+    const c = compareRuns('before', run(50, 45), 'after', run(50, 38));
+    expect(c.worse).toBe(true);
+    expect(c.difference!.significant).toBe(true);
+    expect(c.difference!.hi).toBeLessThan(0);
+    expect(c.summary).toContain('This is a regression');
+    expect(c.summary).toMatch(/Difference in pass rate: -14\.0 points, 90% interval \[-26\.2, -1\.[56]\] on two independent samples\./);
+  });
+
+  it('over every pair of rates at four sizes, paired and not: worse, better and the interval never disagree', () => {
+    let checked = 0;
+    for (const n of [8, 12, 20, 50]) {
+      for (let before = 0; before <= n; before += 2) {
+        for (let after = 0; after <= n; after += 1) {
+          for (const paired of [false, true]) {
+            const c = compareRuns('before', run(n, before, { paired }), 'after', run(n, after, { paired }));
+            const d = c.difference!;
+            expect(c.worse, `n=${n} ${before}->${after} paired=${paired}`).toBe(d.hi < 0);
+            expect(c.better, `n=${n} ${before}->${after} paired=${paired}`).toBe(d.lo > 0);
+            expect(d.significant).toBe(c.worse || c.better);
+            expect(c.summary.includes('This is a regression')).toBe(c.worse);
+            expect(c.summary.includes('This is an improvement')).toBe(c.better);
+            expect(c.summary).not.toContain('**');
+            checked += 1;
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(1500);
+  });
+
+  it('paired: the number beside the word is the one the test read, which way the changed cases went', () => {
+    const c = compareRuns('before', run(50, 44, { paired: true }), 'after', run(50, 38, { paired: true }));
+    expect(c.difference!.delta).toBeCloseTo(-0.12, 10);
+    expect(c.difference!.hi).toBeCloseTo(-0.0257, 3);
+    expect(c.paired!.fell!.lo).toBeCloseTo(0.607, 3);
+    expect(c.summary).toContain('Difference in pass rate on the matched cases: -12.0 points. Of the 6 cases that changed, 100.0% fell, 90% exact interval [60.7%, 100.0%]');
+  });
+
+  it('paired: the share that fell excludes one half exactly when the word is used', () => {
+    let checked = 0;
+    for (const n of [8, 12, 20, 50]) {
+      for (let before = 0; before <= n; before += 2) {
+        for (let after = 0; after <= n; after += 1) {
+          const c = compareRuns('before', run(n, before, { paired: true }), 'after', run(n, after, { paired: true }));
+          const f = c.paired!.fell;
+          if (f === null) {
+            expect(c.worse || c.better).toBe(false);
+            expect(c.summary).toContain('No case changed.');
+            continue;
+          }
+          expect(c.worse, `n=${n} ${before}->${after}`).toBe(f.lo > 0.5);
+          expect(c.better, `n=${n} ${before}->${after}`).toBe(f.hi < 0.5);
+          checked += 1;
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(700);
   });
 });

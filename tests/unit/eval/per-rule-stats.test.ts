@@ -88,6 +88,8 @@ describe('twenty null rules, a thousand comparisons', () => {
           agentName: 'agent',
           passed: failed.length === 0,
           failedRules: failed,
+          judgedRules: RULES,
+          criticalFailed: [],
           engineVersion: '0.13.0',
           rulesetHash: 'rs',
           configHash: 'cfg',

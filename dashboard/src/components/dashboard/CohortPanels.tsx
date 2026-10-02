@@ -82,7 +82,7 @@ function CohortPanel({ run, period, trend }: { run: string; period: Period; tren
             content={
               verdict === 'same'
                 ? data!.enoughEvidence
-                  ? `The interval on the difference includes zero: not distinguishable. A change smaller than ${data!.smallestDetectable === null ? 'this' : pct(data!.smallestDetectable)} would not show at these sizes.`
+                  ? `The interval on the difference includes zero: not distinguishable. A change smaller than ${data!.smallestDetectable === null ? 'this' : pct(data!.smallestDetectable)} would be missed more often than one time in five at these sizes.`
                   : `Below ${data!.minimumPerWindow} evaluations on a side, no direction is offered.`
                 : verdict === 'worse'
                   ? 'The pass rate fell, and the 95% interval on the difference excludes zero.'

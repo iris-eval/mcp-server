@@ -559,6 +559,8 @@ export interface MomentSignificance {
 export interface MomentRuleSnapshot {
   failed: string[];
   skipped: string[];
+  /** Rules that ran and passed. A rule in none of the three lists did not run on this moment. */
+  passed: string[];
   passedCount: number;
   totalCount: number;
 }
@@ -958,7 +960,7 @@ export interface CompareRunsRequest {
   before?: string;
   after: string;
   force?: boolean;
-  /** δ for the equivalence test, as a difference in pass rate in (0, 1]; absent, the smallest detectable difference. */
+  /** δ for the equivalence test, as a difference in pass rate in (0, 1]; absent, equivalence is not tested. */
   equivalence_margin?: number;
 }
 
@@ -980,7 +982,10 @@ export interface CompareRuleDelta {
   failed_before: number;
   failed_after: number;
   delta: number;
-  /** After minus before on this rule's own pass rate, 95% Newcombe; null when a side is empty. */
+  /** Cases the rule ran on in each run; its rate and its test are over these. */
+  judged_before: number;
+  judged_after: number;
+  /** After minus before on this rule's own pass rate where it ran, 90% Newcombe; null when it ran on no case in one run. */
   difference: { delta: number; lo: number; hi: number; significant: boolean } | null;
   /** The one-sided test behind p. */
   test: 'mcnemar-exact' | 'newcombe-z' | null;
@@ -992,12 +997,31 @@ export interface CompareRuleDelta {
   worse: boolean;
 }
 
-/** The third answer a comparison can give: equivalent within a margin (two one-sided tests at α = 0.05, the 90% interval). */
+/** The third answer a comparison can give: equivalent within the margin the caller chose (two one-sided tests at α = 0.05, the 90% interval). */
 export interface CompareEquivalence {
   margin: number;
-  margin_source: 'caller' | 'smallest-detectable';
+  margin_source: 'caller';
   interval: { lo: number; hi: number };
   holds: boolean;
+}
+
+/** A rule that ran on more or fewer cases in one run than in the other. */
+export interface CompareCoverageChange {
+  rule: string;
+  judged_before: number;
+  of_before: number;
+  judged_after: number;
+  of_after: number;
+  /** Shared cases it ran on in one run and not the other; null when the runs do not pair. */
+  on_shared: number | null;
+}
+
+/** A critical rule firing on more cases than before: counted, not tested. */
+export interface CompareCriticalRise {
+  rule: string;
+  before: number;
+  after: number;
+  new_on: string[];
 }
 
 /** POST /api/v1/compare response — the compare_runs tool's output, unchanged. */
@@ -1008,12 +1032,31 @@ export interface CompareRunsResult {
   method: 'paired-mcnemar' | 'unpaired-newcombe' | 'none';
   before: CompareRunSummary;
   after: CompareRunSummary;
+  /** After minus before, with the 90% interval that matches the one-sided test. */
   difference: { delta: number; lo: number; hi: number; significant: boolean } | null;
-  paired: { method: 'mcnemar-exact'; b: number; c: number; concordant: number; pairs: number; p_value: number; significant: boolean } | null;
+  paired: {
+    method: 'mcnemar-exact';
+    b: number;
+    c: number;
+    concordant: number;
+    pairs: number;
+    p_value: number;
+    significant: boolean;
+    /** Of the pairs that changed, the share that fell, with its exact 90% interval. */
+    fell: { share: number; lo: number; hi: number } | null;
+  } | null;
   worse: boolean;
+  /** True only when the second run was judged on no less than the first. */
   better: boolean;
+  /** The rate rose by more than chance and better was not declared, because coverage was lost. */
+  improvement_withheld: boolean;
+  call: 'worse' | 'better' | 'equivalent' | 'undetermined';
+  /** What these runs would have detected four times in five. */
   smallest_detectable: number | null;
+  /** Null unless the caller supplied a margin. */
   equivalent_within: CompareEquivalence | null;
+  coverage: { lost: CompareCoverageChange[]; gained: CompareCoverageChange[] };
+  critical_rises: CompareCriticalRise[];
   rules_tested: number;
   regressions: CompareRuleDelta[];
   improvements: CompareRuleDelta[];
@@ -1028,6 +1071,8 @@ export interface CompareDiscordantCase {
   case_key: string;
   before: { eval_id: string; trace_id: string | null; passed: boolean };
   after: { eval_id: string; trace_id: string | null; passed: boolean };
+  /** Rules that judged this case before and did not after. */
+  not_judged_after?: string[];
   direction: 'regressed' | 'recovered';
   rules: Array<{ rule: string; before: boolean; after: boolean }>;
 }

@@ -25,7 +25,7 @@ function momentFailing(failed: string[]): DecisionMoment {
     verdict: 'partial',
     overallScore: 0.5,
     evalCount: 1,
-    ruleSnapshot: { failed, skipped: [], passedCount: 2, totalCount: 2 + failed.length },
+    ruleSnapshot: { failed, skipped: [], passed: [], passedCount: 2, totalCount: 2 + failed.length },
     significance: { kind: 'safety-violation', score: 1, label: 'Safety', reason: 'fixture' },
   };
 }

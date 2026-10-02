@@ -117,6 +117,7 @@ describe('PATCH /api/v1/runs/:id — the baseline', () => {
         after: { eval_id: 'b-e2', trace_id: 'b-c2', passed: false },
         direction: 'regressed',
         rules: [{ rule: 'min_output_length', before: true, after: false }],
+        not_judged_after: [],
       },
     ]);
   });

@@ -60,6 +60,14 @@ export interface MomentRuleSnapshot {
   failed: string[];
   /** Names of rules that were skipped (insufficient context). */
   skipped: string[];
+  /**
+   * Names of rules that ran and passed. A rule in none of the three lists
+   * did not run on this moment at all (another bundle was asked for), and a
+   * reader counting passes must not count it: the per-rule meters once took
+   * "not in failed" for a pass, and drew a rule that skipped on every
+   * evaluation as "100% pass".
+   */
+  passed: string[];
   /** Count of rules that passed. */
   passedCount: number;
   /** Count of rules that fired total (across all eval_types). */
