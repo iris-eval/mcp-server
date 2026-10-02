@@ -3,12 +3,12 @@
 `ingest` is the third door into Iris, after the MCP tools and `POST /api/v1/traces`, and the one that needs no server: a job pipes its traces in, Iris stores them, evaluates them under exactly the rules `evaluate_output` runs, prints one JSON line per trace, and can fail the job on a named verdict basis.
 
 ```bash
-# one trace on stdin, evaluated, fail the job if a critical detector fired
+# one trace on stdin, evaluated, fail the job unless its verdict is a pass
 echo '{"agent_name":"release-bot","input":"...","output":"...","tool_calls":[...],"cost_usd":0.04}' \
-  | npx -y @iris-eval/mcp-server ingest --evaluate --fail-on detector_veto
+  | npx -y @iris-eval/mcp-server ingest --evaluate --fail-on any
 
-# a batch (NDJSON, one trace per line) from a file
-npx -y @iris-eval/mcp-server ingest --file traces.ndjson --evaluate --fail-on any
+# a batch (NDJSON, one trace per line) from a file, failing only when a critical detector fired
+npx -y @iris-eval/mcp-server ingest --file traces.ndjson --evaluate --fail-on detector_veto
 ```
 
 Each line printed is `{ "trace_id", "evaluation_id", "passed", "verdict": { "state", "basis", "by", "also"?: [{ "basis", "state", "by" }] }, "unjudged"?: [...], "spans"?: [{ "rule", "label", "source", "start", "end" }] }` and, when a verdict tripped the gate, `"tripped": "<basis>"`. Exit codes: **0** every trace read was judged and nothing tripped · **1** at least one verdict tripped `--fail-on` · **2** usage error, nothing was stored, or a gate that did not judge every trace it read ([below](#what-exit-0-means)).
@@ -17,16 +17,18 @@ Each line printed is `{ "trace_id", "evaluation_id", "passed", "verdict": { "sta
 
 | Value | Trips when |
 |---|---|
+| `any` | the verdict is anything but a pass: it failed, or it was not checked. **The gate to start with**, and the action's default |
+| `fail` | any failing verdict |
+| `unknown` | any verdict that was not checked: nothing was judged, a critical check could not answer, or evidence somebody asked for was not sent |
 | `detector_veto` | a critical detector fired — `no_pii`, `no_injection_patterns`, `no_blocklist_words` by default |
 | `policy_gate` | a policy you configured failed (a threshold your config set, a custom rule at severity high or critical) |
 | `critical_unknown` | a critical check was asked and could not answer |
-| `required_evidence_missing` | `eval.requiredEvidence` named an input the trace did not carry |
+| `required_evidence_missing` | evidence somebody asked for was not sent: an input `eval.requiredEvidence` names, or what a rule you configured (a threshold you set, a rule you promoted or deployed as a gate) could not run without |
 | `risk_over_loss` | the risk estimate cleared your loss cut |
-| `fail` | any failing verdict |
-| `unknown` | any verdict that could not be reached — the fail-closed choice |
-| `any` | anything but a clean pass |
 
-**A basis trips when that layer decided the verdict or would have.** The layers are asked in order (a policy you configured, a critical detector, a critical check that could not answer, required evidence, the risk estimate) and `verdict.basis` names the first with something to say. They do not exclude each other: an output can break your cost policy and leak a credential. `verdict.also` lists every later layer that would have decided on its own, and `--fail-on` reads both, so that output trips `detector_veto` as well as `policy_gate`:
+**A gate on one basis passes everything else.** `--fail-on detector_veto` exits 0 on an output the evaluation failed for any other reason (a silent tool failure, an invented figure, a broken policy) and on every verdict that was not checked. It is the right gate for "never ship a leak, whatever else", and the wrong one for "ship only what passed". Until 0.20.0 it was the action's default and the first example on this page.
+
+**A basis trips when that layer decided the verdict or would have.** The layers are asked in order (a policy you configured, a critical detector, a critical check that could not answer, required evidence, the risk estimate) and `verdict.basis` names the first layer that fails, or when none fails the first that could not check. They do not exclude each other: an output can break your cost policy and leak a credential. `verdict.also` lists every other layer that would have decided on its own, and `--fail-on` reads both, so that output trips `detector_veto` as well as `policy_gate`:
 
 ```json
 { "verdict": { "state": "fail", "basis": "policy_gate", "by": ["cost_under_threshold"],
@@ -77,12 +79,12 @@ Four steps, in the order the person who gates deploys does them; each prints one
     traces: traces.ndjson
 ```
 
-That runs `iris-eval ingest --file traces.ndjson --evaluate --fail-on detector_veto`, fails the job when a verdict trips, writes the receipt to the job summary and, on a pull request, posts it as **one comment updated in place** on every run (found by a marker naming the traces file, so two gates in one workflow keep two comments). The job needs `permissions: pull-requests: write` for the comment; without it, or on a pull request from a fork (whose token is read-only), the receipt still reaches the summary and the action says the comment was skipped and why. A traces file that is empty fails the job: an unwritten file cannot pass as green. So does a trace the gate could not judge ([what exit 0 means](#what-exit-0-means)).
+From 0.20.0 that runs `iris-eval ingest --file traces.ndjson --evaluate --fail-on any` (the action at `@v0.19.0` and earlier defaults to `detector_veto`), fails the job when a verdict is not a pass, writes the receipt to the job summary and, on a pull request, posts it as **one comment updated in place** on every run (found by a marker naming the traces file, so two gates in one workflow keep two comments). The job needs `permissions: pull-requests: write` for the comment; without it, or on a pull request from a fork (whose token is read-only), the receipt still reaches the summary and the action says the comment was skipped and why. A traces file that is empty fails the job: an unwritten file cannot pass as green. So does a trace the gate could not judge ([what exit 0 means](#what-exit-0-means)).
 
 | Input | Default | What it is |
 |---|---|---|
 | `traces` | — (required) | The traces file: NDJSON, or one JSON trace |
-| `fail-on` | `detector_veto` | The basis that trips the gate — the table above |
+| `fail-on` | `any` | What trips the gate — the table above. `detector_veto` until 0.20.0: a workflow that relied on that default names it now |
 | `dataset` | — | Restrict the gate to a dataset's case keys (id or label) that exists under `iris-home` |
 | `allow-empty` | `false` | Pass the job when no trace was in the gate: an empty file, or a run with none of the dataset's cases |
 | `eval-type` | every bundle | `completeness` · `relevance` · `safety` · `cost` · `custom` · `all` |
@@ -121,7 +123,7 @@ Without the action, the same gate is one line:
 
 ```yaml
 - name: Evaluate the agent's traces
-  run: npx -y @iris-eval/mcp-server ingest --file traces.ndjson --evaluate --fail-on detector_veto
+  run: npx -y @iris-eval/mcp-server ingest --file traces.ndjson --evaluate --fail-on any
   env:
     IRIS_HOME: ${{ runner.temp }}/iris
 ```

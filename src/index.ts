@@ -218,8 +218,9 @@ Ingest (the third door — a CI gate, and the path host hooks use; no server nee
   --file <path>            Read traces from this file instead of stdin
   --evaluate               Evaluate each trace in the same call (a trace may also carry evaluate: true)
   --eval-type <bundle>     With --evaluate: completeness | relevance | safety | cost | custom | all (default: all)
-  --fail-on <basis>        Exit 1 when any verdict matches: policy_gate | detector_veto | critical_unknown |
-                           required_evidence_missing | risk_over_loss | fail | unknown | any. A verdict
+  --fail-on <basis>        Exit 1 when any verdict matches: any (not a pass: failed, or not checked) | fail |
+                           unknown | policy_gate | detector_veto | critical_unknown |
+                           required_evidence_missing | risk_over_loss. One basis passes everything else. A verdict
                            matches a basis when that layer decided it or would have (verdict.also), so a
                            leak in an output that also broke a policy still trips detector_veto.
                            Exit 0 means every trace read was judged and none matched: a rejected trace,

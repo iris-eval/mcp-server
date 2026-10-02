@@ -306,6 +306,7 @@ export const answersTheAsk: EvalRule = {
   kind: 'policy',
   mechanism: 'formula',
   needs: ['output', 'input'],
+  thresholdKeys: ['keyword_overlap', 'topic_consistency'],
   question: 'relevant',
   classes: ['off_task'],
   version: 1,

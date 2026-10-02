@@ -267,7 +267,7 @@ describe('deriveMomentDetail carries the stamp whole', () => {
     const allSkipped = deriveMoment(makeTrace(), [makeEval({ rule_results: [{ ruleName: 'no_pii', passed: false, score: 0, message: 'no output', skipped: true, skipReason: 'no output' }] })]);
     expect(allSkipped.verdict).toBe('unevaluated');
     expect(allSkipped.significance.kind).toBe('unevaluated');
-    expect(allSkipped.significance.reason).toMatch(/Unknown, not clean/);
+    expect(allSkipped.significance.reason).toMatch(/Not checked, which is not a pass/);
   });
 
   it('the one kind list carries every kind the type admits, including the new one', () => {

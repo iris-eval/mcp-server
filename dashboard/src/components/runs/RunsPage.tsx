@@ -15,6 +15,7 @@ import { QueryError } from '../shared/QueryError';
 import { PageEmptyState } from '../layout/PageEmptyState';
 import { TimeAgo } from '../shared/TimeAgo';
 import { ComparisonView } from './ComparisonView';
+import { notCheckedSuffix } from '../evals/verdictText';
 import { Layers } from 'lucide-react';
 
 const styles = {
@@ -137,9 +138,10 @@ export function RunsPage() {
       render: (r) => (
         <span data-run-evaluated={r.evaluated}>
           {r.passed} of {r.evaluated} passed
+          {notCheckedSuffix(r.notChecked)}
         </span>
       ),
-      width: '11rem',
+      width: '15rem',
     },
     { key: 'rate', header: 'Pass rate', render: (r) => <span style={styles.mono}>{rate(r)}</span>, width: '8rem' },
     { key: 'agents', header: 'Agents', render: (r) => r.agentNames.join(', ') || <span style={styles.muted}>—</span> },

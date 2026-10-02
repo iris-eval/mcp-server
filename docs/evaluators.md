@@ -192,7 +192,7 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 
 ### `tool_sequence` (the built-in rules)
 
-- **Q1** measured — proof/results.json → rules[tool_sequence] (precision, recall and F1 on 47 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
+- **Q1** measured — proof/results.json → rules[tool_sequence] (precision, recall and F1 on 51 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
 - **Q2** partial — proof/RESULTS.md → misses by case id (every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical))
 - **Q3** stated — list_rules → kind: policy, mechanism: formula; proof/corpus → definition (a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure)
 - **Q4** stated — every result since 0.9.0 carries kind and mechanism (the kind label says it is a formula, so it cannot appear to be a detector)
@@ -480,7 +480,7 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 
 ### `step_budget` (the built-in rules)
 
-- **Q1** measured — proof/results.json → rules[step_budget] (precision, recall and F1 on 44 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
+- **Q1** measured — proof/results.json → rules[step_budget] (precision, recall and F1 on 46 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
 - **Q2** partial — proof/RESULTS.md → misses by case id (every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical))
 - **Q3** stated — list_rules → kind: policy, mechanism: formula; proof/corpus → definition (a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure)
 - **Q4** stated — every result since 0.9.0 carries kind and mechanism (the kind label says it is a formula, so it cannot appear to be a detector)

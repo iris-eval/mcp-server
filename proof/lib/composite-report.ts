@@ -6,8 +6,9 @@
  *
  *   legacy            — today's arithmetic: `passed` (score ≥ threshold and
  *                       no critical failure), as the tool returns it
- *   risk (per-output) — the risk composer, in the harness only
- *                       (src/eval/risk.ts, the module the product uses): gates, then vetoes, then p_bad
+ *   risk (per-output) — the product's composer, compose() in
+ *                       src/eval/compose.ts, the function every verdict
+ *                       the product gives comes from: gates, then vetoes, then p_bad
  *                       against τ = 1 / (1 + c), with the prior read as
  *                       "this output is bad" and spread over the classes
  *                       the detectors examine
@@ -40,7 +41,9 @@ import { wilson } from '../judge/lib/wilson.js';
 import { calibration, type Calibration } from './intervals.js';
 import { newcombeDifference } from '../../src/eval/stats.js';
 import { compositeContext, loadComposite, splitOf, validateComposite, type CompositeCase, type LoadedComposite, type Split } from './composite.js';
-import { riskVerdict, detectorsOf, DEFAULT_TAU, DEFAULT_PRIOR, DEFAULT_FALSE_PASS_COST, DEFAULT_PRIOR_MODE, type PriorMode, type RiskVerdict } from '../../src/eval/risk.js';
+import { riskEstimate, detectorsOf, DEFAULT_TAU, DEFAULT_PRIOR, DEFAULT_FALSE_PASS_COST, DEFAULT_PRIOR_MODE, type PriorMode, type RiskEstimate } from '../../src/eval/risk.js';
+import { compose, DEFAULT_COMPOSE } from '../../src/eval/compose.js';
+import type { Verdict } from '../../src/types/eval.js';
 import { legacyWouldShip } from './legacy-composer.js';
 import { verdictConfidence, testable, MIN_BIN_N, MIN_BIN_PATTERNS, type CalibrationTable, type Confidence } from '../../src/eval/confidence.js';
 
@@ -51,13 +54,45 @@ export const PUBLISHED_CALIBRATION_TS = 'src/eval/published-calibration.ts';
 const round4 = (x: number): number => Math.round(x * 10_000) / 10_000;
 
 export interface RiskCell {
-  state: RiskVerdict['state'];
-  basis: RiskVerdict['basis'];
+  state: Verdict['state'];
+  basis: Verdict['basis'];
   by: string[];
   pBad: number | null;
   lo: number | null;
   hi: number | null;
-  confidence: RiskVerdict['confidence'];
+  confidence: 'decisive' | 'marginal' | null;
+}
+
+/** The product's verdict on one result, with what the harness reads beside it. */
+interface MeasuredVerdict {
+  state: Verdict['state'];
+  basis: Verdict['basis'];
+  by: string[];
+  risk: RiskEstimate | null;
+  confidence: 'decisive' | 'marginal' | null;
+}
+
+/**
+ * The verdict the product gives this result, from the product's own
+ * composer: compose() at the shipped configuration, with the prior read
+ * the way the row says. Nothing about what passes or fails is decided here.
+ *
+ * One thing is added for the calibration tables: compose() carries no risk
+ * estimate on a verdict a gate or a veto decided, because the estimate did
+ * not decide it, and the reliability tables need a stated probability for
+ * every case. That estimate is the same `riskEstimate` compose() reads.
+ * `confidence` is null exactly where the risk layer was not the last word.
+ */
+export function productVerdict(result: EvalResult, mode: PriorMode): MeasuredVerdict {
+  const v = compose(result, { ...DEFAULT_COMPOSE, priorMode: mode });
+  const hard = v.basis === 'policy_gate' || v.basis === 'detector_veto';
+  return {
+    state: v.state,
+    basis: v.basis,
+    by: v.by,
+    risk: v.risk ?? (hard ? riskEstimate(result, DEFAULT_PRIOR, mode) : null),
+    confidence: v.confidence ?? null,
+  };
 }
 
 export interface CaseRow {
@@ -81,10 +116,23 @@ export interface Rate {
   ci95: [number, number] | null;
 }
 
+/** Labelled verdicts by state. `notChecked` is the verdict's `unknown`: not a pass, and not a failure. */
+export interface Outcomes {
+  mustNotShip: { fail: number; notChecked: number; pass: number };
+  mayShip: { pass: number; notChecked: number; fail: number };
+}
+
 export interface ComposerSlice {
   accuracy: Rate;
   falseBlock: Rate;
   missedBlock: Rate;
+  /**
+   * The three states, counted apart. In the three rates above a verdict
+   * that was not checked counts as a block, because it did not let the
+   * output through; this is where a reader sees how many of the blocks
+   * were a finding and how many were an answer that could not be reached.
+   */
+  outcomes: Outcomes;
   calibration: Calibration | null;
 }
 
@@ -178,7 +226,8 @@ function rate(k: number, n: number): Rate {
   return { k, n, rate: n === 0 ? null : round4(k / n), ci95: w ? [round4(w.lo), round4(w.hi)] : null };
 }
 
-function slice(rows: CaseRow[], ship: (r: CaseRow) => boolean, prob: (r: CaseRow) => number | null): ComposerSlice {
+function slice(rows: CaseRow[], state: (r: CaseRow) => Verdict['state'], prob: (r: CaseRow) => number | null): ComposerSlice {
+  const ship = (r: CaseRow): boolean => state(r) === 'pass';
   const labelled = rows.filter((r) => r.shouldShip !== null);
   const correct = labelled.filter((r) => ship(r) === r.shouldShip).length;
   const clean = labelled.filter((r) => r.shouldShip === true);
@@ -191,27 +240,34 @@ function slice(rows: CaseRow[], ship: (r: CaseRow) => boolean, prob: (r: CaseRow
     accuracy: rate(correct, labelled.length),
     falseBlock: rate(clean.filter((r) => !ship(r)).length, clean.length),
     missedBlock: rate(bad.filter((r) => ship(r)).length, bad.length),
+    outcomes: {
+      mustNotShip: { fail: count(bad, state, 'fail'), notChecked: count(bad, state, 'unknown'), pass: count(bad, state, 'pass') },
+      mayShip: { pass: count(clean, state, 'pass'), notChecked: count(clean, state, 'unknown'), fail: count(clean, state, 'fail') },
+    },
     calibration: calibration(pairs),
   };
 }
 
-function slices(rows: CaseRow[], ship: (r: CaseRow) => boolean, prob: (r: CaseRow) => number | null): ComposerSlices {
+const count = (rows: CaseRow[], state: (r: CaseRow) => Verdict['state'], want: Verdict['state']): number => rows.filter((r) => state(r) === want).length;
+
+function slices(rows: CaseRow[], state: (r: CaseRow) => Verdict['state'], prob: (r: CaseRow) => number | null): ComposerSlices {
   return {
-    test: slice(rows.filter((r) => r.split === 'test'), ship, prob),
-    dev: slice(rows.filter((r) => r.split === 'dev'), ship, prob),
-    realTranscripts: slice(rows.filter((r) => r.provenance === 'real-transcript'), ship, prob),
+    test: slice(rows.filter((r) => r.split === 'test'), state, prob),
+    dev: slice(rows.filter((r) => r.split === 'dev'), state, prob),
+    realTranscripts: slice(rows.filter((r) => r.provenance === 'real-transcript'), state, prob),
   };
 }
 
-const legacyShip = (r: CaseRow): boolean => r.legacy.passed;
+// The legacy arithmetic has two answers: it never said "not checked".
+const legacyShip = (r: CaseRow): Verdict['state'] => (r.legacy.passed ? 'pass' : 'fail');
 const legacyProb = (r: CaseRow): number => 1 - r.legacy.score;
-const riskShipOf = (cell: (r: CaseRow) => RiskCell) => (r: CaseRow): boolean => cell(r).state === 'pass';
+const riskShipOf = (cell: (r: CaseRow) => RiskCell) => (r: CaseRow): Verdict['state'] => cell(r).state;
 const riskProbOf = (cell: (r: CaseRow) => RiskCell) => (r: CaseRow): number | null => {
   const c = cell(r);
   return c.pBad === null ? (c.state === 'fail' ? 1 : null) : c.pBad;
 };
 
-function cellOf(v: RiskVerdict): RiskCell {
+function cellOf(v: MeasuredVerdict): RiskCell {
   return { state: v.state, basis: v.basis, by: v.by, pBad: v.risk?.pBad ?? null, lo: v.risk?.lo ?? null, hi: v.risk?.hi ?? null, confidence: v.confidence };
 }
 
@@ -285,8 +341,8 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
       shouldShip: c.expected.shouldShip,
       classes: c.expected.classes,
       legacy: { passed: legacyShipped, score: round4(result.score), criticalFailures: result.critical_failures ?? [] },
-      risk: cellOf(riskVerdict(result, DEFAULT_TAU, DEFAULT_PRIOR, 'per-output')),
-      riskPerClass: cellOf(riskVerdict(result, DEFAULT_TAU, DEFAULT_PRIOR, 'per-class')),
+      risk: cellOf(productVerdict(result, 'per-output')),
+      riskPerClass: cellOf(productVerdict(result, 'per-class')),
       classesCaught: [...caught].filter((cls) => c.expected.classes.includes(cls)).sort(),
     });
   }
@@ -389,7 +445,7 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
       falsePassCost: DEFAULT_FALSE_PASS_COST,
       prior: DEFAULT_PRIOR,
       priorMode: DEFAULT_PRIOR_MODE,
-      risk: 'class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired); 2,000 seeded draws over the Beta posteriors for the interval; gates and vetoes before the risk; measurements and policies never enter (src/eval/risk.ts, the module the product uses)',
+      risk: 'compose() in src/eval/compose.ts, the function every verdict the product gives comes from: gates and vetoes first, then a class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired), with 2,000 seeded draws over the Beta posteriors for the interval; measurements and policies never enter the risk',
       priorModes: {
         'per-output': 'π is the prior that the output is bad; spread over the K examined classes as π_c = 1 − (1 − π)^(1/K)',
         'per-class': 'π is the prior that each examined class is present, as originally specified; with K classes examined the prior that nothing is wrong is (1 − π)^K',
@@ -449,7 +505,7 @@ export function renderCompositeMarkdown(r: CompositeResults): string {
   L.push('');
   L.push('## Three composers on the same rule results');
   L.push('');
-  L.push(`**legacy** — ${r.method.legacy}. **risk** — the risk composer run here in the harness only: ${r.method.risk}; τ = ${r.method.tau} (a false pass costs ${r.method.falsePassCost}× a false block), prior ${r.method.prior}. Two readings of the prior are measured: *per-output* (${r.method.priorModes['per-output']}) and *per-class* (${r.method.priorModes['per-class']}).`);
+  L.push(`**legacy** — ${r.method.legacy}. **risk** — the product's own composer: ${r.method.risk}; τ = ${r.method.tau} (a false pass costs ${r.method.falsePassCost}× a false block), prior ${r.method.prior}. Two readings of the prior are measured: *per-output* (${r.method.priorModes['per-output']}) and *per-class* (${r.method.priorModes['per-class']}).`);
   L.push('');
   L.push('| Split | Composer | Accuracy vs shouldShip (95% CI) | False blocks on clean (95% CI) | Missed blocks (95% CI) | Brier | ECE |');
   L.push('|---|---|---|---|---|--:|--:|');
@@ -458,6 +514,17 @@ export function renderCompositeMarkdown(r: CompositeResults): string {
       const s = r[comp][split];
       L.push(`| ${name} | ${label} | ${pct(s.accuracy.rate)} ${ci(s.accuracy.ci95)} (n=${s.accuracy.n}) | ${pct(s.falseBlock.rate)} ${ci(s.falseBlock.ci95)} (n=${s.falseBlock.n}) | ${pct(s.missedBlock.rate)} ${ci(s.missedBlock.ci95)} (n=${s.missedBlock.n}) | ${s.calibration ? s.calibration.brier.toFixed(3) : '—'} | ${s.calibration ? s.calibration.ece.toFixed(3) : '—'} |`);
     }
+  }
+  L.push('');
+  L.push('### The three states, counted apart');
+  L.push('');
+  L.push('A verdict is pass, fail, or not checked. In the table above a verdict that was not checked counts as a block, because it did not let the output through. Here the three are apart (risk composer, per-output prior), so a reader sees how many blocks were findings and how many were answers that could not be reached, and so a composer cannot look better on bad outputs by declining to answer without it showing on the good ones.');
+  L.push('');
+  L.push('| Split | Must not ship: fail / not checked / pass | May ship: pass / not checked / fail |');
+  L.push('|---|---|---|');
+  for (const [name, split] of [['test', 'test'], ['real transcripts (held out, staged)', 'realTranscripts'], ['dev', 'dev']] as const) {
+    const o = r.risk[split].outcomes;
+    L.push(`| ${name} | ${o.mustNotShip.fail} / ${o.mustNotShip.notChecked} / ${o.mustNotShip.pass} | ${o.mayShip.pass} / ${o.mayShip.notChecked} / ${o.mayShip.fail} |`);
   }
   L.push('');
   L.push(`**Difference from legacy (Newcombe 95%).** per-output prior: test ${pts(r.difference.risk.test)}; real transcripts ${pts(r.difference.risk.realTranscripts)}. per-class prior: test ${pts(r.difference.riskPerClass.test)}; real transcripts ${pts(r.difference.riskPerClass.realTranscripts)}. ${r.difference.reads}.`);

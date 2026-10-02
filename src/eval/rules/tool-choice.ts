@@ -69,6 +69,7 @@ export const toolChoice: EvalRule = {
   kind: 'detection',
   mechanism: 'heuristic',
   needs: ['input', 'tool_calls', 'tools_catalogue'],
+  thresholdKeys: ['tool_choice_margin', 'tool_choice_min_fit'],
   question: 'relevant',
   classes: ['wrong_tool'],
   version: 1,

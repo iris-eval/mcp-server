@@ -1,7 +1,7 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-10-02T06:06:09.795Z for v0.19.0 (local generating commit `78a07815` — branch commits are squashed on merge, so cite the version).
-Corpus version `7022143b0265` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
+Generated 2026-10-02T21:26:36.209Z for v0.19.0 (local generating commit `dc393a94` — branch commits are squashed on merge, so cite the version).
+Corpus version `0e64b035afb5` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
@@ -15,7 +15,7 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `expected_coverage` | completeness | own definition | 24 | 11 | 0 | 11 | 0 | 0 | 13 | 100.0% [74.1, 100.0] | 100.0% [74.1, 100.0] | 1.000 [100.0, 100.0] | [83.7, 99.9] | 100.0% / 100.0% |
 | `valid_tool_arguments` | completeness | own definition | 33 | 15 | 0 | 15 | 0 | 0 | 18 | 100.0% [79.6, 100.0] | 100.0% [79.6, 100.0] | 1.000 [100.0, 100.0] | [88.1, 99.9] | 100.0% / 100.0% |
 | `ask_coverage` | completeness | reader | 30 | 13 | 5 | 11 | 4 | 2 | 13 | 73.3% [48.0, 89.1] | 84.6% [57.8, 95.7] | 0.786 [58.3, 92.9] | [56.5, 90.1] | 15.9% / 78.2% |
-| `tool_sequence` | completeness | own definition | 47 | 25 | 0 | 25 | 0 | 0 | 22 | 100.0% [86.7, 100.0] | 100.0% [86.7, 100.0] | 1.000 [100.0, 100.0] | [92.7, 100.0] | 100.0% / 100.0% |
+| `tool_sequence` | completeness | own definition | 51 | 28 | 0 | 28 | 0 | 0 | 23 | 100.0% [87.9, 100.0] | 100.0% [87.9, 100.0] | 1.000 [100.0, 100.0] | [93.5, 100.0] | 100.0% / 100.0% |
 | `keyword_overlap` | relevance | own definition | 24 | 11 | 0 | 11 | 0 | 0 | 13 | 100.0% [74.1, 100.0] | 100.0% [74.1, 100.0] | 1.000 [100.0, 100.0] | [83.3, 99.9] | 100.0% / 100.0% |
 | `topic_consistency` | relevance | own definition | 24 | 12 | 1 | 11 | 0 | 1 | 12 | 100.0% [74.1, 100.0] | 91.7% [64.6, 98.5] | 0.957 [84.2, 100.0] | [77.2, 99.1] | 100.0% / 100.0% |
 | `tool_choice` | relevance | reader | 46 | 20 | 4 | 18 | 0 | 2 | 26 | 100.0% [82.4, 100.0] | 90.0% [69.9, 97.2] | 0.947 [85.7, 100.0] | [81.0, 98.4] | 100.0% / 100.0% |
@@ -33,7 +33,7 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `no_tool_loop` | cost | own definition | 37 | 18 | 0 | 18 | 0 | 0 | 19 | 100.0% [82.4, 100.0] | 100.0% [82.4, 100.0] | 1.000 [100.0, 100.0] | [90.4, 99.9] | 100.0% / 100.0% |
 | `max_steps` | cost | own definition | 28 | 12 | 0 | 12 | 0 | 0 | 16 | 100.0% [75.8, 100.0] | 100.0% [75.8, 100.0] | 1.000 [100.0, 100.0] | [85.1, 99.9] | 100.0% / 100.0% |
 | `cost_anomaly` | cost | own definition | 27 | 13 | 2 | 13 | 0 | 0 | 14 | 100.0% [77.2, 100.0] | 100.0% [77.2, 100.0] | 1.000 [100.0, 100.0] | [86.2, 99.9] | 100.0% / 100.0% |
-| `step_budget` | cost | own definition | 44 | 22 | 0 | 22 | 0 | 0 | 22 | 100.0% [85.1, 100.0] | 100.0% [85.1, 100.0] | 1.000 [100.0, 100.0] | [92.0, 99.9] | 100.0% / 100.0% |
+| `step_budget` | cost | own definition | 46 | 22 | 0 | 22 | 0 | 0 | 24 | 100.0% [85.1, 100.0] | 100.0% [85.1, 100.0] | 1.000 [100.0, 100.0] | [92.0, 99.9] | 100.0% / 100.0% |
 
 ## Misses, by case id
 
@@ -153,7 +153,7 @@ each custom rule type built by createCustomRule under the family's config and ru
 <!-- latency:start -->
 ## How long one evaluation takes
 
-EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1021; p50 0.744 ms, p95 5.331 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
+EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1027; p50 0.79 ms, p95 5.654 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
 
 Re-measured on every `npm run proof` and excluded from `--check`: it is a property of the machine, so CI cannot hold it byte-for-byte.
 

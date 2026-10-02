@@ -14,7 +14,7 @@ VerdictState = Literal["pass", "fail", "unknown"]
 
 
 class VerdictLayer(TypedDict, total=False):
-    """A later layer that would have decided the verdict on its own."""
+    """Another layer that would have decided the verdict on its own."""
 
     basis: str
     state: Literal["fail", "unknown"]
@@ -24,9 +24,9 @@ class VerdictLayer(TypedDict, total=False):
 class Verdict(TypedDict, total=False):
     """Which layer decided, and what it decided on.
 
-    ``basis`` names the first layer with something to say; ``also`` lists
-    every later one that would have decided the verdict too, and is absent
-    when there is none.
+    ``basis`` names one layer: the first that fails, or when none fails the
+    first that could not check. ``also`` lists every other one that would
+    have decided the verdict too, and is absent when there is none.
     """
 
     state: VerdictState
@@ -41,10 +41,20 @@ class Verdict(TypedDict, total=False):
 class RuleResult(TypedDict, total=False):
     ruleName: str
     passed: bool
+    #: ``pass``, ``fail`` or ``not_checked``. Read this, not ``passed``: a rule
+    #: that skipped carries ``passed: False`` as a placeholder (server 0.20.0+).
+    state: str
     score: float
     message: str
     skipped: bool
     skipReason: str
+    #: On a rule that skipped for missing evidence: the inputs it reads that
+    #: the call did not carry.
+    lacked: list[str]
+    #: On such a rule, when somebody had asked for it: ``config`` (the
+    #: deployment) or ``call`` (the call itself). The verdict is then
+    #: ``unknown``, not ``pass``.
+    asked: str
     evidence: list[dict[str, Any]]
     value: dict[str, Any]
 

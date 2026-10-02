@@ -78,10 +78,17 @@ describe('compose — a later layer that would have decided is on the verdict', 
     expect(compose(result(rows), cfg({ onCriticalSkipped: 'pass' }))).not.toHaveProperty('also');
   });
 
-  it('an unknown verdict whose risk is over the loss threshold says so: the risk layer is in also, as a fail', () => {
+  it('a failure outranks a check that could not run: the risk layer fails the verdict, and the unknown layer is listed beside it', () => {
+    // This read `unknown` with the risk layer in `also`: a second problem softened the first.
     const v = compose(result([COULD_NOT_ANSWER, RISKY]), cfg());
-    expect(v).toMatchObject({ state: 'unknown', basis: 'critical_unknown', risk: null });
-    expect(v.also).toEqual([{ basis: 'risk_over_loss', state: 'fail', by: ['silent_tool_failure'] }]);
+    expect(v).toMatchObject({ state: 'fail', passed: false, basis: 'risk_over_loss', by: ['silent_tool_failure'] });
+    expect(v.risk).not.toBeNull();
+    expect(v.also).toEqual([{ basis: 'critical_unknown', state: 'unknown', by: [COULD_NOT_ANSWER.ruleName] }]);
+    // The path runs through the layer that could not check to the one that fails.
+    const path = verdictPath(result([COULD_NOT_ANSWER, RISKY]), cfg());
+    expect(path.map((n) => [n.node, n.decided])).toEqual([['gate', false], ['veto', false], ['unknown', true], ['risk', true]]);
+    // With nothing to fail it, the check that could not run still makes the verdict unknown.
+    expect(compose(result([COULD_NOT_ANSWER, row({ ruleName: 'quiet_rule' })]), cfg())).toMatchObject({ state: 'unknown', basis: 'critical_unknown' });
     // The same rows with nothing unknown: the risk layer decides, and carries the estimate.
     const alone = compose(result([RISKY]), cfg());
     expect(alone).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['silent_tool_failure'] });

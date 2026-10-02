@@ -1,6 +1,6 @@
 {
-  "commit": "78a07815",
-  "corpusVersion": "7022143b0265",
+  "commit": "dc393a94",
+  "corpusVersion": "0e64b035afb5",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
     "types": [
@@ -625,7 +625,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-10-02T06:06:09.795Z",
+  "generatedAt": "2026-10-02T21:26:36.209Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -638,9 +638,9 @@
       "platform": "win32"
     },
     "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
-    "n": 1021,
-    "p50Ms": 0.744,
-    "p95Ms": 5.331
+    "n": 1027,
+    "p50Ms": 0.79,
+    "p95Ms": 5.654
   },
   "method": {
     "ci": "wilson-95",
@@ -959,25 +959,25 @@
           1
         ],
         "precision": [
-          0.8668,
+          0.8794,
           1
         ],
         "recall": [
-          0.8668,
+          0.8794,
           1
         ]
       },
       "credible95": {
         "f1": [
-          0.927,
+          0.9346,
           0.9996
         ],
         "precision": [
-          0.908,
+          0.9166,
           1
         ],
         "recall": [
-          0.9028,
+          0.9122,
           1
         ]
       },
@@ -985,10 +985,10 @@
       "fn": 0,
       "fp": 0,
       "labelBasis": "definition",
-      "n": 47,
+      "n": 51,
       "name": "tool_sequence",
-      "negatives": 22,
-      "positives": 25,
+      "negatives": 23,
+      "positives": 28,
       "ppvAt": {
         "0.01": 1,
         "0.05": 1,
@@ -998,8 +998,8 @@
       "precision": 1,
       "recall": 1,
       "skipped": 0,
-      "tn": 22,
-      "tp": 25
+      "tn": 23,
+      "tp": 28
     },
     {
       "category": "relevance",
@@ -1885,9 +1885,9 @@
       "fn": 0,
       "fp": 0,
       "labelBasis": "definition",
-      "n": 44,
+      "n": 46,
       "name": "step_budget",
-      "negatives": 22,
+      "negatives": 24,
       "positives": 22,
       "ppvAt": {
         "0.01": 1,
@@ -1898,7 +1898,7 @@
       "precision": 1,
       "recall": 1,
       "skipped": 0,
-      "tn": 22,
+      "tn": 24,
       "tp": 22
     }
   ],

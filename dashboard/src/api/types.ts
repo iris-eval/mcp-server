@@ -95,6 +95,8 @@ export interface TraceMatch {
 export interface EvalRuleResult {
   ruleName: string;
   passed: boolean;
+  /** What to read instead of `passed`: a rule that skipped is `not_checked`, and carries `passed: false`. Absent on rows from before 0.20.0. */
+  state?: 'pass' | 'fail' | 'not_checked';
   score: number;
   message: string;
   /**
@@ -132,6 +134,10 @@ export interface EvalRuleResult {
   ruleVersion?: number;
   saw?: string[];
   skipClass?: 'not_applicable' | 'defeated' | 'config_invalid';
+  /** On a rule that skipped for missing evidence: the inputs it reads that the call did not carry. */
+  lacked?: string[];
+  /** On such a rule, when somebody had asked for it: the deployment's configuration, or the call itself. The verdict is then not checked. */
+  asked?: 'config' | 'call';
   uncertainty?: Uncertainty;
   evidenceIncomplete?: boolean;
 }
@@ -144,6 +150,8 @@ export interface EvalRuleResult {
  */
 export interface EvalCategoryResult {
   score: number | null;
+  /** The verdict, read for the rules this bundle holds; `unknown` is not checked. Absent on rows from before 0.20.0. */
+  state?: 'pass' | 'fail' | 'unknown';
   passed: boolean | null;
   rules_evaluated: number;
   rules_skipped: number;
@@ -163,7 +171,7 @@ export type VerdictBasis =
   | 'clean'
   | 'no_rules';
 
-/** A later layer that would have decided the verdict on its own. */
+/** Another layer that would have decided the verdict on its own. */
 export interface VerdictLayer {
   basis: Exclude<VerdictBasis, 'policy_gate' | 'clean' | 'no_rules'>;
   state: 'fail' | 'unknown';
@@ -173,13 +181,13 @@ export interface VerdictLayer {
 export interface Verdict {
   state: 'pass' | 'fail' | 'unknown';
   passed: boolean;
-  /** Which layer of the composer decided: the first with something to say. */
+  /** Which layer of the composer decided: the first that fails, or when none fails the first that could not check. */
   basis: VerdictBasis;
   /** The rules (or failure classes, under risk_over_loss) that decided. */
   by: string[];
   risk: { pBad: number; lo: number; hi: number; perClass: Record<string, number | null>; assumptions: string[] } | null;
   confidence?: 'decisive' | 'marginal';
-  /** Every later layer that would have decided it too, in the order they are asked. Absent when there is none. */
+  /** Every other layer that would have decided it too, in the order they are asked. Absent when there is none. */
   also?: VerdictLayer[];
 }
 
@@ -499,6 +507,10 @@ export interface EvalStats {
   passRate: number;
   avgScore: number;
   totalEvals: number;
+  /** Of totalEvals, the evaluations that passed. */
+  passed?: number;
+  /** Of totalEvals, the verdicts that were not checked: in the rate's denominator, and not failures. */
+  notChecked?: number;
   safetyViolations: { pii: number; injection: number; hallucination: number };
   totalCost: number;
   /** The part of totalCost that Iris estimated from token counts × list price. */
@@ -838,6 +850,8 @@ export interface DriftWindowSummary {
   until: string | null;
   evaluated: number;
   passed: number;
+  /** Of evaluated, the verdicts that were not checked: in the rate's denominator, and not failures. */
+  notChecked?: number;
   /** Null for an empty window — "0 of 0" is unknown, not zero. */
   passRate: number | null;
   /** The 95% Wilson interval on this window's pass rate; null for an empty window. */
@@ -901,6 +915,8 @@ export interface RunSummaryRow {
   traces: number;
   evaluated: number;
   passed: number;
+  /** Of evaluated, the verdicts that were not checked: not passes and not failures. */
+  notChecked?: number;
   agentNames: string[];
   engineVersions: string[];
   rulesetHashes: string[];
@@ -917,6 +933,8 @@ export interface RunResultRow {
   caseKey: string | null;
   agentName: string | null;
   passed: boolean;
+  /** The verdict's state; `unknown` is not checked, which is `passed: false` and not a failure. */
+  state?: 'pass' | 'fail' | 'unknown';
   failedRules: string[];
   engineVersion: string | null;
   rulesetHash: string | null;
@@ -932,6 +950,8 @@ export interface CaseResultRow {
   caseKey: string | null;
   runId: string | null;
   passed: boolean;
+  /** The verdict's state; `unknown` is not checked. */
+  state?: 'pass' | 'fail' | 'unknown';
   createdAt: string;
 }
 
@@ -949,6 +969,8 @@ export interface CaseResponse {
   caseKey: string;
   attempts: number;
   passed: number;
+  /** Of attempts, the verdicts that were not checked. */
+  notChecked?: number;
   flaky: boolean;
   runs: string[];
   results: CaseResultRow[];
@@ -968,6 +990,8 @@ export interface CompareRunSummary {
   run_id: string;
   n: number;
   passed: number;
+  /** Of n, the verdicts that were not checked. */
+  not_checked?: number;
   rate: number | null;
   interval: { lo: number; hi: number } | null;
   agent_names: string[];
@@ -1044,6 +1068,8 @@ export interface CompareRunsResult {
     significant: boolean;
     /** Of the pairs that changed, the share that fell, with its exact 90% interval. */
     fell: { share: number; lo: number; hi: number } | null;
+    /** Of b, the pairs whose second verdict was not checked rather than failed. */
+    fell_not_checked?: number;
   } | null;
   worse: boolean;
   /** True only when the second run was judged on no less than the first. */

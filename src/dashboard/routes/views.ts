@@ -82,17 +82,19 @@ const costByAgent: View = async (storage, tenantId, q) => {
 
 const flakyCases: View = async (storage, tenantId, q) => {
   const results = await storage.getCaseResults(tenantId, q.run ? { run: q.run } : undefined);
-  const grouped = new Map<string, { attempts: number; passed: number; runs: Set<string> }>();
+  const grouped = new Map<string, { attempts: number; passed: number; failed: number; runs: Set<string> }>();
   for (const r of results) {
     if (r.caseKey === null) continue;
-    const g = grouped.get(r.caseKey) ?? { attempts: 0, passed: 0, runs: new Set<string>() };
+    const g = grouped.get(r.caseKey) ?? { attempts: 0, passed: 0, failed: 0, runs: new Set<string>() };
     g.attempts += 1;
     if (r.passed) g.passed += 1;
+    // An attempt that was not checked is neither answer.
+    if (r.state === 'fail') g.failed += 1;
     if (r.runId) g.runs.add(r.runId);
     grouped.set(r.caseKey, g);
   }
   const rows = [...grouped.entries()]
-    .filter(([, g]) => g.attempts >= q.min_attempts && g.passed > 0 && g.passed < g.attempts)
+    .filter(([, g]) => g.attempts >= q.min_attempts && g.passed > 0 && g.failed > 0)
     .map(([caseKey, g]) => ({ caseKey, attempts: g.attempts, passed: g.passed, rate: g.passed / g.attempts, runs: [...g.runs].sort() }))
     .sort((a, b) => a.rate - b.rate || a.caseKey.localeCompare(b.caseKey))
     .slice(0, q.limit);

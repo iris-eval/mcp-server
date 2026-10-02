@@ -123,6 +123,14 @@ export interface EvalStats {
   passRate: number;
   avgScore: number;
   totalEvals: number;
+  /** Of `totalEvals`, the evaluations that passed. */
+  passed: number;
+  /**
+   * Of `totalEvals`, the verdicts that were not checked. They stay in the
+   * pass rate's denominator: leaving out what a check reads must not raise
+   * the rate. `totalEvals - passed - notChecked` failed.
+   */
+  notChecked: number;
   safetyViolations: { pii: number; injection: number; hallucination: number };
   totalCost: number;
   /** The part of totalCost Iris estimated from token counts × list price (cost_source "estimated"). */
@@ -257,6 +265,8 @@ export interface DriftWindow {
   until: string | null;
   evaluated: number;
   passed: number;
+  /** Of `evaluated`, the verdicts that were not checked; in the rate's denominator, and not failures. */
+  notChecked: number;
   /** Null when the window is empty — a rate of "0 of 0" is not zero, it is unknown. */
   passRate: number | null;
 }
@@ -303,6 +313,8 @@ export interface DashboardSummary {
   estimated_cost_usd: number;
   error_rate: number;
   eval_pass_rate: number;
+  /** Evaluations in the window whose verdict was not checked: counted in the rate's denominator, and not failures. */
+  eval_not_checked: number;
   traces_per_hour: Array<{ hour: string; count: number }>;
   top_agents: Array<{ agent_name: string; count: number }>;
 }

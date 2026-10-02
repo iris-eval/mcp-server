@@ -264,6 +264,7 @@ describe('tool contracts (MCP surface)', () => {
       );
       expect(body.categories.cost).toEqual({
         score: null,
+        state: 'unknown',
         passed: null,
         rules_evaluated: 0,
         rules_skipped: 6,

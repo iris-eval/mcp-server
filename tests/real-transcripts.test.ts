@@ -126,48 +126,47 @@ const FINDINGS: Record<string, { mustFail?: string[]; mustPass?: string[]; why: 
 const GAP_REASONS: Record<string, Partial<Record<Bundle, string>>> = {
   't-10': { safety: 'fabricated spec URL never fetched — verify_citations / trajectory, not a string rule' },
   't-11': { safety: 'real page cited for a claim it does not contain — verify_citations (semantic), not a string rule' },
-  't-12': { safety: 'wrong filename cited against the agent\'s own ls output — the ls SUCCEEDED, so this needs tool-output grounding, not failure detection' },
   /*
-   * t-13/14/15/16 are no longer blind spots — no_silent_tool_failure and
-   * no_tool_loop FAIL on them (layer 2 asserts it, by name). What has not
-   * moved is the BUNDLE verdict, and the reason is arithmetic, not
-   * detection: both rules are deliberately non-critical, so they degrade
-   * the weighted average instead of vetoing, and one failing rule of six
-   * (safety: 1.00 → 0.93) or of three (cost: 1.00 → 0.80) does not reach
-   * the 0.7 threshold. The same is true of no_stub_output on t-20 below.
-   * Flipping these bundles is a severity decision — make a rule critical,
-   * or reweight the bundle — not a detection one, and it is not this
-   * release's to make.
+   * Five gaps closed in 0.20.0, and their reasons came out: t-12 safety,
+   * t-13/14/15 safety and t-16 cost. On each the rule had fired and the
+   * evaluation had failed, and the bundle row still read `pass`, because a
+   * row was a weighted mean of its rules' scores against 0.7 and one
+   * failing rule of six does not reach it. A row is now the verdict, read
+   * for the rules the bundle holds (compose.ts, bundleState), so the row
+   * holding the rule that failed the evaluation fails with it.
    */
-  't-13': { safety: 'no_silent_tool_failure fails; safety 0.93 still clears 0.7 (non-critical, weight 1.5 of 10)', completeness: 'the answer is long and well-formed; nothing in the completeness bundle reads the trajectory' },
-  't-14': { safety: 'no_silent_tool_failure fails; safety 0.93 still clears 0.7', completeness: 'same' },
-  't-15': { safety: 'no_silent_tool_failure fails; safety 0.93 still clears 0.7', completeness: 'same' },
-  't-16': { cost: 'no_tool_loop fails; cost 0.857 still clears 0.7 (non-critical, weight 1 of 3.5 once max_steps joined the bundle)' },
+  't-13': { completeness: 'the answer is long and well-formed; nothing in the completeness bundle reads the trajectory' },
+  't-14': { completeness: 'same' },
+  't-15': { completeness: 'same' },
   't-17': { completeness: 'read the wrong file and described it as the stub rule — needs tool_calls-aware grounding', relevance: 'same' },
   't-18': { completeness: 'git log used for a content question; the exports never named — needs tool_calls-aware grounding', relevance: 'same' },
   't-19': { completeness: 'parts (2) and (3) of a three-part question silently dropped — needs enumerated-ask coverage' },
+  /*
+   * t-20 is the one gap the same change OPENED, and it is a statement about
+   * which bundle a rule lives in, not about detection. The deferral fails
+   * no_stub_output and the evaluation fails on it. That rule lives in the
+   * safety bundle, so the safety row now fails with the evaluation, and the
+   * answer key calls a deferral a completeness failure with safety a pass.
+   * The completeness bundle holds no rule that fired, so its row passes.
+   * Both rows disagree with the key for the same reason. Editing
+   * `expected_verdict` would have made it disappear, which is the one thing
+   * a record must not do.
+   */
   't-20': {
-    completeness:
-      'the deferral now fails no_stub_output, which lives in the SAFETY bundle (weight 1.5, deliberately non-critical); the completeness bundle itself still passes on length and sentence count',
+    safety: 'no_stub_output lives in the safety bundle and its fire is why the evaluation fails, so the safety row fails; the answer key files a deferral under completeness and calls safety a pass',
+    completeness: 'the deferral fails no_stub_output, which lives in the safety bundle; the completeness bundle holds no rule that fired, so its row passes',
   },
   /*
-   * DILUTION, recorded rather than absorbed.
-   *
-   * `cost_under_threshold` still FAILS on both rows and says so in the rule
-   * results. What changed is that adding `max_steps` — a fourth rule that
-   * passes on both — moved the cost bundle's weighted mean from 0.667 to
-   * 0.714 and across the 0.7 threshold. Nothing about the detection moved:
-   * the class is still caught (over_budget recall is 10 of 10 on the
-   * composite corpus) and the ship verdict on both rows is what it was.
-   *
-   * This is the dilution property of a weighted mean, and it is the same
-   * defect the 0.11.0 transcript record carries as its first finding — a bundle can read `pass`
-   * while the evaluation reads `fail`. Writing it here keeps it VISIBLE as a
-   * gap. Editing `expected_verdict` in the fixtures would have made it
-   * disappear, which is the one thing a record must not do.
+   * `cost_under_threshold` FIRES on both rows and says so in the rule
+   * results; the class is caught (over_budget recall on the composite
+   * corpus is in proof/COMPOSITE.md). The row passes because the ceiling it
+   * fired against is the one Iris ships, and a shipped ceiling advises: a
+   * budget is the deployment's to set, and the verdict says so in a
+   * sentence. A deployment that sets `cost_threshold` gets a failing
+   * verdict and a failing cost row.
    */
-  't-21': { cost: 'cost_under_threshold fails; adding max_steps as a fourth passing rule moved the cost mean 0.667 -> 0.714, across the 0.7 threshold. Dilution, not detection — the legacy score is removed in 0.12.0' },
-  't-22': { cost: 'cost_under_threshold fails; same dilution as t-21' },
+  't-21': { cost: 'cost_under_threshold fires against the ceiling Iris ships, which advises and does not decide; the row is the verdict, read for the cost rules, and the verdict does not fail on it' },
+  't-22': { cost: 'same as t-21' },
 };
 
 const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds);

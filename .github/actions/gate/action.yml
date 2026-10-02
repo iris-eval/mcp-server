@@ -23,10 +23,11 @@ inputs:
     required: true
   fail-on:
     description: >-
-      The basis that trips the gate: detector_veto | policy_gate | critical_unknown |
-      required_evidence_missing | risk_over_loss | fail | unknown | any.
+      What trips the gate. Default any: every verdict that is not a pass, so a failure and a verdict
+      that was not checked both fail the job. Or one of: fail | unknown | detector_veto | policy_gate |
+      critical_unknown | required_evidence_missing | risk_over_loss.
     required: false
-    default: detector_veto
+    default: any
   dataset:
     description: >-
       Restrict the gate to the case keys of a dataset (id or label) that exists under iris-home;

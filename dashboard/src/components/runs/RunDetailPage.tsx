@@ -12,6 +12,7 @@ import { QueryError } from '../shared/QueryError';
 import { Badge } from '../shared/Badge';
 import { TimeAgo } from '../shared/TimeAgo';
 import { CopyableId } from '../shared/CopyableId';
+import { notCheckedSuffix, stateBadge } from '../evals/verdictText';
 
 const styles = {
   page: { display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' } as CSSProperties,
@@ -45,8 +46,11 @@ export function RunDetailPage() {
     {
       key: 'passed',
       header: 'Result',
-      render: (r) => <Badge label={r.passed ? 'PASS' : 'FAIL'} variant={r.passed ? 'pass' : 'fail'} />,
-      width: '6rem',
+      render: (r) => {
+        const b = stateBadge(r.state, r.passed);
+        return <Badge label={b.label} variant={b.tone} />;
+      },
+      width: '8rem',
     },
     {
       key: 'caseKey',
@@ -95,8 +99,9 @@ export function RunDetailPage() {
           <dt style={styles.dt}>traces</dt>
           <dd style={styles.dd}>{run.traces}</dd>
           <dt style={styles.dt}>evaluated</dt>
-          <dd style={styles.dd} data-run-passed={`${run.passed}/${run.evaluated}`}>
+          <dd style={styles.dd} data-run-passed={`${run.passed}/${run.evaluated}`} data-run-not-checked={run.notChecked ?? 0}>
             {run.passed} of {run.evaluated} passed
+            {notCheckedSuffix(run.notChecked)}
           </dd>
           <dt style={styles.dt}>agents</dt>
           <dd style={styles.dd}>{run.agentNames.join(', ') || '—'}</dd>

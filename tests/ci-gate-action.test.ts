@@ -52,7 +52,9 @@ describe('the action file', () => {
       expect(yml, output).toMatch(new RegExp(`^ {2}${output}:\\n {4}description:`, 'm'));
     }
     expect(yml).toMatch(/traces:\n {4}description: .*\n {4}required: true/);
-    expect(yml).toContain('default: detector_veto');
+    // Fails the job on every verdict that is not a pass. Until 0.20.0 the default was detector_veto, which exits 0 on a risk failure and on a verdict that was not checked.
+    expect(yml).toMatch(/^ {2}fail-on:\n(?: {4}.*\n)*? {4}default: any$/m);
+    expect(yml).not.toContain('default: detector_veto');
     // Pinned to the release it ships in, rolled by version:sync (since 2026-09-23):
     // a workflow on @vX.Y.Z runs server X.Y.Z, not whatever npm calls latest today.
     const { version } = JSON.parse(read('package.json')) as { version: string };
@@ -98,7 +100,7 @@ describe('the receipt', () => {
     expect(r).toMatchObject({ stored: 3, evaluated: 3, tripped: 1, gated: 2, emptyGreen: false });
     expect(r.markdown).toContain('### Iris gate — 1 of 2 tripped `--fail-on detector_veto`');
     expect(r.markdown).toContain('`iris-eval ingest: 3 stored, 1 tripped --fail-on detector_veto (2 of 3 evaluated in dataset "release-gate")`');
-    expect(r.markdown).toContain('| `t-leak` | `detector_veto` | no_pii | no_pii: aws_access_key (output 44–64) |');
+    expect(r.markdown).toContain('| `t-leak` | failed | `detector_veto` | no_pii | no_pii: aws_access_key (output 44–64) |');
     expect(r.markdown).not.toContain('t-outside` | `detector_veto` | no_pii |'); // outside the gate: not a tripped row
     expect(r.markdown).toContain('| `detector_veto` | 2 |');
     expect(r.markdown).toContain('| `clean` | 1 |');
@@ -128,7 +130,7 @@ describe('the receipt', () => {
       spans: [{ rule: 'no_pii', label: 'SSN', source: 'output', start: 38, end: 49 }],
     });
     const r = buildReceipt({ stdout: masked + '\n', stderr: 'iris-eval ingest: 1 stored, 1 tripped --fail-on detector_veto\n', exitCode: 1, tracesPath: 'traces.ndjson', failOn: 'detector_veto', dataset: '' });
-    expect(r.markdown).toContain('| `t-both` | `policy_gate` + `detector_veto` | cost_under_threshold, no_pii | no_pii: SSN (output 38–49) |');
+    expect(r.markdown).toContain('| `t-both` | failed | `policy_gate` + `detector_veto` | cost_under_threshold, no_pii | no_pii: SSN (output 38–49) |');
   });
 
   it('a gate that did not judge every trace says which sentence refused it; allow-empty is the one declared exception', async () => {

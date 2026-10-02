@@ -1,11 +1,13 @@
 /*
- * The risk estimate, and the composer as the proof harness scores it.
+ * The risk estimate.
  *
- * `riskEstimate` is what the server's composer (compose.ts) weighs on every
- * verdict. `riskVerdict`, at the end of this file, is the composer as
- * `npm run proof -- --composite` measures it: it reads the same gate
- * predicate (gate.ts) and the same estimate, so the published verdict
- * numbers describe the composer the product runs.
+ * `riskEstimate` is what the composer (compose.ts) weighs on every verdict.
+ * This file once ended with `riskVerdict`, a second composer the proof
+ * harness measured: it read the same gate predicate and the same estimate,
+ * and was still a separate function that could drift from the one the
+ * server runs, with nothing asserting the two agreed. The harness now calls
+ * compose() itself (proof/lib/composite-report.ts), so the published
+ * verdict numbers are measured on the composer the product runs.
  *
  * "Bad = any failure class present." The score-layer rules are detectors of
  * DIFFERENT classes, and two detectors of the same class are correlated, so
@@ -32,13 +34,11 @@
  * numbers and regenerates them; none is restated here, where it would go
  * stale.
  */
-import type { EvalResult, EvalRuleResult, FailureClass } from '../types/eval.js';
+import type { EvalResult, FailureClass } from '../types/eval.js';
 import { publishedAccuracyFor } from './accuracy.js';
 import { PUBLISHED_ACCURACY_CORPUS_VERSION } from './published-accuracy.js';
 import { FAILURE_CLASS_IDS } from './failure-classes.js';
 import { drawGamma, fnv1a, gammaShape, mulberry32, sensitivity, specificity } from './stats.js';
-import { decides } from './gate.js';
-import { verdictConfidence, type CalibrationTable } from './confidence.js';
 
 /** Jeffreys prior: half a count on each cell, so a family that made no mistakes does not claim certainty. */
 /*
@@ -78,16 +78,6 @@ export interface RiskEstimate {
   hi: number;
   perClass: Record<string, number | null>;
   assumptions: string[];
-}
-
-export type RiskBasis = 'policy_gate' | 'detector_veto' | 'risk_over_loss' | 'clean' | 'no_rules';
-
-export interface RiskVerdict {
-  state: 'pass' | 'fail' | 'unknown';
-  basis: RiskBasis;
-  by: string[];
-  risk: RiskEstimate | null;
-  confidence: 'decisive' | 'marginal' | null;
 }
 
 interface Detector {
@@ -469,56 +459,4 @@ function computeRiskEstimate(detectors: Detector[], prior: number, mode: PriorMo
         : []),
     ],
   };
-}
-
-const isEffectivelyCritical = (r: EvalRuleResult): boolean => r.critical === true;
-
-/**
- * Compose by kind, as the engine does: gates (a failing policy that is effectively
- * critical here), then vetoes (a failing effectively-critical detection),
- * then the risk against τ. `unknown` when a critical rule was asked and could
- * not answer (defeated or config_invalid) — the fail-closed seam. `table` is
- * the calibration the confidence label reads (./confidence.ts); the composite
- * harness passes the one it has just measured, so its own output never
- * depends on the table it is about to regenerate.
- */
-export function riskVerdict(
-  result: EvalResult,
-  tau: number = DEFAULT_TAU,
-  prior: number = DEFAULT_PRIOR,
-  mode: PriorMode = DEFAULT_PRIOR_MODE,
-  table?: CalibrationTable,
-): RiskVerdict {
-  const rows = result.rule_results;
-  /*
-   * The product's rule (compose.ts, step 1, through gate.ts): a policy gates
-   * when the deployment or the caller decided its number, or when it has
-   * none — and advises at OUR default. Until 0.16.0 this harness gated a
-   * policy only when critical, so the composite measured a composer the
-   * product does not run: no_stub_output blocked in the product and was a
-   * "missed block" here. No deployment config in the harness, so
-   * defaultsGate is false. A judgment gates too, as in compose.ts: a judge
-   * the deployment installed (answers_the_ask with a relevance judge) is a
-   * decision already made, and a harness that dropped it would measure a
-   * composer the product does not run.
-   */
-  const gates = rows.filter((r) => !r.skipped && r.passed === false && (r.kind === 'judgment' || (r.kind === 'policy' && (isEffectivelyCritical(r) || decides(r, false)))));
-  if (gates.length > 0) return { state: 'fail', basis: 'policy_gate', by: gates.map((r) => r.ruleName), risk: riskEstimate(result, prior, mode), confidence: null };
-  const vetoes = rows.filter((r) => (r.kind === 'detection' || r.kind === 'inference') && !r.skipped && r.passed === false && isEffectivelyCritical(r));
-  if (vetoes.length > 0) return { state: 'fail', basis: 'detector_veto', by: vetoes.map((r) => r.ruleName), risk: riskEstimate(result, prior, mode), confidence: null };
-  const unknown = rows.filter((r) => isEffectivelyCritical(r) && r.skipped && r.skipClass && r.skipClass !== 'not_applicable');
-  if (unknown.length > 0) return { state: 'unknown', basis: 'clean', by: unknown.map((r) => r.ruleName), risk: null, confidence: null };
-  const risk = riskEstimate(result, prior, mode);
-  if (!risk) {
-    const judged = rows.some((r) => !r.skipped);
-    return { state: judged ? 'pass' : 'unknown', basis: judged ? 'clean' : 'no_rules', by: [], risk: null, confidence: null };
-  }
-  const confidence = verdictConfidence(risk, tau, { prior, priorMode: mode, localLabels: detectorsOf(result).some((d) => d.local !== undefined) }, table).confidence;
-  if (risk.pBad > tau) {
-    const by = Object.entries(risk.perClass)
-      .filter(([, q]) => q !== null && q > 0.5)
-      .map(([cls]) => cls);
-    return { state: 'fail', basis: 'risk_over_loss', by, risk, confidence };
-  }
-  return { state: 'pass', basis: 'clean', by: [], risk, confidence };
 }

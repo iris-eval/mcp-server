@@ -970,6 +970,11 @@ jobs:
       # stay recorded as open.
       - name: Proof — the 24 real transcripts (regen vs committed)
         run: npm run proof -- --check --transcripts
+      # What a verdict does when a field is left out of the call, and when a
+      # failure is added. Fails on a pass under a contract or a rescued
+      # verdict, as well as on a committed table that has gone stale.
+      - name: Proof — evidence left out, and a failure added (regen vs committed)
+        run: npm run proof -- --check --invariants
       - name: Publish the table to the job summary
         if: always()
         run: cat proof/RESULTS.md >> "$GITHUB_STEP_SUMMARY"

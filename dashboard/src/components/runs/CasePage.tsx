@@ -13,6 +13,7 @@ import { QueryError } from '../shared/QueryError';
 import { Badge } from '../shared/Badge';
 import { TimeAgo } from '../shared/TimeAgo';
 import { Tooltip } from '../shared/Tooltip';
+import { notCheckedSuffix, stateBadge } from '../evals/verdictText';
 
 const styles = {
   page: { display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' } as CSSProperties,
@@ -47,8 +48,11 @@ export function CasePage() {
     {
       key: 'passed',
       header: 'Result',
-      render: (r) => <Badge label={r.passed ? 'PASS' : 'FAIL'} variant={r.passed ? 'pass' : 'fail'} />,
-      width: '6rem',
+      render: (r) => {
+        const b = stateBadge(r.state, r.passed);
+        return <Badge label={b.label} variant={b.tone} />;
+      },
+      width: '8rem',
     },
     {
       key: 'runId',
@@ -87,6 +91,7 @@ export function CasePage() {
           <h2 style={styles.h2}>{data.caseKey}</h2>
           <span data-case-attempts={data.attempts}>
             {data.passed} of {data.attempts} attempts passed
+            {notCheckedSuffix(data.notChecked)}
           </span>
           {data.flaky ? (
             <Tooltip content="Flaky: this case passed on some attempts and failed on others. The same input, judged the same way, gave different answers.">

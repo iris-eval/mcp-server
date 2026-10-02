@@ -6,6 +6,8 @@ import {
   BASIS_TEXT,
   QUESTION_LABEL,
   STATE_TEXT,
+  notCheckedSuffix,
+  stateBadge,
   composerFacts,
   confidenceChip,
   fmtRisk,
@@ -30,7 +32,23 @@ describe('verdictText', () => {
   it('the three states have a label and a tone', () => {
     expect(STATE_TEXT.pass.label).toBe('PASS');
     expect(STATE_TEXT.fail.label).toBe('FAIL');
-    expect(STATE_TEXT.unknown.label).toBe('UNKNOWN');
+    // The third state is said as what happened, not as a shrug.
+    expect(STATE_TEXT.unknown).toEqual({ label: 'NOT CHECKED', tone: 'unknown' });
+  });
+
+  it('a list badge reads the state, and a verdict that was not checked is never drawn as a failure', () => {
+    expect(stateBadge('unknown', false)).toEqual({ label: 'NOT CHECKED', tone: 'unknown' });
+    expect(stateBadge('fail', false)).toEqual({ label: 'FAIL', tone: 'fail' });
+    expect(stateBadge('pass', true)).toEqual({ label: 'PASS', tone: 'pass' });
+    // A row from a server older than the state says what `passed` can.
+    expect(stateBadge(undefined, false).label).toBe('FAIL');
+    expect(stateBadge(undefined, true).label).toBe('PASS');
+  });
+
+  it('a count says how many were not checked only when some were', () => {
+    expect(notCheckedSuffix(2)).toBe(' · 2 not checked');
+    expect(notCheckedSuffix(0)).toBe('');
+    expect(notCheckedSuffix(undefined)).toBe('');
   });
 
   it('the loss threshold derives from the stored cost, never typed', () => {

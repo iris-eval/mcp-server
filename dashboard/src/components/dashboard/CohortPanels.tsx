@@ -13,6 +13,7 @@ import type { DriftWindowSummary, EvalTrendPoint } from '../../api/types';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { QueryError } from '../shared/QueryError';
 import { Tooltip } from '../shared/Tooltip';
+import { notCheckedSuffix } from '../evals/verdictText';
 import { PassRateAreaChart } from './charts/PassRateAreaChart';
 import type { Period } from './PeriodSelector';
 
@@ -49,7 +50,7 @@ export function fmtWindow(w: DriftWindowSummary): string {
   if (w.evaluated === 0) return 'no evaluations';
   const rate = w.passRate === null ? '' : pct(w.passRate);
   const interval = w.interval ? ` [${pct(w.interval.lo)}, ${pct(w.interval.hi)}]` : '';
-  return `${w.passed} of ${w.evaluated} passed · ${rate}${interval}`;
+  return `${w.passed} of ${w.evaluated} passed · ${rate}${interval}${notCheckedSuffix(w.notChecked)}`;
 }
 
 /** The cohorts present in a split trend, largest first, capped. */

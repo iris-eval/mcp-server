@@ -75,6 +75,8 @@ export interface RunSummary {
   runId: string;
   n: number;
   passed: number;
+  /** Of `n`, the verdicts that were not checked: in the rate's denominator, and not failures. */
+  notChecked: number;
   rate: number | null;
   interval: { lo: number; hi: number } | null;
   agentNames: string[];
@@ -181,6 +183,13 @@ export interface PairedTest extends McNemarResult {
    * when the one-sided test says so. Null when no pair changed.
    */
   fell: { share: number; lo: number; hi: number } | null;
+  /**
+   * Of the `b` pairs that passed before and did not after, the ones whose
+   * second verdict was not checked. They count in `b` (a case that can no
+   * longer be checked has not passed), and they are not failures: ten of
+   * them are evidence that stopped arriving, not ten wrong answers.
+   */
+  fellNotChecked: number;
 }
 
 /** The one word a caller branches on. */
@@ -246,6 +255,7 @@ function summarise(runId: string, rows: RunResultRow[]): RunSummary {
     runId,
     n,
     passed,
+    notChecked: rows.filter((r) => r.state === 'unknown').length,
     rate: n === 0 ? null : passed / n,
     interval: w ? { lo: w.lo, hi: w.hi } : null,
     agentNames: distinct(rows.map((r) => r.agentName)),
@@ -564,6 +574,7 @@ export function compareRuns(
     let c = 0;
     let bothPass = 0;
     let bothFail = 0;
+    let fellNotChecked = 0;
     for (const key of pairing.shared) {
       const wasRow = pairing.before.get(key)!;
       const nowRow = pairing.after.get(key)!;
@@ -574,8 +585,10 @@ export function compareRuns(
         else bothFail += 1;
         continue;
       }
-      if (was && !now) b += 1;
-      else c += 1;
+      if (was && !now) {
+        b += 1;
+        if (nowRow.state === 'unknown') fellNotChecked += 1;
+      } else c += 1;
       // The pair, named: which rules answered differently on the two evaluations.
       const failedBefore = new Set(wasRow.failedRules);
       const failedAfter = new Set(nowRow.failedRules);
@@ -594,7 +607,7 @@ export function compareRuns(
       });
     }
     const share = b + c > 0 ? clopperPearson(b, b + c, INTERVAL_LEVEL)! : null;
-    paired = { ...mcnemarExact(b, c, bothPass + bothFail), method: 'mcnemar-exact', bothPass, bothFail, fell: share ? { share: b / (b + c), lo: share.lo, hi: share.hi } : null };
+    paired = { ...mcnemarExact(b, c, bothPass + bothFail), method: 'mcnemar-exact', bothPass, bothFail, fell: share ? { share: b / (b + c), lo: share.lo, hi: share.hi } : null, fellNotChecked };
     discordants.sort((x, y) => Number(y.direction === 'regressed') - Number(x.direction === 'regressed') || x.caseKey.localeCompare(y.caseKey));
   }
 
@@ -697,7 +710,8 @@ function renderSummary(x: {
   const cases = (n: number): string => `${n} case${n === 1 ? '' : 's'}`;
   const level = `${Math.round(INTERVAL_LEVEL * 100)}%`;
   const parts: string[] = [];
-  parts.push(`"${x.before.runId}" passed ${x.before.passed} of ${x.before.n} (${pct(x.before.rate)}); "${x.after.runId}" passed ${x.after.passed} of ${x.after.n} (${pct(x.after.rate)}).`);
+  const unchecked = (s: RunSummary): string => (s.notChecked > 0 ? `, ${s.notChecked} not checked` : '');
+  parts.push(`"${x.before.runId}" passed ${x.before.passed} of ${x.before.n} (${pct(x.before.rate)}${unchecked(x.before)}); "${x.after.runId}" passed ${x.after.passed} of ${x.after.n} (${pct(x.after.rate)}${unchecked(x.after)}).`);
 
   /*
    * What the runs were judged on comes before what they scored: a reader
@@ -715,12 +729,17 @@ function renderSummary(x: {
   if (x.paired) {
     const side = x.better || x.improvementWithheld ? 'better' : 'worse';
     const p = x.pDirectional === null ? '' : `, one-sided p (${side}) = ${x.pDirectional.toFixed(4)}`;
-    parts.push(`Compared as ${x.shared} matched pairs by case key, McNemar exact: ${cases(x.paired.b)} passed before and failed after, ${x.paired.c} the other way, ${x.paired.concordant} unchanged${p}.`);
+    // A case that was not checked the second time did not pass, and it did not fail either.
+    const u = x.paired.fellNotChecked;
+    const fell = u === 0 ? 'passed before and failed after' : `passed before and did not pass after (${u} not checked, ${x.paired.b - u} failed)`;
+    parts.push(`Compared as ${x.shared} matched pairs by case key, McNemar exact: ${cases(x.paired.b)} ${fell}, ${x.paired.c} the other way, ${x.paired.concordant} unchanged${p}.`);
   } else {
     parts.push('No case keys are shared, so the runs are compared as two independent samples. Supplying a case key on ingest pairs them, and a paired comparison sees a change an unpaired one cannot.');
   }
 
-  if (x.worse) parts.push(`This is a regression: a one-sided test at α = ${RULE_ALPHA} excludes no change.`);
+  if (x.worse && x.paired !== null && x.paired.b > 0 && x.paired.fellNotChecked === x.paired.b) {
+    parts.push(`Fewer cases passed, and a one-sided test at α = ${RULE_ALPHA} excludes no change. None of the cases that fell was judged a failure: every one was not checked in the second run. That is evidence that stopped arriving, not a finding about the answers. Send it and compare again.`);
+  } else if (x.worse) parts.push(`This is a regression: a one-sided test at α = ${RULE_ALPHA} excludes no change.`);
   else if (x.better) parts.push(`This is an improvement: a one-sided test at α = ${RULE_ALPHA} excludes no change.`);
   else if (x.improvementWithheld) {
     parts.push('More cases passed than chance explains, and this is not called an improvement: the second run was judged on less, and passing more under fewer checks cannot be told from failing less. Send the same evidence in both runs to compare them.');

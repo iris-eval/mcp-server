@@ -30,6 +30,7 @@ function row(over: Partial<RunResultRow> = {}): RunResultRow {
     configHash: 'cfg',
     createdAt: '2026-09-19T00:00:00.000Z',
     ...over,
+    state: over.state ?? (over.passed === false ? 'fail' : 'pass'),
   };
 }
 

@@ -36,6 +36,7 @@ const runSummarySchema = z.looseObject({
   run_id: z.string(),
   n: z.number().describe('evaluations counted, one per trace (most recent wins)'),
   passed: z.number(),
+  not_checked: z.number().describe('of n, the verdicts that were not checked: in the rate, and not failures'),
   rate: z.number().nullable().describe('pass rate, null when the run is empty'),
   interval: z.looseObject({ lo: z.number(), hi: z.number() }).nullable().describe('95% Wilson interval on that rate'),
   agent_names: z.array(z.string()),
@@ -106,7 +107,8 @@ export const compareRunsOutputSchema = z.looseObject({
   paired: z
     .looseObject({
       method: z.string(),
-      b: z.number().describe('passed before, failed after'),
+      b: z.number().describe('passed before, did not pass after'),
+      fell_not_checked: z.number().describe('of b, the pairs whose second verdict was not checked rather than failed'),
       c: z.number().describe('failed before, passed after'),
       concordant: z.number(),
       pairs: z.number(),
@@ -259,6 +261,7 @@ export async function compareStoredRuns(
     run_id: s.runId,
     n: s.n,
     passed: s.passed,
+    not_checked: s.notChecked,
     rate: s.rate,
     interval: s.interval,
     agent_names: s.agentNames,
@@ -302,6 +305,7 @@ export async function compareStoredRuns(
       ? {
           method: c.paired.method,
           b: c.paired.b,
+          fell_not_checked: c.paired.fellNotChecked,
           c: c.paired.c,
           concordant: c.paired.concordant,
           pairs: c.paired.pairs,

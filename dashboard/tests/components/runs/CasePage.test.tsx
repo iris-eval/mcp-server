@@ -59,6 +59,32 @@ describe('CasePage', () => {
     expect(container.querySelectorAll('a[href^="/runs/"]')).toHaveLength(2);
   });
 
+  it('an attempt that was not checked is drawn as that, and counted apart from the passes', () => {
+    useCaseMock.mockReturnValue({
+      data: {
+        caseKey: 'case-0',
+        attempts: 3,
+        passed: 1,
+        notChecked: 1,
+        flaky: true,
+        runs: ['baseline'],
+        results: [
+          { evalId: 'e1', traceId: 't1', caseKey: 'case-0', runId: 'baseline', passed: false, state: 'fail', createdAt: '2026-09-01T00:00:00Z' },
+          { evalId: 'e2', traceId: 't2', caseKey: 'case-0', runId: 'baseline', passed: true, state: 'pass', createdAt: '2026-09-02T00:00:00Z' },
+          { evalId: 'e3', traceId: 't3', caseKey: 'case-0', runId: 'baseline', passed: false, state: 'unknown', createdAt: '2026-09-03T00:00:00Z' },
+        ],
+      },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+      rateLimitedUntil: null,
+    });
+    const { container } = at('/cases/case-0', <CasePage />, '/cases/:key');
+    expect(container.querySelector('[data-case-attempts]')?.textContent).toBe('1 of 3 attempts passed · 1 not checked');
+    const badges = [...container.querySelectorAll('tbody tr td:first-child')].map((td) => td.textContent);
+    expect(badges).toEqual(['FAIL', 'PASS', 'NOT CHECKED']);
+  });
+
   it('narrowed to one run, the page says so; the hook gets the run', () => {
     at('/cases/case-0?run=baseline', <CasePage />, '/cases/:key');
     expect(useCaseMock).toHaveBeenLastCalledWith('case-0', 'baseline');
@@ -97,6 +123,30 @@ describe('RunDetailPage', () => {
       refetch: vi.fn(),
       rateLimitedUntil: null,
     });
+  });
+
+  it('a run with verdicts that were not checked says how many, and draws none of them as a failure', () => {
+    const data = useRunMock().data;
+    useRunMock.mockReturnValue({
+      data: {
+        run: { ...data.run, passed: 7, notChecked: 2 },
+        results: [
+          { ...data.results[0], state: 'fail' },
+          { ...data.results[1], state: 'pass' },
+          { ...data.results[0], evalId: 'e3', traceId: 't3', caseKey: 'case-2', passed: false, state: 'unknown', failedRules: [] },
+        ],
+      },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+      rateLimitedUntil: null,
+    });
+    const { container } = at('/runs/baseline', <RunDetailPage />, '/runs/:id');
+    const counts = container.querySelector('[data-run-passed]')!;
+    expect(counts.textContent).toBe('7 of 10 passed · 2 not checked');
+    expect(counts.getAttribute('data-run-not-checked')).toBe('2');
+    const badges = [...container.querySelectorAll('tbody tr td:first-child')].map((td) => td.textContent);
+    expect(badges).toEqual(['FAIL', 'PASS', 'NOT CHECKED']);
   });
 
   it('the run: its counts, its label, and a link per case', () => {

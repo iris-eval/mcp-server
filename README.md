@@ -143,8 +143,10 @@ Each top-level run becomes one trace (the run, its model calls, its tool calls a
 ### A CI gate, no server needed
 
 ```bash
-npx -y @iris-eval/mcp-server ingest --file traces.ndjson --evaluate --fail-on detector_veto
+npx -y @iris-eval/mcp-server ingest --file traces.ndjson --evaluate --fail-on any
 ```
+
+`any` fails the job on every verdict that is not a pass: a failure, and a verdict that was not checked. Name one basis instead (`--fail-on detector_veto`) to fail only on that one.
 
 Or the GitHub Action (0.16.0), which fails the job on the verdicts you name, writes the receipt to the job summary and posts it as one pull-request comment updated in place: `uses: iris-eval/mcp-server/.github/actions/gate@v0.19.0` with `traces: traces.ndjson` — [docs/ci-gate.md](https://github.com/iris-eval/mcp-server/blob/main/docs/ci-gate.md#github-actions--the-action-0160).
 
@@ -366,7 +368,7 @@ When `IRIS_OTEL_ENDPOINT` is configured, `log_trace` calls also emit a best-effo
 
 Genuine safety violations hard-fail. By default `no_pii`, `no_injection_patterns`, and `no_blocklist_words` are **critical rules**: if one fails, the eval reports `passed: false` no matter how well the other rules scored, and the response names the culprits in `critical_failures`. A leaked SSN can't be averaged away. Which built-in rules are critical is a deployment setting (`eval.criticalRules` / `eval.nonCriticalRules`); every rule result carries the effective `critical` flag and `criticalSource`, and `list_rules` reports the roster this server applies. Custom rules deployed with `severity: "high"` or `"critical"` hard-fail the same way; `low`/`medium` severities only affect the score. One boundary to know, stated the same way on every surface: a critical rule that **skipped** (missing context, a broken definition, or a regex killed at the sandbox budget) has not judged the output and does not veto — every such rule is named in `critical_skipped`. **A gate that must fail closed treats a non-empty `critical_skipped` as unknown, not clean**, and may treat any `budgetExceeded` skip in `rule_results` the same way.
 
-For CI gates: if you omit `eval_type`, **every bundle runs** — completeness, relevance, safety, cost and any custom rules — and the response says `eval_type: "all"` with a `note` that the default ran, plus a per-bundle `categories` map. A bundle with nothing to judge (cost without `cost_usd`, relevance without `input`) reports `passed: null` there — not evaluated, not failing — and never counts toward the verdict. The response always echoes the `eval_type` that ran, so your gate can verify coverage; key on `passed` for the verdict and name a bundle only when you want a narrower run.
+For CI gates: if you omit `eval_type`, **every bundle runs** — completeness, relevance, safety, cost and any custom rules — and the response says `eval_type: "all"` with a `note` that the default ran, plus a per-bundle `categories` map. Each row carries `state`: the verdict, read for the rules that bundle holds, so a row never reads passed over the rules that failed the evaluation. A bundle with nothing to judge (cost without `cost_usd`, relevance without `input`) reports `state: "unknown"` and `passed: null` there — not evaluated, not failing — and never counts toward the verdict. The response always echoes the `eval_type` that ran, so your gate can verify coverage; key on `passed` for the verdict and name a bundle only when you want a narrower run.
 
 ### Authoring a custom rule
 

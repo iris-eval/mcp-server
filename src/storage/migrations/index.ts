@@ -19,6 +19,7 @@ import * as migration017 from './017-relevance-judge-spend.js';
 import * as migration018 from './018-eval-risk-estimate.js';
 import * as migration019 from './019-read-paths.js';
 import * as migration020 from './020-eval-reference-trace.js';
+import * as migration021 from './021-eval-verdict-state.js';
 import { PKG_VERSION } from '../../config/defaults.js';
 import { compareVersions, isVersion, latestVersion } from '../../utils/versions.js';
 
@@ -70,6 +71,7 @@ const migrations: Migration[] = [
   migration018,
   migration019,
   migration020,
+  migration021,
 ];
 
 /** Every migration this build knows, in order. */

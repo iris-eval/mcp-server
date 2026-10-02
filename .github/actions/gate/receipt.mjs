@@ -90,14 +90,16 @@ export function buildReceipt({ stdout, stderr, exitCode, tracesPath, failOn, dat
     );
   }
   if (tripped.length > 0) {
-    lines.push('| Trace | Basis | Rules | Evidence |', '|---|---|---|---|');
+    // The verdict first: under `--fail-on any` a trace trips for failing and for not being checked, and those are different things to fix.
+    lines.push('| Trace | Verdict | Basis | Rules, classes or missing inputs | Evidence |', '|---|---|---|---|---|');
     for (const r of tripped) {
-      // Every layer that decided or would have: the basis is only the first, and the one that tripped may be a later one.
+      // Every layer that decided or would have: the basis names one, and the one that tripped may be another.
       const layers = [r.verdict, ...(Array.isArray(r.verdict?.also) ? r.verdict.also : [])].filter((l) => l && typeof l.basis === 'string');
+      const verdict = r.verdict?.state === 'unknown' ? 'not checked' : r.verdict?.state === 'fail' ? 'failed' : String(r.verdict?.state ?? '—');
       const basis = layers.map((l) => `\`${l.basis}\``).join(' + ');
       const by = [...new Set(layers.flatMap((l) => (Array.isArray(l.by) ? l.by : [])))].join(', ');
       const spans = Array.isArray(r.spans) ? [...new Set(r.spans.map((s) => `${s.rule}: ${s.label} (${s.source} ${s.start}–${s.end})`))].join('; ') : '';
-      lines.push(`| \`${r.trace_id}\` | ${basis} | ${by} | ${spans || '—'} |`);
+      lines.push(`| \`${r.trace_id}\` | ${verdict} | ${basis} | ${by} | ${spans || '—'} |`);
     }
     lines.push('');
   }

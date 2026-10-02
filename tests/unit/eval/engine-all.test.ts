@@ -67,6 +67,7 @@ describe('EvalEngine.evaluateAll', () => {
     // honest value: neither passing nor failing.
     expect(result.categories!.relevance).toEqual({
       score: null,
+      state: 'unknown',
       passed: null,
       rules_evaluated: 0,
       rules_skipped: 4,
@@ -74,6 +75,7 @@ describe('EvalEngine.evaluateAll', () => {
     });
     expect(result.categories!.cost).toEqual({
       score: null,
+      state: 'unknown',
       passed: null,
       rules_evaluated: 0,
       rules_skipped: 6,

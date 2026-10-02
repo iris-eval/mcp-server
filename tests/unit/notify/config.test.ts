@@ -79,7 +79,7 @@ describe('config.json', () => {
     writeConfig({ notify: { webhook: { url: 'https://hooks.example.test/iris', secret: 'shh', events: ['regression_alarm', 'regresion_alarm'] } } });
     const message = refusal();
     expect(message).toMatch(/Iris refuses to start on a key it does not read/);
-    expect(message).toContain('"notify.webhook.events.1": "regresion_alarm" is not an event Iris sends — the events: verdict_fail, detector_veto, cost_anomaly, regression_alarm, flaky_case');
+    expect(message).toContain('"notify.webhook.events.1": "regresion_alarm" is not an event Iris sends — the events: verdict_fail, verdict_not_checked, detector_veto, cost_anomaly, regression_alarm, flaky_case');
   });
 
   it('a misspelled key under the webhook names the key it meant; an empty events list, a bad url and a bad format are named', () => {

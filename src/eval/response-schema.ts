@@ -105,6 +105,7 @@ export const evalRuleResultSchema = z.looseObject({
     category: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom']).optional(),
     critical: z.boolean().optional(),
     criticalSource: z.enum(['default', 'config']).optional(),
+    state: z.enum(['pass', 'fail', 'not_checked']).optional().describe('read this, not passed: a rule that skipped is not_checked, and carries passed false'),
     passed: z.boolean(),
     score: z.number(),
     message: z.string(),
@@ -119,6 +120,8 @@ export const evalRuleResultSchema = z.looseObject({
     ruleVersion: z.number().int().optional(),
     saw: z.array(needSchema).optional(),
     skipClass: skipClassSchema.optional(),
+    lacked: z.array(z.string()).optional().describe('on a rule that skipped for missing evidence: the inputs it reads that the call did not carry'),
+    asked: z.enum(['config', 'call']).optional().describe('on such a rule, when somebody had asked for it: the deployment (a threshold it set, a promotion, a deployed gating rule, an installed judge) or the call itself. The verdict is then unknown, not pass'),
     uncertainty: uncertaintySchema.optional(),
     evidence: z.array(evidenceSchema).optional(),
     value: measuredValueSchema.optional(),
@@ -151,7 +154,8 @@ export const evalRuleResultSchema = z.looseObject({
 
 export const evalCategoryResultSchema = z.looseObject({
     score: z.number().nullable(),
-    passed: z.boolean().nullable(),
+    state: z.enum(['pass', 'fail', 'unknown']).optional().describe('the verdict, read for the rules this bundle holds: fail when a layer of the verdict rests on one of them; unknown is not checked'),
+    passed: z.boolean().nullable().describe('state is pass; null when the bundle evaluated no rule'),
     rules_evaluated: z.number().int(),
     rules_skipped: z.number().int(),
     insufficient_data: z.boolean(),
@@ -186,7 +190,7 @@ export const verdictSchema = z.looseObject({
     )
     .optional()
     .describe(
-      'every later layer that would have decided this verdict on its own, in the order the layers are asked. basis names only the first layer with something to say; anything that acts on one basis reads basis AND also. Absent when the deciding layer was the only one, and on every pass.',
+      'every other layer that would have decided this verdict on its own, in the order the layers are asked. basis names one layer (the first that fails, else the first that could not check); anything that acts on one basis reads basis AND also. Absent when the deciding layer was the only one, and on every pass.',
     ),
 });
 export const provenanceSchema = z.looseObject({
@@ -203,6 +207,8 @@ export const provenanceSchema = z.looseObject({
       priorSource: z.enum(['default', 'config', 'estimated']).optional(),
       priorMode: z.enum(['per-output', 'per-class']).optional().describe('how the prior was spread over the failure classes'),
       calibration: z.string().optional().describe('the composite version of the calibration table the confidence label was read from'),
+      requiredEvidence: z.array(z.string()).optional().describe('the inputs the deployment requires on every evaluation, when it requires any'),
+      rules: z.number().optional().describe('which composer rules produced the verdict: 2 from 0.20.0 (a failure outranks a layer that could not check); absent on earlier rows, which read back under rules 1'),
     })
     .optional(),
   corpusVersion: z.string(),

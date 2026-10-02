@@ -13,6 +13,7 @@ import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import type { CompareRunsResult } from '../../api/types';
 import { Tooltip } from '../shared/Tooltip';
+import { notCheckedSuffix } from '../evals/verdictText';
 import { DataTable, type Column } from '../shared/DataTable';
 import {
   COVERAGE_TEXT,
@@ -84,7 +85,7 @@ function RunCard({ label, s }: { label: string; s: CompareRunsResult['before'] }
         {s.run_id}
       </Link>
       <span>
-        {s.passed} of {s.n} passed · <span style={styles.mono}>{fmtRate(s.rate, s.interval)}</span>
+        {s.passed} of {s.n} passed{notCheckedSuffix(s.not_checked)} · <span style={styles.mono}>{fmtRate(s.rate, s.interval)}</span>
       </span>
       <span style={styles.muted}>
         {s.agent_names.join(', ') || 'no agent'} · engine {s.engine_versions.join(', ') || '—'}
@@ -202,7 +203,7 @@ export function ComparisonView({ result }: { result: CompareRunsResult }) {
         )}
         {result.paired && (
           <Tooltip
-            content={`McNemar exact on the ${result.paired.b + result.paired.c} cases that disagreed (${result.paired.b} passed then failed, ${result.paired.c} failed then passed) of ${result.paired.pairs} pairs; ${result.paired.concordant} agreed. The interval is the exact 90% one on the share that fell: above one half is a regression, and it excludes one half exactly when the one-sided test finds a change.`}
+            content={`McNemar exact on the ${result.paired.b + result.paired.c} cases that disagreed (${result.paired.b} passed then did not${(result.paired.fell_not_checked ?? 0) > 0 ? `, ${result.paired.fell_not_checked} of them not checked rather than failed` : ''}; ${result.paired.c} the other way) of ${result.paired.pairs} pairs; ${result.paired.concordant} agreed. The interval is the exact 90% one on the share that fell: above one half is a regression, and it excludes one half exactly when the one-sided test finds a change.`}
           >
             <span style={{ ...styles.muted, ...styles.mono }} tabIndex={0} data-paired-p={result.paired.p_value.toFixed(4)} data-paired-fell={result.paired.fell ? result.paired.fell.share.toFixed(3) : 'none'}>
               {result.paired.fell !== undefined ? fmtFell(result.paired) : fmtP(result.paired.p_value)}

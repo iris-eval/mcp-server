@@ -5,7 +5,7 @@
  * are the numbers on https://iris-eval.com/proof, for the release named below.
  */
 
-export const PUBLISHED_ACCURACY_CORPUS_VERSION = '7022143b0265';
+export const PUBLISHED_ACCURACY_CORPUS_VERSION = '0e64b035afb5';
 export const PUBLISHED_ACCURACY_RELEASE = '0.19.0';
 export const PUBLISHED_ACCURACY_LABELLING = 'same-model' as const;
 
@@ -41,9 +41,9 @@ export const PUBLISHED_ACCURACY = {
     ci95: { precision: [0.4805, 0.891], recall: [0.5777, 0.9567], f1: [0.5833, 0.9286] },
   },
   tool_sequence: {
-    n: 47, tp: 25, fp: 0, fn: 0, tn: 22,
+    n: 51, tp: 28, fp: 0, fn: 0, tn: 23,
     precision: 1, recall: 1, f1: 1,
-    ci95: { precision: [0.8668, 1], recall: [0.8668, 1], f1: [1, 1] },
+    ci95: { precision: [0.8794, 1], recall: [0.8794, 1], f1: [1, 1] },
   },
   keyword_overlap: {
     n: 24, tp: 11, fp: 0, fn: 0, tn: 13,
@@ -131,7 +131,7 @@ export const PUBLISHED_ACCURACY = {
     ci95: { precision: [0.7719, 1], recall: [0.7719, 1], f1: [1, 1] },
   },
   step_budget: {
-    n: 44, tp: 22, fp: 0, fn: 0, tn: 22,
+    n: 46, tp: 22, fp: 0, fn: 0, tn: 24,
     precision: 1, recall: 1, f1: 1,
     ci95: { precision: [0.8513, 1], recall: [0.8513, 1], f1: [1, 1] },
   },

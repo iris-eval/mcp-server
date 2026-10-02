@@ -21,6 +21,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../api/client';
 import type { DeployedCustomRule, EvalResult, Trace } from '../../api/types';
+import { stateBadge } from '../evals/verdictText';
 
 /** Two chars before we search — one char matches everything and reads as noise. */
 export const MIN_QUERY_LENGTH = 2;
@@ -102,7 +103,7 @@ export function searchCorpus(corpus: DataCorpus, query: string): DataMatch[] {
     (e) => ({
       id: `eval.${e.id}`,
       kind: 'eval' as const,
-      title: `${e.eval_type} — ${e.passed ? 'PASS' : 'FAIL'}`,
+      title: `${e.eval_type} — ${stateBadge(e.verdict?.state, e.passed).label}`,
       subtitle: e.output_text.slice(0, 80),
       // An eval's home surface is the trace it evaluated; without a
       // trace link, the evals list is the closest landing.

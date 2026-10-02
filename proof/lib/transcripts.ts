@@ -23,9 +23,11 @@
  * what it wrote. A gap that closes now fails the check that says it is open.
  *
  * THREE numbers, and they are not the same number. The BUNDLE verdicts are
- * the legacy per-bundle arithmetic and the weakest of the three — a bundle
- * is a weighted mean, so one failing non-critical rule in a bundle of six
- * does not move it. The SHIP verdict is what a gate keys on. The CLASSES
+ * the evaluation's verdict read for the rules each bundle holds (until
+ * 0.20.0 a weighted mean of the bundle's scores, which one failing rule of
+ * six did not move). They are compared with an answer key that files each
+ * failure under one bundle, so a rule that lives in another bundle than
+ * the key expects shows here as a gap. The SHIP verdict is what a gate keys on. The CLASSES
  * caught is the headline: of the failure classes a person said were
  * present, how many did some rule actually detect. The class number needs no
  * relabelling to stay meaningful as rules are added, which is why it is the

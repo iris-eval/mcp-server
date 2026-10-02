@@ -40,14 +40,30 @@ export function besideText(reasons: readonly string[] | undefined): string {
 /** The line under the verdict when a later layer would have decided it too. */
 export const ALSO_TEXT = {
   lead: 'Would also have decided it:',
-  tooltip: 'The basis names the first layer with something to say. This later layer would have decided the verdict on its own, so clearing the first does not clear the verdict.',
+  tooltip: 'The basis names one layer: the first that fails, or when none fails the first that could not check. This layer would have decided the verdict on its own, so clearing the one the basis names does not clear the verdict.',
 } as const;
 
 export const STATE_TEXT: Record<Verdict['state'], { label: string; tone: 'pass' | 'fail' | 'unknown' }> = {
   pass: { label: 'PASS', tone: 'pass' },
   fail: { label: 'FAIL', tone: 'fail' },
-  unknown: { label: 'UNKNOWN', tone: 'unknown' },
+  unknown: { label: 'NOT CHECKED', tone: 'unknown' },
 };
+
+/**
+ * The badge for one stored verdict in a list. A verdict that was not
+ * checked is `passed: false`, and every list drew it as a red FAIL: a
+ * check that could not run read as a finding. A row from a server older
+ * than the state says what `passed` can.
+ */
+export function stateBadge(state: Verdict['state'] | undefined, passed: boolean): { label: string; tone: 'pass' | 'fail' | 'unknown' } {
+  return STATE_TEXT[state ?? (passed ? 'pass' : 'fail')];
+}
+
+/** " · 2 not checked", or nothing: the part of a pass count that is neither a pass nor a failure. */
+export function notCheckedSuffix(notChecked: number | undefined): string {
+  return notChecked !== undefined && notChecked > 0 ? ` · ${notChecked} not checked` : '';
+}
+
 
 export const CONFIDENCE_TEXT = {
   decisive:

@@ -77,6 +77,20 @@ export interface EvalRule {
   kind?: ClaimKind;
   mechanism?: Mechanism;
   needs?: readonly Need[];
+  /**
+   * The configuration keys that make this rule the deployment's own policy
+   * when one of them is set (`cost_threshold`, `max_steps`). The composer
+   * reads it for one thing: a policy the deployment set, on a call that did
+   * not carry what the policy reads, was asked and could not answer.
+   */
+  thresholdKeys?: readonly string[];
+  /**
+   * For a rule that compares against something the call itself supplies
+   * (an expected trajectory): whether this call supplied the part this rule
+   * reads. `expected_trajectory: { step_budget: 5 }` is an expectation for
+   * the step budget and none for the sequence of calls.
+   */
+  expects?: (context: EvalContext) => boolean;
   question?: QuestionId;
   classes?: readonly FailureClass[];
   /** Bumped when the rule's meaning changes, so a stored result names the definition that produced it. */
@@ -219,6 +233,13 @@ export interface EvalContext {
    * shipped number has set it.
    */
   thresholdSourceOf?: (key: string) => 'default' | 'config';
+  /**
+   * Who set a threshold, where `thresholdSourceOf` says only that somebody
+   * did: `call` when this call's own configuration carried the key,
+   * `config` when the deployment's config file did. Installed by the engine
+   * beside `thresholdSourceOf`; read through thresholdSetBy().
+   */
+  thresholdSetBy?: (key: string) => 'call' | 'config' | undefined;
 
   /**
 
@@ -390,7 +411,11 @@ export interface Interpretation {
 export interface VerdictNode {
   node: 'nothing_judged' | 'gate' | 'veto' | 'unknown' | 'evidence' | 'risk';
   by: string[];
-  /** Whether this layer decided the verdict. At most one node in a path is true. */
+  /**
+   * Whether this layer would decide the verdict on its own. The last node
+   * of a path is the verdict's. An earlier node can be true as well: a
+   * layer that could not check, on the way to the layer that failed.
+   */
   decided: boolean;
   /** The risk estimate, on the risk node only, whether or not it decided; null when nothing carried a published rate. */
   risk?: Verdict['risk'];
@@ -399,7 +424,8 @@ export interface VerdictNode {
 /**
  * A layer after the one that decided, which would have decided on its own.
  *
- * `basis` names the FIRST layer with something to say, and the layers do
+ * `basis` names ONE layer (the first that fails, else the first that could
+ * not check), and the layers do
  * not exclude each other: one output can break a policy the deployment set
  * and leak a credential. `state` is what that layer alone would have made
  * the verdict, and `by` carries what `Verdict.by` would have carried.
@@ -424,9 +450,11 @@ export interface Verdict {
   risk: { pBad: number; lo: number; hi: number; perClass: Partial<Record<FailureClass, number | null>>; assumptions: string[] } | null;
   confidence?: 'decisive' | 'marginal';
   /**
-   * Every later layer that would have decided this verdict too, in the order
+   * Every other layer that would have decided this verdict too, in the order
    * the composer asks them. Absent when the deciding layer was the only one,
-   * and on every pass.
+   * and on every pass. A layer here can come before `basis` in that order:
+   * a failure outranks a layer that could not check, so a verdict the risk
+   * layer fails lists the evidence that was asked for and not sent here.
    *
    * Anything that acts on ONE basis reads `basis` and this, never `basis`
    * alone. `--fail-on detector_veto` and the `detector_veto` webhook once
@@ -487,6 +515,13 @@ export interface Provenance {
      * evidence read back as whatever the remaining layers said.
      */
     requiredEvidence?: Need[];
+    /**
+     * Which composer rules produced the verdict (compose.ts,
+     * COMPOSER_RULES). A read re-composes under the same ones, so a change
+     * to how the layers are ranked does not rewrite what a stored row says.
+     * Absent on rows written before 0.20.0, which read back under rules 1.
+     */
+    rules?: number;
   };
   /** The evaluation this one re-scored, when it was produced by a re-evaluation of a stored row. The earlier row is kept: the change is the finding. */
   supersedes?: string;
@@ -601,11 +636,33 @@ export interface EvalRuleResult {
    * able to see that their own promotion caused it.
    */
   criticalSource?: 'default' | 'config';
+  /**
+   * What this rule says about the output, in one field: `pass`, `fail`, or
+   * `not_checked` when it skipped. Read this, not `passed`: a rule that
+   * skipped carries `passed: false` and `score: 0` (it did not pass), and a
+   * script that filters on `passed === false` reads every skip as a
+   * failure. Stamped by the engine; derived on read for a row stored before
+   * it existed.
+   */
+  state?: RuleState;
   passed: boolean;
   score: number;
   message: string;
   skipped?: boolean;
   skipReason?: string;
+  /** On a rule that skipped for missing evidence: the inputs it reads that the call did not carry. */
+  lacked?: Need[];
+  /**
+   * On a rule that skipped for missing evidence, when somebody had asked
+   * for it. `config`: the deployment set this rule's threshold, promoted it
+   * to critical, deployed it as a gating rule of its own, or installed the
+   * judge that answers it. `call`: the call itself set the threshold,
+   * supplied the gating rule inline, or supplied the expectation the rule
+   * compares against (an expected trajectory) and left out what to
+   * compare. Such a rule was not "not applicable". It was asked and could
+   * not answer, and the verdict is not a pass.
+   */
+  asked?: 'config' | 'call';
   // Set when the rule skipped because its DEFINITION is broken (invalid
   // config / uncompilable regex), not because this input had nothing to
   // evaluate. Lets surfaces holding the whole definition — rule preview —
@@ -691,20 +748,34 @@ export interface JudgeRecord {
   error?: string;
 }
 
+/** What one rule says about an output: it passed it, failed it, or did not check it. */
+export type RuleState = 'pass' | 'fail' | 'not_checked';
+
 /**
- * Per-bundle verdict inside an eval_type="all" result. Same semantics as a
- * single-bundle EvalResult (threshold + critical veto), computed over that
- * bundle's rules only.
+ * One bundle's row inside an eval_type="all" result.
+ *
+ * `state` is the evaluation's verdict, read for the rules this bundle holds
+ * (compose.ts, bundleState): `fail` when a layer of the verdict rests on
+ * one of them, `unknown` when the bundle evaluated no rule or the
+ * evaluation lacked evidence somebody asked for, `pass` otherwise. The
+ * composer is not run again over the bundle alone, so a row and the
+ * verdict cannot disagree. `passed` is `state === 'pass'`. Until 0.20.0
+ * a row carried the pre-0.10.0 arithmetic (weighted score against the
+ * threshold, plus the critical veto), which the verdict stopped using in
+ * 0.10.0: every row could read `passed: true` on an evaluation that
+ * failed, and a script keyed on `categories.safety.passed` shipped it.
  *
  * `score` and `passed` are null when the bundle evaluated no rule (every
  * rule skipped for missing context — cost without cost_usd, relevance
- * without input). Such a bundle was not judged: it is neither passing nor
- * failing, `insufficient_data` is true, and it never counted toward the
- * overall verdict (#406). The top-level EvalResult keeps a boolean
- * `passed` on purpose — a gate keyed on it must fail closed.
+ * without input). Such a bundle was not judged: `state` is `unknown`,
+ * `insufficient_data` is true, and it never counted toward the overall
+ * verdict (#406). The top-level EvalResult keeps a boolean `passed` on
+ * purpose — a gate keyed on it must fail closed.
  */
 export interface EvalCategoryResult {
   score: number | null;
+  /** pass, fail, or unknown (not checked): the verdict, read for this bundle's rules. Absent on a result the composer has not read yet. */
+  state?: 'pass' | 'fail' | 'unknown';
   passed: boolean | null;
   rules_evaluated: number;
   rules_skipped: number;
