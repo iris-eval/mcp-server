@@ -207,3 +207,38 @@ describe('capability map — needs are real', () => {
     }
   });
 });
+
+/*
+ * Six multi-run cells said "a per-question filter is not shipped" for five
+ * releases after compare_traces took `question`, and the one cell that did
+ * name the filter said an HTTP route takes it too, which it does not. A
+ * cell is re-read against the tool's own schema here.
+ */
+describe('capability map — the per-question filter', () => {
+  const tool = readFileSync(join(root, 'src', 'tools', 'compare-traces.ts'), 'utf8');
+  const filtered = [...(/question: z\s*\.enum\(\[([^\]]+)\]\)/.exec(tool)?.[1] ?? '').matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+  const registryId = new Map<string, string>(map.questions.map((q) => [q.id, q.registryId]));
+
+  it('compare_traces takes `question` over the questions a rule answers', () => {
+    expect(filtered.sort()).toEqual(QUESTIONS.filter((q) => q.answeredBy === 'rule').map((q) => q.id as string).sort());
+  });
+
+  it('no cell says the filter is not shipped, and every multi-run cell of a question it covers names it', () => {
+    for (const c of cells) expect(c.summary, c.id).not.toMatch(/per-question filter is not shipped/);
+    const multiRun = cells.filter((c) => c.subject === 'S4' && c.evidence.some((e) => e.kind === 'tool' && e.name === 'compare_traces'));
+    expect(multiRun.length).toBeGreaterThan(5);
+    for (const c of multiRun) {
+      const id = registryId.get(c.question)!;
+      if (filtered.includes(id)) expect(c.summary, c.id).toContain(`\`question: ${id}\``);
+    }
+  });
+
+  it('a cell says the cases route takes `question` only if the route parses it', () => {
+    const validation = readFileSync(join(root, 'src', 'dashboard', 'validation.ts'), 'utf8');
+    const start = validation.indexOf('export const caseQuerySchema');
+    const caseQuery = validation.slice(start, validation.indexOf('});', start));
+    expect(start).toBeGreaterThan(-1);
+    const routeTakesQuestion = /\bquestion\b/.test(caseQuery);
+    for (const c of cells) if (/cases\/:key\)? takes? `question/.test(c.summary)) expect(routeTakesQuestion, c.id).toBe(true);
+  });
+});

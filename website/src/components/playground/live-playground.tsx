@@ -112,6 +112,10 @@ export function LivePlayground({ ruleCounts }: { ruleCounts: RuleCounts }): Reac
           no install, instant. {RULE_COUNT_BUILT_IN} rules across safety, relevance, completeness, and cost. {RULE_COUNT_TRAJECTORY} of them read an
           agent’s tool calls to judge what it did rather than what it wrote, and those skip here, because this page takes text only — install Iris to run them.
         </p>
+        <p className="mt-3 text-[13px] leading-relaxed text-text-muted" data-playground-disclosure>
+          What you paste is sent to iris-eval.com, scored and returned. The text is not stored and not logged: the server records
+          only a salted hash of your IP address (for the rate limit), the category, a length bucket, whether it passed and how long it took. Do not paste real personal data or live credentials.
+        </p>
       </div>
 
       <div className="mx-auto mt-10 grid max-w-5xl grid-cols-1 gap-8 lg:grid-cols-2">

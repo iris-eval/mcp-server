@@ -4,6 +4,7 @@ import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import {
   CUSTOM_REGEX_MAX_LENGTH,
+  DATA_RESIDENCY,
   DISCLOSURE_ACK_HOURS,
   DISCLOSURE_RESPONSE_BUSINESS_DAYS,
   DISCLOSURE_WINDOW_DAYS,
@@ -115,8 +116,9 @@ export default function Security(): React.ReactElement {
               every trace, span, eval result, and audit entry is written to a
               SQLite database on your machine (default:{" "}
               <code className={code}>~/.iris/iris.db</code>
-              ). No data ever leaves your environment. Iris does not phone
-              home. There is no telemetry.
+              ). {DATA_RESIDENCY} Each of those is off until you configure it,
+              and the server makes no other outbound connection: Iris does not
+              phone home, and there is no telemetry.
             </p>
             <p className="mt-3">
               <strong className="text-text-primary">

@@ -17,10 +17,10 @@ const BADGES = [
   // No cacheSeconds on the VERSION badge. At 86400 shields.io served the
   // previous version for a full day after a release — the site showed
   // v0.4.4 while npm, the registry and our own banner all said v0.4.5,
-  // which reads as "the release did not land". Freshness matters here;
-  // it does not for a download counter.
+  // which reads as "the release did not land".
   { src: "https://img.shields.io/npm/v/@iris-eval/mcp-server?style=flat-square&color=0d9488&label=npm", alt: "npm version", href: "https://www.npmjs.com/package/@iris-eval/mcp-server", width: 80 },
-  { src: "https://img.shields.io/npm/dt/@iris-eval/mcp-server?style=flat-square&color=0d9488&label=downloads&cacheSeconds=86400", alt: "npm downloads", href: "https://www.npmjs.com/package/@iris-eval/mcp-server", width: 104 },
+  // No downloads badge: the total it showed was mostly this repository's own
+  // CI installing the previous release for the upgrade test, three times a run.
   { src: "https://img.shields.io/github/stars/iris-eval/mcp-server?style=flat-square&color=0d9488&label=stars", alt: "GitHub stars", href: "https://github.com/iris-eval/mcp-server", width: 54 },
   { src: "https://img.shields.io/github/actions/workflow/status/iris-eval/mcp-server/ci.yml?style=flat-square&label=CI", alt: "CI status", href: "https://github.com/iris-eval/mcp-server/actions", width: 74 },
   { src: "https://img.shields.io/badge/license-MIT-22c55e?style=flat-square", alt: "MIT License", href: "https://github.com/iris-eval/mcp-server/blob/main/LICENSE", width: 78 },

@@ -140,5 +140,5 @@
     "security": "https://iris-eval.com/.well-known/security.txt"
   },
   "discovery": "Add the config block, restart your client, and every session lists Iris's tools on connect. Iris never intercepts: it runs when your agent calls one of its tools, when a host hook or `iris-eval ingest` hands it a trace, or when you POST one to its HTTP API.",
-  "dataResidency": "Nothing leaves your machine unless you set IRIS_OTEL_ENDPOINT, which exports traces to the collector you name, or enable the LLM judge with your own key."
+  "dataResidency": "Nothing leaves your machine unless you turn one of these on: an OpenTelemetry endpoint (IRIS_OTEL_ENDPOINT), which exports traces to the collector you name; the LLM judge with your own key, which sends the text it judges to that provider, and whose citation check fetches the pages an output cites; or a webhook, which posts ids, the verdict and rule names, never the text, to the address you set."
 }

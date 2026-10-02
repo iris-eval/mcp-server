@@ -21,6 +21,23 @@ jobs:
       - name: Run hardcoded-claim scanner
         run: node scripts/claims/check-no-hardcoded.mjs
 
+  # CONTRIBUTING.md and docs/proof.md say which checks block a merge. That is
+  # a repository setting, so the list they are held to
+  # (.github/required-checks.json) is compared here with the live branch
+  # protection, read from the public branch endpoint.
+  required-checks:
+    name: Required checks match branch protection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: '24'
+      - name: Compare the documented list with the setting
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci/check-required-checks.mjs
+
   check-truthbase-regen:
     name: Truthbase regen vs committed
     runs-on: ubuntu-latest

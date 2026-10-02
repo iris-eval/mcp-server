@@ -38,7 +38,11 @@ export function Stats(): React.ReactElement {
             <div key={s.label} className="text-center">
               <div className="font-display text-5xl font-extrabold tracking-tight text-text-primary md:text-6xl">
                 {s.static ? (
-                  <>{s.value}</>
+                  <>
+                    {s.prefix}
+                    {s.value}
+                    {s.suffix}
+                  </>
                 ) : (
                   <AnimatedCounter
                     value={s.value}

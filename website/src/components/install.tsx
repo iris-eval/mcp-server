@@ -88,7 +88,7 @@ export function Install(): React.ReactElement {
             </div>
             <div className="flex flex-col items-center justify-center gap-5 p-6">
               <a
-                href="cursor://anysphere.cursor-deeplink/mcp/install?name=server&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBpcmlzLWV2YWwvbWNwLXNlcnZlciJdLCJlbnYiOnsiSVJJU19MT0dfTEVWRUwiOiJpbmZvIn19"
+                href="cursor://anysphere.cursor-deeplink/mcp/install?name=iris-eval&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBpcmlzLWV2YWwvbWNwLXNlcnZlciJdLCJlbnYiOnsiSVJJU19MT0dfTEVWRUwiOiJpbmZvIn19"
                 className="transition-opacity hover:opacity-80"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}

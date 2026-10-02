@@ -2,15 +2,23 @@
 
 import { motion, useReducedMotion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { RULE_COUNT_BUILT_IN, PII_PATTERN_COUNT, INJECTION_PATTERN_COUNT } from "@/lib/claims";
+import { MCP_TOOL_COUNT, RULE_COUNT_BUILT_IN, RULE_ROSTER, PII_PATTERN_COUNT, INJECTION_PATTERN_COUNT } from "@/lib/claims";
+
+/*
+ * Every metric on these cards is read from the truthbase. Two were not:
+ * "60s to first trace", which nothing measured, and "$0.07 avg cost
+ * visibility per trace", a figure from the page's own mock data. A number a
+ * reader cannot trace to a measurement does not go on a card.
+ */
+const COST_RULE_COUNT = RULE_ROSTER.filter((r) => r.question === "within_budget").length;
 
 const USE_CASES = [
   {
     audience: "Developers shipping MCP agents",
     problem: "You deployed an agent and you have no idea what it's doing.",
     solution: "Add one config block and every session lists Iris's tools on connect. No SDK. Your agent calls log_trace, a host hook forwards each turn, or iris-eval ingest loads a trace file, and every run Iris receives is scored.",
-    metric: "60s",
-    metricLabel: "to first trace",
+    metric: String(MCP_TOOL_COUNT),
+    metricLabel: "tools your client lists on connect",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
@@ -21,8 +29,8 @@ const USE_CASES = [
     audience: "Teams monitoring agent costs",
     problem: "Your agent burned $0.47 on a single query and your APM showed 200 OK.",
     solution: "Iris tracks cost per trace, per agent, per time window. Set budget thresholds and get flagged when agents overspend — before finance finds out.",
-    metric: "$0.07",
-    metricLabel: "avg cost visibility per trace",
+    metric: String(COST_RULE_COUNT),
+    metricLabel: "rules that judge cost and step budgets",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />

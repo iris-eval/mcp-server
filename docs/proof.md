@@ -38,8 +38,10 @@ apart from the generation time and commit hash, which the `--check` comparison
 ignores.
 
 The `proof` job in `.github/workflows/ci.yml` runs `--check` on every pull
-request, so a change to a rule cannot merge without the committed numbers
-changing with it. The truthbase (`.claims.json → proof`, written by
+request and is one of the checks branch protection requires
+(`.github/required-checks.json`, compared with the live setting on every run),
+so a change to a rule cannot merge without the committed numbers changing with
+it. The truthbase (`.claims.json → proof`, written by
 `scripts/claims/generators/proof.mjs`) copies `proof/results.json` verbatim;
 the website, `llms.txt` and the README read from there and never restate a
 value.
@@ -91,21 +93,29 @@ short version:
   traffic. The four safety families (PII, injection, hallucination, stub) were
   written on 2026-08-11 with the rules' pattern lists in hand — positives
   written to evade them, negatives seeded with their triggers — and labelled by
-  two independent contexts of the same model with adjudication. The other nine
-  families were written and labelled on 2026-09-04 against each rule's
-  **documented** definition, not by running the rule.
+  two independent contexts of the same model with adjudication. Every later
+  family was written and labelled without running its rule: against the
+  rule's **documented** definition where that is a formula, and by reading
+  the failure itself where it is a judgement. Each family file says which in
+  `labelBasis`, and when and how its cases were written in `source` and
+  `labelling`.
 - **The labels are not human gold.** The same model family wrote the cases and
-  labelled them. A human blind label of a stratified 40-case sample is
-  pending; until it exists, `humanAgreement.status` is `pending` and no page
-  may call the labels "gold".
+  labelled them. A human blind label of a stratified sample
+  (`proof/blind-sample.json`, twenty cases from each of the seven families it
+  covers) is pending; until it exists, `humanAgreement.status` is `pending`
+  and no page may call the labels "gold".
 - **The numbers are corpus-conditional.** The safety rules were repaired with
   this corpus's failure classes in hand, so their numbers say "the evasions
   this corpus demonstrates are closed", not "this rule is accurate on your
   agents". Treat every rate as an upper bound on a known target.
-- **Real transcripts are represented, thinly.** Each of the nine newer families
-  holds at least six cases whose input and output come from an agent that
-  really performed a task against this repository, including its real
-  failures. They are marked `real transcript t-NN` in the case notes.
+- **No family case comes from a real transcript.** The transcripts of an agent
+  that really performed tasks against this repository, including its real
+  failures, are held out: every case copied from, varied from or modelled on
+  one was removed from the families on 2026-09-23, so no per-rule number is
+  estimated on them. They are measured on their own by
+  `npm run proof -- --transcripts` ([`proof/TRANSCRIPTS.md`](../proof/TRANSCRIPTS.md)),
+  and `tests/proof/transcripts-held-out.test.ts` fails if such a case comes
+  back.
 - **The injection family measures payload presence in the supplied text.**
   Most of its positives are retrieved documents passed through `output`; the
   rule scopes itself to the agent's output. The number says what the rule does
