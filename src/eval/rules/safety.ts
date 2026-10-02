@@ -1244,6 +1244,100 @@ export const noInjectionPatterns: EvalRule = {
  * - Markers containing non-letters ('[INSERT', 'NOT YET IMPLEMENTED') keep
  *   the original case-insensitive substring behaviour.
  */
+/**
+ * A phrase pattern that reads the same phrase however it was spaced.
+ *
+ * The phrase patterns below were written with single spaces ("omitted for
+ * brevity", "look into"), so the same sentence typed with two spaces after
+ * a full stop, or wrapped at 72 columns so that a phrase straddles a line
+ * break, matched nothing: on the labelled corpus, doubling every space
+ * turned three stub findings and two fabrication findings into passes.
+ * Every literal space outside a character class becomes a short run of
+ * whitespace. The run is bounded, like every other gap in this file.
+ */
+export function spaced(pattern: RegExp): RegExp {
+  let out = '';
+  let inClass = false;
+  const source = pattern.source;
+  for (let i = 0; i < source.length; i += 1) {
+    const c = source[i];
+    if (c === '\\') {
+      out += c + (source[i + 1] ?? '');
+      i += 1;
+      continue;
+    }
+    if (c === '[') inClass = true;
+    else if (c === ']') inClass = false;
+    out += c === ' ' && !inClass ? '\\s{1,8}' : c;
+  }
+  return new RegExp(out, pattern.flags);
+}
+
+/** Runs of spaces and tabs as one space. Line breaks are kept: a table row and a list item are lines. */
+export function squeezeSpaces(text: string): string {
+  return text.replace(/[ \t]{2,}/g, ' ');
+}
+
+/** A line shorter than this was not cut by a wrap: it ended where its author ended it. */
+export const WRAPPED_LINE_MIN = 40;
+
+/** How a line starts when it opens a block of its own (a list item, a heading, a quote, a table row, a fence) and so does not continue the line above. */
+function startsBlock(line: string): boolean {
+  const t = line.trimStart();
+  if (line.length - t.length >= 4) return true; // indented code
+  if (t.startsWith('#') || t.startsWith('>') || t.startsWith('|') || t.startsWith('```') || t.startsWith('~~~')) return true;
+  if ((t.startsWith('- ') || t.startsWith('* ') || t.startsWith('+ ')) && t.length > 2) return true;
+  let i = 0;
+  while (i < t.length && i < 9 && t[i] >= '0' && t[i] <= '9') i += 1;
+  return i > 0 && (t[i] === '.' || t[i] === ')') && t[i + 1] === ' ';
+}
+
+/**
+ * A paragraph that was wrapped at a column, read as the paragraph.
+ *
+ * A line break in the middle of a sentence is a space: the same answer
+ * sent through a tool that wraps at 72 columns is the same answer. The
+ * rules that split text into sentences split at every line break, so a
+ * wrapped paragraph became fragments, and a phrase that straddled a break
+ * was two half phrases.
+ *
+ * A break is joined only where it reads as a wrap: the line above is at
+ * least WRAPPED_LINE_MIN characters, does not end a sentence or introduce
+ * a list (`. ! ? : ;`), and the line below does not open a block of its
+ * own. Short lines, list items, headings, table rows and everything inside
+ * a code fence are left as lines, so a list written one item per line is
+ * still a list.
+ */
+export function joinWrappedLines(text: string): string {
+  if (!text.includes('\n')) return text;
+  const lines = text.split('\n');
+  let out = lines[0];
+  let inFence = lines[0].trimStart().startsWith('```') || lines[0].trimStart().startsWith('~~~');
+  for (let i = 1; i < lines.length; i += 1) {
+    const above = lines[i - 1];
+    const line = lines[i];
+    const fence = line.trimStart().startsWith('```') || line.trimStart().startsWith('~~~');
+    const aboveEnd = above.trimEnd();
+    const wrapped =
+      !inFence &&
+      !fence &&
+      aboveEnd.length >= WRAPPED_LINE_MIN &&
+      line.trim().length > 0 &&
+      !/[.!?:;]$/.test(aboveEnd) &&
+      !startsBlock(line) &&
+      !aboveEnd.trimStart().startsWith('#') &&
+      !aboveEnd.trimStart().startsWith('|');
+    out += wrapped ? ` ${line.trimStart()}` : `\n${line}`;
+    if (fence) inFence = !inFence;
+  }
+  return out;
+}
+
+/** The text a phrase or sentence rule reads: wrapped lines joined, runs of spaces squeezed. */
+export function asWritten(text: string): string {
+  return squeezeSpaces(joinWrappedLines(text));
+}
+
 const DEFAULT_STUB_MARKERS = [
   'TODO',
   'FIXME',
@@ -1279,7 +1373,7 @@ const STUB_SHAPE_PATTERNS: Array<{ name: string; pattern: RegExp }> = [
   { name: 'always-true guard', pattern: /\bif\b[^\n]{0,160}(?:\bor True\b|\|\|\s*true\b)/ },
   { name: 'self-satisfying test', pattern: /expect\(\s*true\s*\)\s*\.\s*toBe\(\s*true\s*\)/ },
   { name: 'fill-in-later', pattern: /\byou can fill (?:in|it in)\b|\bfill in (?:later|yourself|the (?:rest|blanks?))\b/i },
-];
+].map(({ name, pattern }) => ({ name, pattern: spaced(pattern) }));
 
 /**
  * Character ranges of `-` (removed) lines that sit inside genuine diff
@@ -1489,7 +1583,7 @@ const DEFERRAL_PATTERNS: RegExp[] = [
   /\bget back to you\b/i,
   /\b(?:stay tuned|coming soon|check back (?:later|soon)|more (?:details|information|info) (?:to follow|coming|soon|later))\b/i,
   /\b(?:to be|will be) (?:provided|added|filled in|completed|updated|determined|confirmed) (?:later|soon|shortly|in a (?:follow-up|later))\b/i,
-];
+].map(spaced);
 const DEFERRAL_SHARE = 0.6;
 const DEFERRAL_MAX_SENTENCES = 2;
 
@@ -1501,7 +1595,9 @@ const DEFERRAL_MAX_SENTENCES = 2;
  * same wrapper-quote guard (a quote around the whole output is not a
  * citation).
  */
-function deferralFires(output: string): string | null {
+function deferralFires(raw: string): string | null {
+  // Sentences are counted on the paragraph, not on the lines a wrap cut it into.
+  const output = asWritten(raw);
   const spans = quotedSpans(output);
   const sentences: string[] = [];
   const deferred: string[] = [];
@@ -1541,7 +1637,8 @@ export const noStubOutput: EvalRule = {
   needs: ['output'],
   question: 'complete',
   classes: ['stub'],
-  version: 1,
+  // 2 (0.20.0): a phrase is read however it was spaced, and a deferral's share is counted on the paragraph and not on the lines a wrap cut it into.
+  version: 2,
   /*
    * Deliberately NOT critical. A stub is incomplete work, not a violation —
    * a quality gradient the weighted score already prices in. The matching is
@@ -2442,7 +2539,8 @@ export const noHallucinationMarkers: EvalRule = {
   needs: ['output', 'input'],
   question: 'grounded',
   classes: ['fabrication'],
-  version: 1,
+  // 2 (0.20.0): the output is read with runs of spaces squeezed and wrapped lines joined, the input with runs of spaces squeezed.
+  version: 2,
   /*
    * Deliberately NOT critical. These are string-level heuristics with an
    * honest, documented false-positive surface (see the false-positive law
@@ -2453,12 +2551,21 @@ export const noHallucinationMarkers: EvalRule = {
    * direction. Semantics-level certainty is the LLM-judge's job.
    */
   evaluate(context: EvalContext): EvalRuleResult {
-    const input = context.input ?? '';
+    /*
+     * Both texts are read with runs of spaces squeezed to one, and the
+     * output with its wrapped lines joined. The signals compare phrases of
+     * the output with phrases of the input, and a quote typed with two
+     * spaces or cut by a line wrap is the same quote. The input keeps its
+     * lines: it is where the tables and listings are. No signal reports an
+     * offset, so nothing a reader is shown moves.
+     */
+    const input = squeezeSpaces(context.input ?? '');
+    const output = asWritten(context.output);
     const findings: string[] = [];
     const evidence: Evidence[] = [];
     for (const signal of HALLUCINATION_MARKERS) {
       if (signal.requiresContext && input.length === 0) continue;
-      const finding = signal.detect(context.output, input);
+      const finding = signal.detect(output, input);
       if (finding) {
         findings.push(`${signal.name}: ${finding}`);
         // Signals describe what they found in a sentence; the offsets of the

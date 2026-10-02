@@ -13,7 +13,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ADDITIONS, CONTRACTS, INVARIANT_RESULTS_JSON, INVARIANTS_MD, REMOVALS, measureInvariants, renderInvariantsMarkdown, type InvariantResults } from '../../proof/lib/invariants.js';
+import { ADDITIONS, CONTRACTS, INVARIANT_RESULTS_JSON, INVARIANTS_MD, REMOVALS, REWRITINGS, measureInvariants, renderInvariantsMarkdown, type InvariantResults } from '../../proof/lib/invariants.js';
 import { EvalEngine } from '../../src/eval/engine.js';
 import { defaultConfig } from '../../src/config/defaults.js';
 
@@ -24,6 +24,7 @@ describe('the published sweep is what this code measures', () => {
     const { results } = await measureInvariants(process.cwd());
     expect(results.removals.map((r) => r.id)).toEqual(REMOVALS.map((r) => r.id));
     expect(results.additions.map((a) => a.id)).toEqual(ADDITIONS.map((a) => a.id));
+    expect(results.rewritings.map((r) => r.id)).toEqual(REWRITINGS.map((r) => r.id));
     expect(results.contracts).toHaveLength(CONTRACTS.reduce((n, c) => n + c.covers.length + (c.measures?.length ?? 0), 0));
     // The committed file, without the three stamps of when and where it was generated.
     const rest: Partial<InvariantResults> = { ...committed };
@@ -70,6 +71,27 @@ describe('under a contract, leaving the field out never yields a pass', () => {
     expect((await shipped.evaluateAll({ input: ask, output })).verdict!.state).toBe('pass');
     expect((await requiring.evaluateAll({ input: ask, output })).verdict).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['tool_calls'] });
     expect((await requiring.evaluateAll({ input: ask, output, toolCalls: [] })).verdict!.state).toBe('unknown');
+  });
+});
+
+describe('the same output, spaced or wrapped another way, gets the same answer', () => {
+  it('no verdict and no deciding rule changes when every space is doubled or the lines are wrapped', () => {
+    const held = committed.rewritings.filter((r) => r.sameText);
+    expect(held.map((r) => r.id)).toEqual(['double_spaces', 'wrapped']);
+    for (const r of held) {
+      expect(r.verdicts, r.what).toEqual({ failToPass: [], passToFail: [], other: [] });
+      expect(r.rules, r.what).toEqual({});
+      // And it rewrote most of the corpus: a sweep over nothing would also read zero.
+      expect(r.applied, r.what).toBeGreaterThan(100);
+    }
+    expect(committed.violations.rewritten).toBe(0);
+  });
+
+  it('every rewriting that is not held at zero says why, and at least one of them does change an answer', () => {
+    const measured = committed.rewritings.filter((r) => !r.sameText);
+    expect(measured.length).toBeGreaterThan(0);
+    for (const r of measured) expect(r.why, r.what).toMatch(/\S{3,}/);
+    expect(measured.some((r) => Object.keys(r.rules).length > 0)).toBe(true);
   });
 });
 

@@ -13,6 +13,14 @@
  *   wrong with it, evaluate again. A verdict that then passes was rescued
  *   by a failure.
  *
+ *   WRITING IT ANOTHER WAY. Take a case, write the same output with every
+ *   space doubled or its lines wrapped at 60 columns, evaluate again. A
+ *   verdict that changes was decided by the typing and not by the text.
+ *   Five more rewritings are measured beside those two and are NOT held at
+ *   zero, each with the reason: they change what some rule is right to
+ *   read (a marker's case, a key's case), or they are a different shape of
+ *   output that the text rules do not read yet (JSON).
+ *
  * The first cannot hold in general, and this file says so with counts. A
  * call that never mentions a field looks the same as a call from an agent
  * that has no such field: nothing in one self-reported call shows that
@@ -166,6 +174,65 @@ export const ADDITIONS: readonly Addition[] = [
   },
 ];
 
+/** One way of writing the same output. `apply` returns null when it would change nothing. */
+interface Rewriting {
+  id: string;
+  what: string;
+  /** Held at zero: the verdict and every rule that can decide one must answer as before. */
+  sameText: boolean;
+  /** For a rewriting that is not held at zero: why a change is not, or not yet, a defect. */
+  why?: string;
+  apply(output: string): string | null;
+}
+
+const changed = (before: string, after: string): string | null => (after === before ? null : after);
+/** Each line wrapped at 60 columns by turning a space into a line break. Line breaks already there stay. */
+const wrapAt60 = (text: string): string =>
+  text
+    .split('\n')
+    .map((line) => line.replace(/(.{1,60})( +|$)/g, '$1\n').replace(/\n$/, ''))
+    .join('\n');
+
+export const REWRITINGS: readonly Rewriting[] = [
+  { id: 'double_spaces', what: 'every space doubled', sameText: true, apply: (o) => changed(o, o.replace(/ /g, '  ')) },
+  { id: 'wrapped', what: 'each line wrapped at 60 columns', sameText: true, apply: (o) => changed(o, wrapAt60(o)) },
+  {
+    id: 'curly_quotes',
+    what: 'straight quotes written as curly quotes',
+    sameText: false,
+    why: 'the one finding lost is a JSON key in a tool payload ("_assistant_directive":), found by its shape; written with curly quotes it is no longer a JSON key, and the phrase patterns do not match the sentence inside it. A gap in the phrase patterns, not in how quotes are read',
+    apply: (o) => changed(o, o.replace(/"([^"]*)"/g, '“$1”').replace(/'/g, '’')),
+  },
+  {
+    id: 'markdown_quote',
+    what: 'every line prefixed as a Markdown quote',
+    sameText: false,
+    why: 'an empty output becomes a line holding a quote mark, which is no longer empty; and a diff is no longer a diff, so a TODO on a removed line is read as a TODO',
+    apply: (o) => o.split('\n').map((l) => `> ${l}`).join('\n'),
+  },
+  {
+    id: 'json_field',
+    what: 'the output as one string field of a JSON object',
+    sameText: false,
+    why: 'a structured output is a different shape: the text rules read its escaped form (\\n, \\") and not its string values, so phrases and line structure are lost and the field name is read as a claim. Reading the string values of a structured output is not built yet',
+    apply: (o) => JSON.stringify({ answer: o }),
+  },
+  {
+    id: 'upper_case',
+    what: 'the output in upper case',
+    sameText: false,
+    why: 'case is part of what two rules are right to read: a seed phrase or a token in another case is not that secret, and a file name in another case is another file. The third change is a fault left as measured: the fabrication rule reads capitalised words as names of metrics, so prose in capitals starts findings',
+    apply: (o) => changed(o, o.toUpperCase()),
+  },
+  {
+    id: 'lower_case',
+    what: 'the output in lower case',
+    sameText: false,
+    why: 'a private key block and a file name in another case are not that key or that file, and a placeholder marker is an upper-case word on purpose: "TODO" is a marker and "a todo app" is not',
+    apply: (o) => changed(o, o.toLowerCase()),
+  },
+];
+
 /** A contract under which a removal must not pass: the engine settings it needs, and what to add to the call. */
 interface Contract {
   kind: 'required' | 'policy' | 'call';
@@ -248,6 +315,19 @@ export interface AdditionRow {
   passingAfter: Record<State, number>;
 }
 
+export interface RewritingRow {
+  id: string;
+  what: string;
+  sameText: boolean;
+  why?: string;
+  /** Cases the rewriting changes at all. */
+  applied: number;
+  /** Verdicts whose state changed, by direction. */
+  verdicts: { failToPass: string[]; passToFail: string[]; other: string[] };
+  /** Per rule that can decide a verdict: cases where it stopped firing, and where it started. Rules with no change are left out. */
+  rules: Record<string, { stopped: string[]; started: string[] }>;
+}
+
 export interface InvariantResults {
   schemaVersion: 1;
   compositeVersion: string;
@@ -258,7 +338,8 @@ export interface InvariantResults {
   removals: RemovalRow[];
   contracts: ContractRow[];
   additions: AdditionRow[];
-  violations: { contract: number; rescued: number };
+  rewritings: RewritingRow[];
+  violations: { contract: number; rescued: number; rewritten: number };
 }
 
 const tally = (): Record<State, number> => ({ pass: 0, fail: 0, unknown: 0 });
@@ -334,6 +415,45 @@ export async function measureInvariants(root: string): Promise<{ loaded: LoadedC
     additions.push(row);
   }
 
+  /*
+   * The same output written another way. A rule counts when it can decide
+   * a verdict: a gate, a veto, or a detection or inference the risk reads.
+   * A measurement that only advises (a sentence count) is allowed to count
+   * a wrapped paragraph differently.
+   */
+  const answers = async (ctx: EvalContext): Promise<{ state: State; fired: Set<string>; deciding: Set<string> }> => {
+    const r = await engine.evaluateAll(ctx);
+    const deciding = r.rule_results.filter((x) => x.role === 'gate' || x.role === 'veto' || x.role === 'risk' || x.kind === 'detection' || x.kind === 'inference');
+    return { state: r.verdict!.state, fired: new Set(deciding.filter((x) => !x.skipped && !x.passed).map((x) => x.ruleName)), deciding: new Set(deciding.map((x) => x.ruleName)) };
+  };
+  const rewritings: RewritingRow[] = [];
+  for (const rewriting of REWRITINGS) {
+    const row: RewritingRow = { id: rewriting.id, what: rewriting.what, sameText: rewriting.sameText, ...(rewriting.why !== undefined ? { why: rewriting.why } : {}), applied: 0, verdicts: { failToPass: [], passToFail: [], other: [] }, rules: {} };
+    for (const { id, ctx } of contexts) {
+      const output = rewriting.apply(ctx.output);
+      if (output === null) continue;
+      row.applied += 1;
+      const before = await answers(ctx);
+      const after = await answers({ ...ctx, output });
+      if (after.state !== before.state) {
+        if (before.state === 'fail' && after.state === 'pass') row.verdicts.failToPass.push(id);
+        else if (before.state === 'pass' && after.state === 'fail') row.verdicts.passToFail.push(id);
+        else row.verdicts.other.push(id);
+      }
+      for (const rule of new Set([...before.deciding, ...after.deciding])) {
+        const was = before.fired.has(rule);
+        const is = after.fired.has(rule);
+        if (was === is) continue;
+        const slot = (row.rules[rule] ??= { stopped: [], started: [] });
+        (was ? slot.stopped : slot.started).push(id);
+      }
+    }
+    rewritings.push(row);
+  }
+  const rewritten = rewritings
+    .filter((r) => r.sameText)
+    .reduce((n, r) => n + r.verdicts.failToPass.length + r.verdicts.passToFail.length + r.verdicts.other.length + Object.values(r.rules).reduce((m, x) => m + x.stopped.length + x.started.length, 0), 0);
+
   return {
     loaded,
     results: {
@@ -343,9 +463,11 @@ export async function measureInvariants(root: string): Promise<{ loaded: LoadedC
       removals,
       contracts,
       additions,
+      rewritings,
       violations: {
         contract: contracts.filter((c) => c.held).reduce((n, c) => n + c.passed.length, 0),
         rescued: additions.filter((a) => a.held).reduce((n, a) => n + a.rescued.length, 0),
+        rewritten,
       },
     },
   };
@@ -353,7 +475,7 @@ export async function measureInvariants(root: string): Promise<{ loaded: LoadedC
 
 export function renderInvariantsMarkdown(r: InvariantResults): string {
   const L: string[] = [];
-  L.push('# What a verdict does when evidence is taken away');
+  L.push('# What a verdict does when evidence is taken away, a failure is added, or the output is written another way');
   L.push('');
   L.push(`Generated ${r.generatedAt} for v${r.version} (local generating commit \`${r.commit}\` — branch commits are squashed on merge, so cite the version).`);
   L.push(`Composite version \`${r.compositeVersion}\`, ${r.cases} labelled cases, the shipped configuration. Reproduce with \`npm run proof -- --invariants\`; CI runs \`npm run proof -- --check --invariants\`.`);
@@ -410,11 +532,35 @@ export function renderInvariantsMarkdown(r: InvariantResults): string {
   L.push('');
   L.push('"Left out" is a case whose output is empty: text appended to it makes it an output, which takes away the failure the case had instead of adding one. What that leaves (a placeholder and nothing else) passes at the shipped configuration, because the placeholder detector\'s published accuracy alone does not carry the risk past the line. That is a wrong pass and not a rescue; the same kind (a placeholder answer the detector flags and the verdict passes) is among the missed blocks in [COMPOSITE.md](COMPOSITE.md).');
   L.push('');
-  L.push(`**Violations: ${r.violations.contract} under a contract, ${r.violations.rescued} rescued.**`);
+  L.push('## Writing the same output another way');
+  L.push('');
+  L.push('Each row rewrites the output of every case one way and evaluates again. It counts the verdicts whose state changed and, per rule that can decide a verdict (a gate, a veto, a detection or an inference), the cases where the rule stopped or started firing.');
+  L.push('');
+  L.push('**Spacing and line wrapping are the same text: both rows must be all zeros.** Until 0.20.0 they were not: a phrase typed with two spaces, or cut by a line wrap, was not the phrase the rule knew.');
+  L.push('');
+  L.push('| Rewriting | Cases it changes | Verdicts: fail → pass | pass → fail | Rules whose answer changed |');
+  L.push('|---|--:|--:|--:|---|');
+  const ruleCell = (row: RewritingRow): string => {
+    const entries = Object.entries(row.rules).sort(([a], [b]) => (a < b ? -1 : 1));
+    return entries.length === 0 ? 'none' : entries.map(([rule, x]) => `\`${rule}\` (stopped ${x.stopped.length}, started ${x.started.length})`).join('; ');
+  };
+  for (const row of r.rewritings.filter((x) => x.sameText)) {
+    L.push(`| ${row.what} | ${row.applied} | **${row.verdicts.failToPass.length}** | **${row.verdicts.passToFail.length}** | ${ruleCell(row)} |`);
+  }
+  L.push('');
+  L.push('**These rewritings are measured and are not held at zero.** Each changes something a rule is right to read, or is a shape of output the text rules do not read yet. The reason is beside each.');
+  L.push('');
+  L.push('| Rewriting | Cases it changes | Verdicts: fail → pass | pass → fail | Rules whose answer changed | Why it is not held at zero |');
+  L.push('|---|--:|--:|--:|---|---|');
+  for (const row of r.rewritings.filter((x) => !x.sameText)) {
+    L.push(`| ${row.what} | ${row.applied} | ${row.verdicts.failToPass.length} | ${row.verdicts.passToFail.length} | ${ruleCell(row)} | ${row.why ?? ''} |`);
+  }
+  L.push('');
+  L.push(`**Violations: ${r.violations.contract} under a contract, ${r.violations.rescued} rescued, ${r.violations.rewritten} changed by spacing or wrapping.**`);
   L.push('');
   L.push('## What this does not cover');
   L.push('');
-  L.push('- Rewriting the same content in another form (case, spacing, quotation marks, wrapping the output in JSON) is not measured here.');
+  L.push('- Rewritings of the input and of the tool calls are not measured here, only of the output.');
   L.push('- The additions are fixed strings, one fixed call and one fixed cost, not a search for an addition that rescues. A long run of filler text appended to a short answer also rescues one case, by diluting the share of it that is a deferral.');
   L.push('- A contract is checked on the whole evaluation. A call that asks for one bundle only (`eval_type: "safety"`) is answered for that bundle: a cost ceiling is not asked of it.');
   L.push('- A cost of zero is a cost. A deployment with a cost ceiling cannot tell a free run from a run that reported zero.');
