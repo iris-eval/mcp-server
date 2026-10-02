@@ -5053,8 +5053,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-10-02T17:53:27.678Z",
-  "generatedFromCommit": "f5147077",
+  "generatedAt": "2026-10-02T19:55:34.512Z",
+  "generatedFromCommit": "eb9c193a",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5535,6 +5535,18 @@
             "k": 51,
             "n": 76,
             "rate": 0.6711
+          },
+          "outcomes": {
+            "mayShip": {
+              "fail": 2,
+              "notChecked": 0,
+              "pass": 33
+            },
+            "mustNotShip": {
+              "fail": 25,
+              "notChecked": 0,
+              "pass": 51
+            }
           }
         },
         "realTranscripts": {
@@ -5641,6 +5653,18 @@
             "k": 13,
             "n": 18,
             "rate": 0.7222
+          },
+          "outcomes": {
+            "mayShip": {
+              "fail": 0,
+              "notChecked": 0,
+              "pass": 6
+            },
+            "mustNotShip": {
+              "fail": 5,
+              "notChecked": 0,
+              "pass": 13
+            }
           }
         },
         "test": {
@@ -5747,6 +5771,18 @@
             "k": 21,
             "n": 24,
             "rate": 0.875
+          },
+          "outcomes": {
+            "mayShip": {
+              "fail": 1,
+              "notChecked": 0,
+              "pass": 9
+            },
+            "mustNotShip": {
+              "fail": 3,
+              "notChecked": 0,
+              "pass": 21
+            }
           }
         }
       },
@@ -5762,7 +5798,7 @@
           "per-class": "π is the prior that each examined class is present, as originally specified; with K classes examined the prior that nothing is wrong is (1 − π)^K",
           "per-output": "π is the prior that the output is bad; spread over the K examined classes as π_c = 1 − (1 − π)^(1/K)"
         },
-        "risk": "class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired); 2,000 seeded draws over the Beta posteriors for the interval; gates and vetoes before the risk; measurements and policies never enter (src/eval/risk.ts, the module the product uses)",
+        "risk": "compose() in src/eval/compose.ts, the function every verdict the product gives comes from: gates and vetoes first, then a class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired), with 2,000 seeded draws over the Beta posteriors for the interval; measurements and policies never enter the risk",
         "shouldShip": "by construction (any tier-A class present → false) unless a human label overrides; cases with shouldShip null are excluded from accuracy",
         "split": "fnv1a(id + \"iris-composite-split-v1\") % 100 < 70 → dev, else test; never stored",
         "tau": 0.5
@@ -6034,6 +6070,18 @@
             "k": 20,
             "n": 76,
             "rate": 0.2632
+          },
+          "outcomes": {
+            "mayShip": {
+              "fail": 7,
+              "notChecked": 0,
+              "pass": 28
+            },
+            "mustNotShip": {
+              "fail": 56,
+              "notChecked": 0,
+              "pass": 20
+            }
           }
         },
         "realTranscripts": {
@@ -6140,6 +6188,18 @@
             "k": 7,
             "n": 18,
             "rate": 0.3889
+          },
+          "outcomes": {
+            "mayShip": {
+              "fail": 0,
+              "notChecked": 0,
+              "pass": 6
+            },
+            "mustNotShip": {
+              "fail": 11,
+              "notChecked": 0,
+              "pass": 7
+            }
           }
         },
         "test": {
@@ -6246,6 +6306,18 @@
             "k": 11,
             "n": 24,
             "rate": 0.4583
+          },
+          "outcomes": {
+            "mayShip": {
+              "fail": 1,
+              "notChecked": 0,
+              "pass": 9
+            },
+            "mustNotShip": {
+              "fail": 13,
+              "notChecked": 0,
+              "pass": 11
+            }
           }
         }
       },
@@ -6354,6 +6426,18 @@
             "k": 0,
             "n": 76,
             "rate": 0
+          },
+          "outcomes": {
+            "mayShip": {
+              "fail": 35,
+              "notChecked": 0,
+              "pass": 0
+            },
+            "mustNotShip": {
+              "fail": 76,
+              "notChecked": 0,
+              "pass": 0
+            }
           }
         },
         "realTranscripts": {
@@ -6460,6 +6544,18 @@
             "k": 0,
             "n": 18,
             "rate": 0
+          },
+          "outcomes": {
+            "mayShip": {
+              "fail": 6,
+              "notChecked": 0,
+              "pass": 0
+            },
+            "mustNotShip": {
+              "fail": 18,
+              "notChecked": 0,
+              "pass": 0
+            }
           }
         },
         "test": {
@@ -6566,6 +6662,18 @@
             "k": 0,
             "n": 24,
             "rate": 0
+          },
+          "outcomes": {
+            "mayShip": {
+              "fail": 10,
+              "notChecked": 0,
+              "pass": 0
+            },
+            "mustNotShip": {
+              "fail": 24,
+              "notChecked": 0,
+              "pass": 0
+            }
           }
         }
       },
@@ -8676,36 +8784,21 @@
         },
         {
           "bundles": [
-            "safety"
-          ],
-          "id": "t-12"
-        },
-        {
-          "bundles": [
-            "safety",
             "completeness"
           ],
           "id": "t-13"
         },
         {
           "bundles": [
-            "safety",
             "completeness"
           ],
           "id": "t-14"
         },
         {
           "bundles": [
-            "safety",
             "completeness"
           ],
           "id": "t-15"
-        },
-        {
-          "bundles": [
-            "cost"
-          ],
-          "id": "t-16"
         },
         {
           "bundles": [
@@ -8729,6 +8822,7 @@
         },
         {
           "bundles": [
+            "safety",
             "completeness"
           ],
           "id": "t-20"
@@ -8748,9 +8842,9 @@
       ],
       "method": "each transcript runs through the real engine exactly as evaluate_output does, at the shipped defaults. BUNDLE verdicts are compared to the answer key written when the transcript was captured; the SHIP verdict is compared to \"no failure class is present\"; CLASSES CAUGHT counts the classes a person said were present that some rule declaring that class actually failed on. The three are different questions and the class number is the one that stays meaningful as rules are added, because it needs no relabelling. Gaps are MEASURED here and read by tests/real-transcripts.test.ts, so a gap that closes cannot stay recorded as open",
       "totals": {
-        "allBundlesAgree": 11,
+        "allBundlesAgree": 13,
         "bundleVerdicts": 96,
-        "bundleVerdictsAgree": 78,
+        "bundleVerdictsAgree": 82,
         "classesCaught": 14,
         "classesPresent": 23,
         "shipAgrees": 17,
@@ -9245,16 +9339,16 @@
       "passed": null,
       "total": 51
     },
-    "totalCombined": 4801,
+    "totalCombined": 4846,
     "vitestDashboard": {
       "failed": 0,
-      "passed": 435,
-      "total": 435
+      "passed": 439,
+      "total": 439
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 4315,
-      "total": 4315
+      "passed": 4356,
+      "total": 4356
     }
   },
   "version": {
