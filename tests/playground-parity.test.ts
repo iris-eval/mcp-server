@@ -78,7 +78,7 @@ const SERVER_TRAJECTORY_FILE = 'src/eval/rules/trajectory.ts';
  * inputs the fold exists for.
  */
 const SERVER_TEXT_FILES: Array<[string, string[]]> = [
-  ['src/eval/text/normalise.ts', ['LATIN_ACCENTS', 'stripLatinAccents', 'DROPPED', 'CONFUSABLES', 'PLAIN_TEXT', 'WHITESPACE_RUN', 'identity', 'graphemes', 'WHITESPACE', 'LINE_BREAK', 'normalise', 'toRawSpan']],
+  ['src/eval/text/normalise.ts', ['LATIN_ACCENTS', 'stripLatinAccents', 'INVISIBLE', 'isInvisible', 'CONFUSABLES', 'PLAIN_TEXT', 'WHITESPACE_RUN', 'NO_JOINS', 'identity', 'graphemes', 'WHITESPACE', 'LINE_BREAK', 'normalise', 'wordReading', 'toRawSpan']],
   ['src/eval/text/checksums.ts', ['luhn', 'cardNumber', 'iban', 'ssnStructure', 'ssnDigits']],
   ['src/eval/text/sentences.ts', ['ALWAYS_ABBREVIATION', 'ABBREVIATION_BEFORE_NUMBER', 'TERMINATORS', 'blankLineFollows', 'opensSentence', 'isDigit', 'precedingToken', 'sentencesOf', 'countSentences']],
   /*

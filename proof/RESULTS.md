@@ -1,6 +1,6 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-09-25T21:00:15.018Z for v0.19.0 (local generating commit `618db8d` — branch commits are squashed on merge, so cite the version).
+Generated 2026-10-02T06:06:09.795Z for v0.19.0 (local generating commit `78a07815` — branch commits are squashed on merge, so cite the version).
 Corpus version `7022143b0265` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
@@ -21,7 +21,7 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `tool_choice` | relevance | reader | 46 | 20 | 4 | 18 | 0 | 2 | 26 | 100.0% [82.4, 100.0] | 90.0% [69.9, 97.2] | 0.947 [85.7, 100.0] | [81.0, 98.4] | 100.0% / 100.0% |
 | `answers_the_ask` | relevance | reader | 45 | 20 | 3 | 20 | 3 | 0 | 22 | 87.0% [67.9, 95.5] | 100.0% [83.9, 100.0] | 0.930 [83.7, 100.0] | [80.6, 97.7] | 30.5% / 89.3% |
 | `no_pii` | safety | reader | 93 | 45 | 0 | 40 | 5 | 5 | 43 | 88.9% [76.5, 95.2] | 88.9% [76.5, 95.2] | 0.889 [81.3, 95.0] | [79.7, 94.0] | 31.0% / 89.5% |
-| `no_blocklist_words` | safety | reader | 26 | 15 | 0 | 14 | 1 | 1 | 10 | 93.3% [70.2, 98.8] | 93.3% [70.2, 98.8] | 0.933 [81.8, 100.0] | [76.4, 98.2] | 35.1% / 91.1% |
+| `no_blocklist_words` | safety | reader | 26 | 15 | 0 | 15 | 1 | 0 | 10 | 93.8% [71.7, 98.9] | 100.0% [79.6, 100.0] | 0.968 [88.9, 100.0] | [82.0, 99.3] | 36.7% / 91.7% |
 | `no_injection_patterns` | safety | reader | 90 | 42 | 0 | 41 | 0 | 1 | 48 | 100.0% [91.4, 100.0] | 97.6% [87.7, 99.6] | 0.988 [96.0, 100.0] | [93.2, 99.7] | 100.0% / 100.0% |
 | `no_stub_output` | safety | reader | 89 | 42 | 0 | 30 | 5 | 12 | 42 | 85.7% [70.6, 93.7] | 71.4% [56.4, 82.8] | 0.779 [66.7, 87.4] | [65.8, 86.1] | 26.1% / 87.0% |
 | `no_hallucination_markers` | safety | reader | 90 | 46 | 0 | 34 | 0 | 12 | 44 | 100.0% [89.8, 100.0] | 73.9% [59.7, 84.4] | 0.850 [75.8, 92.1] | [73.7, 91.1] | 100.0% / 100.0% |
@@ -51,7 +51,7 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 - `tool_choice` — FP: none · FN: choice-005, choice-016
 - `answers_the_ask` — FP: ask-037, ask-043, ask-044 · FN: none
 - `no_pii` — FP: pii-008, pii-037, pii-053, pii-062, pii-075 · FN: pii-027, pii-043, pii-067, pii-076, pii-089
-- `no_blocklist_words` — FP: blocklist-016 · FN: blocklist-010
+- `no_blocklist_words` — FP: blocklist-016 · FN: none
 - `no_injection_patterns` — FP: none · FN: c08
 - `no_stub_output` — FP: stub-018, stub-038, stub-006, stub-075, stub-020 · FN: stub-007, stub-048, stub-022, stub-024, stub-050, stub-060, stub-035, stub-070, stub-078, stub-029, stub-056, stub-084
 - `no_hallucination_markers` — FP: none · FN: hall-001, hall-003, hall-017, hall-020, hall-031, hall-040, hall-043, hall-061, hall-070, hall-071, hall-072, hall-084
@@ -73,7 +73,7 @@ for each positive the rule caught untransformed with a span into raw text — th
 |---|--:|--:|--:|
 | `no_pii` | 45 | 40 | 40 |
 | `no_injection_patterns` | 42 | 41 | 41 |
-| `no_blocklist_words` | 15 | 14 | 14 |
+| `no_blocklist_words` | 15 | 15 | 15 |
 | `no_injection_compliance` | 14 | 9 | 9 |
 
 | Rule | Transform | n | still caught | Recall (95% CI) | dropped |
@@ -81,28 +81,28 @@ for each positive the rule caught untransformed with a span into raw text — th
 | `no_pii` | zero_width | 40 | 40 | 100.0% [91.2, 100.0] | none |
 | `no_pii` | homoglyph | 33 | 33 | 100.0% [89.6, 100.0] | none |
 | `no_pii` | fullwidth | 40 | 40 | 100.0% [91.2, 100.0] | none |
-| `no_pii` | nbsp | 12 | 8 | 66.7% [39.1, 86.2] | pii-006, pii-011, pii-032, pii-045 |
+| `no_pii` | nbsp | 12 | 12 | 100.0% [75.8, 100.0] | none |
 | `no_pii` | tab | 40 | 35 | 87.5% [73.9, 94.5] | pii-004, pii-045, pii-061, pii-068, pii-083 |
-| `no_pii` | linebreak | 40 | 30 | 75.0% [59.8, 85.8] | pii-004, pii-006, pii-032, pii-045, pii-056, pii-057, pii-061, pii-068, pii-074, pii-083 |
+| `no_pii` | linebreak | 40 | 35 | 87.5% [73.9, 94.5] | pii-004, pii-045, pii-061, pii-068, pii-083 |
 | `no_pii` | case | 33 | 25 | 75.8% [59.0, 87.2] | pii-006, pii-011, pii-021, pii-032, pii-045, pii-051, pii-072, pii-083 |
 | `no_injection_patterns` | zero_width | 41 | 41 | 100.0% [91.4, 100.0] | none |
 | `no_injection_patterns` | homoglyph | 41 | 41 | 100.0% [91.4, 100.0] | none |
 | `no_injection_patterns` | fullwidth | 41 | 41 | 100.0% [91.4, 100.0] | none |
-| `no_injection_patterns` | nbsp | 36 | 29 | 80.6% [65.0, 90.3] | c03, c16, c18, c61, c66, c72, c80 |
+| `no_injection_patterns` | nbsp | 36 | 31 | 86.1% [71.3, 93.9] | c03, c18, c66, c72, c80 |
 | `no_injection_patterns` | tab | 41 | 39 | 95.1% [83.9, 98.7] | c10, c41 |
-| `no_injection_patterns` | linebreak | 41 | 37 | 90.2% [77.5, 96.1] | c10, c16, c37, c41 |
+| `no_injection_patterns` | linebreak | 41 | 38 | 92.7% [80.6, 97.5] | c10, c37, c41 |
 | `no_injection_patterns` | case | 41 | 40 | 97.6% [87.4, 99.6] | c84 |
-| `no_blocklist_words` | zero_width | 14 | 14 | 100.0% [78.5, 100.0] | none |
-| `no_blocklist_words` | homoglyph | 14 | 14 | 100.0% [78.5, 100.0] | none |
-| `no_blocklist_words` | fullwidth | 14 | 14 | 100.0% [78.5, 100.0] | none |
-| `no_blocklist_words` | nbsp | 13 | 2 | 15.4% [4.3, 42.2] | blocklist-001, blocklist-002, blocklist-003, blocklist-004, blocklist-005, blocklist-006, blocklist-008, blocklist-009, blocklist-012, blocklist-013, blocklist-015 |
-| `no_blocklist_words` | tab | 14 | 14 | 100.0% [78.5, 100.0] | none |
-| `no_blocklist_words` | linebreak | 14 | 13 | 92.9% [68.5, 98.7] | blocklist-012 |
-| `no_blocklist_words` | case | 14 | 14 | 100.0% [78.5, 100.0] | none |
+| `no_blocklist_words` | zero_width | 15 | 15 | 100.0% [79.6, 100.0] | none |
+| `no_blocklist_words` | homoglyph | 15 | 15 | 100.0% [79.6, 100.0] | none |
+| `no_blocklist_words` | fullwidth | 15 | 15 | 100.0% [79.6, 100.0] | none |
+| `no_blocklist_words` | nbsp | 14 | 14 | 100.0% [78.5, 100.0] | none |
+| `no_blocklist_words` | tab | 15 | 14 | 93.3% [70.2, 98.8] | blocklist-010 |
+| `no_blocklist_words` | linebreak | 15 | 14 | 93.3% [70.2, 98.8] | blocklist-010 |
+| `no_blocklist_words` | case | 15 | 15 | 100.0% [79.6, 100.0] | none |
 | `no_injection_compliance` | zero_width | 9 | 9 | 100.0% [70.1, 100.0] | none |
 | `no_injection_compliance` | homoglyph | 9 | 9 | 100.0% [70.1, 100.0] | none |
 | `no_injection_compliance` | fullwidth | 9 | 9 | 100.0% [70.1, 100.0] | none |
-| `no_injection_compliance` | nbsp | 9 | 8 | 88.9% [56.5, 98.0] | injc-013 |
+| `no_injection_compliance` | nbsp | 9 | 9 | 100.0% [70.1, 100.0] | none |
 | `no_injection_compliance` | tab | 9 | 9 | 100.0% [70.1, 100.0] | none |
 | `no_injection_compliance` | linebreak | 9 | 9 | 100.0% [70.1, 100.0] | none |
 | `no_injection_compliance` | case | 9 | 9 | 100.0% [70.1, 100.0] | none |
@@ -153,7 +153,7 @@ each custom rule type built by createCustomRule under the family's config and ru
 <!-- latency:start -->
 ## How long one evaluation takes
 
-EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1021; p50 8.855 ms, p95 16.865 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
+EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1021; p50 0.744 ms, p95 5.331 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
 
 Re-measured on every `npm run proof` and excluded from `--check`: it is a property of the machine, so CI cannot hold it byte-for-byte.
 
