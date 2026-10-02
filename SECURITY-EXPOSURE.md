@@ -25,6 +25,18 @@ CI runs `scripts/security/check-exposure-coverage.mjs` on every PR. If a new ≥
 
 ## Currently open advisories
 
+### [GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv) — node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements
+
+- **Severity:** high
+- **Package:** `node-forge` (every release through 1.4.0; no fixed version is published)
+- **Load path:** `node-forge@1.4.0` ← `@anthropic-ai/mcpb@2.1.2`, an exact devDependency: the reference MCPB tooling CI and the release use to unpack, validate and launch `iris-eval.mcpb`. It is not in the published npm package (`files` lists `dist`, `LICENSE`, `README.md` and `server.json`), not in the Docker image (`npm ci --omit=dev`), and not in the bundle, which is built from the published tarball.
+- **Load-graph reachable:** In CI only. `mcpb unpack` (`.github/workflows/ci.yml`) imports the tooling's `dist/node/sign.js`, which imports `node-forge`. Nothing iris ships loads it.
+- **Code-path reachable:** No. The advisory is in signature VERIFICATION. In the tooling that is `verifyMcpbFile`, reached by `mcpb verify` and `mcpb info`; iris runs neither. `mcpb unpack` takes one function from that module, `extractSignatureBlock`, which searches the file's bytes for a signature block and calls nothing in `node-forge`. The two test hosts import the library for `getMcpConfigForManifest` only.
+- **Untrusted input reachable:** No. The only bundle handed to the tooling is the one the same job built from this repository, and it carries no MCPB signature: a release is verified by its GitHub artifact attestation and by `scripts/mcpb/verify.mjs`, which compares the bundle with the npm tarball byte for byte.
+- **Downstream guards:** A forged MCPB signature could at most make `mcpb verify` report a bundle as signed. No step in CI or the release reads that answer.
+- **Decision:** **Track** — waiting on an upstream fix — and dismiss as `tolerable_risk` meanwhile. When `node-forge` publishes a fixed version, pin it with an `overrides` entry, as was done for `tmp` when this tooling was locked.
+- **Assessed:** 2026-10-01 against iris commit `78a0781`.
+
 ### [GHSA-v39h-62p7-jpjc](https://github.com/advisories/GHSA-v39h-62p7-jpjc) — fast-uri host confusion via percent-encoded authority delimiters
 
 - **Severity:** HIGH
