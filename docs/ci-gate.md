@@ -39,7 +39,7 @@ Each line printed is `{ "trace_id", "evaluation_id", "passed", "verdict": { "sta
 
 ## What exit 0 means
 
-With `--fail-on`, exit 0 says every trace that was read was judged and none matched. Anything short of that exits 2, with a sentence on stderr saying which:
+With `--fail-on`, exit 0 says every trace that was read was judged and none matched. A verdict that tripped is exit 1 whatever else happened. When none tripped and something was not judged, the exit is 2, with a sentence on stderr saying which:
 
 | What happened | Exit |
 |---|---|
