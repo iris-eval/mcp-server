@@ -122,15 +122,10 @@ export default function Security(): React.ReactElement {
             </p>
             <p className="mt-3">
               <strong className="text-text-primary">
-                A hosted tier is under consideration, not under construction.
+                There is no hosted version of Iris.
               </strong>{" "}
-              No version is committed to it and no pricing exists. The
-              cross-tenant isolation described below is already enforced at four
-              independent layers in the self-hosted code — see the architecture
-              guide for the technical detail — so <em>if</em> a hosted tier ever
-              ships it inherits those boundaries rather than retrofitting them.
-              Until it does, every control on this page describes software that
-              runs on your machine.
+              Every control on this page describes software that runs on your
+              machine.
             </p>
           </section>
 
@@ -441,8 +436,7 @@ export default function Security(): React.ReactElement {
             </ul>
             <p className="mt-3">
               The full threat model is a private document reviewed and updated
-              quarterly. We share redacted excerpts with enterprise customers
-              under NDA on request.
+              quarterly. A redacted excerpt is available on request, under NDA.
             </p>
           </section>
 
@@ -505,11 +499,11 @@ export default function Security(): React.ReactElement {
 
           <section>
             <h2 className="mb-3 font-display text-xl font-bold text-text-primary">
-              Compliance roadmap
+              Compliance
             </h2>
             <p>
-              Iris is pre-SOC-2 today. For enterprise buyers asking about
-              compliance posture:
+              Iris holds no compliance certification, and none is in progress.
+              For anyone assessing it:
             </p>
             <ul className="mt-3 list-disc space-y-2 pl-6">
               <li>
@@ -518,13 +512,11 @@ export default function Security(): React.ReactElement {
                 internal STRIDE threat model.
               </li>
               <li>
-                <strong className="text-text-primary">
-                  If a hosted tier ever ships:
-                </strong>{" "}
-                formal SOC 2 Type I readiness, an independent penetration test
-                and an incident-response playbook would come with it. A hosted
-                tier is under consideration, not under construction — no version
-                is committed to it.
+                <strong className="text-text-primary">Not today:</strong>{" "}
+                SOC 2, an independent penetration test, a published
+                incident-response playbook. Because the server runs on your own
+                infrastructure, whether it fits your requirements is your
+                assessment to make.
               </li>
               <li>
                 <strong className="text-text-primary">The commitment:</strong>{" "}

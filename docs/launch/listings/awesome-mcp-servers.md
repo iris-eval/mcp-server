@@ -26,7 +26,7 @@ A line in someone else's README changes only when a maintainer merges a PR, so a
 | 🏠 | local service | Iris runs on the user's machine; traces stay in local SQLite |
 | 🍎 🪟 🐧 | macOS, Windows, Linux | the npm package and its SQLite driver install on all three; CI runs Linux and macOS, and the suite is also run on Windows during development |
 
-☁️ (cloud service) is left off: no hosted Iris is running today (the site's cloud page is a waitlist). It goes back on the day one is.
+☁️ (cloud service) is left off: there is no hosted Iris.
 
 ## The labels the list's bot applies
 

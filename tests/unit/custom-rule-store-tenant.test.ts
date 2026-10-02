@@ -1,9 +1,9 @@
 /*
  * Tenant isolation tests for CustomRuleStore.
  *
- * In OSS the store sees only LOCAL_TENANT — these tests prove the
- * per-tenant partition keeps Cloud SKU data isolated when multiple
- * tenant ids are used. Sets up a single store with a per-tenant file
+ * The server only ever passes LOCAL_TENANT — these tests prove the
+ * per-tenant partition keeps each tenant's rules apart when more than
+ * one tenant id is used. Sets up a single store with a per-tenant file
  * factory; deploys distinct rules under tenant-A and tenant-B; asserts:
  *   - list/enabledRules return only the caller's tenant's rules
  *   - delete only removes the caller's tenant's rule
