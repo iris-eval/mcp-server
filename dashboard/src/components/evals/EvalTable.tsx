@@ -3,6 +3,7 @@ import { DataTable, type Column } from '../shared/DataTable';
 import { Badge } from '../shared/Badge';
 import { ScoreBadge } from '../shared/ScoreBadge';
 import { TimeAgo } from '../shared/TimeAgo';
+import { stateBadge } from './verdictText';
 
 export function EvalTable({
   evals,
@@ -20,8 +21,11 @@ export function EvalTable({
     {
       key: 'passed',
       header: 'Result',
-      render: (e) => <Badge label={e.passed ? 'PASS' : 'FAIL'} variant={e.passed ? 'pass' : 'fail'} />,
-      width: '80px',
+      render: (e) => {
+        const b = stateBadge(e.verdict?.state, e.passed);
+        return <Badge label={b.label} variant={b.tone} />;
+      },
+      width: '7rem',
     },
     {
       key: 'score',
@@ -32,7 +36,8 @@ export function EvalTable({
     {
       key: 'rules',
       header: 'Rules',
-      render: (e) => `${e.rule_results.filter((r) => r.passed).length}/${e.rule_results.length}`,
+      // Passed of the rules that ran: a rule that skipped is in neither number.
+      render: (e) => `${e.rule_results.filter((r) => r.passed && !r.skipped).length}/${e.rule_results.filter((r) => !r.skipped).length}`,
       width: '80px',
     },
     {

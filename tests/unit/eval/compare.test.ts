@@ -29,6 +29,7 @@ const row = (over: Partial<RunResultRow> = {}): RunResultRow => ({
   configHash: 'cfg-1',
   createdAt: '2026-09-07T00:00:00.000Z',
   ...over,
+  state: over.state ?? (over.passed === false ? 'fail' : 'pass'),
 });
 
 /** n rows, `pass` of them passing, keyed case-1..case-n when paired. */

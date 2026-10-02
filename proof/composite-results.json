@@ -5334,7 +5334,7 @@
       "split": "dev"
     }
   ],
-  "commit": "78a07815",
+  "commit": "3b469034",
   "compositeVersion": "7b375542274e",
   "confidence": {
     "changed": {
@@ -5621,7 +5621,7 @@
       }
     }
   },
-  "generatedAt": "2026-10-02T06:06:18.097Z",
+  "generatedAt": "2026-10-02T19:03:55.729Z",
   "legacy": {
     "dev": {
       "accuracy": {
@@ -5727,6 +5727,18 @@
         "k": 51,
         "n": 76,
         "rate": 0.6711
+      },
+      "outcomes": {
+        "mayShip": {
+          "fail": 2,
+          "notChecked": 0,
+          "pass": 33
+        },
+        "mustNotShip": {
+          "fail": 25,
+          "notChecked": 0,
+          "pass": 51
+        }
       }
     },
     "realTranscripts": {
@@ -5833,6 +5845,18 @@
         "k": 13,
         "n": 18,
         "rate": 0.7222
+      },
+      "outcomes": {
+        "mayShip": {
+          "fail": 0,
+          "notChecked": 0,
+          "pass": 6
+        },
+        "mustNotShip": {
+          "fail": 5,
+          "notChecked": 0,
+          "pass": 13
+        }
       }
     },
     "test": {
@@ -5939,6 +5963,18 @@
         "k": 21,
         "n": 24,
         "rate": 0.875
+      },
+      "outcomes": {
+        "mayShip": {
+          "fail": 1,
+          "notChecked": 0,
+          "pass": 9
+        },
+        "mustNotShip": {
+          "fail": 3,
+          "notChecked": 0,
+          "pass": 21
+        }
       }
     }
   },
@@ -5954,7 +5990,7 @@
       "per-class": "π is the prior that each examined class is present, as originally specified; with K classes examined the prior that nothing is wrong is (1 − π)^K",
       "per-output": "π is the prior that the output is bad; spread over the K examined classes as π_c = 1 − (1 − π)^(1/K)"
     },
-    "risk": "class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired); 2,000 seeded draws over the Beta posteriors for the interval; gates and vetoes before the risk; measurements and policies never enter (src/eval/risk.ts, the module the product uses)",
+    "risk": "compose() in src/eval/compose.ts, the function every verdict the product gives comes from: gates and vetoes first, then a class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired), with 2,000 seeded draws over the Beta posteriors for the interval; measurements and policies never enter the risk",
     "shouldShip": "by construction (any tier-A class present → false) unless a human label overrides; cases with shouldShip null are excluded from accuracy",
     "split": "fnv1a(id + \"iris-composite-split-v1\") % 100 < 70 → dev, else test; never stored",
     "tau": 0.5
@@ -6226,6 +6262,18 @@
         "k": 20,
         "n": 76,
         "rate": 0.2632
+      },
+      "outcomes": {
+        "mayShip": {
+          "fail": 7,
+          "notChecked": 0,
+          "pass": 28
+        },
+        "mustNotShip": {
+          "fail": 56,
+          "notChecked": 0,
+          "pass": 20
+        }
       }
     },
     "realTranscripts": {
@@ -6332,6 +6380,18 @@
         "k": 7,
         "n": 18,
         "rate": 0.3889
+      },
+      "outcomes": {
+        "mayShip": {
+          "fail": 0,
+          "notChecked": 0,
+          "pass": 6
+        },
+        "mustNotShip": {
+          "fail": 11,
+          "notChecked": 0,
+          "pass": 7
+        }
       }
     },
     "test": {
@@ -6438,6 +6498,18 @@
         "k": 11,
         "n": 24,
         "rate": 0.4583
+      },
+      "outcomes": {
+        "mayShip": {
+          "fail": 1,
+          "notChecked": 0,
+          "pass": 9
+        },
+        "mustNotShip": {
+          "fail": 13,
+          "notChecked": 0,
+          "pass": 11
+        }
       }
     }
   },
@@ -6546,6 +6618,18 @@
         "k": 0,
         "n": 76,
         "rate": 0
+      },
+      "outcomes": {
+        "mayShip": {
+          "fail": 35,
+          "notChecked": 0,
+          "pass": 0
+        },
+        "mustNotShip": {
+          "fail": 76,
+          "notChecked": 0,
+          "pass": 0
+        }
       }
     },
     "realTranscripts": {
@@ -6652,6 +6736,18 @@
         "k": 0,
         "n": 18,
         "rate": 0
+      },
+      "outcomes": {
+        "mayShip": {
+          "fail": 6,
+          "notChecked": 0,
+          "pass": 0
+        },
+        "mustNotShip": {
+          "fail": 18,
+          "notChecked": 0,
+          "pass": 0
+        }
       }
     },
     "test": {
@@ -6758,6 +6854,18 @@
         "k": 0,
         "n": 24,
         "rate": 0
+      },
+      "outcomes": {
+        "mayShip": {
+          "fail": 10,
+          "notChecked": 0,
+          "pass": 0
+        },
+        "mustNotShip": {
+          "fail": 24,
+          "notChecked": 0,
+          "pass": 0
+        }
       }
     }
   },

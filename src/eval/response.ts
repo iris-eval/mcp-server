@@ -10,6 +10,7 @@
  * the drift-lock validates it against the real handlers.
  */
 import type { EvalResult } from '../types/eval.js';
+import { ruleStateOf } from './stamp.js';
 import { besideNote, type BesideReason } from './of-record.js';
 import type { DormantRule } from './dormant.js';
 import type { RuleChangesSinceStart } from '../custom-rule-store.js';
@@ -72,7 +73,8 @@ export function toEvaluationResponse(result: EvalResult, options: EvaluationResp
     // The other half of the veto contract: every critical rule that SKIPPED
     // is named so a fail-closed gate can treat the evaluation as unknown.
     ...(result.critical_skipped?.length ? { critical_skipped: result.critical_skipped } : {}),
-    rule_results: result.rule_results,
+    // A row stored before rule results carried `state` gets it here, from its own two flags.
+    rule_results: result.rule_results.map((r) => (r.state === undefined ? { ...r, state: ruleStateOf(r) } : r)),
     rules_evaluated: result.rules_evaluated,
     rules_skipped: result.rules_skipped,
     insufficient_data: result.insufficient_data,

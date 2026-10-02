@@ -41,10 +41,20 @@ class Verdict(TypedDict, total=False):
 class RuleResult(TypedDict, total=False):
     ruleName: str
     passed: bool
+    #: ``pass``, ``fail`` or ``not_checked``. Read this, not ``passed``: a rule
+    #: that skipped carries ``passed: False`` as a placeholder (server 0.20.0+).
+    state: str
     score: float
     message: str
     skipped: bool
     skipReason: str
+    #: On a rule that skipped for missing evidence: the inputs it reads that
+    #: the call did not carry.
+    lacked: list[str]
+    #: On such a rule, when somebody had asked for it: ``config`` (the
+    #: deployment) or ``call`` (the call itself). The verdict is then
+    #: ``unknown``, not ``pass``.
+    asked: str
     evidence: list[dict[str, Any]]
     value: dict[str, Any]
 

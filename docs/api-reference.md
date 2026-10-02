@@ -236,10 +236,10 @@ Since 0.10.0 the verdict is composed by the *kind* of claim each rule makes, in 
 2. `policy_gate` — a policy the deployment configured failed: a threshold **you** set (every count evidence carries `thresholdSource`, and a shipped default advises rather than gates unless `eval.defaultsGate` is `true`), a custom rule deployed at severity `high` or `critical`, or a judgment you asked for.
 3. `detector_veto` — a critical detector fired (`no_pii`, `no_injection_patterns`, `no_blocklist_words` by default; `eval.criticalRules` / `eval.nonCriticalRules` change the set).
 4. `critical_unknown` — a critical check was asked and could not answer (a regex killed at the sandbox budget, a broken definition): `unknown`, `passed: false`, unless `eval.onCriticalSkipped` is `"pass"` or `"fail"`.
-5. `required_evidence_missing` — `eval.requiredEvidence` named an input no evaluated rule saw: `unknown`.
+5. `required_evidence_missing` — evidence somebody asked for was not sent: `unknown` (not checked), which is `passed: false` and not a failure. Three things ask. `eval.requiredEvidence` names an input every evaluation must carry. A rule the deployment configured skipped for lack of what it reads: a policy whose threshold your config set (a cost ceiling on a call with no cost, a step ceiling on a call with no tool calls), a built-in rule you promoted with `eval.criticalRules`, or a rule you deployed at severity `high` or `critical`. Or the call supplied an expectation and nothing to compare it with (an `expected_trajectory` and no tool calls). `verdict.by` lists the missing inputs; the rule result carries `lacked` (the inputs) and `asked` (`"config"` or `"call"`), and an interpretation addressed to the agent names the rule, what it lacked and who asked. A rule nobody asked for that had nothing to judge stays out of this: a text-only evaluation is not unknown.
 6. `risk_over_loss` or `clean` — every detector and inference with a published error rate combines into one probability that the output is bad (`verdict.risk.pBad`, with a credible interval), weighed against the loss ratio the deployment states: the verdict fails when `pBad > 1 / (1 + eval.falsePassCost)` (default 1, so the cut is 0.5). `verdict.confidence` is `"decisive"` only when the interval excludes that cut AND the composite corpus measured the estimate holding at that risk level: in the verdict's tenth of `pBad`, the dev split holds at least 10 labelled verdicts from at least 4 distinct detector-firing patterns, their observed bad rate is consistent with the stated `pBad`, and its 95% interval lies wholly on the verdict's side of the cut, at the shipped prior (`src/eval/confidence.ts`, table generated into `src/eval/published-calibration.ts`). Otherwise it is `"marginal"`, and an interpretation says which test it did not pass. Decisive is relative to the deployment's cut: the same estimate can be decisive at one `eval.falsePassCost` and marginal at another. At the shipped defaults a clean pass is marginal, because the corpus measured the estimate running low there (proof/COMPOSITE.md, "The confidence label"); its interpretation says so plainly as a note, not a warning. A stored row carries the calibration table its label was read from (`provenance.composer.calibration`); a row labelled under a different table than the running release reads back with no `confidence` and a note saying why, rather than a label that table never gave.
 
-**The layers do not exclude each other.** `verdict.basis` is the first layer with something to say, and `verdict.also` lists every later one that would have decided the verdict on its own, in the same order, each as `{ basis, state, by }`: an output that breaks a policy you configured and leaks a credential reads `basis: "policy_gate"` with `also: [{ "basis": "detector_veto", "state": "fail", "by": ["no_pii"] }, …]`. `also` is absent when one layer decided alone, and on every pass. Anything that acts on one basis reads both: `iris-eval ingest --fail-on` and the `detector_veto` webhook do. `verdict.risk` is carried when the risk layer decided or the verdict is clean; under an earlier basis the estimate is not on the verdict, and a `risk_over_loss` entry in `also` says it was over your cut. `verdictPath()` (the engine export) still ends at the layer that decided.
+**The layers do not exclude each other, and a failure outranks "not checked".** `verdict.basis` is the first layer that fails, or when none fails the first that could not check; `verdict.also` lists every other layer that would have decided the verdict on its own, in the order above, each as `{ basis, state, by }`. So an output the risk layer fails on a deployment that also lacked required evidence reads `state: "fail"`, `basis: "risk_over_loss"`, with the missing evidence in `also`; until 0.20.0 it read `unknown`, and a second problem softened the first. A stored row is stamped with the composer rules it was judged under (`provenance.composer.rules`, `2` from 0.20.0) and reads back under them, so a row written by an earlier release still reads as its caller was given it. In the common case: an output that breaks a policy you configured and leaks a credential reads `basis: "policy_gate"` with `also: [{ "basis": "detector_veto", "state": "fail", "by": ["no_pii"] }, …]`. `also` is absent when one layer decided alone, and on every pass. Anything that acts on one basis reads both: `iris-eval ingest --fail-on` and the `detector_veto` webhook do. `verdict.risk` is carried when the risk layer decided or the verdict is clean; under an earlier basis the estimate is not on the verdict, and a `risk_over_loss` entry in `also` says it was over your cut. `verdictPath()` (the engine export) still ends at the layer that decided.
 
 Every rule result carries `role` — what the composer did with it here: `gate` (a policy you configured, or a judgment you paid for), `veto` (a critical detector), `risk` (a detection or inference whose published accuracy enters the estimate), `advisory` (a measurement, a policy at a shipped default, a custom rule at medium or low severity). Every count evidence carries `thresholdSource` — `config` when your config file set the number, `default` otherwise; it is where the number came from, never what it equals, so setting the shipped number counts as setting it.
 
@@ -249,7 +249,9 @@ Every rule result carries `role` — what the composer did with it here: `gate` 
 
 **Critical rules hard-fail.** `score` is a quality gradient; `passed` is the verdict. A failing (non-skipped) critical rule forces `passed: false` regardless of the weighted score, and the response lists the culprits in `critical_failures`. The critical rules are `no_pii`, `no_injection_patterns`, and `no_blocklist_words`, plus any deployed custom rule with severity `high` or `critical` — a leaked SSN cannot be averaged away by the other rules passing.
 
-The response echoes the `eval_type` that ran. When `eval_type` is omitted, every bundle runs (`eval_type: "all"` — completeness, relevance, safety, cost and any custom rules) and the response carries a `note` saying the default ran; name a bundle to narrow the run. Inside `categories`, a bundle that evaluated no rule (cost without `cost_usd`, relevance without `input`) reports `passed: null` and `score: null` with `insufficient_data: true` — not judged, neither passing nor failing, and not counted toward the overall verdict. The top-level `passed` stays boolean and is `false` when nothing at all was evaluated, so a gate keyed on it fails closed; read `insufficient_data` to tell "failed" from "not judged".
+**Read `state`, not `passed`, on a rule result and on a bundle row.** Every rule result carries `state`: `pass`, `fail`, or `not_checked` for a rule that skipped (which still carries `passed: false` and `score: 0` as placeholders). Every row of `categories` carries `state`: the evaluation's verdict, read for the rules that bundle holds. A row is `fail` when a layer of the verdict rests on one of its rules, `unknown` when the bundle evaluated no rule or the evaluation lacked evidence somebody asked for, and `pass` otherwise; `passed` is `state === "pass"`, or `null` when the bundle evaluated no rule. The rows and the verdict cannot disagree: every checked row of a passing evaluation passes, and when the evaluation fails, the row holding the rules that failed it fails. Until 0.20.0 a row was its own arithmetic (a weighted mean of the bundle's scores against a threshold), and on an evaluation that failed for a hidden tool error every row could read `passed: true`; `score` on a row is still that mean, as a gradient.
+
+The response echoes the `eval_type` that ran. When `eval_type` is omitted, every bundle runs (`eval_type: "all"` — completeness, relevance, safety, cost and any custom rules) and the response carries a `note` saying the default ran; name a bundle to narrow the run. Inside `categories`, a bundle that evaluated no rule (cost without `cost_usd`, relevance without `input`) reports `state: "unknown"`, `passed: null` and `score: null` with `insufficient_data: true` — not judged, neither passing nor failing, and not counted toward the overall verdict. The top-level `passed` stays boolean and is `false` when nothing at all was evaluated, so a gate keyed on it fails closed; read `insufficient_data` to tell "failed" from "not judged".
 
 #### A trace has one verdict, and a caller cannot replace it
 
@@ -921,7 +923,8 @@ Returns dashboard summary with key metrics and trends.
 | `total_cost_usd` | `number` | Sum of all `cost_usd` values, reported and estimated |
 | `estimated_cost_usd` | `number` | The part of `total_cost_usd` Iris estimated from token counts at list price ([cost.md](cost.md)) |
 | `error_rate` | `number` | Fraction of traces with errors (0-1) |
-| `eval_pass_rate` | `number` | Fraction of evaluations that passed (0-1) |
+| `eval_pass_rate` | `number` | Fraction of evaluations that passed (0-1). A verdict that was not checked is not a pass and stays in the denominator |
+| `eval_not_checked` | `number` | Evaluations in the window whose verdict was not checked (`verdict.state: "unknown"`): not passes, and not failures |
 | `traces_per_hour` | `Array<{hour, count}>` | Time-series histogram of trace volume |
 | `top_agents` | `Array<{agent_name, count}>` | Agents ranked by trace count |
 
@@ -1402,10 +1405,12 @@ Every run, newest first — registered runs and runs that exist only because a t
 Every countable field is derived from the run's rows rather than stored beside them: a stored count goes wrong the moment a trace is deleted, and nobody finds out from the number itself.
 
 ```json
-{ "runs": [{ "runId": "nightly-1", "label": null, "reevaluationOf": null, "traces": 40, "evaluated": 40, "passed": 38,
+{ "runs": [{ "runId": "nightly-1", "label": null, "reevaluationOf": null, "traces": 40, "evaluated": 40, "passed": 37, "notChecked": 2,
              "agentNames": ["support-bot"], "engineVersions": ["0.12.0"], "rulesetHashes": ["3f2a91c0"],
              "startedAt": "2026-09-06T02:00:00Z", "lastActivityAt": "2026-09-06T02:14:31Z" }], "count": 1 }
 ```
+
+`notChecked` is the evaluations whose verdict was not checked (`verdict.state: "unknown"`). They are not passes and not failures: in the example 37 passed, 2 were not checked and 1 failed. Every pass rate keeps them in its denominator, so leaving out what a check reads never raises a rate.
 
 Query: `limit` (1–500, default 50).
 
@@ -1413,7 +1418,7 @@ Query: `limit` (1–500, default 50).
 
 ### GET /api/v1/runs/:id
 
-One run with its counts and provenance, plus the evaluations in it — **collapsed to one per trace**, exactly as a comparison counts them, so this route and `compare_runs` report the same *n*. 404 when nothing mentions the run.
+One run with its counts and provenance, plus the evaluations in it — **collapsed to one per trace**, exactly as a comparison counts them, so this route and `compare_runs` report the same *n*. Each result carries `state` (`pass`, `fail`, or `unknown` for a verdict that was not checked) beside `passed`. 404 when nothing mentions the run.
 
 ---
 
@@ -1423,7 +1428,7 @@ Pin a run as the baseline every later run is compared against, or unpin it. Body
 
 ### GET /api/v1/cases/:key
 
-Every attempt at one case, across runs. Deliberately **not** collapsed: here the repetition is the measurement. Reports `attempts`, `passed`, `flaky` (answered both ways) and the runs involved. 404 when no evaluation carries the key.
+Every attempt at one case, across runs. Deliberately **not** collapsed: here the repetition is the measurement. Reports `attempts`, `passed`, `notChecked`, `flaky` (answered both ways) and the runs involved; each attempt carries `state` beside `passed`. 404 when no evaluation carries the key.
 
 Query: `run` narrows to one run.
 
@@ -1456,7 +1461,7 @@ Below `minimumPerWindow` evaluations on either side no direction is offered: `di
 }
 ```
 
-Each window carries `interval`, the 95% Wilson interval on its own pass rate (null for an empty window — "0 of 0" is unknown, not zero), so a reader has n and the interval per window without computing anything. The dashboard's Drift view, split by run, shows one such pair per cohort.
+Each window carries `interval`, the 95% Wilson interval on its own pass rate (null for an empty window — "0 of 0" is unknown, not zero), so a reader has n and the interval per window without computing anything. Each also carries `notChecked`: the evaluations in the window whose verdict was not checked, which count in `evaluated` and not in `passed`. The dashboard's Drift view, split by run, shows one such pair per cohort.
 
 Query: `period` (`24h`…`180d`, default `7d`), `run` — which narrows **both** windows, never one.
 

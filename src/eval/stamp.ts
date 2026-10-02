@@ -16,11 +16,12 @@
  * stamp could only say veto or "term", and the schema advertised four
  * values nothing produced).
  */
-import type { EvalContext, EvalRule, EvalRuleResult, Need, SkipClass, Uncertainty } from '../types/eval.js';
+import type { EvalContext, EvalRule, EvalRuleResult, Need, RuleState, SkipClass, Uncertainty } from '../types/eval.js';
 import type { EffectiveCriticality } from './criticality.js';
 import { stepsOf } from './steps.js';
 import { DEFAULT_PREVALENCE, missRateInterval, ppvInterval, publishedAccuracyFor, publishedProvenance } from './accuracy.js';
 import type { LocalPrecision } from './labels.js';
+import { thresholdSourceOf } from './thresholds.js';
 
 /** The prior in force and where it came from — the engine resolves it once per evaluation. */
 export interface PriorInForce {
@@ -57,7 +58,33 @@ export function inputsPresent(context: EvalContext): Set<Need> {
   if (context.tokenUsage && (context.tokenUsage.prompt_tokens !== undefined || context.tokenUsage.completion_tokens !== undefined || context.tokenUsage.total_tokens !== undefined)) {
     present.add('tokens');
   }
+  if (context.expectedTrajectory !== undefined) present.add('expected_trajectory');
   return present;
+}
+
+/**
+ * Whether somebody asked for a rule that then skipped for missing
+ * evidence, and who.
+ *
+ * A trajectory rule on a call with no tool calls is not applicable, and
+ * that is not a finding: treating it as one would make every text-only
+ * evaluation unknown. But a deployment that set a cost ceiling has said the
+ * cost matters, and a call that leaves the cost out is then not "nothing to
+ * check". Until 0.20.0 it read as a pass: leaving out the one field a
+ * configured policy reads was the cheapest way through it.
+ */
+export function askedOf(rule: EvalRule, context: EvalContext, effective: EffectiveCriticality, present: ReadonlySet<Need>): 'config' | 'call' | undefined {
+  // Promoted to critical by the deployment (eval.criticalRules), or a rule the deployment wrote and gave a gating severity.
+  if (effective.critical && (effective.source === 'config' || rule.origin === 'custom')) return 'config';
+  if (rule.kind === 'policy' && (rule.thresholdKeys ?? []).some((key) => thresholdSourceOf(context, key) === 'config')) return 'config';
+  // The call said what it expected and did not send what to compare it with.
+  if ((rule.needs ?? []).includes('expected_trajectory') && present.has('expected_trajectory')) return 'call';
+  return undefined;
+}
+
+/** The state of a rule result, from the two flags every result carries: not checked when it skipped, else pass or fail. */
+export function ruleStateOf(r: { passed: boolean; skipped?: boolean }): RuleState {
+  return r.skipped === true ? 'not_checked' : r.passed ? 'pass' : 'fail';
 }
 
 export function skipClassOf(raw: EvalRuleResult): SkipClass | undefined {
@@ -123,11 +150,14 @@ export function stampRuleResult(
   rule: EvalRule,
   raw: EvalRuleResult,
   context: EvalContext,
-  _effective: EffectiveCriticality,
+  effective: EffectiveCriticality,
   options: StampOptions = {},
-): Pick<EvalRuleResult, 'kind' | 'question' | 'classes' | 'ruleVersion' | 'saw' | 'skipClass' | 'uncertainty' | 'origin'> {
+): Pick<EvalRuleResult, 'kind' | 'question' | 'classes' | 'ruleVersion' | 'saw' | 'skipClass' | 'lacked' | 'asked' | 'uncertainty' | 'origin'> {
   const present = inputsPresent(context);
   const skipClass = skipClassOf(raw);
+  // What a rule that had nothing to judge was missing, and whether anyone had asked for it.
+  const lacked = skipClass === 'not_applicable' ? (rule.needs ?? []).filter((n) => !present.has(n)) : [];
+  const asked = lacked.length > 0 ? askedOf(rule, context, effective, present) : undefined;
   /*
    * A result an LLM judge decided (answers_the_ask with a relevance judge,
    * #649) is a judgment, whatever the rule declares for its lexical
@@ -146,6 +176,8 @@ export function stampRuleResult(
     ...(rule.origin !== undefined ? { origin: rule.origin } : {}),
     ...(rule.needs !== undefined ? { saw: rule.needs.filter((n) => present.has(n)) } : {}),
     ...(skipClass !== undefined ? { skipClass } : {}),
+    ...(lacked.length > 0 ? { lacked } : {}),
+    ...(asked !== undefined ? { asked } : {}),
     ...(uncertainty !== undefined ? { uncertainty } : {}),
   };
 }

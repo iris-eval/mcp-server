@@ -10,6 +10,8 @@ const colorMap: Record<string, { bg: string; fg: string }> = {
   CLIENT: { bg: '#422006', fg: '#f59e0b' },
   pass: { bg: '#052e16', fg: '#22c55e' },
   fail: { bg: '#450a0a', fg: '#f44948' },
+  // Not checked: neither colour of a result.
+  unknown: { bg: '#27272a', fg: '#a1a1aa' },
 };
 
 export function Badge({ label, variant }: { label: string; variant?: string }) {

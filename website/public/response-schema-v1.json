@@ -86,7 +86,7 @@
           ]
         },
         "also": {
-          "description": "every later layer that would have decided this verdict on its own, in the order the layers are asked. basis names only the first layer with something to say; anything that acts on one basis reads basis AND also. Absent when the deciding layer was the only one, and on every pass.",
+          "description": "every other layer that would have decided this verdict on its own, in the order the layers are asked. basis names one layer (the first that fails, else the first that could not check); anything that acts on one basis reads basis AND also. Absent when the deciding layer was the only one, and on every pass.",
           "type": "array",
           "items": {
             "type": "object",
@@ -292,6 +292,17 @@
             "calibration": {
               "description": "the composite version of the calibration table the confidence label was read from",
               "type": "string"
+            },
+            "requiredEvidence": {
+              "description": "the inputs the deployment requires on every evaluation, when it requires any",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "rules": {
+              "description": "which composer rules produced the verdict: 2 from 0.20.0 (a failure outranks a layer that could not check); absent on earlier rows, which read back under rules 1",
+              "type": "number"
             }
           },
           "required": [
@@ -415,6 +426,15 @@
             "enum": [
               "default",
               "config"
+            ]
+          },
+          "state": {
+            "description": "read this, not passed: a rule that skipped is not_checked, and carries passed false",
+            "type": "string",
+            "enum": [
+              "pass",
+              "fail",
+              "not_checked"
             ]
           },
           "passed": {
@@ -1144,7 +1164,17 @@
               "null"
             ]
           },
+          "state": {
+            "description": "the verdict, read for the rules this bundle holds: fail when a layer of the verdict rests on one of them; unknown is not checked",
+            "type": "string",
+            "enum": [
+              "pass",
+              "fail",
+              "unknown"
+            ]
+          },
           "passed": {
+            "description": "state is pass; null when the bundle evaluated no rule",
             "type": [
               "boolean",
               "null"

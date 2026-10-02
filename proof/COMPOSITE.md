@@ -1,13 +1,13 @@
 # The verdict, measured — the composite corpus
 
-Generated 2026-10-02T06:06:18.097Z for v0.19.0 (local generating commit `78a07815` — branch commits are squashed on merge, so cite the version).
+Generated 2026-10-02T19:03:55.729Z for v0.19.0 (local generating commit `3b469034` — branch commits are squashed on merge, so cite the version).
 Composite version `7b375542274e` (sha256 over proof/composite/*.json, the real transcripts and the family corpus `7022143b0265`). Reproduce with `npm run proof -- --composite`; CI runs `npm run proof -- --check --composite`.
 
 145 cases: 24 real transcripts (the held-out line: staged, not production traffic) and 121 composed; 100 must not ship, 45 may, 0 unlabelled. Split: 111 dev / 34 test, fnv1a(id + "iris-composite-split-v1") % 100 < 70 → dev, else test; never stored. Headline numbers are the test split. The expected verdict is true by construction — the classes present are a fact of what was injected — and never derived from a composer.
 
 ## Three composers on the same rule results
 
-**legacy** — the pre-0.10.0 arithmetic, computed explicitly by proof/lib/legacy-composer.ts: weighted score ≥ the default threshold and no critical failure. From 0.10.0 the engine composes passed, so this baseline is derived rather than read off the result; from 0.12.0 it is no longer a product behaviour and this file is the only place it survives. **risk** — the risk composer run here in the harness only: class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired); 2,000 seeded draws over the Beta posteriors for the interval; gates and vetoes before the risk; measurements and policies never enter (src/eval/risk.ts, the module the product uses); τ = 0.5 (a false pass costs 1× a false block), prior 0.5. Two readings of the prior are measured: *per-output* (π is the prior that the output is bad; spread over the K examined classes as π_c = 1 − (1 − π)^(1/K)) and *per-class* (π is the prior that each examined class is present, as originally specified; with K classes examined the prior that nothing is wrong is (1 − π)^K).
+**legacy** — the pre-0.10.0 arithmetic, computed explicitly by proof/lib/legacy-composer.ts: weighted score ≥ the default threshold and no critical failure. From 0.10.0 the engine composes passed, so this baseline is derived rather than read off the result; from 0.12.0 it is no longer a product behaviour and this file is the only place it survives. **risk** — the product's own composer: compose() in src/eval/compose.ts, the function every verdict the product gives comes from: gates and vetoes first, then a class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired), with 2,000 seeded draws over the Beta posteriors for the interval; measurements and policies never enter the risk; τ = 0.5 (a false pass costs 1× a false block), prior 0.5. Two readings of the prior are measured: *per-output* (π is the prior that the output is bad; spread over the K examined classes as π_c = 1 − (1 − π)^(1/K)) and *per-class* (π is the prior that each examined class is present, as originally specified; with K classes examined the prior that nothing is wrong is (1 − π)^K).
 
 | Split | Composer | Accuracy vs shouldShip (95% CI) | False blocks on clean (95% CI) | Missed blocks (95% CI) | Brier | ECE |
 |---|---|---|---|---|--:|--:|
@@ -20,6 +20,16 @@ Composite version `7b375542274e` (sha256 over proof/composite/*.json, the real t
 | dev | legacy | 52.3% [43.0, 61.3] (n=111) | 5.7% [1.6, 18.6] (n=35) | 67.1% [55.9, 76.6] (n=76) | 0.567 | 0.608 |
 | dev | risk, per-output prior | 75.7% [66.9, 82.7] (n=111) | 20.0% [10.0, 35.9] (n=35) | 26.3% [17.7, 37.2] (n=76) | 0.189 | 0.192 |
 | dev | risk, per-class prior | 68.5% [59.3, 76.4] (n=111) | 100.0% [90.1, 100.0] (n=35) | 0.0% [0.0, 4.8] (n=76) | 0.224 | 0.250 |
+
+### The three states, counted apart
+
+A verdict is pass, fail, or not checked. In the table above a verdict that was not checked counts as a block, because it did not let the output through. Here the three are apart (risk composer, per-output prior), so a reader sees how many blocks were findings and how many were answers that could not be reached, and so a composer cannot look better on bad outputs by declining to answer without it showing on the good ones.
+
+| Split | Must not ship: fail / not checked / pass | May ship: pass / not checked / fail |
+|---|---|---|
+| test | 13 / 0 / 11 | 9 / 0 / 1 |
+| real transcripts (held out, staged) | 11 / 0 / 7 | 6 / 0 / 0 |
+| dev | 56 / 0 / 20 | 28 / 0 / 7 |
 
 **Difference from legacy (Newcombe 95%).** per-output prior: test 29.4 points [5.7, 48.9]; real transcripts 25.0 points [-2.6, 47.9]. per-class prior: test 35.3 points [11.6, 54.0]; real transcripts 29.2 points [1.6, 51.3]. accuracy(risk variant) − accuracy(legacy); an interval that excludes zero on the positive side says the variant is more accurate on this corpus; one that straddles zero says the corpus cannot tell them apart.
 

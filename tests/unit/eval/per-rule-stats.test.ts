@@ -87,6 +87,7 @@ describe('twenty null rules, a thousand comparisons', () => {
           caseKey: `case-${i}`,
           agentName: 'agent',
           passed: failed.length === 0,
+          state: failed.length === 0 ? ('pass' as const) : ('fail' as const),
           failedRules: failed,
           judgedRules: RULES,
           criticalFailed: [],

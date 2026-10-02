@@ -25,7 +25,7 @@ Or from the environment, which merges over the file: `IRIS_WEBHOOK_URL`, `IRIS_W
 |---|---|---|---|
 | `url` | yes | — | An http(s) URL. The receiver. |
 | `secret` / `secretFile` | for the `iris` format | — | The signing key: any string, or a `whsec_`-prefixed base64 secret the Standard Webhooks way. `secretFile` reads a file (trimmed) — the secret-file pattern for Docker and Kubernetes. One of the two, not both. |
-| `events` | no | every event | Which of the five events to send (below). A name Iris does not send refuses startup naming it. |
+| `events` | no | every event | Which of the six events to send (below). A name Iris does not send refuses startup naming it. |
 | `cooldownMinutes` | no | `10` | The same event for the same agent and subject is sent once per window. `0` sends every one. |
 | `format` | no | `iris` | `iris` (the signed JSON below), `slack` (`{ "text": … }` for a Slack incoming webhook), `discord` (`{ "content": … }` for a Discord webhook). The slack and discord formats may run unsigned: their URL is the credential. |
 | `timeoutMs` | no | `10000` | One attempt's limit. |
@@ -34,17 +34,18 @@ The config file is strict: a misspelled key refuses startup naming the key it me
 
 The webhook is the server's. `iris-eval ingest` runs in its own process and posts nothing; the CI gate has its exit codes for that.
 
-## The five events
+## The six events
 
 | Event | When | The cooldown's subject |
 |---|---|---|
 | `verdict_fail` | The composed verdict failed, on any basis — the alert issue #5 asked for. A verdict left `unknown` that a later layer would have failed counts. | the rule that decided |
+| `verdict_not_checked` | The verdict could not be reached and no layer failed it: nothing was judged, a critical check could not answer, or evidence somebody asked for was not sent (a cost ceiling you set, on a trace with no cost). It is not a pass. New in 0.20.0; a subscription that names no `events` receives it. | what was missing, or the check that could not answer |
 | `detector_veto` | A critical detection fired: PII, an injection, an action policy. `verdict.basis` is `"detector_veto"`, or an earlier layer decided first and `verdict.also` carries it. | the detector |
 | `cost_anomaly` | The `cost_anomaly` rule fired: this trace's cost is an outlier against the agent's own last two hundred costed traces (modified z ≥ 3.5). | `cost_anomaly` |
 | `regression_alarm` | The CUSUM watcher crossed its line at this evaluation for one rule: the fail rate has shifted against the baseline it settled on. It reports and never gates; the watcher resets and re-baselines. | the rule (and the run, when the stream is per run) |
 | `flaky_case` | A case was answered both ways for the first time: every earlier attempt agreed and this one differs. Fires once per case, at the transition. | the case key |
 
-One evaluation can be several events — a vetoed verdict is also a failed one — and each is its own delivery, so subscribe to what you want to act on. `verdict.basis` names only the first layer with something to say: an output that breaks a policy you configured and leaks a credential reads `"basis": "policy_gate"` with `"also": [{ "basis": "detector_veto", "state": "fail", "by": ["no_pii"] }]`, and `detector_veto` is delivered for it. `detector_veto` and `regression_alarm` are the two worth a pager; `verdict_fail` on a busy agent is a feed, and the cooldown is what keeps it readable.
+One evaluation can be several events — a vetoed verdict is also a failed one — and each is its own delivery, so subscribe to what you want to act on. `verdict.basis` names one layer (the first that fails, or when none fails the first that could not check): an output that breaks a policy you configured and leaks a credential reads `"basis": "policy_gate"` with `"also": [{ "basis": "detector_veto", "state": "fail", "by": ["no_pii"] }]`, and `detector_veto` is delivered for it. `detector_veto` and `regression_alarm` are the two worth a pager; `verdict_fail` on a busy agent is a feed, and the cooldown is what keeps it readable.
 
 ### How often `regression_alarm` fires when nothing has changed
 

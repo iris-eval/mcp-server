@@ -147,6 +147,8 @@ export function registerRunRoutes(router: Router, storage: IStorageAdapter): voi
         caseKey: req.params.key,
         attempts: attempts.length,
         passed,
+        // Neither passes nor failures: the attempts whose verdict could not be reached.
+        notChecked: attempts.filter((a) => a.state === 'unknown').length,
         // Answered both ways across its attempts — the signal a single run
         // cannot produce, and the reason this route exists at all.
         flaky: passed > 0 && passed < attempts.length,

@@ -208,7 +208,10 @@ function computeRuleSnapshot(evals: EvalResult[]): MomentRuleSnapshot {
  *
  * "partial" now means what it says: several evaluations of one trace and
  * they did not agree. An `unknown` verdict reads as unevaluated, because
- * that is what it is — asked, and unable to answer.
+ * that is what it is — asked, and unable to answer. Beside evaluations
+ * that all passed it is a disagreement, not a pass: until 0.20.0 it was
+ * dropped, and a trace with one pass and one verdict that could not be
+ * reached read "pass".
  */
 function computeVerdict(evals: EvalResult[], snapshot: MomentRuleSnapshot): MomentVerdict {
   if (evals.length === 0) return 'unevaluated';
@@ -216,7 +219,7 @@ function computeVerdict(evals: EvalResult[], snapshot: MomentRuleSnapshot): Mome
   const decided = evals.filter((e) => e.verdict === undefined || e.verdict.state !== 'unknown');
   if (decided.length === 0) return 'unevaluated';
   const passed = decided.filter((e) => e.passed).length;
-  if (passed === decided.length) return 'pass';
+  if (passed === decided.length) return decided.length === evals.length ? 'pass' : 'partial';
   if (passed === 0) return 'fail';
   return 'partial';
 }

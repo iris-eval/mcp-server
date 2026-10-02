@@ -231,6 +231,33 @@ families as the per-rule numbers, so the accuracy here is conditional on that
 corpus. The real-transcript line is held out of every per-rule rate the
 composer reads; what that does and does not mean is in the next section.
 
+## Evidence left out, and a failure added
+
+`npm run proof -- --invariants` writes `proof/invariant-results.json` and
+[`proof/INVARIANTS.md`](../proof/INVARIANTS.md). It answers two questions
+about the verdict that an accuracy number does not.
+
+**Does sending less improve a verdict?** Each labelled case is evaluated
+again with one field left out of the call: the tool calls, their outputs,
+their errors, the last call, the input, the tool catalogue, the cost, the
+token counts. With nothing said about what a call must carry, it does: a
+call that leaves a field out looks the same as a call from an agent that
+has no such field, and the table publishes how many failing cases pass for
+each field. Where a contract is in force, it does not. A contract is one of
+three things: the deployment requires the input on every evaluation
+(`eval.requiredEvidence`), the deployment set the threshold of a rule that
+reads it, or the call supplied what it is compared with. Under each, every
+case with the field left out reads fail or not checked, never pass, and the
+command fails if one passes.
+
+**Does a second failure rescue the first?** Each case that does not pass is
+evaluated again with one more thing wrong with it. None may pass, and the
+command fails if one does.
+
+What a deployment that gates on a verdict takes from the first table: name
+the evidence the gate must rest on. `eval.requiredEvidence: ["tool_calls"]`
+closes the largest row.
+
 ## The 24 real transcripts
 
 `npm run proof -- --transcripts` writes `proof/transcript-results.json` and

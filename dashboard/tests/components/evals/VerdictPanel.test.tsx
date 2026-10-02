@@ -185,7 +185,7 @@ describe('VerdictPanel: the verdict with its basis, coverage and reasons', () =>
     expect(container.querySelector('[data-confidence="marginal"]')?.getAttribute('data-confidence-tone')).toBe('warn');
   });
 
-  it('a critical rule that could not judge: UNKNOWN, the notice, and the block sentence', () => {
+  it('a critical rule that could not judge: NOT CHECKED, the notice, and the block sentence', () => {
     const { container } = panel({
       passed: false,
       verdict: { state: 'unknown', passed: false, basis: 'critical_unknown', by: ['no_pii'], risk: null },
@@ -194,7 +194,7 @@ describe('VerdictPanel: the verdict with its basis, coverage and reasons', () =>
         { severity: 'block', addressee: 'operator', text: 'A critical check was asked and could not answer (no_pii).', configKey: 'eval.onCriticalSkipped' },
       ],
     });
-    expect(container.querySelector('[data-verdict-state]')?.textContent).toBe('UNKNOWN');
+    expect(container.querySelector('[data-verdict-state]')?.textContent).toBe('NOT CHECKED');
     expect(container.querySelector('[data-critical-skipped="no_pii"]')?.textContent).toContain('unknown, not clean');
     expect(container.querySelector('[data-interpretation="block"]')?.getAttribute('data-config-key')).toBe('eval.onCriticalSkipped');
   });

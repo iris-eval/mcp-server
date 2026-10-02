@@ -75,7 +75,7 @@ describe('iris-eval ingest', () => {
    * `basis` names the first layer with something to say, and the gate layer
    * is asked before the veto layer. With a policy that gates, an output that
    * also leaked a Social Security number read `policy_gate`, and
-   * `--fail-on detector_veto` (the gate action's default) exited 0 on it.
+   * `--fail-on detector_veto` (the gate action's default until 0.20.0) exited 0 on it.
    */
   it('a leak in an output that also broke a gating policy still trips --fail-on detector_veto, and the receipt names both layers', async () => {
     writeFileSync(join(home, 'config.json'), JSON.stringify({ eval: { defaultsGate: true } }));

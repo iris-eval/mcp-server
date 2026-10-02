@@ -11,8 +11,8 @@ import type {
 } from '../types/eval.js';
 import { getRulesForType, createCustomRule } from './rules/index.js';
 import { criticalityResolver, type CriticalityOverrides, type EffectiveCriticality } from './criticality.js';
-import { compose, interpretations, roleOf, DEFAULT_COMPOSE, type ComposeConfig } from './compose.js';
-import { inputsPresent, stampRuleResult, type PriorInForce } from './stamp.js';
+import { bundleState, compose, interpretations, roleOf, COMPOSER_RULES, DEFAULT_COMPOSE, type ComposeConfig } from './compose.js';
+import { inputsPresent, ruleStateOf, stampRuleResult, type PriorInForce } from './stamp.js';
 import type { LocalLabelSource } from './local-labels.js';
 import { toSteps } from './steps.js';
 import { toolsHash } from './catalogue.js';
@@ -257,6 +257,7 @@ export class EvalEngine {
       priorMode: this.compose.priorMode,
       calibration: PUBLISHED_CALIBRATION.compositeVersion,
       ...(this.compose.requiredEvidence.length > 0 ? { requiredEvidence: [...this.compose.requiredEvidence] } : {}),
+      rules: COMPOSER_RULES,
     };
   }
 
@@ -348,10 +349,21 @@ export class EvalEngine {
     // The role each result played, from the composer's own predicates — the
     // one writer, after every stamp and before anything reads it.
     for (const r of result.rule_results) r.role = roleOf(r, this.compose);
-    const verdict = compose(result, this.effectiveCompose());
+    const cfg = this.effectiveCompose();
+    const verdict = compose(result, cfg);
     result.verdict = verdict;
     result.passed = verdict.passed;
-    const notes = interpretations(result, verdict, this.effectiveCompose());
+    /*
+     * Each bundle row is the verdict, read for the rules the bundle holds.
+     * The rows were filled by summarize(), the pre-0.10.0 arithmetic, which
+     * is still the score and no longer what passes: read as a verdict,
+     * every row could say passed on an evaluation that failed.
+     */
+    for (const [type, row] of Object.entries(result.categories ?? {})) {
+      row.state = bundleState(result.rule_results.filter((r) => r.category === type), verdict, cfg);
+      row.passed = row.insufficient_data ? null : row.state === 'pass';
+    }
+    const notes = interpretations(result, verdict, cfg);
     if (notes.length > 0) result.interpretations = notes;
     return result;
   }
@@ -662,6 +674,7 @@ export class EvalEngine {
         ...(category !== undefined ? { category } : {}),
         critical,
         criticalSource: source,
+        state: ruleStateOf(raw),
         ...rest,
         ...stampRuleResult(rule, raw, context, effective, { prior: this.effectivePrior(), local: this.localLabels?.precision.get(rule.name) }),
       });

@@ -41,6 +41,7 @@ import { summarise, F1_CI_METHOD, type Observation, type RuleSummary } from './l
 import { CREDIBLE_METHOD } from './lib/intervals.js';
 import { contextFor } from './lib/context.js';
 import { TRANSCRIPTS_MD, TRANSCRIPT_RESULTS_JSON, measureTranscripts, renderTranscriptMarkdown, type TranscriptResults } from './lib/transcripts.js';
+import { INVARIANTS_MD, INVARIANT_RESULTS_JSON, measureInvariants, renderInvariantsMarkdown, type InvariantResults } from './lib/invariants.js';
 import { measureTransforms, type TransformResults } from './lib/transforms.js';
 import { loadCustomCorpus, validateCustomCorpusFile, measureCustom, type CustomRow } from './lib/custom-corpus.js';
 import { wilson } from './judge/lib/wilson.js';
@@ -677,6 +678,64 @@ async function transcripts(check: boolean): Promise<void> {
 `);
 }
 
+/**
+ * What a verdict does when evidence is taken away and when a failure is
+ * added (lib/invariants.ts). Same shape as `--transcripts`: measure,
+ * render, and on `--check` diff both artefacts against what is committed.
+ * A violation (a pass under a contract, a verdict rescued by a failure)
+ * fails the command in either mode: those two counts are claims, and the
+ * file is not written with a claim broken.
+ */
+async function invariants(check: boolean): Promise<void> {
+  const { results: partial } = await measureInvariants(repoRoot);
+  const generatedAt = new Date().toISOString();
+  const commit = gitCommit(repoRoot);
+  const version = (JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf-8')) as { version: string }).version;
+  const results: InvariantResults = { ...partial, generatedAt, commit, version };
+  const json = stableJson(results);
+  const md = renderInvariantsMarkdown(results);
+  for (const r of results.removals) {
+    process.stdout.write(`  ${r.id.padEnd(18)} ${String(r.carried).padStart(3)} carry it · fail→pass ${r.improved.failToPass} · fail→not checked ${r.improved.failToNotChecked}
+`);
+  }
+  process.stdout.write(`  under a contract: ${results.violations.contract} passed · rescued by an added failure: ${results.violations.rescued}
+`);
+  if (results.violations.contract > 0 || results.violations.rescued > 0) {
+    const passed = results.contracts.filter((c) => c.passed.length > 0).map((c) => `${c.what}, ${c.removal}: ${c.passed.join(', ')}`);
+    const rescued = results.additions.filter((a) => a.rescued.length > 0).map((a) => `${a.what}: ${a.rescued.join(', ')}`);
+    process.stderr.write(`proof --invariants — FAIL: a verdict passed with evidence left out under a contract, or was rescued by an added failure.
+  ${[...passed, ...rescued].join('\n  ')}
+`);
+    process.exit(1);
+  }
+  if (check) {
+    let committedJson = '';
+    let committedMd = '';
+    try {
+      committedJson = await readFile(resolve(repoRoot, INVARIANT_RESULTS_JSON), 'utf-8');
+      committedMd = await readFile(resolve(repoRoot, INVARIANTS_MD), 'utf-8');
+    } catch {
+      process.stderr.write(`proof --check --invariants — ${INVARIANT_RESULTS_JSON} or ${INVARIANTS_MD} is missing; run npm run proof -- --invariants and commit both.
+`);
+      process.exit(1);
+    }
+    const fresh = normaliseForCheck(json, md);
+    const committed = normaliseForCheck(committedJson, committedMd);
+    if (fresh.json === committed.json && fresh.md === committed.md) {
+      process.stdout.write(`proof --check --invariants — OK: ${INVARIANT_RESULTS_JSON} and ${INVARIANTS_MD} match this code on composite ${results.compositeVersion}
+`);
+      return;
+    }
+    process.stderr.write(`proof --check --invariants — FAIL: ${[fresh.json !== committed.json && INVARIANT_RESULTS_JSON, fresh.md !== committed.md && INVARIANTS_MD].filter(Boolean).join(' and ')} differ from what this code produces. Run npm run proof -- --invariants and commit the result.
+`);
+    process.exit(1);
+  }
+  await writeFile(resolve(repoRoot, INVARIANT_RESULTS_JSON), json);
+  await writeFile(resolve(repoRoot, INVARIANTS_MD), md);
+  process.stdout.write(`proof — wrote ${INVARIANT_RESULTS_JSON} and ${INVARIANTS_MD} (composite ${results.compositeVersion}, ${results.cases} cases)
+`);
+}
+
 async function main(): Promise<void> {
   const args = new Set(process.argv.slice(2));
   const check = args.has('--check');
@@ -686,6 +745,10 @@ async function main(): Promise<void> {
   }
   if (args.has('--transcripts')) {
     await transcripts(check);
+    return;
+  }
+  if (args.has('--invariants')) {
+    await invariants(check);
     return;
   }
 

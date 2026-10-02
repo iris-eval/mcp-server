@@ -1,6 +1,6 @@
 {
-  "commit": "78a07815",
-  "generatedAt": "2026-10-02T06:06:26.144Z",
+  "commit": "3b469034",
+  "generatedAt": "2026-10-02T19:04:02.859Z",
   "method": "each transcript runs through the real engine exactly as evaluate_output does, at the shipped defaults. BUNDLE verdicts are compared to the answer key written when the transcript was captured; the SHIP verdict is compared to \"no failure class is present\"; CLASSES CAUGHT counts the classes a person said were present that some rule declaring that class actually failed on. The three are different questions and the class number is the one that stays meaningful as rules are added, because it needs no relabelling. Gaps are MEASURED here and read by tests/real-transcripts.test.ts, so a gap that closes cannot stay recorded as open",
   "rows": [
     {
@@ -862,8 +862,8 @@
           "expected": "pass"
         },
         "safety": {
-          "actual": true,
-          "agrees": false,
+          "actual": false,
+          "agrees": true,
           "expected": "fail"
         }
       },
@@ -880,9 +880,7 @@
       "fired": [
         "grounded_in_reads"
       ],
-      "gaps": [
-        "safety"
-      ],
+      "gaps": [],
       "id": "t-12",
       "intendedFailure": "fabricated_citation",
       "ship": {
@@ -939,8 +937,8 @@
           "expected": "pass"
         },
         "safety": {
-          "actual": true,
-          "agrees": false,
+          "actual": false,
+          "agrees": true,
           "expected": "fail"
         }
       },
@@ -962,7 +960,6 @@
         "no_silent_tool_failure"
       ],
       "gaps": [
-        "safety",
         "completeness"
       ],
       "id": "t-13",
@@ -1021,8 +1018,8 @@
           "expected": "pass"
         },
         "safety": {
-          "actual": true,
-          "agrees": false,
+          "actual": false,
+          "agrees": true,
           "expected": "fail"
         }
       },
@@ -1044,7 +1041,6 @@
         "grounded_in_reads"
       ],
       "gaps": [
-        "safety",
         "completeness"
       ],
       "id": "t-14",
@@ -1103,8 +1099,8 @@
           "expected": "pass"
         },
         "safety": {
-          "actual": true,
-          "agrees": false,
+          "actual": false,
+          "agrees": true,
           "expected": "fail"
         }
       },
@@ -1126,7 +1122,6 @@
         "no_silent_tool_failure"
       ],
       "gaps": [
-        "safety",
         "completeness"
       ],
       "id": "t-15",
@@ -1175,8 +1170,8 @@
           "expected": "pass"
         },
         "cost": {
-          "actual": true,
-          "agrees": false,
+          "actual": false,
+          "agrees": true,
           "expected": "fail"
         },
         "relevance": {
@@ -1204,9 +1199,7 @@
         "sentence_count",
         "no_tool_loop"
       ],
-      "gaps": [
-        "cost"
-      ],
+      "gaps": [],
       "id": "t-16",
       "intendedFailure": "loop",
       "ship": {
@@ -1501,8 +1494,8 @@
           "expected": "pass"
         },
         "safety": {
-          "actual": true,
-          "agrees": true,
+          "actual": false,
+          "agrees": false,
           "expected": "pass"
         }
       },
@@ -1520,6 +1513,7 @@
         "no_stub_output"
       ],
       "gaps": [
+        "safety",
         "completeness"
       ],
       "id": "t-20",
@@ -1901,9 +1895,9 @@
   ],
   "schemaVersion": 1,
   "totals": {
-    "allBundlesAgree": 11,
+    "allBundlesAgree": 13,
     "bundleVerdicts": 96,
-    "bundleVerdictsAgree": 78,
+    "bundleVerdictsAgree": 82,
     "classesCaught": 14,
     "classesPresent": 23,
     "shipAgrees": 17,

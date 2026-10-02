@@ -293,6 +293,8 @@ export interface RunSummaryRow {
   traces: number;
   evaluated: number;
   passed: number;
+  /** Of `evaluated`, the verdicts that were not checked. They are not passes and not failures: `evaluated - passed - notChecked` failed. */
+  notChecked: number;
   agentNames: string[];
   engineVersions: string[];
   rulesetHashes: string[];
@@ -338,6 +340,8 @@ export interface RunResultRow {
   caseKey: string | null;
   agentName: string | null;
   passed: boolean;
+  /** The verdict's state. `unknown` is not checked: it is `passed: false` and it is not a failure. */
+  state: VerdictState;
   /** Rules that fired, for the per-rule breakdown. Skips are not failures. */
   failedRules: string[];
   /**
@@ -367,7 +371,31 @@ export interface CaseResultRow {
   sessionId: string | null;
   runId: string | null;
   passed: boolean;
+  /** The verdict's state; with a question filter, that question's own answer (pass or fail). */
+  state: VerdictState;
   createdAt: string;
+}
+
+export type VerdictState = 'pass' | 'fail' | 'unknown';
+
+/**
+ * A stored evaluation's verdict state, from its columns (migration 021).
+ * `pass` exactly when the row passed. A row older than the column that the
+ * background fill has not reached says only what its other columns can:
+ * not checked when nothing was judged, and a failure otherwise.
+ */
+export function storedState(row: { passed?: unknown; verdict_state?: unknown; insufficient_data?: unknown }): VerdictState {
+  if (row.passed === 1 || row.passed === true) return 'pass';
+  if (row.verdict_state === 'unknown') return 'unknown';
+  if (row.verdict_state === 'fail') return 'fail';
+  return row.insufficient_data === 1 || row.insufficient_data === true ? 'unknown' : 'fail';
+}
+
+/** The state an evaluation is stored with: never `pass` unless it passed, and absent only when it carries no verdict to read. */
+function stateColumn(result: EvalResult): VerdictState | null {
+  if (result.passed) return 'pass';
+  if (result.verdict) return result.verdict.state === 'unknown' ? 'unknown' : 'fail';
+  return result.insufficient_data ? 'unknown' : null;
 }
 
 /** One row of an agent's evaluated history, as agentLogRows reads it. */
@@ -385,7 +413,8 @@ export const SQLITE_DRIVER: DriverName = 'better-sqlite3';
 /** The composer facts a stored evaluation is read back under (rowToEvalResult says why), so the write can store its risk estimate under the same. */
 function composeConfigOf(provenance: Provenance): ComposeConfig {
   const composer = provenance.composer;
-  return { ...DEFAULT_COMPOSE, ...(composer ?? {}), calibration: composer?.calibration ?? null };
+  // `rules`: a row stamped before the field existed was composed under rules 1, and reads back under them.
+  return { ...DEFAULT_COMPOSE, ...(composer ?? {}), calibration: composer?.calibration ?? null, rules: composer?.rules ?? 1 };
 }
 
 /**
@@ -1260,15 +1289,17 @@ export class SqliteAdapter implements IStorageAdapter {
         }
         return [];
       };
-      const store = this.db.prepare('UPDATE eval_results SET risk_estimate = ?, risk_version = ? WHERE rowid = ?');
+      // The verdict's state beside the estimate (migration 021): the row is composed here anyway, and a count then reads the state without composing.
+      const store = this.db.prepare('UPDATE eval_results SET risk_estimate = ?, risk_version = ?, verdict_state = COALESCE(?, verdict_state) WHERE rowid = ?');
       const step = this.db.transaction((max: number): number => {
         let written = 0;
         while (written < max) {
           const rows = next(max - written);
           if (rows.length === 0) break;
           for (const row of rows) {
-            const [estimate, version] = riskColumns(this.rowToEvalResult(row));
-            store.run(estimate, version, row.rid);
+            const result = this.rowToEvalResult(row);
+            const [estimate, version] = riskColumns(result);
+            store.run(estimate, version, row.verdict_state == null ? stateColumn(result) : null, row.rid);
             written += 1;
           }
         }
@@ -1970,8 +2001,8 @@ export class SqliteAdapter implements IStorageAdapter {
      * rule_results plus that threshold, so they are not columns.
      */
     this.db.prepare(`
-      INSERT INTO eval_results (tenant_id, id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data, critical_failures, created_at, provenance, engine_version, ruleset_hash, config_hash, threshold, eval_cost_usd, eval_tokens, run_id, risk_estimate, risk_version, reference_trace_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO eval_results (tenant_id, id, trace_id, eval_type, output_text, expected_text, score, passed, rule_results, suggestions, rules_evaluated, rules_skipped, insufficient_data, critical_failures, created_at, provenance, engine_version, ruleset_hash, config_hash, threshold, eval_cost_usd, eval_tokens, run_id, risk_estimate, risk_version, reference_trace_id, verdict_state)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       tenantId,
       result.id,
@@ -2013,6 +2044,8 @@ export class SqliteAdapter implements IStorageAdapter {
       ...riskColumns(result),
       // The trace it was made beside, when it is not that trace's verdict (migration 020). Never both: a row is one or the other.
       result.trace_id ? null : (result.reference_trace_id ?? null),
+      // Which of the three states the caller was given (migration 021).
+      stateColumn(result),
     );
     // The row is durable; tell whoever asked. A listener's failure is its own.
     for (const listener of this.evalListeners) {
@@ -2272,6 +2305,7 @@ export class SqliteAdapter implements IStorageAdapter {
         traces: Number(row.traces ?? 0),
         evaluated: results.length,
         passed: results.filter((r) => r.passed).length,
+        notChecked: results.filter((r) => r.state === 'unknown').length,
         agentNames: [...new Set(results.map((r) => r.agentName).filter((v): v is string => v !== null))].sort(),
         engineVersions: [...new Set(results.map((r) => r.engineVersion).filter((v): v is string => v !== null))].sort(),
         rulesetHashes: [...new Set(results.map((r) => r.rulesetHash).filter((v): v is string => v !== null))].sort(),
@@ -2348,7 +2382,7 @@ export class SqliteAdapter implements IStorageAdapter {
     assertTenant(tenantId);
     const rows = this.db
       .prepare(
-        `SELECT e.id, e.trace_id, e.passed, e.rule_results, e.engine_version, e.ruleset_hash, e.config_hash, e.created_at,
+        `SELECT e.id, e.trace_id, e.passed, e.verdict_state, e.insufficient_data, e.rule_results, e.engine_version, e.ruleset_hash, e.config_hash, e.created_at,
                 t.case_key, t.agent_name
            FROM eval_results e
            LEFT JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id
@@ -2375,6 +2409,7 @@ export class SqliteAdapter implements IStorageAdapter {
         caseKey: (row.case_key as string | null) ?? null,
         agentName: (row.agent_name as string | null) ?? null,
         passed: row.passed === 1 || row.passed === true,
+        state: storedState(row),
         failedRules: fired.map((r) => r.ruleName),
         judgedRules: ruleResults.filter((r) => r.skipped !== true).map((r) => r.ruleName),
         criticalFailed: fired.filter((r) => r.critical === true).map((r) => r.ruleName),
@@ -2432,7 +2467,7 @@ export class SqliteAdapter implements IStorageAdapter {
     }
     const rows = this.db
       .prepare(
-        `SELECT e.id, e.trace_id, e.passed, e.created_at, e.rule_results, t.case_key, t.session_id, COALESCE(e.run_id, t.run_id) AS run_id
+        `SELECT e.id, e.trace_id, e.passed, e.verdict_state, e.insufficient_data, e.created_at, e.rule_results, t.case_key, t.session_id, COALESCE(e.run_id, t.run_id) AS run_id
            ${from}
           WHERE ${where.join(' AND ')}
           ORDER BY e.created_at ASC, e.id ASC`,
@@ -2441,12 +2476,14 @@ export class SqliteAdapter implements IStorageAdapter {
     const out: CaseResultRow[] = [];
     for (const row of rows) {
       let passed = row.passed === 1 || row.passed === true;
+      let state = storedState(row);
       if (filter.question !== undefined) {
         // The question's own answer, from the rules that answered it on this evaluation.
         const results = parseRuleResults<{ question?: string; passed: boolean; skipped?: boolean }>(row.rule_results);
         const answering = results.filter((r) => r.question === filter.question && !r.skipped);
         if (answering.length === 0) continue;
         passed = answering.every((r) => r.passed);
+        state = passed ? 'pass' : 'fail';
       }
       out.push({
         evalId: String(row.id),
@@ -2455,6 +2492,7 @@ export class SqliteAdapter implements IStorageAdapter {
         sessionId: (row.session_id as string | null) ?? null,
         runId: (row.run_id as string | null) ?? null,
         passed,
+        state,
         createdAt: String(row.created_at),
       });
     }
@@ -2603,6 +2641,7 @@ export class SqliteAdapter implements IStorageAdapter {
       estimated_cost_usd: Math.round(stats.estimated_cost_usd * 10000) / 10000,
       error_rate: stats.total_traces > 0 ? errorCount.count / stats.total_traces : 0,
       eval_pass_rate: evalStats.total > 0 ? evalStats.passed_count / evalStats.total : 0,
+      eval_not_checked: this.notCheckedSince(tenantId, since),
       traces_per_hour: tracesPerHour,
       top_agents: topAgents,
     };
@@ -2634,6 +2673,18 @@ export class SqliteAdapter implements IStorageAdapter {
     return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
   }
 
+  /**
+   * The evaluations in a window whose verdict was not checked, read from
+   * the index that holds only those rows (migration 021), so the count
+   * costs what those rows cost and never a read of the window.
+   */
+  private notCheckedSince(tenantId: TenantId, since: string): number {
+    const row = this.db
+      .prepare("SELECT COUNT(*) AS n FROM eval_results INDEXED BY idx_eval_results_not_checked WHERE tenant_id = ? AND created_at >= ? AND verdict_state = 'unknown'")
+      .get(tenantId, since) as { n: number | bigint };
+    return Number(row.n);
+  }
+
   async getEvalStats(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStats> {
     assertTenant(tenantId);
     const since = this.periodToSince(period);
@@ -2660,6 +2711,7 @@ export class SqliteAdapter implements IStorageAdapter {
       FROM eval_results INDEXED BY idx_eval_results_tenant_created
       WHERE tenant_id = ? AND created_at >= ?
     `).get(tenantId, since) as { total_evals: number; avg_score: number; passed_count: number };
+    const notChecked = this.notCheckedSince(tenantId, since);
 
     // The window's cost and agents come from the covering time index, named so statistics cannot trade it for a walk of every trace (#711).
     const cost = this.db.prepare(`
@@ -2723,6 +2775,8 @@ export class SqliteAdapter implements IStorageAdapter {
         : 0,
       avgScore: Math.round(agg.avg_score * 1000) / 1000,
       totalEvals: agg.total_evals,
+      passed: agg.passed_count ?? 0,
+      notChecked,
       safetyViolations: violations,
       totalCost: Math.round(cost.total_cost * 10000) / 10000,
       estimatedCost: Math.round(cost.estimated_cost * 10000) / 10000,
@@ -3080,6 +3134,20 @@ export class SqliteAdapter implements IStorageAdapter {
           WHERE ${where.join(' AND ')}`,
       )
       .get(...params) as { evaluated: number; passed: number | null };
+    /*
+     * The not-checked verdicts of the same window, in a statement of their
+     * own that starts from the index holding only those rows (migration
+     * 021). Counted in the statement above, the state would be read from
+     * the end of every row in the window, past its rule results.
+     */
+    const unchecked = this.db
+      .prepare(
+        `SELECT COUNT(*) AS n
+           FROM eval_results e INDEXED BY idx_eval_results_not_checked
+           LEFT JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id
+          WHERE ${where.join(' AND ')} AND e.verdict_state = 'unknown'`,
+      )
+      .get(...params) as { n: number | bigint };
 
     const evaluated = Number(row.evaluated ?? 0);
     const passed = Number(row.passed ?? 0);
@@ -3088,6 +3156,7 @@ export class SqliteAdapter implements IStorageAdapter {
       until,
       evaluated,
       passed,
+      notChecked: Number(unchecked.n),
       // "0 of 0" is unknown, not zero. A window with nothing in it that
       // reported a rate of 0 would draw a cliff on the chart.
       passRate: evaluated > 0 ? passed / evaluated : null,

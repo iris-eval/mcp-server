@@ -23,9 +23,9 @@ const evaluation = (id: string, over: Partial<EvalResult>): EvalResult =>
   ({ id, eval_type: 'all', output_text: 'text', score: 1, passed: true, rule_results: [{ ruleName: 'non_empty_output', passed: true, score: 1, message: 'ok' }], ...over }) as EvalResult;
 
 describe('migration 020 — evaluations made beside a trace', () => {
-  it('is the last known migration, after 019', () => {
-    expect(KNOWN_MIGRATION_IDS[KNOWN_MIGRATION_IDS.length - 1]).toBe('020-eval-reference-trace');
-    expect(KNOWN_MIGRATION_IDS[KNOWN_MIGRATION_IDS.length - 2]).toBe('019-read-paths');
+  it('is the twentieth migration, after 019', () => {
+    expect(KNOWN_MIGRATION_IDS[19]).toBe('020-eval-reference-trace');
+    expect(KNOWN_MIGRATION_IDS[18]).toBe('019-read-paths');
   });
 
   it('adds the column and an index that holds only the rows that carry one', async () => {

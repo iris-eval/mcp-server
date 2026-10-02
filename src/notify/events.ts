@@ -1,6 +1,10 @@
 /*
  * What a stored evaluation says that is worth a message.
  *
+ * (Six events from 0.20.0: a verdict that was not checked had none, so an
+ * alert on failed verdicts stayed silent when an agent stopped sending the
+ * evidence a check reads.)
+ *
  * One evaluation can be several moments — a vetoed verdict is also a failed
  * one, a cost outlier can also cross a CUSUM line — so this reads them all
  * and lets the subscription and the cooldown decide. Each moment carries
@@ -10,7 +14,7 @@
  * the same stance the engine's log event takes ("never the text, never a
  * key"), and what the incumbents' payloads do.
  *
- * Two of the five are transitions the store must be asked about after the
+ * Two of the six are transitions the store must be asked about after the
  * row is written: a regression alarm is raised AT the evaluation that
  * crossed the line, over the agent's whole log; a flaky case is the first
  * attempt that disagreed with every earlier one.
@@ -104,6 +108,22 @@ export async function momentsOf(storage: MomentSource, tenantId: TenantId, resul
       subject: by[0] ?? verdict?.basis ?? 'verdict',
       summary: `${who}: the verdict failed${verdict ? ` on ${verdict.basis.replace(/_/g, ' ')}` : ''}${by.length > 0 ? ` — ${by.join(', ')}` : ''}.`,
       detail: { basis: verdict?.basis ?? null, by, score: result.score },
+    });
+  }
+
+  /*
+   * Not checked, and not failed by any layer: a failure that also could not
+   * be fully checked is `verdict_fail` above, once. The subject is what was
+   * missing or which check could not answer, so the cooldown holds one
+   * alert per missing input and not one per trace.
+   */
+  if (wanted.has('verdict_not_checked') && verdict?.state === 'unknown' && !failedVerdict) {
+    out.push({
+      ...base,
+      event: 'verdict_not_checked',
+      subject: verdict.by[0] ?? verdict.basis,
+      summary: `${who}: the verdict was not checked (${verdict.basis.replace(/_/g, ' ')}${verdict.by.length > 0 ? `: ${verdict.by.join(', ')}` : ''}). It is not a pass.`,
+      detail: { basis: verdict.basis, by: verdict.by },
     });
   }
 

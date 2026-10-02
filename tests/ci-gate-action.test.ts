@@ -52,7 +52,9 @@ describe('the action file', () => {
       expect(yml, output).toMatch(new RegExp(`^ {2}${output}:\\n {4}description:`, 'm'));
     }
     expect(yml).toMatch(/traces:\n {4}description: .*\n {4}required: true/);
-    expect(yml).toContain('default: detector_veto');
+    // Fails the job on every verdict that is not a pass. Until 0.20.0 the default was detector_veto, which exits 0 on a risk failure and on a verdict that was not checked.
+    expect(yml).toMatch(/^ {2}fail-on:\n(?: {4}.*\n)*? {4}default: any$/m);
+    expect(yml).not.toContain('default: detector_veto');
     // Pinned to the release it ships in, rolled by version:sync (since 2026-09-23):
     // a workflow on @vX.Y.Z runs server X.Y.Z, not whatever npm calls latest today.
     const { version } = JSON.parse(read('package.json')) as { version: string };

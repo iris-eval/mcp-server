@@ -1,6 +1,7 @@
 /*
- * What a stored evaluation says: the five moments read from
- * the store after the row is written — a failed verdict, a veto, the cost
+ * What a stored evaluation says: the six moments read from
+ * the store after the row is written — a failed verdict, one that was not
+ * checked, a veto, the cost
  * anomaly rule, the CUSUM alarm at the evaluation that crossed the line,
  * and the first attempt that disagreed with every earlier one.
  */
@@ -58,6 +59,27 @@ describe('momentsOf', () => {
     expect(await momentsOf(s, LOCAL_TENANT, ok, ALL)).toEqual([]);
     const bad = await stored(s, {}, { passed: false, score: 0.2, verdict: verdict('fail', 'policy_gate', ['min_output_length']) });
     expect(await momentsOf(s, LOCAL_TENANT, bad, new Set())).toEqual([]);
+  });
+
+  it('a verdict that was not checked is its own event, once, and never beside verdict_fail', async () => {
+    const s = await store();
+    const unsent = await stored(s, {}, { passed: false, verdict: verdict('unknown', 'required_evidence_missing', ['cost']) });
+    const moments = await momentsOf(s, LOCAL_TENANT, unsent, ALL);
+    expect(moments.map((m) => m.event)).toEqual(['verdict_not_checked']);
+    expect(moments[0]).toMatchObject({
+      subject: 'cost',
+      summary: 'support-bot: the verdict was not checked (required evidence missing: cost). It is not a pass.',
+      detail: { basis: 'required_evidence_missing', by: ['cost'] },
+      verdict: { state: 'unknown', basis: 'required_evidence_missing', by: ['cost'] },
+    });
+    // Nothing judged at all: the basis is the subject.
+    const none = await stored(s, {}, { passed: false, verdict: verdict('unknown', 'no_rules', []) });
+    expect((await momentsOf(s, LOCAL_TENANT, none, ALL)).map((m) => [m.event, m.subject])).toEqual([['verdict_not_checked', 'no_rules']]);
+    // A layer that would have failed it makes it a failure, delivered once as one.
+    const both = await stored(s, {}, { passed: false, verdict: { ...verdict('unknown', 'critical_unknown', ['no_pii']), also: [{ basis: 'risk_over_loss', state: 'fail', by: ['stub'] }] } });
+    expect((await momentsOf(s, LOCAL_TENANT, both, ALL)).map((m) => m.event)).toEqual(['verdict_fail']);
+    // And a subscription to failures alone hears nothing about the first.
+    expect(await momentsOf(s, LOCAL_TENANT, unsent, new Set<WebhookEventName>(['verdict_fail']))).toEqual([]);
   });
 
   it('a failed verdict is verdict_fail with its basis; a veto is also detector_veto; both carry ids, the rules and never the text', async () => {

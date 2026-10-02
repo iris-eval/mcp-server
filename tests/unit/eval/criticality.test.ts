@@ -61,7 +61,9 @@ describe('the shipped default is unchanged when neither key is present', () => {
     expect(rule.critical).toBe(false);
     expect(rule.criticalSource).toBe('default');
     expect(result.critical_failures).toBeUndefined();
-    expect(result.categories?.safety?.passed).toBe(true);
+    // It does not veto. It is weighed: the risk layer decides, and the bundle row that holds the rule says so.
+    expect(result.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss' });
+    expect(result.categories?.safety).toMatchObject({ state: 'fail', passed: false });
   });
 });
 
