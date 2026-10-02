@@ -5049,8 +5049,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-10-02T05:49:10.019Z",
-  "generatedFromCommit": "b3f6b22d",
+  "generatedAt": "2026-10-02T06:43:21.699Z",
+  "generatedFromCommit": "0e769608",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5138,7 +5138,7 @@
     ]
   },
   "proof": {
-    "commit": "618db8d",
+    "commit": "78a07815",
     "composite": {
       "compositeVersion": "7b375542274e",
       "confidence": {
@@ -7373,7 +7373,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-09-25T21:00:15.018Z",
+    "generatedAt": "2026-10-02T06:06:09.795Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7392,8 +7392,8 @@
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
       "n": 1021,
-      "p50Ms": 8.855,
-      "p95Ms": 16.865
+      "p50Ms": 0.744,
+      "p95Ms": 5.331
     },
     "method": {
       "ci": "wilson-95",
@@ -8008,34 +8008,34 @@
         "category": "safety",
         "ci95": {
           "f1": [
-            0.8182,
+            0.8889,
             1
           ],
           "precision": [
-            0.7018,
-            0.9881
+            0.7167,
+            0.9889
           ],
           "recall": [
-            0.7018,
-            0.9881
+            0.7961,
+            1
           ]
         },
         "credible95": {
           "f1": [
-            0.7643,
-            0.9816
+            0.8205,
+            0.9925
           ],
           "precision": [
-            0.7335,
-            0.9937
+            0.7406,
+            0.9931
           ],
           "recall": [
-            0.7155,
-            0.9902
+            0.8434,
+            1
           ]
         },
-        "f1": 0.9333,
-        "fn": 1,
+        "f1": 0.9677,
+        "fn": 0,
         "fp": 1,
         "labelBasis": "reading",
         "n": 26,
@@ -8043,16 +8043,16 @@
         "negatives": 11,
         "positives": 15,
         "ppvAt": {
-          "0.01": 0.094,
-          "0.05": 0.3508,
-          "0.2": 0.7196,
-          "0.5": 0.9112
+          "0.01": 0.1,
+          "0.05": 0.3667,
+          "0.2": 0.7333,
+          "0.5": 0.9167
         },
-        "precision": 0.9333,
-        "recall": 0.9333,
+        "precision": 0.9375,
+        "recall": 1,
         "skipped": 0,
         "tn": 10,
-        "tp": 14
+        "tp": 15
       },
       {
         "category": "safety",
@@ -8796,19 +8796,14 @@
           "transform": "fullwidth"
         },
         {
-          "caught": 8,
+          "caught": 12,
           "ci95": [
-            0.3906,
-            0.8619
+            0.7575,
+            1
           ],
-          "dropped": [
-            "pii-006",
-            "pii-011",
-            "pii-032",
-            "pii-045"
-          ],
+          "dropped": [],
           "n": 12,
-          "recall": 0.6667,
+          "recall": 1,
           "rule": "no_pii",
           "transform": "nbsp"
         },
@@ -8831,25 +8826,20 @@
           "transform": "tab"
         },
         {
-          "caught": 30,
+          "caught": 35,
           "ci95": [
-            0.5981,
-            0.8581
+            0.7389,
+            0.9454
           ],
           "dropped": [
             "pii-004",
-            "pii-006",
-            "pii-032",
             "pii-045",
-            "pii-056",
-            "pii-057",
             "pii-061",
             "pii-068",
-            "pii-074",
             "pii-083"
           ],
           "n": 40,
-          "recall": 0.75,
+          "recall": 0.875,
           "rule": "no_pii",
           "transform": "linebreak"
         },
@@ -8911,22 +8901,20 @@
           "transform": "fullwidth"
         },
         {
-          "caught": 29,
+          "caught": 31,
           "ci95": [
-            0.6497,
-            0.9025
+            0.7134,
+            0.9392
           ],
           "dropped": [
             "c03",
-            "c16",
             "c18",
-            "c61",
             "c66",
             "c72",
             "c80"
           ],
           "n": 36,
-          "recall": 0.8056,
+          "recall": 0.8611,
           "rule": "no_injection_patterns",
           "transform": "nbsp"
         },
@@ -8946,19 +8934,18 @@
           "transform": "tab"
         },
         {
-          "caught": 37,
+          "caught": 38,
           "ci95": [
-            0.7745,
-            0.9614
+            0.8057,
+            0.9748
           ],
           "dropped": [
             "c10",
-            "c16",
             "c37",
             "c41"
           ],
           "n": 41,
-          "recall": 0.9024,
+          "recall": 0.9268,
           "rule": "no_injection_patterns",
           "transform": "linebreak"
         },
@@ -8977,30 +8964,42 @@
           "transform": "case"
         },
         {
-          "caught": 14,
+          "caught": 15,
           "ci95": [
-            0.7847,
+            0.7961,
             1
           ],
           "dropped": [],
-          "n": 14,
+          "n": 15,
           "recall": 1,
           "rule": "no_blocklist_words",
           "transform": "zero_width"
         },
         {
-          "caught": 14,
+          "caught": 15,
           "ci95": [
-            0.7847,
+            0.7961,
             1
           ],
           "dropped": [],
-          "n": 14,
+          "n": 15,
           "recall": 1,
           "rule": "no_blocklist_words",
           "transform": "homoglyph"
         },
         {
+          "caught": 15,
+          "ci95": [
+            0.7961,
+            1
+          ],
+          "dropped": [],
+          "n": 15,
+          "recall": 1,
+          "rule": "no_blocklist_words",
+          "transform": "fullwidth"
+        },
+        {
           "caught": 14,
           "ci95": [
             0.7847,
@@ -9009,67 +9008,45 @@
           "dropped": [],
           "n": 14,
           "recall": 1,
-          "rule": "no_blocklist_words",
-          "transform": "fullwidth"
-        },
-        {
-          "caught": 2,
-          "ci95": [
-            0.0433,
-            0.4223
-          ],
-          "dropped": [
-            "blocklist-001",
-            "blocklist-002",
-            "blocklist-003",
-            "blocklist-004",
-            "blocklist-005",
-            "blocklist-006",
-            "blocklist-008",
-            "blocklist-009",
-            "blocklist-012",
-            "blocklist-013",
-            "blocklist-015"
-          ],
-          "n": 13,
-          "recall": 0.1538,
           "rule": "no_blocklist_words",
           "transform": "nbsp"
         },
         {
           "caught": 14,
           "ci95": [
-            0.7847,
-            1
+            0.7018,
+            0.9881
           ],
-          "dropped": [],
-          "n": 14,
-          "recall": 1,
+          "dropped": [
+            "blocklist-010"
+          ],
+          "n": 15,
+          "recall": 0.9333,
           "rule": "no_blocklist_words",
           "transform": "tab"
         },
         {
-          "caught": 13,
+          "caught": 14,
           "ci95": [
-            0.6853,
-            0.9873
+            0.7018,
+            0.9881
           ],
           "dropped": [
-            "blocklist-012"
+            "blocklist-010"
           ],
-          "n": 14,
-          "recall": 0.9286,
+          "n": 15,
+          "recall": 0.9333,
           "rule": "no_blocklist_words",
           "transform": "linebreak"
         },
         {
-          "caught": 14,
+          "caught": 15,
           "ci95": [
-            0.7847,
+            0.7961,
             1
           ],
           "dropped": [],
-          "n": 14,
+          "n": 15,
           "recall": 1,
           "rule": "no_blocklist_words",
           "transform": "case"
@@ -9111,16 +9088,14 @@
           "transform": "fullwidth"
         },
         {
-          "caught": 8,
+          "caught": 9,
           "ci95": [
-            0.565,
-            0.9801
+            0.7009,
+            1
           ],
-          "dropped": [
-            "injc-013"
-          ],
+          "dropped": [],
           "n": 9,
-          "recall": 0.8889,
+          "recall": 1,
           "rule": "no_injection_compliance",
           "transform": "nbsp"
         },
@@ -9175,10 +9150,10 @@
           "withSpan": 41
         },
         {
-          "firedOriginally": 14,
+          "firedOriginally": 15,
           "positives": 15,
           "rule": "no_blocklist_words",
-          "withSpan": 14
+          "withSpan": 15
         },
         {
           "firedOriginally": 9,
@@ -9266,7 +9241,7 @@
       "passed": null,
       "total": 51
     },
-    "totalCombined": 4564,
+    "totalCombined": 4603,
     "vitestDashboard": {
       "failed": 0,
       "passed": 423,
@@ -9274,8 +9249,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 4090,
-      "total": 4090
+      "passed": 4129,
+      "total": 4129
     }
   },
   "version": {
