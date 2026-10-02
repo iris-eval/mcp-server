@@ -348,12 +348,17 @@ jobs:
       - run: cd website && npm run build
 
   # Upgrading from the previous release (#704): tests/upgrade installs the
-  # released 0.19.0 from npm into a scratch home, has it install three MCP
+  # released 0.19.0 into a scratch home, has it install three MCP
   # clients and store traces, then upgrades that database with this commit:
   # the copy taken first, the clients it strands named, 0.19.0 refused,
   # `install --upgrade` moving the pins, the self-test before and after
   # (reading the file without changing it), and the downgrade drill from the
   # README. Every OS, because file names, locks and client paths differ.
+  #
+  # The release's tarball comes from a cache, one entry for the three
+  # operating systems, and from the registry only when that entry is missing.
+  # This job used to install it from npm on every run, three times, and those
+  # installs were most of what the package's download count measured.
   upgrade:
     name: Upgrade from the previous release (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -373,7 +378,24 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - name: The release this job upgrades from, read from the test
+        id: previous
+        run: echo "version=$(node -e "console.log(/const PREVIOUS = '([^']+)'/.exec(require('fs').readFileSync('tests/upgrade/from-previous-release.test.ts','utf8'))[1])")" >> "$GITHUB_OUTPUT"
+      - name: Its tarball, from the cache
+        id: tarball
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: .previous-release
+          key: iris-previous-release-${{ steps.previous.outputs.version }}
+          enableCrossOsArchive: true
+      - name: Fetch it from the registry once, on a cache miss
+        if: steps.tarball.outputs.cache-hit != 'true'
+        env:
+          PREVIOUS: ${{ steps.previous.outputs.version }}
+        run: mkdir -p .previous-release && npm pack "@iris-eval/mcp-server@$PREVIOUS" --pack-destination .previous-release
       - run: npx vitest run --config tests/upgrade/vitest.config.ts
+        env:
+          IRIS_PREVIOUS_TARBALL: .previous-release/iris-eval-mcp-server-${{ steps.previous.outputs.version }}.tgz
 
   # Real MCP clients against the config `iris-eval install` writes: the
   # evidence behind every `verified` row in clients.json that names

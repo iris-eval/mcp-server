@@ -135,9 +135,22 @@ beforeAll(() => {
   mkdirSync(home, { recursive: true });
   const prefix = join(root, 'previous');
   mkdirSync(prefix);
+  /*
+   * The released package: from the tarball the caller names, or from the
+   * registry. CI names one it keeps in a cache (IRIS_PREVIOUS_TARBALL), so a
+   * run downloads this project's own release from the registry zero times.
+   * Until then every run did, on three operating systems, and those installs
+   * were most of what the package's public download count measured. A named
+   * tarball that is missing is an error, never a quiet return to the registry.
+   */
+  const tarball = process.env.IRIS_PREVIOUS_TARBALL;
+  if (tarball && !existsSync(tarball)) throw new Error(`IRIS_PREVIOUS_TARBALL names ${tarball}, which does not exist`);
+  const spec = tarball ? resolve(tarball) : `@iris-eval/mcp-server@${PREVIOUS}`;
   // npm is a batch file on Windows; the shell runs it. The install uses the caller's own npm cache and registry settings.
-  const npm = spawnSync('npm', ['install', '--prefix', prefix, '--no-audit', '--no-fund', `@iris-eval/mcp-server@${PREVIOUS}`], { encoding: 'utf-8', shell: true });
-  if (npm.status !== 0) throw new Error(`npm install @iris-eval/mcp-server@${PREVIOUS} failed:\n${npm.stderr}`);
+  const npm = spawnSync('npm', ['install', '--prefix', prefix, '--no-audit', '--no-fund', `"${spec}"`], { encoding: 'utf-8', shell: true });
+  if (npm.status !== 0) throw new Error(`npm install ${spec} failed:\n${npm.stderr}`);
+  const installed = JSON.parse(readFileSync(join(prefix, 'node_modules', '@iris-eval', 'mcp-server', 'package.json'), 'utf-8')) as { version: string };
+  if (installed.version !== PREVIOUS) throw new Error(`${spec} is @iris-eval/mcp-server ${installed.version}, not the ${PREVIOUS} this test upgrades from`);
   previousBin = join(prefix, 'node_modules', '@iris-eval', 'mcp-server', 'dist', 'index.js');
 });
 

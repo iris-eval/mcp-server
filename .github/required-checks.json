@@ -1,0 +1,26 @@
+{
+  "branch": "main",
+  "contexts": [
+    "Build the sdist and the wheel",
+    "Hardcoded-claim scanner",
+    "Proof — rule accuracy regen vs committed",
+    "Real clients (macos-latest)",
+    "Real clients (ubuntu-latest)",
+    "Real clients (windows-latest)",
+    "Truthbase regen vs committed",
+    "Workflows lint (actionlint)",
+    "analyze (javascript-typescript)",
+    "build",
+    "docker-build",
+    "e2e",
+    "integration",
+    "lint-and-typecheck",
+    "native addon built from source (ubuntu-latest, Node 24)",
+    "security-exposure",
+    "test (22)",
+    "test (22, macOS)",
+    "test (24)",
+    "typecheck-tests",
+    "website-lint-and-typecheck"
+  ]
+}

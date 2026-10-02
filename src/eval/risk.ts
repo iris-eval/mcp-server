@@ -1,5 +1,11 @@
 /*
- * The risk estimate — the composer (0.10.0), run here in the harness only.
+ * The risk estimate, and the composer as the proof harness scores it.
+ *
+ * `riskEstimate` is what the server's composer (compose.ts) weighs on every
+ * verdict. `riskVerdict`, at the end of this file, is the composer as
+ * `npm run proof -- --composite` measures it: it reads the same gate
+ * predicate (gate.ts) and the same estimate, so the published verdict
+ * numbers describe the composer the product runs.
  *
  * "Bad = any failure class present." The score-layer rules are detectors of
  * DIFFERENT classes, and two detectors of the same class are correlated, so
@@ -20,13 +26,11 @@
  * enter only with a local measured run, which no harness case has.
  *
  * This was measured beside the old arithmetic on a labelled corpus before
- * 0.10.0 made it the composer: on the held-out split it is right about
- * shipping 57.7% of the time against 38.5%, at an IDENTICAL false-block
- * rate, and misses 55.6% of the bad outputs against 83.3%. The difference
- * in accuracy is +19.2 points with a 95% interval of [-7.5, 42.4], so the
- * case for it is that it misses less without blocking more — not that it is
- * proven more accurate at that sample size.
- * proof/COMPOSITE.md carries the numbers and regenerates them.
+ * 0.10.0 made it the composer. The case for it then was that it missed
+ * fewer bad outputs without blocking more good ones, not that it was proven
+ * more accurate at that sample size. proof/COMPOSITE.md carries the current
+ * numbers and regenerates them; none is restated here, where it would go
+ * stale.
  */
 import type { EvalResult, EvalRuleResult, FailureClass } from '../types/eval.js';
 import { publishedAccuracyFor } from './accuracy.js';

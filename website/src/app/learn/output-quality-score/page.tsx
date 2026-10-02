@@ -20,7 +20,7 @@ function s(value: unknown): string { return String(value ?? "").replace(/</g, "\
 
 const FAQ_ITEMS = [
   { question: "What is the Output Quality Score?", answer: "The Output Quality Score (OQS) is a composite metric that rolls completeness, relevance, safety, and cost into a single number between 0 and 1 for every agent output. It gives teams one signal to answer 'is this output good enough?' instead of checking multiple dimensions separately." },
-  { question: "How is the OQS calculated?", answer: "OQS combines individual eval rule scores using weighted aggregation. Each dimension (completeness, relevance, safety, cost) contributes based on configurable weights. A failing critical safety rule (PII, prompt injection, blocklist) does not lower that score — it forces passed:false regardless of it and names itself in critical_failures. Output containing a real SSN still scores 0.765 and still fails. The score is the quality gradient; passed is the verdict, which is why you can't average away a PII leak." },
+  { question: "How is the OQS calculated?", answer: "OQS combines individual eval rule scores using weighted aggregation. Each rule in each dimension (completeness, relevance, safety, cost) contributes with a fixed weight, and a rule with nothing to judge is left out. A failing critical safety rule (PII, prompt injection, blocklist) does not lower that score — it forces passed:false regardless of it and names itself in critical_failures. Output containing a real SSN still scores 0.765 and still fails. The score is the quality gradient; passed is the verdict, which is why you can't average away a PII leak." },
   { question: "What is a good OQS?", answer: "There is no universal 'good' score — it depends on your use case. A customer-facing chatbot might require OQS > 0.85. An internal research assistant might be fine at 0.6. The value of OQS is not the absolute number but the trend over time and the ability to compare across agents." },
 ];
 
@@ -68,7 +68,7 @@ export default function LearnOQS(): React.ReactElement {
           </div>
           <div className="rounded-lg border border-border-default bg-surface-primary p-5">
             <h3 className="font-semibold text-text-primary mb-2">Relevance</h3>
-            <p className="text-sm text-text-secondary">Is the response on-topic? In Iris: keyword overlap and topic consistency against the input — lexical checks, not semantic ones; semantic judgment is the LLM judge&apos;s job, with your key.</p>
+            <p className="text-sm text-text-secondary">Is the response on-topic? In Iris: keyword overlap and topic consistency against the input — lexical checks by default. Name a relevance judge model, with your own key, and an LLM judge decides whether the answer addresses the ask.</p>
           </div>
           <div className="rounded-lg border border-border-default bg-surface-primary p-5">
             <h3 className="font-semibold text-text-primary mb-2">Safety</h3>
@@ -93,7 +93,7 @@ export default function LearnOQS(): React.ReactElement {
           Iris scores every output across all four dimensions. The dashboard shows individual rule results and aggregate quality trends. The composite signal makes it easy to spot when overall quality is declining — even when individual dimensions look acceptable in isolation.
         </p>
         <CalloutBox variant="definition">
-          <strong>What Iris computes, precisely.</strong> &ldquo;Output Quality Score&rdquo; is this page&apos;s name for the <code>score</code> field <code>evaluate_output</code> returns: a weighted mean over the rules that ran (rules with nothing to judge skip and are excluded), with fixed per-rule weights. <code>passed</code> is the verdict, decided by the threshold and the critical-rule veto. Iris computes no other quality index. How often each rule is right is measured and published, with intervals, on <Link href="/proof" className="text-iris-400 hover:text-iris-300">the proof page</Link>; how the composite verdict itself performs is not yet measured, and the page says so.
+          <strong>What Iris computes, precisely.</strong> &ldquo;Output Quality Score&rdquo; is this page&apos;s name for the <code>score</code> field <code>evaluate_output</code> returns: a weighted mean over the rules that ran (rules with nothing to judge skip and are excluded), with fixed per-rule weights. <code>passed</code> is the verdict, and the score is never consulted for it: a policy you configured gates, a critical detector vetoes, a critical check that could not answer makes the verdict unknown, and what remains is weighed as one risk against the loss ratio you state. Iris computes no other quality index. How often each rule is right, and how often the composed verdict is, are measured and published with intervals on <Link href="/proof" className="text-iris-400 hover:text-iris-300">the proof page</Link>.
         </CalloutBox>
         <p className="mt-6 text-text-secondary"><Link href="/blog/output-quality-score" className="text-iris-400 hover:text-iris-300 transition-colors">Read the deep dive: Output Quality Score &rarr;</Link></p>
 

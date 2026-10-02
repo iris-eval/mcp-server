@@ -43,7 +43,7 @@ export function buildInstructions(i: InstructionsInput): string {
     : `To enable them, put your own ${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai} in the env block of the iris-eval entry in your MCP client config and restart the session; iris://capabilities carries the full steps.`;
   const critical = i.critical.length > 0 ? i.critical.join(', ') : 'none';
   const text = [
-    'Iris evaluates what an AI agent wrote and what it did. It runs locally, stores traces and verdicts in SQLite, and sends nothing anywhere unless you enable the judge or set an OTel endpoint.',
+    'Iris evaluates what an AI agent wrote and what it did. It runs locally, stores traces and verdicts in SQLite, and sends nothing anywhere unless you enable the judge, OTel export or a webhook.',
 
     /*
      * WHEN, before WHAT. Until 0.13.0 this text described three verbs and
