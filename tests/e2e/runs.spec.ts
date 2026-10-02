@@ -22,14 +22,31 @@ test.describe('runs and cases', () => {
     await expect(cmp.locator('[data-compare-run="after"]')).toContainText('9 of 10 passed');
     await expect(cmp.locator('[data-comparison-verdict]')).toHaveText('NOT DISTINGUISHABLE');
     await expect(cmp.locator('[data-smallest-detectable]')).toBeVisible();
-    // The per-rule table carries p and the corrected q (two rules: the
-    // seeded min_output_length failures and the $1.33 trace's cost rule), and the
-    // equivalence chip is a separate statement from "not distinguishable".
-    await expect(cmp.locator('[data-rules-tested]')).toHaveText('2 tested · corrected together');
+    // The per-rule table carries p and the corrected q. Two rules moved: the
+    // seeded min_output_length failures, tested over the cases it ran on in
+    // both runs, and the $1.33 trace's cost rule, which ran on that one trace
+    // in the candidate and on none in the baseline. A rule that ran in only
+    // one run is "not run" on the other side and has no test.
+    await expect(cmp.locator('[data-rules-tested]')).toHaveText('1 tested · corrected together');
     await expect(cmp.locator('[data-rule-row="min_output_length"]')).toHaveAttribute('data-rule-worse', 'false');
     await expect(cmp.locator('[data-rule-p]')).toHaveCount(2);
     await expect(cmp.locator('[data-rule-q]')).toHaveCount(2);
+    await expect(cmp.locator('[data-rule-p="null"]')).toHaveCount(1);
+    await expect(cmp.locator('[data-rule-judged-before="0"]')).toHaveText('not run');
+    // Paired: the interval the test read is on the share of changed cases that fell.
+    await expect(cmp.locator('[data-paired-fell]')).toContainText('1 of 3 changed cases fell');
+    // No margin was supplied, so equivalence was not tested and nothing claims it.
+    await expect(cmp.locator('[data-equivalent-within]')).toHaveCount(0);
+    await expect(cmp.locator('[data-summary]')).not.toContainText('quivalent');
+    await expect(cmp.locator('[data-summary]')).not.toContainText('**');
+    // With a margin the reader chose, the equivalence chip appears as its own statement.
+    await page.locator('[data-compare-margin]').fill('60');
+    await page.locator('[data-compare-submit]').click();
     await expect(cmp.locator('[data-equivalent-within]')).toHaveAttribute('data-equivalent-within', /true|false/);
+    await expect(cmp.locator('[data-equivalent-within]')).toHaveAttribute('data-equivalence-margin', '0.600');
+    await page.locator('[data-compare-margin]').fill('');
+    await page.locator('[data-compare-submit]').click();
+    await expect(cmp.locator('[data-equivalent-within]')).toHaveCount(0);
 
     // The discordant cases are listed — case-4 regressed, case-0 and case-7 recovered — regressions first.
     await expect(cmp.locator('[data-discordant-row]')).toHaveCount(3);

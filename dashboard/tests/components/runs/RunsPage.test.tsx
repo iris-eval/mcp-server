@@ -122,6 +122,25 @@ describe('RunsPage', () => {
     await waitFor(() => expect(container.querySelector('[data-forced]')).not.toBeNull());
   });
 
+  it('compare: the reader chooses the margin: empty sends none, and a number is sent as a share of pass rate', async () => {
+    compareRunsMock.mockResolvedValue(comparison);
+    const { container } = page();
+    fireEvent.change(container.querySelector('[data-compare-before]')!, { target: { value: 'baseline' } });
+    fireEvent.change(container.querySelector('[data-compare-after]')!, { target: { value: 'candidate' } });
+    fireEvent.click(container.querySelector('[data-compare-submit]')!);
+    await waitFor(() => expect(compareRunsMock).toHaveBeenCalledTimes(1));
+    expect(compareRunsMock.mock.calls[0][0].equivalence_margin).toBeUndefined();
+    expect(container.querySelector('[data-equivalent-within]')).toBeNull();
+
+    compareRunsMock.mockResolvedValue({ ...comparison, call: 'equivalent', equivalent_within: { margin: 0.05, margin_source: 'caller', interval: { lo: -0.03, hi: 0.04 }, holds: true } });
+    fireEvent.change(container.querySelector('[data-compare-margin]')!, { target: { value: '5' } });
+    fireEvent.click(container.querySelector('[data-compare-submit]')!);
+    await waitFor(() => expect(compareRunsMock).toHaveBeenCalledTimes(2));
+    expect(compareRunsMock.mock.calls[1][0]).toMatchObject({ before: 'baseline', after: 'candidate', equivalence_margin: 0.05 });
+    await waitFor(() => expect(container.querySelector('[data-comparison-verdict]')?.textContent).toBe('EQUIVALENT'));
+    expect(container.querySelector('[data-equivalent-within]')?.textContent).toBe('interval inside ±5.0 pts');
+  });
+
   it('compare: a failed request renders its typed error in place', async () => {
     compareRunsMock.mockRejectedValue(new TypeError('Failed to fetch'));
     const { container } = page();
