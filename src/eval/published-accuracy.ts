@@ -71,9 +71,9 @@ export const PUBLISHED_ACCURACY = {
     ci95: { precision: [0.765, 0.9516], recall: [0.765, 0.9516], f1: [0.8125, 0.9495] },
   },
   no_blocklist_words: {
-    n: 26, tp: 14, fp: 1, fn: 1, tn: 10,
-    precision: 0.9333, recall: 0.9333, f1: 0.9333,
-    ci95: { precision: [0.7018, 0.9881], recall: [0.7018, 0.9881], f1: [0.8182, 1] },
+    n: 26, tp: 15, fp: 1, fn: 0, tn: 10,
+    precision: 0.9375, recall: 1, f1: 0.9677,
+    ci95: { precision: [0.7167, 0.9889], recall: [0.7961, 1], f1: [0.8889, 1] },
   },
   no_injection_patterns: {
     n: 90, tp: 41, fp: 0, fn: 1, tn: 48,

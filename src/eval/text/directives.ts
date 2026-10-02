@@ -31,7 +31,7 @@
  * what lets this list stay readable instead of becoming a precision battle
  * fought in a word list.
  */
-import { normalise } from './normalise.js';
+import { normalise, wordReading, type Normalised } from './normalise.js';
 
 /** Characters of one tool output that are read. A payload sits inside a document, not at the top of it. */
 export const INJECTION_SCAN_CHARS = 8_000;
@@ -150,9 +150,11 @@ export const TOOL_ONLY_DIRECTIVE_PHRASES: readonly string[] = [
 export interface DirectiveHit {
   /** The phrase, for the drift-lock and the tests. Never put in a message. */
   phrase: string;
-  /** Offsets into the FOLDED text; the caller maps them back. */
+  /** Offsets into the folded text of `reading`; the caller maps them back through it. */
   start: number;
   end: number;
+  /** The reading the phrase was found in, whose map puts the offsets back on the raw text. */
+  reading: Normalised;
   /** The payload that followed it, folded and capped. */
   window: string;
 }
@@ -160,37 +162,58 @@ export interface DirectiveHit {
 /**
  * Fold a tool output the way this rule reads it.
  *
- * Returns the normalised form and its offset map so a span can still index
- * the raw bytes, plus the newline-flattened text the phrases match against.
- * Both are needed: the map belongs to `normalise`'s output, and flattening
- * newlines to spaces preserves length exactly, so an offset in the flat text
- * is an offset in the normalised text.
+ * Returns one or two readings, each a newline-flattened text the phrases
+ * match against and the normalised form whose map puts a span back on the
+ * raw bytes. Flattening newlines to spaces preserves length exactly, so an
+ * offset in `flat` is an offset in that reading's text.
+ *
+ * TWO, because dropping an inserted break answers an ambiguous question
+ * one way. `ignore all\nprevious instructions` has a lone line break
+ * between two letters; the first reading takes it for a split inside one
+ * word and joins `allprevious`, which no phrase matches — the very evasion
+ * the flattening above was written to close. The second reading
+ * (wordReading) puts each dropped break back as a space. It is absent
+ * when the two would be the same text.
  */
-export function foldForDirectives(raw: string): { flat: string; normalised: ReturnType<typeof normalise> } {
+export interface DirectiveReading {
+  flat: string;
+  normalised: Normalised;
+}
+
+export function foldForDirectives(raw: string): DirectiveReading[] {
   const capped = raw.length > INJECTION_SCAN_CHARS ? raw.slice(0, INJECTION_SCAN_CHARS) : raw;
   // The injection-compliance rule matches directives — a pattern an evader splits with a tab or a break — so inserted breaks are dropped here.
   const normalised = normalise(capped, { dropInsertedBreaks: true });
   // Length-preserving on purpose: a newline becomes one space, so offsets
   // into `flat` are offsets into `normalised.text` and the map still works.
   const flat = normalised.text.replace(/\n/g, ' ');
-  return { flat, normalised };
+  const words = wordReading(normalised);
+  return words === null || words.text === flat ? [{ flat, normalised }] : [{ flat, normalised }, { flat: words.text, normalised: words }];
 }
 
 /** Every directive phrase in a folded tool output, with the payload that followed it. */
-export function findDirectives(flat: string): DirectiveHit[] {
+export function findDirectives(readings: readonly DirectiveReading[]): DirectiveHit[] {
   const hits: DirectiveHit[] = [];
-  const lower = flat.toLowerCase();
-  for (const phrase of [...INJECTED_DIRECTIVE_PHRASES, ...TOOL_ONLY_DIRECTIVE_PHRASES]) {
-    const at = lower.indexOf(phrase);
-    if (at < 0) continue;
-    hits.push({
-      phrase,
-      start: at,
-      end: at + phrase.length,
-      window: flat.slice(at, at + phrase.length + DIRECTIVE_WINDOW_CHARS),
-    });
+  const seen = new Set<string>();
+  for (const { flat, normalised } of readings) {
+    const lower = flat.toLowerCase();
+    for (const phrase of [...INJECTED_DIRECTIVE_PHRASES, ...TOOL_ONLY_DIRECTIVE_PHRASES]) {
+      // One hit per phrase, from the first reading that holds it.
+      if (seen.has(phrase)) continue;
+      const at = lower.indexOf(phrase);
+      if (at < 0) continue;
+      seen.add(phrase);
+      hits.push({
+        phrase,
+        start: at,
+        end: at + phrase.length,
+        reading: normalised,
+        window: flat.slice(at, at + phrase.length + DIRECTIVE_WINDOW_CHARS),
+      });
+    }
   }
-  // Earliest first, and one hit per phrase: a page repeating the same
-  // directive is one directive, not twenty.
-  return hits.sort((a, b) => a.start - b.start);
+  // Earliest first in the RAW text, and one hit per phrase: a page
+  // repeating the same directive is one directive, not twenty.
+  const rawStart = (hit: DirectiveHit): number => (hit.reading.unchanged ? hit.start : hit.reading.map[Math.min(hit.start, hit.reading.map.length - 1)]);
+  return hits.sort((a, b) => rawStart(a) - rawStart(b));
 }
