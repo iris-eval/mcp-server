@@ -195,7 +195,7 @@ describe('VerdictPanel: the verdict with its basis, coverage and reasons', () =>
       ],
     });
     expect(container.querySelector('[data-verdict-state]')?.textContent).toBe('NOT CHECKED');
-    expect(container.querySelector('[data-critical-skipped="no_pii"]')?.textContent).toContain('unknown, not clean');
+    expect(container.querySelector('[data-critical-skipped="no_pii"]')?.textContent).toContain('The verdict is not checked, not clean.');
     expect(container.querySelector('[data-interpretation="block"]')?.getAttribute('data-config-key')).toBe('eval.onCriticalSkipped');
   });
 

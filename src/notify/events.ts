@@ -179,10 +179,12 @@ export async function momentsOf(storage: MomentSource, tenantId: TenantId, resul
 
   if (wanted.has('flaky_case') && base.case_key) {
     const rows = await storage.getCaseResults(tenantId, { caseKey: base.case_key });
-    const prior = rows.filter((r) => r.evalId !== result.id);
+    // Answered both ways is a pass and a failure. An attempt that was not checked is neither, here or among the earlier ones.
+    const prior = rows.filter((r) => r.evalId !== result.id && r.state !== 'unknown');
     const mine = rows.find((r) => r.evalId === result.id);
-    const answer = mine ? mine.passed : result.passed;
-    if (prior.length > 0 && prior.every((p) => p.passed === prior[0].passed) && prior[0].passed !== answer) {
+    const state = mine ? mine.state : (result.verdict?.state ?? (result.passed ? 'pass' : 'fail'));
+    const answer = state === 'pass';
+    if (state !== 'unknown' && prior.length > 0 && prior.every((p) => p.passed === prior[0].passed) && prior[0].passed !== answer) {
       const attempts = prior.length + 1;
       const passed = prior.filter((p) => p.passed).length + (answer ? 1 : 0);
       const runs = [...new Set(rows.map((r) => r.runId).filter((r): r is string => r !== null))].sort();

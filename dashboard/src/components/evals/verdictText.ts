@@ -40,7 +40,7 @@ export function besideText(reasons: readonly string[] | undefined): string {
 /** The line under the verdict when a later layer would have decided it too. */
 export const ALSO_TEXT = {
   lead: 'Would also have decided it:',
-  tooltip: 'The basis names the first layer with something to say. This later layer would have decided the verdict on its own, so clearing the first does not clear the verdict.',
+  tooltip: 'The basis names one layer: the first that fails, or when none fails the first that could not check. This layer would have decided the verdict on its own, so clearing the one the basis names does not clear the verdict.',
 } as const;
 
 export const STATE_TEXT: Record<Verdict['state'], { label: string; tone: 'pass' | 'fail' | 'unknown' }> = {
@@ -64,8 +64,6 @@ export function notCheckedSuffix(notChecked: number | undefined): string {
   return notChecked !== undefined && notChecked > 0 ? ` · ${notChecked} not checked` : '';
 }
 
-export const NOT_CHECKED_TOOLTIP =
-  'Not checked: the verdict could not be reached (nothing was judged, a critical check could not answer, or evidence somebody asked for was not sent). It is not a pass, so it stays in the pass rate, and it is not a failure.';
 
 export const CONFIDENCE_TEXT = {
   decisive:

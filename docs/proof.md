@@ -247,12 +247,20 @@ each field. Where a contract is in force, it does not. A contract is one of
 three things: the deployment requires the input on every evaluation
 (`eval.requiredEvidence`), the deployment set the threshold of a rule that
 reads it, or the call supplied what it is compared with. Under each, every
-case with the field left out reads fail or not checked, never pass, and the
-command fails if one passes.
+case with the field left out (deleted, or a blank sent in its place) reads
+fail or not checked, never pass, and the command fails if one passes. One
+thing is measured and not held: an explicit empty list of tool calls under
+a ceiling on the calls. It is the caller saying none were made, zero calls
+are within any ceiling, and only `eval.requiredEvidence` refuses it.
 
 **Does a second failure rescue the first?** Each case that does not pass is
-evaluated again with one more thing wrong with it. None may pass, and the
-command fails if one does.
+evaluated again with one more thing wrong with it. For four fixed additions
+(a leaked number, a placeholder, a failed tool call, a cost over the
+ceiling) none may pass, and the command fails if one does. That is a
+statement about those four and not a law: a fifth addition, a sentence of
+refusal, does rescue cases, because the rule that checks an answer against
+failed tool calls accepts any word of failure as owning the failure. It is
+published with its count.
 
 What a deployment that gates on a verdict takes from the first table: name
 the evidence the gate must rest on. `eval.requiredEvidence: ["tool_calls"]`

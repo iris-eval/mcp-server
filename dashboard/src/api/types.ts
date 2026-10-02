@@ -171,7 +171,7 @@ export type VerdictBasis =
   | 'clean'
   | 'no_rules';
 
-/** A later layer that would have decided the verdict on its own. */
+/** Another layer that would have decided the verdict on its own. */
 export interface VerdictLayer {
   basis: Exclude<VerdictBasis, 'policy_gate' | 'clean' | 'no_rules'>;
   state: 'fail' | 'unknown';
@@ -181,13 +181,13 @@ export interface VerdictLayer {
 export interface Verdict {
   state: 'pass' | 'fail' | 'unknown';
   passed: boolean;
-  /** Which layer of the composer decided: the first with something to say. */
+  /** Which layer of the composer decided: the first that fails, or when none fails the first that could not check. */
   basis: VerdictBasis;
   /** The rules (or failure classes, under risk_over_loss) that decided. */
   by: string[];
   risk: { pBad: number; lo: number; hi: number; perClass: Record<string, number | null>; assumptions: string[] } | null;
   confidence?: 'decisive' | 'marginal';
-  /** Every later layer that would have decided it too, in the order they are asked. Absent when there is none. */
+  /** Every other layer that would have decided it too, in the order they are asked. Absent when there is none. */
   also?: VerdictLayer[];
 }
 
@@ -990,6 +990,8 @@ export interface CompareRunSummary {
   run_id: string;
   n: number;
   passed: number;
+  /** Of n, the verdicts that were not checked. */
+  not_checked?: number;
   rate: number | null;
   interval: { lo: number; hi: number } | null;
   agent_names: string[];
@@ -1066,6 +1068,8 @@ export interface CompareRunsResult {
     significant: boolean;
     /** Of the pairs that changed, the share that fell, with its exact 90% interval. */
     fell: { share: number; lo: number; hi: number } | null;
+    /** Of b, the pairs whose second verdict was not checked rather than failed. */
+    fell_not_checked?: number;
   } | null;
   worse: boolean;
   /** True only when the second run was judged on no less than the first. */

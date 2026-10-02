@@ -150,8 +150,9 @@ export function registerRunRoutes(router: Router, storage: IStorageAdapter): voi
         // Neither passes nor failures: the attempts whose verdict could not be reached.
         notChecked: attempts.filter((a) => a.state === 'unknown').length,
         // Answered both ways across its attempts — the signal a single run
-        // cannot produce, and the reason this route exists at all.
-        flaky: passed > 0 && passed < attempts.length,
+        // cannot produce, and the reason this route exists at all. Both ways
+        // is a pass and a FAILURE: an attempt that was not checked is no answer.
+        flaky: passed > 0 && attempts.some((a) => a.state === 'fail'),
         runs: [...new Set(attempts.map((a) => a.runId).filter((v): v is string => v !== null))].sort(),
         results: attempts,
       });

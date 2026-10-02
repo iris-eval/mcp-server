@@ -99,13 +99,15 @@ export function registerCompareTracesTool(server: McpServer, storage: IStorageAd
       const rows = await storage.getCaseResults(LOCAL_TENANT, { run: args.run, caseKey: args.case_key, question: args.question, session: args.session, groupBy });
       const minAttempts = args.min_attempts ?? 1;
 
-      const grouped = new Map<string, { passed: number; attempts: number; runs: Set<string> }>();
+      const grouped = new Map<string, { passed: number; failed: number; attempts: number; runs: Set<string> }>();
       for (const r of rows) {
         const key = groupBy === 'session' ? r.sessionId : r.caseKey;
         if (key === null) continue;
-        const g = grouped.get(key) ?? { passed: 0, attempts: 0, runs: new Set<string>() };
+        const g = grouped.get(key) ?? { passed: 0, failed: 0, attempts: 0, runs: new Set<string>() };
         g.attempts += 1;
         if (r.passed) g.passed += 1;
+        // An attempt that was not checked is neither answer.
+        if (r.state === 'fail') g.failed += 1;
         if (r.runId) g.runs.add(r.runId);
         grouped.set(key, g);
       }
@@ -120,7 +122,7 @@ export function registerCompareTracesTool(server: McpServer, storage: IStorageAd
             passed: g.passed,
             rate: g.passed / g.attempts,
             interval: w ? { lo: w.lo, hi: w.hi } : null,
-            flaky: g.passed > 0 && g.passed < g.attempts,
+            flaky: g.passed > 0 && g.failed > 0,
             runs: [...g.runs].sort(),
           };
         })

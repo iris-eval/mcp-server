@@ -163,7 +163,7 @@ export function VerdictPanel({
         )}
         <Tooltip content="The weighted score is a quality gradient. The composer never consults it.">
           <span tabIndex={0}>
-            <ScoreBadge score={score} passed={passed} />
+            <ScoreBadge score={score} passed={passed} neutral={verdict?.state === 'unknown'} />
           </span>
         </Tooltip>
         <span style={styles.muted}>
@@ -197,7 +197,7 @@ export function VerdictPanel({
       )}
       {criticalSkipped && criticalSkipped.length > 0 && (
         <div style={{ ...styles.notice, color: 'var(--eval-warn)' }} data-critical-skipped={criticalSkipped.join(',')}>
-          Critical and could not judge: {criticalSkipped.join(', ')}. The verdict is unknown, not clean.
+          Critical and could not judge: {criticalSkipped.join(', ')}. {verdict?.state === 'fail' ? 'The verdict failed on other grounds and says nothing about these.' : verdict?.state === 'pass' ? 'The verdict is not clean on these.' : 'The verdict is not checked, not clean.'}
         </div>
       )}
 

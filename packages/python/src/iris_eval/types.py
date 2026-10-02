@@ -14,7 +14,7 @@ VerdictState = Literal["pass", "fail", "unknown"]
 
 
 class VerdictLayer(TypedDict, total=False):
-    """A later layer that would have decided the verdict on its own."""
+    """Another layer that would have decided the verdict on its own."""
 
     basis: str
     state: Literal["fail", "unknown"]
@@ -24,9 +24,9 @@ class VerdictLayer(TypedDict, total=False):
 class Verdict(TypedDict, total=False):
     """Which layer decided, and what it decided on.
 
-    ``basis`` names the first layer with something to say; ``also`` lists
-    every later one that would have decided the verdict too, and is absent
-    when there is none.
+    ``basis`` names one layer: the first that fails, or when none fails the
+    first that could not check. ``also`` lists every other one that would
+    have decided the verdict too, and is absent when there is none.
     """
 
     state: VerdictState

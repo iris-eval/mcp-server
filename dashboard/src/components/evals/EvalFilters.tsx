@@ -61,7 +61,7 @@ export function EvalFilters({
       >
         <option value="">All Results</option>
         <option value="true">Passed</option>
-        <option value="false">Failed</option>
+        <option value="false">Did not pass</option>
       </select>
       <input
         style={styles.input}

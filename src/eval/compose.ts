@@ -137,6 +137,19 @@ export function roleOf(r: EvalRuleResult, cfg: ComposeConfig): Role {
   return 'advisory';
 }
 
+/**
+ * The rules somebody asked for that skipped because the call did not carry
+ * what they read (stamp.ts, askedOf).
+ *
+ * A deployment that set `eval.onCriticalSkipped: "pass"` has said a
+ * critical check that could not run is acceptable, and that covers a
+ * critical rule that could not run for missing evidence as much as one the
+ * output defeated: such a rule is left out here.
+ */
+function askedAndNotSent(rows: readonly EvalRuleResult[], cfg: Pick<ComposeConfig, 'onCriticalSkipped'>): EvalRuleResult[] {
+  return rows.filter((r) => r.skipped === true && r.asked !== undefined && (r.lacked?.length ?? 0) > 0 && !(cfg.onCriticalSkipped === 'pass' && isCritical(r)));
+}
+
 /** The inputs at least one evaluated rule actually read. */
 function inputsSeen(rows: readonly EvalRuleResult[]): Set<Need> {
   const seen = new Set<Need>();
@@ -269,7 +282,7 @@ function walk(
    */
   const seen = cfg.requiredEvidence.length > 0 ? inputsSeen(rows) : null;
   const required = seen ? cfg.requiredEvidence.filter((n) => !seen.has(n)) : [];
-  const asked = rows.filter((r) => r.skipped === true && r.asked !== undefined && (r.lacked?.length ?? 0) > 0);
+  const asked = askedAndNotSent(rows, cfg);
   const missing = [...new Set<string>([...required, ...asked.flatMap((r) => r.lacked!)])];
   if (cfg.requiredEvidence.length > 0 || asked.length > 0) {
     path.push({ node: 'evidence', by: missing, decided: missing.length > 0 });
@@ -324,7 +337,7 @@ function layerText(l: VerdictLayer): string {
     case 'critical_unknown':
       return `a critical check was asked and could not answer (${by})`;
     case 'required_evidence_missing':
-      return `evidence this deployment requires is missing (${by})`;
+      return `evidence that was asked for was not sent (${by})`;
     default:
       return `the rules that fired put the risk of a bad output over the loss threshold${by ? ` (${by})` : ''}`;
   }
@@ -438,12 +451,13 @@ const worseOf = (a: Verdict['state'], b: Verdict['state']): Verdict['state'] => 
  * this bundle holds.
  *
  * A bundle that evaluated no rule was not checked. Otherwise the row
- * passes unless a layer of the verdict (the one that decided, or any later
- * one that would have) rests on this bundle's rules, and then it is what
- * that layer made the verdict. The gate, veto and unknown layers name
- * their rules. The risk layer names failure classes, so a bundle holding a
- * fired risk-layer rule answers for it. An evaluation that lacks evidence
- * the deployment requires leaves every bundle unchecked.
+ * passes unless a layer of the verdict (the one that decided, or any other
+ * that would have) rests on this bundle's rules, and then it is what that
+ * layer made the verdict. The gate, veto and unknown layers name their
+ * rules. The risk layer names failure classes, so a bundle holding a fired
+ * risk-layer rule answers for it. Evidence the deployment requires on
+ * every evaluation, when missing, leaves every bundle unchecked; evidence
+ * one rule lacked leaves that rule's bundle unchecked.
  *
  * The composer is not run again over the bundle's rules alone. The risk
  * estimate is a property of the whole evaluation (the prior is spread over
@@ -454,15 +468,34 @@ const worseOf = (a: Verdict['state'], b: Verdict['state']): Verdict['state'] => 
  * evaluation that was checked passes, and whenever the evaluation does not
  * pass, the row whose rules are why does not pass either.
  */
-export function bundleState(rows: readonly EvalRuleResult[], verdict: Verdict, cfg: ComposeConfig): Verdict['state'] {
-  if (!rows.some((r) => !r.skipped)) return 'unknown';
-  let state: Verdict['state'] = 'pass';
-  if (verdict.state === 'pass') return state;
+export function bundleState(rows: readonly EvalRuleResult[], verdict: Verdict, cfg: ComposeConfig, all: readonly EvalRuleResult[] = rows): Verdict['state'] {
+  const ran = rows.some((r) => !r.skipped);
+  if (verdict.state === 'pass') return ran ? 'pass' : 'unknown';
+  let state: Verdict['state'] = ran ? 'pass' : 'unknown';
   const layers: Array<{ basis: Verdict['basis']; state: Verdict['state']; by: string[] }> = [{ basis: verdict.basis, state: verdict.state, by: verdict.by }, ...(verdict.also ?? [])];
+  // Every detection and inference that ran enters the risk estimate, a critical one included: a veto is also read as a probability.
+  const isRisk = (r: EvalRuleResult): boolean => !r.skipped && (r.kind === 'detection' || r.kind === 'inference');
   for (const layer of layers) {
-    if (layer.basis === 'required_evidence_missing') state = worseOf(state, layer.state);
-    else if (layer.basis === 'risk_over_loss') {
-      if (rows.some((r) => fired(r) && roleOf(r, cfg) === 'risk')) state = worseOf(state, layer.state);
+    if (layer.basis === 'required_evidence_missing') {
+      /*
+       * Evidence the deployment requires on every evaluation is missing
+       * for every bundle. Evidence one rule lacked is missing for the
+       * bundle that holds the rule: a cost that was not sent says nothing
+       * about whether the safety rules ran.
+       */
+      const everywhere = cfg.requiredEvidence.some((n) => layer.by.includes(n));
+      const here = askedAndNotSent(rows, cfg).length > 0;
+      if (everywhere || here) state = worseOf(state, layer.state);
+    } else if (layer.basis === 'risk_over_loss') {
+      /*
+       * The risk layer names failure classes, not rules. A bundle holding
+       * a fired risk-layer rule answers for it. When no rule fired at all
+       * (a deployment whose loss ratio puts the line under the risk of an
+       * output nothing flagged), every bundle whose rules the estimate was
+       * built from answers for it.
+       */
+      const anyFired = all.some((r) => fired(r) && isRisk(r));
+      if (anyFired ? rows.some((r) => fired(r) && isRisk(r)) : rows.some(isRisk)) state = worseOf(state, layer.state);
     } else if (rows.some((r) => layer.by.includes(r.ruleName))) state = worseOf(state, layer.state);
   }
   return state;
@@ -619,11 +652,15 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
       });
     }
   }
-  if (verdict.basis === 'critical_unknown') {
+  const unanswered = verdict.basis === 'critical_unknown' ? verdict : (verdict.also ?? []).find((l) => l.basis === 'critical_unknown');
+  if (unanswered !== undefined) {
     out.push({
       severity: 'block',
       addressee: 'operator',
-      text: `A critical check was asked and could not answer (${verdict.by.join(', ')}), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.`,
+      text:
+        verdict.basis === 'critical_unknown'
+          ? `A critical check was asked and could not answer (${unanswered.by.join(', ')}), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.`
+          : `A critical check was asked and could not answer (${unanswered.by.join(', ')}). The verdict failed on other grounds; that check is still not answered. Set eval.onCriticalSkipped to "pass" to accept that risk.`,
       configKey: 'eval.onCriticalSkipped',
     });
   }
@@ -636,16 +673,18 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
    */
   if (verdict.basis === 'required_evidence_missing' || (verdict.also ?? []).some((l) => l.basis === 'required_evidence_missing')) {
     const layer = verdict.basis === 'required_evidence_missing' ? verdict : (verdict.also ?? []).find((l) => l.basis === 'required_evidence_missing')!;
-    const asked = result.rule_results.filter((r) => r.skipped === true && r.asked !== undefined && (r.lacked?.length ?? 0) > 0);
-    const byRule = asked.map(
-      (r) => `${r.ruleName} could not run without ${r.lacked!.join(', ')} (${r.asked === 'config' ? 'this deployment set it to gate' : 'the call supplied what it is compared against'})`,
-    );
+    const asked = askedAndNotSent(result.rule_results, cfg);
+    const byRule = asked.map((r) => `${r.ruleName} could not run without ${r.lacked!.join(', ')} (${r.asked === 'config' ? 'this deployment asks for it' : 'this call asks for it'})`);
     const required = cfg.requiredEvidence.filter((n) => layer.by.includes(n));
     const parts = [...(required.length > 0 ? [`this deployment requires ${required.join(', ')} on every evaluation`] : []), ...byRule];
     out.push({
       severity: 'block',
       addressee: 'agent',
-      text: `Not checked, which is not a pass: ${parts.join('; ')}. Send ${layer.by.join(', ')} and ask again.`,
+      // On a verdict that failed, the missing evidence is a second thing to fix, not the answer.
+      text:
+        verdict.basis === 'required_evidence_missing'
+          ? `Not checked, which is not a pass: ${parts.join('; ')}. Send ${layer.by.join(', ')} and ask again.`
+          : `Also not checked: ${parts.join('; ')}. Send ${layer.by.join(', ')} so it can be.`,
       ...(required.length > 0 ? { configKey: 'eval.requiredEvidence' } : {}),
     });
   }
@@ -658,11 +697,14 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
    * must-not-ship check never ran.
    */
   const skippedCritical = result.rule_results.filter((r) => isCritical(r) && r.skipped === true).map((r) => r.ruleName);
-  if (skippedCritical.length > 0 && verdict.basis !== 'critical_unknown') {
+  if (skippedCritical.length > 0 && unanswered === undefined) {
     out.push({
       severity: 'warn',
       addressee: 'operator',
-      text: `Critical check(s) did not judge this output (${skippedCritical.join(', ')}), so they could not veto it. This verdict is clean on everything else, not on those; a gate that must fail closed should treat a skipped critical check as a failure.`,
+      text:
+        verdict.state === 'pass'
+          ? `Critical check(s) did not judge this output (${skippedCritical.join(', ')}), so they could not veto it. This verdict is clean on everything else, not on those; a gate that must fail closed should treat a skipped critical check as a failure.`
+          : `Critical check(s) did not judge this output (${skippedCritical.join(', ')}), so they could not veto it. The verdict above says nothing about what they check.`,
       configKey: 'eval.onCriticalSkipped',
     });
   }

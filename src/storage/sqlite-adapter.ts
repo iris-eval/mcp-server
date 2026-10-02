@@ -380,15 +380,15 @@ export type VerdictState = 'pass' | 'fail' | 'unknown';
 
 /**
  * A stored evaluation's verdict state, from its columns (migration 021).
- * `pass` exactly when the row passed. A row older than the column that the
- * background fill has not reached says only what its other columns can:
- * not checked when nothing was judged, and a failure otherwise.
+ * `pass` exactly when the row passed. A row with no state (older than the
+ * column and not yet reached by the background fill, or one the fill could
+ * not settle) is counted as it always was: a failure when it did not pass.
+ * Every count reads the column the same way, so they agree with each other
+ * before the fill as well as after it.
  */
-export function storedState(row: { passed?: unknown; verdict_state?: unknown; insufficient_data?: unknown }): VerdictState {
+export function storedState(row: { passed?: unknown; verdict_state?: unknown }): VerdictState {
   if (row.passed === 1 || row.passed === true) return 'pass';
-  if (row.verdict_state === 'unknown') return 'unknown';
-  if (row.verdict_state === 'fail') return 'fail';
-  return row.insufficient_data === 1 || row.insufficient_data === true ? 'unknown' : 'fail';
+  return row.verdict_state === 'unknown' ? 'unknown' : 'fail';
 }
 
 /** The state an evaluation is stored with: never `pass` unless it passed, and absent only when it carries no verdict to read. */
@@ -396,6 +396,23 @@ function stateColumn(result: EvalResult): VerdictState | null {
   if (result.passed) return 'pass';
   if (result.verdict) return result.verdict.state === 'unknown' ? 'unknown' : 'fail';
   return result.insufficient_data ? 'unknown' : null;
+}
+
+/**
+ * The state the background fill writes for a row read back from the store.
+ *
+ * A row that did not pass and whose verdict, composed again, reads `pass`
+ * is one this build cannot reproduce: 0.19.0 gave such a row as not
+ * checked when required evidence was missing and did not store the
+ * requirement with it. Writing `fail` would settle what the row cannot
+ * tell, so its state is left unset and it is counted as before.
+ */
+function filledState(row: { passed?: unknown }, result: EvalResult): VerdictState | null {
+  const passed = row.passed === 1 || row.passed === true;
+  if (passed) return 'pass';
+  if (result.verdict === undefined) return result.insufficient_data ? 'unknown' : null;
+  if (result.verdict.state === 'pass') return null;
+  return result.verdict.state === 'unknown' ? 'unknown' : 'fail';
 }
 
 /** One row of an agent's evaluated history, as agentLogRows reads it. */
@@ -1291,15 +1308,31 @@ export class SqliteAdapter implements IStorageAdapter {
       };
       // The verdict's state beside the estimate (migration 021): the row is composed here anyway, and a count then reads the state without composing.
       const store = this.db.prepare('UPDATE eval_results SET risk_estimate = ?, risk_version = ?, verdict_state = COALESCE(?, verdict_state) WHERE rowid = ?');
+      let unreadable = 0;
       const step = this.db.transaction((max: number): number => {
         let written = 0;
         while (written < max) {
           const rows = next(max - written);
           if (rows.length === 0) break;
           for (const row of rows) {
-            const result = this.rowToEvalResult(row);
-            const [estimate, version] = riskColumns(result);
-            store.run(estimate, version, row.verdict_state == null ? stateColumn(result) : null, row.rid);
+            /*
+             * A row that cannot be read (provenance that is not JSON) is
+             * marked as visited with nothing stored. Left unmarked it was
+             * the first row of every later step, so one bad row stopped
+             * the fill there on every start and every row after it kept
+             * computing its estimate on read.
+             */
+            let estimate: string | null = null;
+            let version: string | null = RISK_KEY_VERSION;
+            let state: VerdictState | null = null;
+            try {
+              const result = this.rowToEvalResult(row);
+              [estimate, version] = riskColumns(result);
+              state = row.verdict_state == null ? filledState(row, result) : null;
+            } catch {
+              unreadable += 1;
+            }
+            store.run(estimate, version, state, row.rid);
             written += 1;
           }
         }
@@ -1336,6 +1369,7 @@ export class SqliteAdapter implements IStorageAdapter {
         rows = nextStepSize(written, performance.now() - started, RISK_FILL_ROWS_RANGE);
         await yieldToRequests();
       }
+      if (unreadable > 0) this.log('warn', `${unreadable} stored evaluation${unreadable === 1 ? '' : 's'} could not be read while storing risk estimates and ${unreadable === 1 ? 'was' : 'were'} passed over.`);
     } catch (err) {
       this.log('warn', `Storing risk estimates for older evaluations stopped (${err instanceof Error ? err.message : String(err)}); those evaluations compute theirs on read until the next start.`);
     } finally {
@@ -2382,7 +2416,7 @@ export class SqliteAdapter implements IStorageAdapter {
     assertTenant(tenantId);
     const rows = this.db
       .prepare(
-        `SELECT e.id, e.trace_id, e.passed, e.verdict_state, e.insufficient_data, e.rule_results, e.engine_version, e.ruleset_hash, e.config_hash, e.created_at,
+        `SELECT e.id, e.trace_id, e.passed, e.verdict_state, e.rule_results, e.engine_version, e.ruleset_hash, e.config_hash, e.created_at,
                 t.case_key, t.agent_name
            FROM eval_results e
            LEFT JOIN traces t ON t.trace_id = e.trace_id AND t.tenant_id = e.tenant_id
@@ -2467,7 +2501,7 @@ export class SqliteAdapter implements IStorageAdapter {
     }
     const rows = this.db
       .prepare(
-        `SELECT e.id, e.trace_id, e.passed, e.verdict_state, e.insufficient_data, e.created_at, e.rule_results, t.case_key, t.session_id, COALESCE(e.run_id, t.run_id) AS run_id
+        `SELECT e.id, e.trace_id, e.passed, e.verdict_state, e.created_at, e.rule_results, t.case_key, t.session_id, COALESCE(e.run_id, t.run_id) AS run_id
            ${from}
           WHERE ${where.join(' AND ')}
           ORDER BY e.created_at ASC, e.id ASC`,
@@ -2760,9 +2794,10 @@ export class SqliteAdapter implements IStorageAdapter {
 
     const violations = { pii: 0, injection: 0, hallucination: 0 };
     for (const row of safetyRows) {
-      const rules = parseRuleResults<{ ruleName: string; passed: boolean }>(row.rule_results);
+      const rules = parseRuleResults<{ ruleName: string; passed: boolean; skipped?: boolean }>(row.rule_results);
       for (const r of rules) {
-        if (r.passed) continue;
+        // A rule that skipped carries passed: false as a placeholder and found nothing.
+        if (r.passed || r.skipped === true) continue;
         if (r.ruleName === 'no_pii') violations.pii++;
         if (r.ruleName === 'no_injection_patterns') violations.injection++;
         if (r.ruleName === 'no_hallucination_markers') violations.hallucination++;
@@ -3219,6 +3254,7 @@ export class SqliteAdapter implements IStorageAdapter {
       LEFT JOIN traces t ON t.tenant_id = e.tenant_id AND t.trace_id = e.trace_id
       WHERE e.tenant_id = ? AND e.created_at >= ?
         AND e.passed = 0
+        AND e.verdict_state IS NOT 'unknown'
       ORDER BY e.created_at DESC
       LIMIT ?
     `).all(tenantId, since, limit) as Array<{
@@ -3231,8 +3267,10 @@ export class SqliteAdapter implements IStorageAdapter {
     }>;
 
     return rows.map((r) => {
-      const rules = parseRuleResults<{ ruleName: string; passed: boolean }>(r.rule_results);
-      const failingRule = rules.find((rule) => !rule.passed);
+      const rules = parseRuleResults<{ ruleName: string; passed: boolean; skipped?: boolean; critical?: boolean; role?: string }>(r.rule_results);
+      // A rule that fired, never one that only skipped; and of those the one that can decide a verdict, before a measurement that only advises.
+      const fired = rules.filter((rule) => !rule.passed && rule.skipped !== true);
+      const failingRule = fired.find((rule) => rule.critical === true) ?? fired.find((rule) => rule.role === 'gate' || rule.role === 'veto' || rule.role === 'risk') ?? fired[0];
 
       return {
         traceId: r.trace_id ?? '',

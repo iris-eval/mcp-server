@@ -43,6 +43,7 @@ export const evaluateRunsOutputSchema = z.looseObject({
   already_current: z.number().describe('traces skipped because their latest verdict already came from this ruleset'),
   failed: z.array(z.looseObject({ trace_id: z.string(), reason: z.string() })).describe('traces that could not be scored, each with why'),
   passed: z.number().describe('how many of the new verdicts passed'),
+  not_checked: z.number().describe('how many of the new verdicts were not checked: not passes, and not failures'),
   summary: z.string().describe('what happened, and what to do with it'),
   rules_changed: z
     .looseObject({ count: z.number().int().positive(), last_change_at: z.string(), since: z.string(), audit: z.literal('iris://audit') })
@@ -129,6 +130,7 @@ export function registerEvaluateRunsTool(
 
       const failed: Array<{ trace_id: string; reason: string }> = [];
       let passed = 0;
+      let notChecked = 0;
       let evaluated = 0;
       // One call, one relevance judge allowance: a run of any size makes at most IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST judge calls.
       const judgeRequest = newJudgeRequest();
@@ -174,6 +176,7 @@ export function registerEvaluateRunsTool(
         await insertLinkedEvalResult(storage, LOCAL_TENANT, result);
         evaluated += 1;
         if (result.passed) passed += 1;
+        else if (result.verdict?.state === 'unknown') notChecked += 1;
       }
 
       const summary = [
@@ -186,7 +189,7 @@ export function registerEvaluateRunsTool(
           ? `The relevance judge was asked for ${judgeRequest.calls} of them, the most one call may make (IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST); answers_the_ask read the other ${judgeRequest.withheld} lexically, and each says so.`
           : '',
         evaluated > 0
-          ? `${passed} of the ${evaluated} new verdict${evaluated === 1 ? '' : 's'} passed. Compare "${args.run}" against "${target}" to see what the rules change did — the executions are identical, so any difference is the rules.`
+          ? `${passed} of the ${evaluated} new verdict${evaluated === 1 ? '' : 's'} passed${notChecked > 0 ? `, and ${notChecked} ${notChecked === 1 ? 'was' : 'were'} not checked (not a pass, and not a failure)` : ''}. Compare "${args.run}" against "${target}" to see what the rules change did — the executions are identical, so any difference is the rules.`
           : 'Nothing was re-scored, so there is nothing new to compare.',
       ]
         .filter(Boolean)
@@ -204,6 +207,7 @@ export function registerEvaluateRunsTool(
         already_current: alreadyCurrent,
         failed,
         passed,
+        not_checked: notChecked,
         summary,
         ...(rulesChanged ? { rules_changed: rulesChanged } : {}),
       });

@@ -24,7 +24,7 @@ describe('the published sweep is what this code measures', () => {
     const { results } = await measureInvariants(process.cwd());
     expect(results.removals.map((r) => r.id)).toEqual(REMOVALS.map((r) => r.id));
     expect(results.additions.map((a) => a.id)).toEqual(ADDITIONS.map((a) => a.id));
-    expect(results.contracts).toHaveLength(CONTRACTS.reduce((n, c) => n + c.covers.length, 0));
+    expect(results.contracts).toHaveLength(CONTRACTS.reduce((n, c) => n + c.covers.length + (c.measures?.length ?? 0), 0));
     // The committed file, without the three stamps of when and where it was generated.
     const rest: Partial<InvariantResults> = { ...committed };
     for (const stamp of ['generatedAt', 'commit', 'version'] as const) delete rest[stamp];
@@ -36,8 +36,10 @@ describe('the published sweep is what this code measures', () => {
 });
 
 describe('under a contract, leaving the field out never yields a pass', () => {
-  it('zero passes on every contract row, and every row had cases to judge', () => {
-    for (const c of committed.contracts) {
+  it('zero passes on every held contract row, and every row had cases to judge', () => {
+    const held = committed.contracts.filter((c) => c.held);
+    expect(held.length).toBeGreaterThanOrEqual(15);
+    for (const c of held) {
       expect(c.passed, `${c.what} · ${c.removal}`).toEqual([]);
       expect(c.after.pass, `${c.what} · ${c.removal}`).toBe(0);
       expect(c.carried, `${c.what} · ${c.removal}`).toBeGreaterThan(0);
@@ -46,10 +48,11 @@ describe('under a contract, leaving the field out never yields a pass', () => {
     expect(committed.violations.contract).toBe(0);
   });
 
-  it('every removal a deployment can require has a contract row that requires it', () => {
+  it('every removal a deployment can require has a held contract row that requires it, a blank in place of the field included', () => {
     for (const r of committed.removals.filter((x) => x.need !== null)) {
-      expect(committed.contracts.some((c) => c.kind === 'required' && c.removal === r.id), r.id).toBe(true);
+      expect(committed.contracts.some((c) => c.kind === 'required' && c.held && c.removal === r.id), r.id).toBe(true);
     }
+    expect(committed.removals.map((r) => r.id)).toEqual(expect.arrayContaining(['input_blank', 'tool_outputs_blank', 'tool_calls_empty']));
     // The three kinds are each measured.
     expect(new Set(committed.contracts.map((c) => c.kind))).toEqual(new Set(['required', 'policy', 'call']));
   });
@@ -70,13 +73,36 @@ describe('under a contract, leaving the field out never yields a pass', () => {
   });
 });
 
-describe('a failure added to a case that does not pass never makes it pass', () => {
-  it('zero rescued on every addition', () => {
-    for (const a of committed.additions) {
+describe('an explicit empty list of tool calls', () => {
+  it('is refused by a requirement and by an expectation of calls, and is published (not held) under a ceiling on the calls', () => {
+    const rows = committed.contracts.filter((c) => c.removal === 'tool_calls_empty');
+    const by = (kind: string, held: boolean) => rows.filter((c) => c.kind === kind && c.held === held);
+    expect(by('required', true)).toHaveLength(1);
+    expect(by('call', true)).toHaveLength(1);
+    for (const c of [...by('required', true), ...by('call', true)]) expect(c.passed, c.what).toEqual([]);
+    const ceilings = by('policy', false);
+    expect(ceilings.length).toBeGreaterThan(0);
+    // Zero calls are within any ceiling: these pass, and the page says so instead of claiming a zero.
+    for (const c of ceilings) expect(c.after.pass, c.what).toBeGreaterThan(0);
+  });
+});
+
+describe('a failure added to a case that does not pass never makes it pass, for the four additions that are held', () => {
+  it('zero rescued on every held addition', () => {
+    const held = committed.additions.filter((x) => x.held);
+    expect(held.map((a) => a.id)).toEqual(['pii', 'stub', 'failed_tool_call', 'over_budget']);
+    for (const a of held) {
       expect(a.rescued, a.what).toEqual([]);
       expect(a.notPassing, a.what).toBeGreaterThan(50);
     }
     expect(committed.violations.rescued).toBe(0);
+  });
+
+  it('the addition that does rescue is published with its count and its reason, not held', () => {
+    const refusal = committed.additions.find((a) => a.id === 'refusal')!;
+    expect(refusal.held).toBe(false);
+    expect(refusal.rescued.length).toBeGreaterThan(0);
+    expect(refusal.why).toMatch(/any word of failure/);
   });
 
   it('a leak added to a case that passed fails it, every time', () => {

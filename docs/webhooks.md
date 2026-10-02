@@ -38,7 +38,7 @@ The webhook is the server's. `iris-eval ingest` runs in its own process and post
 
 | Event | When | The cooldown's subject |
 |---|---|---|
-| `verdict_fail` | The composed verdict failed, on any basis — the alert issue #5 asked for. A verdict left `unknown` that a later layer would have failed counts. | the rule that decided |
+| `verdict_fail` | The composed verdict failed, on any basis — the alert issue #5 asked for. A failure outranks a layer that could not check, so a verdict that fails is delivered here once, and not as `verdict_not_checked` as well. | the rule that decided |
 | `verdict_not_checked` | The verdict could not be reached and no layer failed it: nothing was judged, a critical check could not answer, or evidence somebody asked for was not sent (a cost ceiling you set, on a trace with no cost). It is not a pass. New in 0.20.0; a subscription that names no `events` receives it. | what was missing, or the check that could not answer |
 | `detector_veto` | A critical detection fired: PII, an injection, an action policy. `verdict.basis` is `"detector_veto"`, or an earlier layer decided first and `verdict.also` carries it. | the detector |
 | `cost_anomaly` | The `cost_anomaly` rule fired: this trace's cost is an outlier against the agent's own last two hundred costed traces (modified z ≥ 3.5). | `cost_anomaly` |

@@ -23,12 +23,12 @@ Each line printed is `{ "trace_id", "evaluation_id", "passed", "verdict": { "sta
 | `detector_veto` | a critical detector fired — `no_pii`, `no_injection_patterns`, `no_blocklist_words` by default |
 | `policy_gate` | a policy you configured failed (a threshold your config set, a custom rule at severity high or critical) |
 | `critical_unknown` | a critical check was asked and could not answer |
-| `required_evidence_missing` | `eval.requiredEvidence` named an input the trace did not carry |
+| `required_evidence_missing` | evidence somebody asked for was not sent: an input `eval.requiredEvidence` names, or what a rule you configured (a threshold you set, a rule you promoted or deployed as a gate) could not run without |
 | `risk_over_loss` | the risk estimate cleared your loss cut |
 
 **A gate on one basis passes everything else.** `--fail-on detector_veto` exits 0 on an output the evaluation failed for any other reason (a silent tool failure, an invented figure, a broken policy) and on every verdict that was not checked. It is the right gate for "never ship a leak, whatever else", and the wrong one for "ship only what passed". Until 0.20.0 it was the action's default and the first example on this page.
 
-**A basis trips when that layer decided the verdict or would have.** The layers are asked in order (a policy you configured, a critical detector, a critical check that could not answer, required evidence, the risk estimate) and `verdict.basis` names the first with something to say. They do not exclude each other: an output can break your cost policy and leak a credential. `verdict.also` lists every later layer that would have decided on its own, and `--fail-on` reads both, so that output trips `detector_veto` as well as `policy_gate`:
+**A basis trips when that layer decided the verdict or would have.** The layers are asked in order (a policy you configured, a critical detector, a critical check that could not answer, required evidence, the risk estimate) and `verdict.basis` names the first layer that fails, or when none fails the first that could not check. They do not exclude each other: an output can break your cost policy and leak a credential. `verdict.also` lists every other layer that would have decided on its own, and `--fail-on` reads both, so that output trips `detector_veto` as well as `policy_gate`:
 
 ```json
 { "verdict": { "state": "fail", "basis": "policy_gate", "by": ["cost_under_threshold"],
@@ -79,7 +79,7 @@ Four steps, in the order the person who gates deploys does them; each prints one
     traces: traces.ndjson
 ```
 
-That runs `iris-eval ingest --file traces.ndjson --evaluate --fail-on any`, fails the job when a verdict is not a pass, writes the receipt to the job summary and, on a pull request, posts it as **one comment updated in place** on every run (found by a marker naming the traces file, so two gates in one workflow keep two comments). The job needs `permissions: pull-requests: write` for the comment; without it, or on a pull request from a fork (whose token is read-only), the receipt still reaches the summary and the action says the comment was skipped and why. A traces file that is empty fails the job: an unwritten file cannot pass as green. So does a trace the gate could not judge ([what exit 0 means](#what-exit-0-means)).
+From 0.20.0 that runs `iris-eval ingest --file traces.ndjson --evaluate --fail-on any` (the action at `@v0.19.0` and earlier defaults to `detector_veto`), fails the job when a verdict is not a pass, writes the receipt to the job summary and, on a pull request, posts it as **one comment updated in place** on every run (found by a marker naming the traces file, so two gates in one workflow keep two comments). The job needs `permissions: pull-requests: write` for the comment; without it, or on a pull request from a fork (whose token is read-only), the receipt still reaches the summary and the action says the comment was skipped and why. A traces file that is empty fails the job: an unwritten file cannot pass as green. So does a trace the gate could not judge ([what exit 0 means](#what-exit-0-means)).
 
 | Input | Default | What it is |
 |---|---|---|

@@ -158,7 +158,7 @@ describe('migration 021 — the state of a stored verdict', () => {
     db.exec('UPDATE eval_results SET verdict_state = NULL, risk_estimate = NULL, risk_version = NULL');
     const before = db.prepare('SELECT id, passed, verdict_state, insufficient_data FROM eval_results ORDER BY id').all() as Array<Record<string, unknown>>;
     db.close();
-    // Unfilled, a row says what its other columns can: it passed, nothing was judged, or it did not pass.
+    // Unfilled, a row is counted as it always was: it passed, or it did not.
     expect(before.map((r) => storedState(r))).toEqual(['fail', 'pass', 'fail']);
 
     clearRiskEstimateCache();
@@ -178,8 +178,8 @@ describe('migration 021 — the state of a stored verdict', () => {
   it('storedState: pass exactly when the row passed, whatever the column says', () => {
     expect(storedState({ passed: 1, verdict_state: 'unknown' })).toBe('pass');
     expect(storedState({ passed: 0, verdict_state: 'pass' })).toBe('fail');
-    expect(storedState({ passed: 0, verdict_state: null, insufficient_data: 1 })).toBe('unknown');
-    expect(storedState({ passed: 0, verdict_state: null, insufficient_data: 0 })).toBe('fail');
+    expect(storedState({ passed: 0, verdict_state: 'unknown' })).toBe('unknown');
+    expect(storedState({ passed: 0, verdict_state: null })).toBe('fail');
   });
 
   it('counts the not-checked verdicts of a window from the index that holds only them', async () => {

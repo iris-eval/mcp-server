@@ -701,8 +701,8 @@ async function invariants(check: boolean): Promise<void> {
   process.stdout.write(`  under a contract: ${results.violations.contract} passed · rescued by an added failure: ${results.violations.rescued}
 `);
   if (results.violations.contract > 0 || results.violations.rescued > 0) {
-    const passed = results.contracts.filter((c) => c.passed.length > 0).map((c) => `${c.what}, ${c.removal}: ${c.passed.join(', ')}`);
-    const rescued = results.additions.filter((a) => a.rescued.length > 0).map((a) => `${a.what}: ${a.rescued.join(', ')}`);
+    const passed = results.contracts.filter((c) => c.held && c.passed.length > 0).map((c) => `${c.what}, ${c.removal}: ${c.passed.join(', ')}`);
+    const rescued = results.additions.filter((a) => a.held && a.rescued.length > 0).map((a) => `${a.what}: ${a.rescued.join(', ')}`);
     process.stderr.write(`proof --invariants — FAIL: a verdict passed with evidence left out under a contract, or was rescued by an added failure.
   ${[...passed, ...rescued].join('\n  ')}
 `);

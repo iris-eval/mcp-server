@@ -44,7 +44,7 @@ describe('a policy the deployment set, on a call without what it reads', () => {
     expect(left.passed).toBe(false);
     const said = left.interpretations!.find((i) => i.severity === 'block')!;
     expect(said.addressee).toBe('agent');
-    expect(said.text).toBe('Not checked, which is not a pass: cost_under_threshold could not run without cost (this deployment set it to gate). Send cost and ask again.');
+    expect(said.text).toBe('Not checked, which is not a pass: cost_under_threshold could not run without cost (this deployment asks for it). Send cost and ask again.');
 
     // Within the ceiling it passes, so the ceiling is not what blocks: the missing cost is.
     expect((await e.evaluateAll({ ...base, costUsd: 0.01 })).verdict!.state).toBe('pass');
@@ -114,7 +114,7 @@ describe('an expectation the call supplied, with nothing to compare it against',
     const left = await engine().evaluateAll({ ...base, expectedTrajectory } as EvalContext);
     expect(rule(left, 'tool_sequence')).toMatchObject({ skipped: true, lacked: ['tool_calls'], asked: 'call' });
     expect(left.verdict).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['tool_calls'] });
-    expect(left.interpretations!.find((i) => i.severity === 'block')!.text).toContain('the call supplied what it is compared against');
+    expect(left.interpretations!.find((i) => i.severity === 'block')!.text).toContain('tool_sequence could not run without tool_calls (this call asks for it)');
 
     const sent = await engine().evaluateAll({ ...base, expectedTrajectory, toolCalls: calls.slice(0, 1) } as EvalContext);
     expect(rule(sent, 'tool_sequence').skipped).toBeFalsy();

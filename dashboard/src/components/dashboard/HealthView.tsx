@@ -49,6 +49,7 @@ import { BiggestMoversTable } from './charts/BiggestMoversTable';
 import { useRuleCategoryMap } from '../../hooks/useRuleCategoryMap';
 import { RecentMomentsRow } from './RecentMomentsRow';
 import { RateLimitBanner } from '../shared/RateLimitBanner';
+import { notCheckedSuffix } from '../evals/verdictText';
 import {
   getVerdictVisual,
   getSignificanceVisual,
@@ -172,6 +173,8 @@ export function HealthView() {
     return {
       passRate: prCurrent,
       passRateDelta,
+      // Verdicts that were not checked: in the rate's denominator, and not failures.
+      notChecked: stats.notChecked,
       totalEvals: evalsCurrent,
       evalsDelta,
       totalCost: costCurrent,
@@ -247,7 +250,7 @@ export function HealthView() {
           sub={
             kpis && kpis.totalEvals === 0
               ? `no evals in ${period}`
-              : `${fmtDelta(kpis?.passRateDelta)} vs prior ${period}`
+              : `${fmtDelta(kpis?.passRateDelta)} vs prior ${period}${notCheckedSuffix(kpis?.notChecked)}`
           }
           accent={
             !kpis || kpis.totalEvals === 0

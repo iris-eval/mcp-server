@@ -26,3 +26,16 @@ export function thresholdSourceOf(context: EvalContext, key: string): ThresholdS
   if (context.thresholdSourceOf) return context.thresholdSourceOf(key);
   return context.customConfig !== undefined && key in context.customConfig ? 'config' : 'default';
 }
+
+/**
+ * Who set a threshold: this call, the deployment's config file, or nobody.
+ * `thresholdSourceOf` folds the first two into `config`, which is all a
+ * rule needs to decide whether it gates. A sentence that says who asked
+ * needs them apart. Outside the engine, presence in customConfig is the
+ * caller having set it.
+ */
+export function thresholdSetBy(context: EvalContext, key: string): 'call' | 'config' | undefined {
+  if (context.thresholdSetBy) return context.thresholdSetBy(key);
+  if (context.thresholdSourceOf) return context.thresholdSourceOf(key) === 'config' ? 'config' : undefined;
+  return context.customConfig !== undefined && key in context.customConfig ? 'call' : undefined;
+}

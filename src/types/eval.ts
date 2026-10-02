@@ -84,6 +84,13 @@ export interface EvalRule {
    * not carry what the policy reads, was asked and could not answer.
    */
   thresholdKeys?: readonly string[];
+  /**
+   * For a rule that compares against something the call itself supplies
+   * (an expected trajectory): whether this call supplied the part this rule
+   * reads. `expected_trajectory: { step_budget: 5 }` is an expectation for
+   * the step budget and none for the sequence of calls.
+   */
+  expects?: (context: EvalContext) => boolean;
   question?: QuestionId;
   classes?: readonly FailureClass[];
   /** Bumped when the rule's meaning changes, so a stored result names the definition that produced it. */
@@ -226,6 +233,13 @@ export interface EvalContext {
    * shipped number has set it.
    */
   thresholdSourceOf?: (key: string) => 'default' | 'config';
+  /**
+   * Who set a threshold, where `thresholdSourceOf` says only that somebody
+   * did: `call` when this call's own configuration carried the key,
+   * `config` when the deployment's config file did. Installed by the engine
+   * beside `thresholdSourceOf`; read through thresholdSetBy().
+   */
+  thresholdSetBy?: (key: string) => 'call' | 'config' | undefined;
 
   /**
 
@@ -397,7 +411,11 @@ export interface Interpretation {
 export interface VerdictNode {
   node: 'nothing_judged' | 'gate' | 'veto' | 'unknown' | 'evidence' | 'risk';
   by: string[];
-  /** Whether this layer decided the verdict. At most one node in a path is true. */
+  /**
+   * Whether this layer would decide the verdict on its own. The last node
+   * of a path is the verdict's. An earlier node can be true as well: a
+   * layer that could not check, on the way to the layer that failed.
+   */
   decided: boolean;
   /** The risk estimate, on the risk node only, whether or not it decided; null when nothing carried a published rate. */
   risk?: Verdict['risk'];
@@ -406,7 +424,8 @@ export interface VerdictNode {
 /**
  * A layer after the one that decided, which would have decided on its own.
  *
- * `basis` names the FIRST layer with something to say, and the layers do
+ * `basis` names ONE layer (the first that fails, else the first that could
+ * not check), and the layers do
  * not exclude each other: one output can break a policy the deployment set
  * and leak a credential. `state` is what that layer alone would have made
  * the verdict, and `by` carries what `Verdict.by` would have carried.
@@ -635,12 +654,13 @@ export interface EvalRuleResult {
   lacked?: Need[];
   /**
    * On a rule that skipped for missing evidence, when somebody had asked
-   * for it: `config` when the deployment set this rule's threshold, promoted
-   * it to critical, or deployed it as a gating rule of its own; `call` when
-   * the call itself supplied the expectation the rule compares against (an
-   * expected trajectory) and left out what to compare. Such a rule was not
-   * "not applicable". It was asked and could not answer, and the verdict is
-   * not a pass.
+   * for it. `config`: the deployment set this rule's threshold, promoted it
+   * to critical, deployed it as a gating rule of its own, or installed the
+   * judge that answers it. `call`: the call itself set the threshold,
+   * supplied the gating rule inline, or supplied the expectation the rule
+   * compares against (an expected trajectory) and left out what to
+   * compare. Such a rule was not "not applicable". It was asked and could
+   * not answer, and the verdict is not a pass.
    */
   asked?: 'config' | 'call';
   // Set when the rule skipped because its DEFINITION is broken (invalid

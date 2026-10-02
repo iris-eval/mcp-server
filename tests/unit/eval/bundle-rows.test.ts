@@ -92,6 +92,36 @@ describe('a bundle row carries the verdict, read for its own rules', () => {
   });
 });
 
+describe('rows the review found disagreeing with the verdict', () => {
+  it('a loss ratio that puts the line under the risk of an output nothing flagged: the rows whose rules the estimate reads fail with it', async () => {
+    const strict = engine({ falsePassCost: 9 });
+    const r = await strict.evaluateAll(honest);
+    expect(r.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: [] });
+    expect(r.rule_results.some((x) => !x.skipped && !x.passed && (x.kind === 'detection' || x.kind === 'inference'))).toBe(false);
+    const rows = Object.entries(r.categories!);
+    // No row may read "passed" on every bundle of an evaluation that failed.
+    expect(rows.some(([, row]) => row.state === 'fail')).toBe(true);
+    expect(rows.every(([, row]) => row.passed === true)).toBe(false);
+  });
+
+  it('evidence one rule lacked leaves that rule’s bundle not checked, and the others as they were', async () => {
+    const e = new EvalEngine(defaultConfig.eval.defaultThreshold, { ...defaultConfig.eval.ruleThresholds, cost_threshold: 0.05 } as never, { ...defaultConfig.eval, configuredThresholdKeys: ['cost_threshold'] } as never);
+    const r = await e.evaluateAll(honest);
+    expect(r.verdict).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['cost'] });
+    expect(r.categories!.cost).toMatchObject({ state: 'unknown', passed: null });
+    // Every safety rule ran and passed: a cost that was not sent says nothing about them.
+    expect(r.categories!.safety).toMatchObject({ state: 'pass', passed: true });
+  });
+
+  it('a row that was not checked carries passed: null, whatever the reason', async () => {
+    const required = await engine({ requiredEvidence: ['tool_calls'] }).evaluateAll({ input: ASK, output: CLAIM });
+    for (const [name, row] of Object.entries(required.categories!)) {
+      expect(row.state, name).toBe('unknown');
+      expect(row.passed, name).toBeNull();
+    }
+  });
+});
+
 describe('the rows and the verdict agree on every labelled case', () => {
   it('a passing evaluation has no failing row, and an evaluation that does not pass has a row that does not pass', async () => {
     const loaded = await loadComposite(process.cwd());

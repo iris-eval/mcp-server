@@ -20,7 +20,7 @@
  */
 import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type EvalRuleResult, type Evidence, type ExpectedArgsMode, type ExpectedToolCall, type ExpectedTrajectoryMode } from '../../types/eval.js';
 import type { Step } from '../../types/trace.js';
-import { stepScopeNote, stepsOf } from '../steps.js';
+import { stepScopeNote, stepsOf, trajectoryAbsence } from '../steps.js';
 import { describeInput, normaliseInput, skipWithoutTrajectory, stableStringify } from './trajectory.js';
 
 export const DEFAULT_SEQUENCE_MODE: ExpectedTrajectoryMode = 'ordered_subset';
@@ -154,20 +154,28 @@ function skipWithoutExpectation(ruleName: string, what: string): EvalRuleResult 
 export const toolSequence: EvalRule = {
   name: 'tool_sequence',
   description:
-    'The calls the caller expected against the calls the agent made, in a mode: strict (equal, in order), unordered (equal as multisets), subset (every expected call present), superset (no call outside the expected set) or ordered_subset (the expected calls appear in order among the actual ones — the default; two pointers, linear time). A call matches by tool name, and by arguments only when the expectation names an input: exact compares the normalised input, subset (the default) asks that every expected key be present with the same value. Fails naming the first missing, extra or misplaced call. Skips without a trajectory or without expected_trajectory.tool_calls',
+    'The calls the caller expected against the calls the agent made, in a mode: strict (equal, in order), unordered (equal as multisets), subset (every expected call present), superset (no call outside the expected set) or ordered_subset (the expected calls appear in order among the actual ones — the default; two pointers, linear time). A call matches by tool name, and by arguments only when the expectation names an input: exact compares the normalised input, subset (the default) asks that every expected key be present with the same value. Fails naming the first missing, extra or misplaced call. An explicit empty list of tool calls is judged as no calls made, which fails an expectation of calls. Skips when no tool calls were sent at all, or without expected_trajectory.tool_calls',
   evalType: 'completeness',
   weight: 1,
   kind: 'policy',
   mechanism: 'formula',
   needs: ['tool_calls', 'expected_trajectory'],
+  expects: (context) => (context.expectedTrajectory?.tool_calls?.length ?? 0) > 0,
   question: 'complete',
   classes: ['wrong_trajectory'],
-  version: 1,
+  // 2 (0.20.0): an explicit empty list of tool calls is judged against the expectation instead of skipped.
+  version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     const expected = context.expectedTrajectory?.tool_calls;
     if (expected === undefined || expected.length === 0) return skipWithoutExpectation('tool_sequence', 'tool_calls');
+    /*
+     * `tool_calls: []` is a trajectory: the caller says no calls were made,
+     * and against an expectation of calls that is the finding. Until 0.20.0
+     * it skipped, so "expected a search, made none" passed. Calls that were
+     * not sent at all still skip: there is nothing to compare.
+     */
     const skip = skipWithoutTrajectory('tool_sequence', context);
-    if (skip) return skip;
+    if (skip && trajectoryAbsence(context) !== 'empty_calls') return skip;
     const steps = stepsOf(context);
     const mode = modeOf(context.expectedTrajectory?.mode);
     const args = argsOf(context.expectedTrajectory?.args);
@@ -193,22 +201,28 @@ export const toolSequence: EvalRule = {
 export const stepBudget: EvalRule = {
   name: 'step_budget',
   description:
-    'A task must finish within ITS budget: the number of tool calls made against expected_trajectory.step_budget (or the number of expected calls when only tool_calls was given) times a tolerance (expected_trajectory.tolerance, default 1.5) — fails when calls exceed budget × tolerance, naming the overrun. Where max_steps is one deployment-wide ceiling, this is the budget the caller states for one task. Skips without a trajectory or without an expectation',
+    'A task must finish within ITS budget: the number of tool calls made against expected_trajectory.step_budget (or the number of expected calls when only tool_calls was given) times a tolerance (expected_trajectory.tolerance, default 1.5) — fails when calls exceed budget × tolerance, naming the overrun. Where max_steps is one deployment-wide ceiling, this is the budget the caller states for one task. An explicit empty list of tool calls is judged as zero calls. Skips when no tool calls were sent at all, or without an expectation',
   evalType: 'cost',
   weight: 1,
   kind: 'policy',
   mechanism: 'formula',
   needs: ['tool_calls', 'expected_trajectory'],
+  expects: (context) => {
+    const et = context.expectedTrajectory;
+    return (typeof et?.step_budget === 'number' && Number.isFinite(et.step_budget) && et.step_budget >= 1) || (et?.tool_calls?.length ?? 0) > 0;
+  },
   question: 'within_budget',
   classes: ['over_budget'],
-  version: 1,
+  // 2 (0.20.0): an explicit empty list of tool calls is judged as zero calls instead of skipped.
+  version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     const et = context.expectedTrajectory;
     const declared = typeof et?.step_budget === 'number' && Number.isFinite(et.step_budget) && et.step_budget >= 1 ? Math.floor(et.step_budget) : undefined;
     const budget = declared ?? (et?.tool_calls !== undefined && et.tool_calls.length > 0 ? et.tool_calls.length : undefined);
     if (budget === undefined) return skipWithoutExpectation('step_budget', 'step_budget (or tool_calls)');
+    // An explicit empty list is zero calls, which is within any budget; calls that were not sent at all still skip.
     const skip = skipWithoutTrajectory('step_budget', context);
-    if (skip) return skip;
+    if (skip && trajectoryAbsence(context) !== 'empty_calls') return skip;
     const tolerance = typeof et?.tolerance === 'number' && Number.isFinite(et.tolerance) && et.tolerance >= 1 ? et.tolerance : DEFAULT_STEP_TOLERANCE;
     const ceiling = budget * tolerance;
     const calls = stepsOf(context).length;

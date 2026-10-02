@@ -1868,7 +1868,7 @@
           "expected_trajectory"
         ],
         "question": "within_budget",
-        "version": 1
+        "version": 2
       },
       {
         "classes": [
@@ -1897,7 +1897,7 @@
           "expected_trajectory"
         ],
         "question": "complete",
-        "version": 1
+        "version": 2
       },
       {
         "classes": [
@@ -2403,7 +2403,7 @@
         "cells": {
           "q1": {
             "evidence": "proof/results.json → rules[tool_sequence]",
-            "note": "precision, recall and F1 on 47 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "note": "precision, recall and F1 on 51 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
             "status": "measured"
           },
           "q10": {
@@ -3631,7 +3631,7 @@
         "cells": {
           "q1": {
             "evidence": "proof/results.json → rules[step_budget]",
-            "note": "precision, recall and F1 on 44 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "note": "precision, recall and F1 on 46 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
             "status": "measured"
           },
           "q10": {
@@ -5034,13 +5034,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "7b375542274e"
+        "compositeVersion": "b0381e355160"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "7022143b0265",
+        "corpusVersion": "0e64b035afb5",
         "customCorpusVersion": "506945ab966b"
       }
     },
@@ -5053,8 +5053,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-10-02T19:55:34.512Z",
-  "generatedFromCommit": "eb9c193a",
+  "generatedAt": "2026-10-02T21:37:28.396Z",
+  "generatedFromCommit": "dc393a94",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5142,9 +5142,9 @@
     ]
   },
   "proof": {
-    "commit": "78a07815",
+    "commit": "dc393a94",
     "composite": {
-      "compositeVersion": "7b375542274e",
+      "compositeVersion": "b0381e355160",
       "confidence": {
         "changed": {
           "of": 112,
@@ -5368,13 +5368,13 @@
               "to": 1
             }
           ],
-          "compositeVersion": "7b375542274e",
+          "compositeVersion": "b0381e355160",
           "prior": 0.5,
           "priorMode": "per-output",
           "split": "dev"
         }
       },
-      "corpusVersion": "7022143b0265",
+      "corpusVersion": "0e64b035afb5",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -6860,7 +6860,7 @@
       },
       "version": "0.19.0"
     },
-    "corpusVersion": "7022143b0265",
+    "corpusVersion": "0e64b035afb5",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -7485,7 +7485,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-10-02T06:06:09.795Z",
+    "generatedAt": "2026-10-02T21:26:36.209Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7503,9 +7503,9 @@
         "platform": "win32"
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
-      "n": 1021,
-      "p50Ms": 0.744,
-      "p95Ms": 5.331
+      "n": 1027,
+      "p50Ms": 0.79,
+      "p95Ms": 5.654
     },
     "method": {
       "ci": "wilson-95",
@@ -7824,25 +7824,25 @@
             1
           ],
           "precision": [
-            0.8668,
+            0.8794,
             1
           ],
           "recall": [
-            0.8668,
+            0.8794,
             1
           ]
         },
         "credible95": {
           "f1": [
-            0.927,
+            0.9346,
             0.9996
           ],
           "precision": [
-            0.908,
+            0.9166,
             1
           ],
           "recall": [
-            0.9028,
+            0.9122,
             1
           ]
         },
@@ -7850,10 +7850,10 @@
         "fn": 0,
         "fp": 0,
         "labelBasis": "definition",
-        "n": 47,
+        "n": 51,
         "name": "tool_sequence",
-        "negatives": 22,
-        "positives": 25,
+        "negatives": 23,
+        "positives": 28,
         "ppvAt": {
           "0.01": 1,
           "0.05": 1,
@@ -7863,8 +7863,8 @@
         "precision": 1,
         "recall": 1,
         "skipped": 0,
-        "tn": 22,
-        "tp": 25
+        "tn": 23,
+        "tp": 28
       },
       {
         "category": "relevance",
@@ -8750,9 +8750,9 @@
         "fn": 0,
         "fp": 0,
         "labelBasis": "definition",
-        "n": 44,
+        "n": 46,
         "name": "step_budget",
-        "negatives": 22,
+        "negatives": 24,
         "positives": 22,
         "ppvAt": {
           "0.01": 1,
@@ -8763,7 +8763,7 @@
         "precision": 1,
         "recall": 1,
         "skipped": 0,
-        "tn": 22,
+        "tn": 24,
         "tp": 22
       }
     ],

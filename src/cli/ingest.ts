@@ -83,7 +83,8 @@ interface Layer {
  * The layers of a verdict that answer `--fail-on`: the one that decided and
  * every later one that would have (`verdict.also`).
  *
- * `basis` names only the first layer with something to say. Reading it alone
+ * `basis` names one layer (the first that fails, else the first that could
+ * not check). Reading it alone
  * let an output that broke a configured policy AND leaked a credential pass
  * `--fail-on detector_veto` with exit 0, because `policy_gate` is asked
  * first.

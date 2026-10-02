@@ -30,7 +30,7 @@ export function EvalTable({
     {
       key: 'score',
       header: 'Score',
-      render: (e) => <ScoreBadge score={e.score} passed={e.passed} />,
+      render: (e) => <ScoreBadge score={e.score} passed={e.passed} neutral={e.verdict?.state === 'unknown'} />,
       width: '80px',
     },
     {

@@ -526,6 +526,21 @@
               "config_invalid"
             ]
           },
+          "lacked": {
+            "description": "on a rule that skipped for missing evidence: the inputs it reads that the call did not carry",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "asked": {
+            "description": "on such a rule, when somebody had asked for it: the deployment (a threshold it set, a promotion, a deployed gating rule, an installed judge) or the call itself. The verdict is then unknown, not pass",
+            "type": "string",
+            "enum": [
+              "config",
+              "call"
+            ]
+          },
           "uncertainty": {
             "oneOf": [
               {

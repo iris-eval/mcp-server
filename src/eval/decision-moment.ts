@@ -209,9 +209,10 @@ function computeRuleSnapshot(evals: EvalResult[]): MomentRuleSnapshot {
  * "partial" now means what it says: several evaluations of one trace and
  * they did not agree. An `unknown` verdict reads as unevaluated, because
  * that is what it is — asked, and unable to answer. Beside evaluations
- * that all passed it is a disagreement, not a pass: until 0.20.0 it was
- * dropped, and a trace with one pass and one verdict that could not be
- * reached read "pass".
+ * that all passed it still reads unevaluated: until 0.20.0 it was dropped,
+ * and a trace with one pass and one verdict that could not be reached read
+ * "pass". It is not "partial" either: nothing failed, and a partial moment
+ * is listed among the failures.
  */
 function computeVerdict(evals: EvalResult[], snapshot: MomentRuleSnapshot): MomentVerdict {
   if (evals.length === 0) return 'unevaluated';
@@ -219,7 +220,7 @@ function computeVerdict(evals: EvalResult[], snapshot: MomentRuleSnapshot): Mome
   const decided = evals.filter((e) => e.verdict === undefined || e.verdict.state !== 'unknown');
   if (decided.length === 0) return 'unevaluated';
   const passed = decided.filter((e) => e.passed).length;
-  if (passed === decided.length) return decided.length === evals.length ? 'pass' : 'partial';
+  if (passed === decided.length) return decided.length === evals.length ? 'pass' : 'unevaluated';
   if (passed === 0) return 'fail';
   return 'partial';
 }
@@ -396,7 +397,7 @@ function classifySignificance({
       reason:
         evals.length === 0
           ? 'No evaluation was recorded for this trace: nothing here was judged.'
-          : 'An evaluation was recorded but reached no verdict: every rule skipped, or a critical rule could not judge. Unknown, not clean.',
+          : 'An evaluation was recorded but reached no verdict: nothing was judged, a critical check could not answer, or evidence somebody asked for was not sent. Not checked, which is not a pass.',
     };
   }
 
