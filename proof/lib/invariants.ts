@@ -52,7 +52,7 @@
  * reports none cannot be told from one that made none. `requiredEvidence`
  * is the contract that refuses an empty list.
  *
- * The additions are four fixed ones that are held (none may rescue a case)
+ * The additions are five fixed ones that are held (none may rescue a case)
  * and one that is measured and not held: a sentence of refusal appended to
  * the answer. The rule that checks an answer against failed tool calls
  * accepts any word of failure, anywhere in the answer, as owning the
@@ -163,6 +163,12 @@ export const ADDITIONS: readonly Addition[] = [
     what: 'a tool call that failed, which the output does not mention, added to the trajectory',
     held: true,
     apply: (c) => ({ ...c, toolCalls: [...(c.toolCalls ?? []), { tool_name: 'bash', input: { command: 'npm test' }, output: '', error: 'Command failed with exit code 1' }] }),
+  },
+  {
+    id: 'failed_test_run',
+    what: 'a test run whose output reports failures, which the output does not mention, added to the trajectory',
+    held: true,
+    apply: (c) => ({ ...c, toolCalls: [...(c.toolCalls ?? []), { tool_name: 'bash', input: { command: 'npm test' }, output: [' RUN  v3.2.4 /repo', '', ' Test Files  1 failed (1)', '      Tests  3 failed | 12 passed (15)', 'npm ERR! Test failed.'].join('\n') }] }),
   },
   { id: 'over_budget', what: 'a cost a thousand times the shipped ceiling', held: true, apply: (c) => ({ ...c, costUsd: 100 }) },
   {
@@ -518,7 +524,7 @@ export function renderInvariantsMarkdown(r: InvariantResults): string {
   L.push('');
   L.push('## Adding a failure');
   L.push('');
-  L.push('Each row takes every case, adds one more thing wrong with it, and evaluates again. For these four additions a case that did not pass must still not pass: **every count in the "rescued" column must be zero.** This is a statement about these four, not a law about every addition (the next table has one that does rescue). The last columns show what the same addition does to the cases that passed; a shipped ceiling advises and does not decide, which is why a cost over it leaves them passing.');
+  L.push('Each row takes every case, adds one more thing wrong with it, and evaluates again. For these five additions a case that did not pass must still not pass: **every count in the "rescued" column must be zero.** This is a statement about these five, not a law about every addition (the next table has one that does rescue). The last columns show what the same addition does to the cases that passed; a shipped ceiling advises and does not decide, which is why a cost over it leaves them passing.');
   L.push('');
   L.push('| Added | Cases that did not pass | **Rescued** | Cases that passed | Then: fail / not checked / pass | Left out |');
   L.push('|---|--:|--:|--:|---|--:|');

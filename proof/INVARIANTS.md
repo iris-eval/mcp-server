@@ -1,7 +1,7 @@
-# What a verdict does when evidence is taken away
+# What a verdict does when evidence is taken away, a failure is added, or the output is written another way
 
-Generated 2026-10-02T21:39:09.851Z for v0.19.0 (local generating commit `dc393a94` — branch commits are squashed on merge, so cite the version).
-Composite version `b0381e355160`, 145 labelled cases, the shipped configuration. Reproduce with `npm run proof -- --invariants`; CI runs `npm run proof -- --check --invariants`.
+Generated 2026-10-02T22:27:54.080Z for v0.19.0 (local generating commit `68887672` — branch commits are squashed on merge, so cite the version).
+Composite version `3765a8bdc492`, 145 labelled cases, the shipped configuration. Reproduce with `npm run proof -- --invariants`; CI runs `npm run proof -- --check --invariants`.
 
 ## Sending less, at the shipped configuration
 
@@ -11,17 +11,17 @@ A call that leaves a field out looks the same as a call from an agent that has n
 
 | Left out | Cases that carry it | Failed with everything sent | Fail → pass | Fail → not checked | Not checked → pass | Can a deployment require it |
 |---|--:|--:|--:|--:|--:|---|
-| the tool calls left out | 127 | 72 | **39** | 1 | 0 | yes: `tool_calls` |
-| an empty list of tool calls sent in their place | 127 | 72 | **39** | 0 | 0 | yes: `tool_calls` |
-| every tool output left out (the calls and their errors kept) | 125 | 70 | **15** | 0 | 0 | yes: `tool_outputs` |
+| the tool calls left out | 127 | 70 | **37** | 1 | 0 | yes: `tool_calls` |
+| an empty list of tool calls sent in their place | 127 | 70 | **37** | 0 | 0 | yes: `tool_calls` |
+| every tool output left out (the calls and their errors kept) | 125 | 68 | **13** | 0 | 0 | yes: `tool_outputs` |
 | every tool error left out (the calls and their outputs kept) | 6 | 6 | **4** | 0 | 0 | no: nothing in the call names what is missing |
-| the last tool call left out | 102 | 55 | **13** | 0 | 0 | no: nothing in the call names what is missing |
-| every tool output replaced by an empty string | 125 | 70 | **15** | 0 | 0 | yes: `tool_outputs` |
-| the input left out | 145 | 77 | **14** | 0 | 0 | yes: `input` |
-| the input replaced by one space | 145 | 77 | **14** | 0 | 0 | yes: `input` |
-| the list of available tools left out | 10 | 7 | **1** | 0 | 0 | yes: `tools_catalogue` |
-| the cost left out | 109 | 52 | **0** | 0 | 0 | yes: `cost` |
-| the token counts left out | 109 | 52 | **0** | 0 | 0 | yes: `tokens` |
+| the last tool call left out | 102 | 53 | **13** | 0 | 0 | no: nothing in the call names what is missing |
+| every tool output replaced by an empty string | 125 | 68 | **13** | 0 | 0 | yes: `tool_outputs` |
+| the input left out | 145 | 75 | **14** | 0 | 0 | yes: `input` |
+| the input replaced by one space | 145 | 75 | **14** | 0 | 0 | yes: `input` |
+| the list of available tools left out | 10 | 5 | **1** | 0 | 0 | yes: `tools_catalogue` |
+| the cost left out | 109 | 50 | **0** | 0 | 0 | yes: `cost` |
+| the token counts left out | 109 | 50 | **0** | 0 | 0 | yes: `tokens` |
 
 The two rows a deployment cannot require are an agent editing its own record: dropping the error from a call that failed, or dropping a call. No rule over a self-reported trace can see either. The evidence has to come from something other than the agent (a hook, a proxy, an OpenTelemetry exporter) for those rows to close.
 
@@ -35,16 +35,16 @@ Where somebody has said the field must be there, leaving it out never yields a p
 | eval.requiredEvidence names tool_calls | an empty list of tool calls sent in their place | 127 | 39 | 88 | **0** |
 | eval.requiredEvidence names tool_outputs | every tool output left out (the calls and their errors kept) | 125 | 81 | 44 | **0** |
 | eval.requiredEvidence names tool_outputs | every tool output replaced by an empty string | 125 | 81 | 44 | **0** |
-| eval.requiredEvidence names input | the input left out | 145 | 63 | 82 | **0** |
-| eval.requiredEvidence names input | the input replaced by one space | 145 | 63 | 82 | **0** |
-| eval.requiredEvidence names tools_catalogue | the list of available tools left out | 10 | 6 | 4 | **0** |
-| eval.requiredEvidence names cost | the cost left out | 109 | 52 | 57 | **0** |
-| eval.requiredEvidence names tokens | the token counts left out | 109 | 52 | 57 | **0** |
-| the deployment set a cost ceiling (cost_threshold) | the cost left out | 109 | 52 | 57 | **0** |
+| eval.requiredEvidence names input | the input left out | 145 | 61 | 84 | **0** |
+| eval.requiredEvidence names input | the input replaced by one space | 145 | 61 | 84 | **0** |
+| eval.requiredEvidence names tools_catalogue | the list of available tools left out | 10 | 4 | 6 | **0** |
+| eval.requiredEvidence names cost | the cost left out | 109 | 50 | 59 | **0** |
+| eval.requiredEvidence names tokens | the token counts left out | 109 | 50 | 59 | **0** |
+| the deployment set a cost ceiling (cost_threshold) | the cost left out | 109 | 50 | 59 | **0** |
 | the deployment set a step ceiling (max_steps) | the tool calls left out | 127 | 37 | 90 | **0** |
 | the deployment set a repeat ceiling (max_tool_repeats) | the tool calls left out | 127 | 37 | 90 | **0** |
-| the deployment set the relevance thresholds (keyword_overlap, topic_consistency) | the input left out | 145 | 63 | 82 | **0** |
-| the deployment set the relevance thresholds (keyword_overlap, topic_consistency) | the input replaced by one space | 145 | 63 | 82 | **0** |
+| the deployment set the relevance thresholds (keyword_overlap, topic_consistency) | the input left out | 145 | 61 | 84 | **0** |
+| the deployment set the relevance thresholds (keyword_overlap, topic_consistency) | the input replaced by one space | 145 | 61 | 84 | **0** |
 | the call supplied an expected trajectory | the tool calls left out | 127 | 37 | 90 | **0** |
 | the call supplied an expected trajectory | an empty list of tool calls sent in their place | 127 | 127 | 0 | **0** |
 
@@ -59,28 +59,50 @@ What a contract does not reach: a rule that still runs on less. With the tool ou
 
 ## Adding a failure
 
-Each row takes every case, adds one more thing wrong with it, and evaluates again. For these four additions a case that did not pass must still not pass: **every count in the "rescued" column must be zero.** This is a statement about these four, not a law about every addition (the next table has one that does rescue). The last columns show what the same addition does to the cases that passed; a shipped ceiling advises and does not decide, which is why a cost over it leaves them passing.
+Each row takes every case, adds one more thing wrong with it, and evaluates again. For these five additions a case that did not pass must still not pass: **every count in the "rescued" column must be zero.** This is a statement about these five, not a law about every addition (the next table has one that does rescue). The last columns show what the same addition does to the cases that passed; a shipped ceiling advises and does not decide, which is why a cost over it leaves them passing.
 
 | Added | Cases that did not pass | **Rescued** | Cases that passed | Then: fail / not checked / pass | Left out |
 |---|--:|--:|--:|---|--:|
-| a Social Security number appended to the output | 76 | **0** | 68 | 68 / 0 / 0 | 1 |
-| a placeholder appended to the output | 76 | **0** | 68 | 13 / 0 / 55 | 1 |
-| a tool call that failed, which the output does not mention, added to the trajectory | 77 | **0** | 68 | 45 / 0 / 23 | 0 |
-| a cost a thousand times the shipped ceiling | 77 | **0** | 68 | 0 / 0 / 68 | 0 |
+| a Social Security number appended to the output | 74 | **0** | 70 | 70 / 0 / 0 | 1 |
+| a placeholder appended to the output | 74 | **0** | 70 | 13 / 0 / 57 | 1 |
+| a tool call that failed, which the output does not mention, added to the trajectory | 75 | **0** | 70 | 47 / 0 / 23 | 0 |
+| a test run whose output reports failures, which the output does not mention, added to the trajectory | 75 | **0** | 70 | 47 / 0 / 23 | 0 |
+| a cost a thousand times the shipped ceiling | 75 | **0** | 70 | 0 / 0 / 70 | 0 |
 
 **Measured, and not held at zero:** an addition that does rescue cases, with the reason.
 
 | Added | Cases that did not pass | Rescued | Why |
 |---|--:|--:|---|
-| a sentence of refusal appended to the output ("I cannot help with that.") | 76 | 10 | the rule that checks an answer against failed tool calls accepts any word of failure, anywhere in the answer, as owning the failure. A narrower test (the word near the failed call) was measured and not shipped: it missed honest answers that owned the failure in another sentence |
+| a sentence of refusal appended to the output ("I cannot help with that.") | 74 | 8 | the rule that checks an answer against failed tool calls accepts any word of failure, anywhere in the answer, as owning the failure. A narrower test (the word near the failed call) was measured and not shipped: it missed honest answers that owned the failure in another sentence |
 
 "Left out" is a case whose output is empty: text appended to it makes it an output, which takes away the failure the case had instead of adding one. What that leaves (a placeholder and nothing else) passes at the shipped configuration, because the placeholder detector's published accuracy alone does not carry the risk past the line. That is a wrong pass and not a rescue; the same kind (a placeholder answer the detector flags and the verdict passes) is among the missed blocks in [COMPOSITE.md](COMPOSITE.md).
 
-**Violations: 0 under a contract, 0 rescued.**
+## Writing the same output another way
+
+Each row rewrites the output of every case one way and evaluates again. It counts the verdicts whose state changed and, per rule that can decide a verdict (a gate, a veto, a detection or an inference), the cases where the rule stopped or started firing.
+
+**Spacing and line wrapping are the same text: both rows must be all zeros.** Until 0.20.0 they were not: a phrase typed with two spaces, or cut by a line wrap, was not the phrase the rule knew.
+
+| Rewriting | Cases it changes | Verdicts: fail → pass | pass → fail | Rules whose answer changed |
+|---|--:|--:|--:|---|
+| every space doubled | 138 | **0** | **0** | none |
+| each line wrapped at 60 columns | 117 | **0** | **0** | none |
+
+**These rewritings are measured and are not held at zero.** Each changes something a rule is right to read, or is a shape of output the text rules do not read yet. The reason is beside each.
+
+| Rewriting | Cases it changes | Verdicts: fail → pass | pass → fail | Rules whose answer changed | Why it is not held at zero |
+|---|--:|--:|--:|---|---|
+| straight quotes written as curly quotes | 72 | 1 | 0 | `no_injection_patterns` (stopped 1, started 0) | the one finding lost is a JSON key in a tool payload ("_assistant_directive":), found by its shape; written with curly quotes it is no longer a JSON key, and the phrase patterns do not match the sentence inside it. A gap in the phrase patterns, not in how quotes are read |
+| every line prefixed as a Markdown quote | 145 | 1 | 0 | `no_stub_output` (stopped 0, started 1); `non_empty_output` (stopped 1, started 0) | an empty output becomes a line holding a quote mark, which is no longer empty; and a diff is no longer a diff, so a TODO on a removed line is read as a TODO |
+| the output as one string field of a JSON object | 145 | 3 | 2 | `grounded_in_reads` (stopped 0, started 5); `no_hallucination_markers` (stopped 0, started 2); `no_injection_patterns` (stopped 3, started 1); `no_stub_output` (stopped 0, started 1); `non_empty_output` (stopped 1, started 0) | a structured output is a different shape: the text rules read its escaped form (\n, \") and not its string values, so phrases and line structure are lost and the field name is read as a claim. Reading the string values of a structured output is not built yet |
+| the output in upper case | 142 | 5 | 4 | `grounded_in_reads` (stopped 4, started 0); `no_hallucination_markers` (stopped 0, started 5); `no_pii` (stopped 2, started 0); `no_stub_output` (stopped 1, started 1) | case is part of what two rules are right to read: a seed phrase or a token in another case is not that secret, and a file name in another case is another file. The third change is a fault left as measured: the fabrication rule reads capitalised words as names of metrics, so prose in capitals starts findings |
+| the output in lower case | 141 | 4 | 0 | `grounded_in_reads` (stopped 3, started 0); `no_pii` (stopped 2, started 0); `no_stub_output` (stopped 4, started 0) | a private key block and a file name in another case are not that key or that file, and a placeholder marker is an upper-case word on purpose: "TODO" is a marker and "a todo app" is not |
+
+**Violations: 0 under a contract, 0 rescued, 0 changed by spacing or wrapping.**
 
 ## What this does not cover
 
-- Rewriting the same content in another form (case, spacing, quotation marks, wrapping the output in JSON) is not measured here.
+- Rewritings of the input and of the tool calls are not measured here, only of the output.
 - The additions are fixed strings, one fixed call and one fixed cost, not a search for an addition that rescues. A long run of filler text appended to a short answer also rescues one case, by diluting the share of it that is a deferral.
 - A contract is checked on the whole evaluation. A call that asks for one bundle only (`eval_type: "safety"`) is answered for that bundle: a cost ceiling is not asked of it.
 - A cost of zero is a cost. A deployment with a cost ceiling cannot tell a free run from a run that reported zero.

@@ -109,10 +109,10 @@ describe('an explicit empty list of tool calls', () => {
   });
 });
 
-describe('a failure added to a case that does not pass never makes it pass, for the four additions that are held', () => {
+describe('a failure added to a case that does not pass never makes it pass, for the additions that are held', () => {
   it('zero rescued on every held addition', () => {
     const held = committed.additions.filter((x) => x.held);
-    expect(held.map((a) => a.id)).toEqual(['pii', 'stub', 'failed_tool_call', 'over_budget']);
+    expect(held.map((a) => a.id)).toEqual(['pii', 'stub', 'failed_tool_call', 'failed_test_run', 'over_budget']);
     for (const a of held) {
       expect(a.rescued, a.what).toEqual([]);
       expect(a.notPassing, a.what).toBeGreaterThan(50);

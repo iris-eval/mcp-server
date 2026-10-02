@@ -254,13 +254,25 @@ a ceiling on the calls. It is the caller saying none were made, zero calls
 are within any ceiling, and only `eval.requiredEvidence` refuses it.
 
 **Does a second failure rescue the first?** Each case that does not pass is
-evaluated again with one more thing wrong with it. For four fixed additions
-(a leaked number, a placeholder, a failed tool call, a cost over the
-ceiling) none may pass, and the command fails if one does. That is a
-statement about those four and not a law: a fifth addition, a sentence of
-refusal, does rescue cases, because the rule that checks an answer against
+evaluated again with one more thing wrong with it. For five fixed additions
+(a leaked number, a placeholder, a failed tool call, a test run that
+reports failures, a cost over the ceiling) none may pass, and the command
+fails if one does. That is a statement about those five and not a law: one
+more addition, a sentence of refusal, does rescue cases, because the rule that checks an answer against
 failed tool calls accepts any word of failure as owning the failure. It is
 published with its count.
+
+**Does writing the same output another way change the answer?** Each
+case's output is rewritten seven ways and evaluated again. Two of them are
+the same text and are held at zero changes, in the verdict and in every
+rule that can decide one: every space doubled, and each line wrapped at 60
+columns. The other five are measured and published with the reason each is
+not held: curly quotes and a Markdown quote prefix (each changes one
+structure a rule reads: a JSON key, a diff), the output wrapped as a JSON
+string field (the text rules read the escaped form of a structured output,
+which is not built yet), and upper and lower case (case is part of a
+secret, a file name and a placeholder marker; and one real fault, the
+fabrication rule reading capitals as names of metrics).
 
 What a deployment that gates on a verdict takes from the first table: name
 the evidence the gate must rest on. `eval.requiredEvidence: ["tool_calls"]`
