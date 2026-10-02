@@ -45,7 +45,7 @@ describe('the action file', () => {
 
   it('is a composite action with the inputs and outputs the docs table lists', () => {
     expect(yml).toMatch(/^runs:\n {2}using: composite/m);
-    for (const input of ['traces', 'fail-on', 'dataset', 'eval-type', 'redact', 'iris-home', 'version', 'command', 'comment', 'github-token']) {
+    for (const input of ['traces', 'fail-on', 'dataset', 'allow-empty', 'eval-type', 'redact', 'iris-home', 'version', 'command', 'comment', 'github-token']) {
       expect(yml, input).toMatch(new RegExp(`^ {2}${input}:\\n`, 'm'));
     }
     for (const output of ['exit-code', 'stored', 'evaluated', 'tripped', 'gated', 'summary-file', 'comment']) {
@@ -61,7 +61,7 @@ describe('the action file', () => {
 
   it('runs ingest with flags the CLI parses, through npx by default, and reads the two scripts beside it', () => {
     const parsed = read('src/index.ts');
-    for (const flag of ['--file', '--evaluate', '--fail-on', '--dataset', '--eval-type', '--redact']) {
+    for (const flag of ['--file', '--evaluate', '--fail-on', '--dataset', '--allow-empty', '--eval-type', '--redact']) {
       expect(yml, flag).toContain(flag);
       const name = flag.slice(2);
       expect(parsed, `src/index.ts parses ${flag}`).toMatch(new RegExp(`(?:'${name}'|(?<![\\w-])${name})\\s*:\\s*\\{`));
@@ -115,6 +115,42 @@ describe('the receipt', () => {
     const empty = buildReceipt({ stdout: '', stderr: 'iris-eval ingest: 0 stored, 0 tripped --fail-on any\n', exitCode: 0, tracesPath: 'never-written.ndjson', failOn: 'any', dataset: '' });
     expect(empty.emptyGreen).toBe(true);
     expect(empty.markdown).toContain('**No trace was read from `never-written.ndjson`.**');
+  });
+
+  it('a trace that tripped on a later layer shows every layer, with the rules of each', async () => {
+    const { buildReceipt } = await receiptModule();
+    const masked = JSON.stringify({
+      trace_id: 't-both',
+      evaluation_id: 'e1',
+      passed: false,
+      verdict: { state: 'fail', basis: 'policy_gate', by: ['cost_under_threshold'], also: [{ basis: 'detector_veto', state: 'fail', by: ['no_pii'] }] },
+      tripped: 'detector_veto',
+      spans: [{ rule: 'no_pii', label: 'SSN', source: 'output', start: 38, end: 49 }],
+    });
+    const r = buildReceipt({ stdout: masked + '\n', stderr: 'iris-eval ingest: 1 stored, 1 tripped --fail-on detector_veto\n', exitCode: 1, tracesPath: 'traces.ndjson', failOn: 'detector_veto', dataset: '' });
+    expect(r.markdown).toContain('| `t-both` | `policy_gate` + `detector_veto` | cost_under_threshold, no_pii | no_pii: SSN (output 38–49) |');
+  });
+
+  it('a gate that did not judge every trace says which sentence refused it; allow-empty is the one declared exception', async () => {
+    const { buildReceipt } = await receiptModule();
+    const line = JSON.stringify({ trace_id: 't', evaluation_id: 'e', passed: true, verdict: { state: 'pass', basis: 'clean', by: [] } }) + '\n';
+    const stderr = [
+      'iris-eval ingest: rejected a trace — evaluate needs an output to score; nothing was stored for it',
+      'iris-eval ingest: 1 stored, 0 tripped --fail-on any, 1 rejected',
+      'iris-eval ingest: 1 trace was rejected and never judged, so --fail-on any cannot pass. Fix the trace named above, or leave it out.',
+      '',
+    ].join('\n');
+    const refused = buildReceipt({ stdout: line, stderr, exitCode: 2, tracesPath: 'traces.ndjson', failOn: 'any', dataset: '' });
+    expect(refused.markdown).toContain('### Iris gate — `iris-eval ingest` exited 2');
+    expect(refused.markdown).toContain('**The gate did not pass.** `iris-eval ingest: 1 trace was rejected and never judged, so --fail-on any cannot pass.');
+    expect(refused.emptyGreen).toBe(false);
+    const none = 'iris-eval ingest: 0 stored, 0 tripped --fail-on any\niris-eval ingest: no trace was read from never-written.ndjson, so --fail-on any judged nothing and cannot pass. Pass --allow-empty if an empty run is expected.\n';
+    const empty = buildReceipt({ stdout: '', stderr: none, exitCode: 2, tracesPath: 'never-written.ndjson', failOn: 'any', dataset: '' });
+    expect(empty.markdown).toContain('**The gate did not pass.** `iris-eval ingest: no trace was read from never-written.ndjson');
+    expect(empty.emptyGreen).toBe(false);
+    const allowed = buildReceipt({ stdout: '', stderr: 'iris-eval ingest: 0 stored, 0 tripped --fail-on any\n', exitCode: 0, tracesPath: 'shard-3.ndjson', failOn: 'any', dataset: '', allowEmpty: true });
+    expect(allowed.emptyGreen, 'declared expected, so not failed here').toBe(false);
+    expect(allowed.markdown).toContain('`allow-empty` is set: nothing was judged, and that was declared expected.');
   });
 
   it('as a step: writes summary.md, the job summary and the outputs, and exits 1 on the empty-green case', async () => {

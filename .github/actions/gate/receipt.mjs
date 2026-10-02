@@ -9,7 +9,7 @@
  * receipt lines themselves are built.
  *
  * Env: GATE_WORK (the directory with receipts.ndjson and ingest.log),
- * GATE_EXIT_CODE, GATE_TRACES, GATE_FAIL_ON, GATE_DATASET; GITHUB_OUTPUT and
+ * GATE_EXIT_CODE, GATE_TRACES, GATE_FAIL_ON, GATE_DATASET, GATE_ALLOW_EMPTY; GITHUB_OUTPUT and
  * GITHUB_STEP_SUMMARY as the runner sets them. Exit 0 always — the verdict
  * step reads the exit code; this one only describes.
  */
@@ -21,6 +21,7 @@ const exitCode = Number(process.env.GATE_EXIT_CODE ?? '2');
 const tracesPath = process.env.GATE_TRACES ?? '';
 const failOn = process.env.GATE_FAIL_ON ?? '';
 const dataset = process.env.GATE_DATASET ?? '';
+const allowEmpty = process.env.GATE_ALLOW_EMPTY === 'true';
 
 const read = (name) => {
   const p = join(work, name);
@@ -49,7 +50,7 @@ export function parseReceipts(stdout) {
 }
 
 /** The counts and the Markdown. Pure, so a test can hand it strings. */
-export function buildReceipt({ stdout, stderr, exitCode, tracesPath, failOn, dataset }) {
+export function buildReceipt({ stdout, stderr, exitCode, tracesPath, failOn, dataset, allowEmpty = false }) {
   const { receipts } = parseReceipts(stdout);
   const stored = receipts.length;
   const evaluated = receipts.filter((r) => typeof r.evaluation_id === 'string').length;
@@ -60,11 +61,13 @@ export function buildReceipt({ stdout, stderr, exitCode, tracesPath, failOn, dat
     const basis = r.verdict && typeof r.verdict.basis === 'string' ? r.verdict.basis : 'stored only';
     bases.set(basis, (bases.get(basis) ?? 0) + 1);
   }
-  const sentence = stderr
+  const said = stderr
     .split(/\r?\n/)
     .map((l) => l.trim())
-    .filter((l) => /\bingest: \d+ stored\b/.test(l))
-    .pop();
+    .filter((l) => /\bingest: /.test(l));
+  const sentence = said.filter((l) => /\bingest: \d+ stored\b/.test(l)).pop();
+  // Exit 2 from a gate that did not judge every trace: the sentence after the count says which trace and why.
+  const refusal = exitCode === 2 ? said.filter((l) => /cannot pass|is not a file|nothing stored/.test(l)).pop() : undefined;
 
   const lines = [];
   const title =
@@ -75,20 +78,26 @@ export function buildReceipt({ stdout, stderr, exitCode, tracesPath, failOn, dat
         : `### Iris gate — \`iris-eval ingest\` exited ${exitCode}`;
   lines.push(title, '');
   if (sentence) lines.push(`\`${sentence}\``, '');
-  if (stored === 0) {
+  if (refusal) lines.push(`**The gate did not pass.** \`${refusal}\``, '');
+  if (stored === 0 && !refusal) {
     lines.push(
-      exitCode === 0
-        ? `**No trace was read from \`${tracesPath}\`.** An empty file gates nothing — the job is failed here so an unwritten traces file cannot pass as green.`
-        : `No trace was stored. The log above names the refusal.`,
+      exitCode !== 0
+        ? `No trace was stored. The log above names the refusal.`
+        : allowEmpty
+          ? `No trace was read from \`${tracesPath}\`, and \`allow-empty\` is set: nothing was judged, and that was declared expected.`
+          : `**No trace was read from \`${tracesPath}\`.** An empty file gates nothing — the job is failed here so an unwritten traces file cannot pass as green.`,
       '',
     );
   }
   if (tripped.length > 0) {
     lines.push('| Trace | Basis | Rules | Evidence |', '|---|---|---|---|');
     for (const r of tripped) {
-      const by = Array.isArray(r.verdict?.by) ? r.verdict.by.join(', ') : '';
+      // Every layer that decided or would have: the basis is only the first, and the one that tripped may be a later one.
+      const layers = [r.verdict, ...(Array.isArray(r.verdict?.also) ? r.verdict.also : [])].filter((l) => l && typeof l.basis === 'string');
+      const basis = layers.map((l) => `\`${l.basis}\``).join(' + ');
+      const by = [...new Set(layers.flatMap((l) => (Array.isArray(l.by) ? l.by : [])))].join(', ');
       const spans = Array.isArray(r.spans) ? [...new Set(r.spans.map((s) => `${s.rule}: ${s.label} (${s.source} ${s.start}–${s.end})`))].join('; ') : '';
-      lines.push(`| \`${r.trace_id}\` | \`${r.verdict?.basis ?? ''}\` | ${by} | ${spans || '—'} |`);
+      lines.push(`| \`${r.trace_id}\` | ${basis} | ${by} | ${spans || '—'} |`);
     }
     lines.push('');
   }
@@ -105,11 +114,11 @@ export function buildReceipt({ stdout, stderr, exitCode, tracesPath, failOn, dat
   lines.push(
     `<sub>\`${tracesPath}\` · ${evaluated} evaluated${dataset ? ` · dataset \`${dataset}\`: ${gated} in the gate` : ''} · exit ${exitCode} · [what the bases mean](https://github.com/iris-eval/mcp-server/blob/main/docs/ci-gate.md#--fail-on)</sub>`,
   );
-  return { stored, evaluated, tripped: tripped.length, gated, markdown: lines.join('\n') + '\n', emptyGreen: stored === 0 && exitCode === 0 };
+  return { stored, evaluated, tripped: tripped.length, gated, markdown: lines.join('\n') + '\n', emptyGreen: stored === 0 && exitCode === 0 && !allowEmpty };
 }
 
 function main() {
-  const out = buildReceipt({ stdout: read('receipts.ndjson'), stderr: read('ingest.log'), exitCode, tracesPath, failOn, dataset });
+  const out = buildReceipt({ stdout: read('receipts.ndjson'), stderr: read('ingest.log'), exitCode, tracesPath, failOn, dataset, allowEmpty });
   const summaryFile = join(work, 'summary.md');
   writeFileSync(summaryFile, out.markdown);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.markdown + '\n');

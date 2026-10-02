@@ -33,6 +33,12 @@ inputs:
       every trace is still stored and evaluated. Empty: every trace can trip the gate.
     required: false
     default: ''
+  allow-empty:
+    description: >-
+      Pass the job when no trace was in the gate: an empty traces file, or a run with none of the dataset's cases.
+      Off, that fails the job, because a gate that judged nothing has not passed anything.
+    required: false
+    default: 'false'
   eval-type:
     description: "The bundle to run: completeness | relevance | safety | cost | custom | all. Empty: every bundle."
     required: false
@@ -69,7 +75,7 @@ inputs:
 
 outputs:
   exit-code:
-    description: "iris-eval ingest's own exit code: 0 stored and nothing tripped · 1 a verdict tripped fail-on · 2 usage error, or nothing stored."
+    description: "iris-eval ingest's own exit code: 0 every trace was judged and nothing tripped · 1 a verdict tripped fail-on · 2 usage error, nothing stored, or a trace the gate did not judge."
     value: ${{ steps.ingest.outputs.exit-code }}
   stored:
     description: Traces stored.
@@ -100,6 +106,7 @@ runs:
         INPUT_TRACES: ${{ inputs.traces }}
         INPUT_FAIL_ON: ${{ inputs.fail-on }}
         INPUT_DATASET: ${{ inputs.dataset }}
+        INPUT_ALLOW_EMPTY: ${{ inputs.allow-empty }}
         INPUT_EVAL_TYPE: ${{ inputs.eval-type }}
         INPUT_REDACT: ${{ inputs.redact }}
         INPUT_IRIS_HOME: ${{ inputs.iris-home }}
@@ -119,6 +126,7 @@ runs:
         fi
         args=(ingest --file "$INPUT_TRACES" --evaluate --fail-on "$INPUT_FAIL_ON")
         if [ -n "$INPUT_DATASET" ]; then args+=(--dataset "$INPUT_DATASET"); fi
+        if [ "$INPUT_ALLOW_EMPTY" = "true" ]; then args+=(--allow-empty); fi
         if [ -n "$INPUT_EVAL_TYPE" ]; then args+=(--eval-type "$INPUT_EVAL_TYPE"); fi
         if [ -n "$INPUT_REDACT" ]; then args+=(--redact "$INPUT_REDACT"); fi
         if [ -n "$INPUT_COMMAND" ]; then
@@ -144,6 +152,7 @@ runs:
         GATE_TRACES: ${{ inputs.traces }}
         GATE_FAIL_ON: ${{ inputs.fail-on }}
         GATE_DATASET: ${{ inputs.dataset }}
+        GATE_ALLOW_EMPTY: ${{ inputs.allow-empty }}
       run: node "$GITHUB_ACTION_PATH/receipt.mjs"
 
     - name: The comment
@@ -167,5 +176,5 @@ runs:
         case "$GATE_EXIT_CODE" in
           0) echo "Iris gate: $GATE_STORED stored, nothing tripped --fail-on $GATE_FAIL_ON" ;;
           1) echo "::error::Iris gate: $GATE_TRIPPED verdict(s) tripped --fail-on $GATE_FAIL_ON — the receipt names each trace and the rules that fired"; exit 1 ;;
-          *) echo "::error::Iris gate: iris-eval ingest exited $GATE_EXIT_CODE — a usage error, or nothing was stored; the log above says which"; exit "$GATE_EXIT_CODE" ;;
+          *) echo "::error::Iris gate: iris-eval ingest exited $GATE_EXIT_CODE — a usage error, nothing stored, or a trace the gate did not judge; the receipt and the log above say which"; exit "$GATE_EXIT_CODE" ;;
         esac

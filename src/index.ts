@@ -72,6 +72,7 @@ const CliSchema = z
     redact: z.enum(['none', 'critical_spans']).optional(),
     source: z.enum(['cli', 'hook']).optional(),
     dataset: z.string().min(1).optional(),
+    'allow-empty': z.boolean().optional(),
   })
   .strict();
 
@@ -134,6 +135,7 @@ try {
       redact: { type: 'string' },
       source: { type: 'string' },
       dataset: { type: 'string' },
+      'allow-empty': { type: 'boolean', default: false },
     },
     strict: true,
     allowPositionals: true,
@@ -169,7 +171,7 @@ if (values.help) {
 Iris — MCP-Native Agent Eval Server v${PKG_VERSION}
 
 Usage: ${COMMAND} [options]
-       ${COMMAND} ingest [--file <path>] [--evaluate] [--eval-type <bundle>] [--fail-on <basis>] [--dataset <id|label>] [--redact <mode>] [--source cli|hook]
+       ${COMMAND} ingest [--file <path>] [--evaluate] [--eval-type <bundle>] [--fail-on <basis>] [--dataset <id|label>] [--allow-empty] [--redact <mode>] [--source cli|hook]
        ${COMMAND} install <client> [--uninstall] | --list | --upgrade   (add Iris to an MCP client's config, or move every client to this version; install --help)
        ${COMMAND} export traces|evaluations --format csv|jsonl [--out <file>] [filters]   (export --help for the filters)
 
@@ -211,19 +213,26 @@ Ingest (the third door — a CI gate, and the path host hooks use; no server nee
   ${COMMAND} ingest        Read one JSON trace, or NDJSON (one per line), from stdin or --file,
                            store each in the configured database, and print one JSON line per
                            trace: {trace_id, status} or, with --evaluate, {trace_id, evaluation_id,
-                           passed, verdict:{state,basis,by}, unjudged?}. Same schema as
+                           passed, verdict:{state,basis,by,also?}, unjudged?}. Same schema as
                            POST /api/v1/traces, same rules as evaluate_output. Never sweeps retention.
   --file <path>            Read traces from this file instead of stdin
   --evaluate               Evaluate each trace in the same call (a trace may also carry evaluate: true)
   --eval-type <bundle>     With --evaluate: completeness | relevance | safety | cost | custom | all (default: all)
   --fail-on <basis>        Exit 1 when any verdict matches: policy_gate | detector_veto | critical_unknown |
-                           required_evidence_missing | risk_over_loss | fail | unknown | any
+                           required_evidence_missing | risk_over_loss | fail | unknown | any. A verdict
+                           matches a basis when that layer decided it or would have (verdict.also), so a
+                           leak in an output that also broke a policy still trips detector_veto.
+                           Exit 0 means every trace read was judged and none matched: a rejected trace,
+                           or no trace judged at all, exits 2.
   --dataset <id|label>     Restrict --fail-on to the case keys in this dataset (POST /api/v1/datasets promotes a
                            run's case keys into one); every trace is still stored and evaluated, and each receipt
                            says whether it was in the gate
+  --allow-empty            With --fail-on: exit 0 when no trace was in the gate (an empty file, or a run
+                           with none of the dataset's cases). Without it that exits 2.
   --redact <mode>          none | critical_spans — override storage.redact for this ingest
   --source <door>          cli (default) | hook — recorded on each trace as its capture path
-                           Exit codes: 0 stored (nothing tripped), 1 a verdict tripped --fail-on, 2 usage or nothing stored.
+                           Exit codes: 0 stored (nothing tripped), 1 a verdict tripped --fail-on, 2 usage, nothing stored,
+                           or a --fail-on gate that did not judge every trace it read.
 
 Environment variables (CLI flags take precedence):
   IRIS_TRANSPORT                       stdio | http
@@ -318,6 +327,7 @@ if (verb === 'ingest') {
       redact: values.redact,
       source: values.source ?? 'cli',
       dataset: values.dataset,
+      allowEmpty: values['allow-empty'] ?? false,
       stdin: process.stdin,
       stdout: process.stdout,
       stderr: process.stderr,
@@ -325,8 +335,8 @@ if (verb === 'ingest') {
   );
 }
 const ingestOnly = (['file', 'eval-type', 'fail-on', 'redact', 'source', 'dataset'] as const).filter((flag) => values[flag] !== undefined);
-if (ingestOnly.length > 0 || values.evaluate) {
-  process.stderr.write(`${COMMAND}: ${[...ingestOnly.map((f) => `--${f}`), ...(values.evaluate ? ['--evaluate'] : [])].join(', ')} belong to the ingest command: ${COMMAND} ingest [...].\nRun \`${COMMAND} --help\` for usage.\n`);
+if (ingestOnly.length > 0 || values.evaluate || values['allow-empty']) {
+  process.stderr.write(`${COMMAND}: ${[...ingestOnly.map((f) => `--${f}`), ...(values.evaluate ? ['--evaluate'] : []), ...(values['allow-empty'] ? ['--allow-empty'] : [])].join(', ')} belong to the ingest command: ${COMMAND} ingest [...].\nRun \`${COMMAND} --help\` for usage.\n`);
   process.exit(2);
 }
 

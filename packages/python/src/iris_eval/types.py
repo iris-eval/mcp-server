@@ -13,8 +13,21 @@ from typing import Any, Literal, TypedDict
 VerdictState = Literal["pass", "fail", "unknown"]
 
 
+class VerdictLayer(TypedDict, total=False):
+    """A later layer that would have decided the verdict on its own."""
+
+    basis: str
+    state: Literal["fail", "unknown"]
+    by: list[str]
+
+
 class Verdict(TypedDict, total=False):
-    """Which layer decided, and what it decided on."""
+    """Which layer decided, and what it decided on.
+
+    ``basis`` names the first layer with something to say; ``also`` lists
+    every later one that would have decided the verdict too, and is absent
+    when there is none.
+    """
 
     state: VerdictState
     passed: bool
@@ -22,6 +35,7 @@ class Verdict(TypedDict, total=False):
     by: list[str]
     risk: dict[str, Any] | None
     confidence: str
+    also: list[VerdictLayer]
 
 
 class RuleResult(TypedDict, total=False):

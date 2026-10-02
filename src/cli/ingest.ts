@@ -13,7 +13,7 @@
  * retention policy nobody set.
  */
 import { createInterface } from 'node:readline';
-import { createReadStream } from 'node:fs';
+import { createReadStream, statSync } from 'node:fs';
 import type { Readable, Writable } from 'node:stream';
 import { z } from 'zod';
 import { loadConfig, type CliArgs } from '../config/index.js';
@@ -49,12 +49,13 @@ export interface IngestOptions {
   source: 'cli' | 'hook';
   /** A dataset id or label: `--fail-on` then trips only on traces whose case key is in it. */
   dataset?: string;
+  /** With `failOn`: a gate with no trace in it exits 0 instead of 2. */
+  allowEmpty?: boolean;
   stdin: Readable;
   stdout: Writable;
   stderr: Writable;
 }
 
-/** Whether a verdict trips `--fail-on`. */
 /** The span evidence the tripping rules stamped: rule, label, source and offsets into the raw text — never the text itself. */
 export function spansOf(
   ruleResults: ReadonlyArray<{ ruleName: string; evidence?: ReadonlyArray<Record<string, unknown>> }>,
@@ -72,17 +73,38 @@ export function spansOf(
   return out;
 }
 
-export function trips(failOn: FailOn, verdict: { state: string; basis: string }): boolean {
+interface Layer {
+  state: string;
+  basis: string;
+  by?: ReadonlyArray<string>;
+}
+
+/**
+ * The layers of a verdict that answer `--fail-on`: the one that decided and
+ * every later one that would have (`verdict.also`).
+ *
+ * `basis` names only the first layer with something to say. Reading it alone
+ * let an output that broke a configured policy AND leaked a credential pass
+ * `--fail-on detector_veto` with exit 0, because `policy_gate` is asked
+ * first.
+ */
+export function trippedLayers(failOn: FailOn, verdict: Layer & { also?: ReadonlyArray<Layer> }): Layer[] {
+  if (verdict.state === 'pass') return [];
+  const layers: Layer[] = [verdict, ...(verdict.also ?? [])];
   switch (failOn) {
     case 'any':
-      return verdict.state !== 'pass';
+      return layers;
     case 'fail':
-      return verdict.state === 'fail';
     case 'unknown':
-      return verdict.state === 'unknown';
+      return layers.filter((l) => l.state === failOn);
     default:
-      return verdict.basis === failOn;
+      return layers.filter((l) => l.basis === failOn);
   }
+}
+
+/** Whether a verdict trips `--fail-on`. */
+export function trips(failOn: FailOn, verdict: Layer & { also?: ReadonlyArray<Layer> }): boolean {
+  return trippedLayers(failOn, verdict).length > 0;
 }
 
 /*
@@ -121,6 +143,15 @@ export async function runIngest(o: IngestOptions): Promise<number> {
     o.stderr.write(`${COMMAND} ingest: --dataset restricts the gate, so it needs --fail-on <basis>.\nRun \`${COMMAND} --help\` for usage.\n`);
     return 2;
   }
+  if (o.allowEmpty && !o.failOn) {
+    o.stderr.write(`${COMMAND} ingest: --allow-empty is about the gate, so it needs --fail-on <basis>.\nRun \`${COMMAND} --help\` for usage.\n`);
+    return 2;
+  }
+  // Before the database is opened: a path that is not a file used to surface as a stack trace with exit 1, the code a tripped gate uses.
+  if (o.file !== undefined && !isFile(o.file)) {
+    o.stderr.write(`${COMMAND} ingest: --file ${o.file} is not a file. Nothing was read.\n`);
+    return 2;
+  }
   const config = loadConfig(o.cliArgs);
   if (o.redact) config.storage.redact = o.redact;
   const storage = createStorage(config);
@@ -130,6 +161,9 @@ export async function runIngest(o: IngestOptions): Promise<number> {
   let tripped = 0;
   let rejected = 0;
   let gateSummary: string | null = null;
+  let evaluated = 0;
+  let inGate = 0;
+  let gateLabel: string | null = null;
   try {
     const customRuleStore = createCustomRuleStore();
     const engine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
@@ -165,8 +199,7 @@ export async function runIngest(o: IngestOptions): Promise<number> {
       }
       gate = { label: found.label, keys: new Set(found.caseKeys.map((c) => c.caseKey)) };
     }
-    let evaluated = 0;
-    let inGate = 0;
+    gateLabel = gate?.label ?? null;
     const input = o.file ? createReadStream(o.file, 'utf8') : o.stdin;
 
     for await (const raw of readTraces(input)) {
@@ -221,7 +254,7 @@ export async function runIngest(o: IngestOptions): Promise<number> {
         trace_id: traceId,
         evaluation_id: result.id,
         passed: result.passed,
-        verdict: { state: verdict.state, basis: verdict.basis, by: verdict.by },
+        verdict: { state: verdict.state, basis: verdict.basis, by: verdict.by, ...(verdict.also ? { also: verdict.also } : {}) },
         ...(unjudged.length > 0 ? { unjudged } : {}),
         ...costFieldsOf(trace),
       };
@@ -233,12 +266,13 @@ export async function runIngest(o: IngestOptions): Promise<number> {
         line.gated = gated;
         if (gated) inGate++;
       }
-      if (o.failOn && gated && trips(o.failOn, verdict)) {
+      const layers = o.failOn && gated ? trippedLayers(o.failOn, verdict) : [];
+      if (layers.length > 0) {
         tripped++;
         line.tripped = o.failOn;
         // The span of what tripped: offsets and the label, never the text —
         // the org reader's job log can say WHERE the leaked credential sits without carrying it.
-        const spans = spansOf(result.rule_results, verdict.by ?? []);
+        const spans = spansOf(result.rule_results, layers.flatMap((l) => l.by ?? []));
         if (spans.length > 0) line.spans = spans;
       }
       o.stdout.write(JSON.stringify(line) + '\n');
@@ -254,10 +288,40 @@ export async function runIngest(o: IngestOptions): Promise<number> {
   if (o.failOn) {
     const scope = gateSummary ? ` (${gateSummary})` : '';
     o.stderr.write(`${COMMAND} ingest: ${stored} stored, ${tripped} tripped --fail-on ${o.failOn}${scope}${rejected ? `, ${rejected} rejected` : ''}\n`);
-    return tripped > 0 ? 1 : 0;
+    if (tripped > 0) return 1;
+    /*
+     * Exit 0 from a gate says "every trace was judged and none matched", so
+     * it is refused whenever that is not what happened. Each of these used
+     * to exit 0: a trace rejected for a malformed field or a missing output
+     * (the run that crashed before answering), a trace stored without being
+     * evaluated, an empty file, and a run with none of the dataset's cases.
+     */
+    const refuse = (why: string): number => {
+      o.stderr.write(`${COMMAND} ingest: ${why}\n`);
+      return 2;
+    };
+    if (rejected > 0) return refuse(`${rejected} trace${rejected === 1 ? ' was' : 's were'} rejected and never judged, so --fail-on ${o.failOn} cannot pass. Fix the trace${rejected === 1 ? '' : 's'} named above, or leave ${rejected === 1 ? 'it' : 'them'} out.`);
+    if (evaluated < stored) return refuse(`${stored - evaluated} of ${stored} trace${stored === 1 ? '' : 's'} ${stored - evaluated === 1 ? 'was' : 'were'} stored without being evaluated, so --fail-on ${o.failOn} cannot pass. Pass --evaluate, or send "evaluate": true on each trace.`);
+    const judged = gateLabel === null ? evaluated : inGate;
+    if (judged === 0 && !o.allowEmpty) {
+      return refuse(
+        gateLabel === null
+          ? `no trace was read from ${o.file ?? 'stdin'}, so --fail-on ${o.failOn} judged nothing and cannot pass. Pass --allow-empty if an empty run is expected.`
+          : `none of the ${evaluated} evaluated trace${evaluated === 1 ? ' is' : 's are'} in dataset "${gateLabel}", so --fail-on ${o.failOn} judged nothing and cannot pass. Pass --allow-empty if a run with none of its cases is expected.`,
+      );
+    }
+    return 0;
   }
   o.stderr.write(`${COMMAND} ingest: ${stored} stored${rejected ? `, ${rejected} rejected` : ''}\n`);
   return 0;
+}
+
+function isFile(path: string): boolean {
+  try {
+    return statSync(path).isFile();
+  } catch {
+    return false;
+  }
 }
 
 export const failOnSchema = z.enum(FAIL_ON);

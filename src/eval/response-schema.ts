@@ -176,6 +176,18 @@ export const verdictSchema = z.looseObject({
     .describe(
       "present when the risk estimate decided the verdict. decisive: the credible interval on pBad excludes the loss threshold AND the composite corpus measured the estimate holding at that risk level, relative to this deployment's threshold; marginal otherwise, with an interpretation naming which test it did not pass. Absent on a stored row labelled under a different calibration table than this release reads.",
     ),
+  also: z
+    .array(
+      z.looseObject({
+        basis: z.enum(['detector_veto', 'critical_unknown', 'required_evidence_missing', 'risk_over_loss']),
+        state: z.enum(['fail', 'unknown']),
+        by: z.array(z.string()),
+      }),
+    )
+    .optional()
+    .describe(
+      'every later layer that would have decided this verdict on its own, in the order the layers are asked. basis names only the first layer with something to say; anything that acts on one basis reads basis AND also. Absent when the deciding layer was the only one, and on every pass.',
+    ),
 });
 export const provenanceSchema = z.looseObject({
   irisVersion: z.string(),

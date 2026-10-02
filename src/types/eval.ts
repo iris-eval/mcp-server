@@ -374,8 +374,9 @@ export interface Interpretation {
  * layer — the same vocabulary `Verdict.by` carries, because the verdict is
  * stamped from the node that decided.
  *
- * A path ends at the node that decided; the layers after it were never
- * asked. A node with an empty `by` was asked and found nothing.
+ * A path ends at the node that decided. A node with an empty `by` was asked
+ * and found nothing. What the layers after the deciding one would have said
+ * is on the verdict, as `Verdict.also`.
  */
 export interface VerdictNode {
   node: 'nothing_judged' | 'gate' | 'veto' | 'unknown' | 'evidence' | 'risk';
@@ -384,6 +385,20 @@ export interface VerdictNode {
   decided: boolean;
   /** The risk estimate, on the risk node only, whether or not it decided; null when nothing carried a published rate. */
   risk?: Verdict['risk'];
+}
+
+/**
+ * A layer after the one that decided, which would have decided on its own.
+ *
+ * `basis` names the FIRST layer with something to say, and the layers do
+ * not exclude each other: one output can break a policy the deployment set
+ * and leak a credential. `state` is what that layer alone would have made
+ * the verdict, and `by` carries what `Verdict.by` would have carried.
+ */
+export interface VerdictLayer {
+  basis: 'detector_veto' | 'critical_unknown' | 'required_evidence_missing' | 'risk_over_loss';
+  state: 'fail' | 'unknown';
+  by: string[];
 }
 
 /** Placed on EvalResult by the engine; see Interpretation above. */
@@ -399,6 +414,17 @@ export interface Verdict {
   by: string[];
   risk: { pBad: number; lo: number; hi: number; perClass: Partial<Record<FailureClass, number | null>>; assumptions: string[] } | null;
   confidence?: 'decisive' | 'marginal';
+  /**
+   * Every later layer that would have decided this verdict too, in the order
+   * the composer asks them. Absent when the deciding layer was the only one,
+   * and on every pass.
+   *
+   * Anything that acts on ONE basis reads `basis` and this, never `basis`
+   * alone. `--fail-on detector_veto` and the `detector_veto` webhook once
+   * read `basis` only, so a leaked credential in an output that also broke
+   * a configured policy tripped neither.
+   */
+  also?: VerdictLayer[];
 }
 
 /** What produced this verdict, so it can be replayed or compared: the release, the ruleset, the configuration, the thresholds, the proof corpus, the time. */

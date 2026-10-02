@@ -19,6 +19,12 @@ export const BASIS_TEXT: Record<VerdictBasis, string> = {
   no_rules: 'No rule could judge this output, so there is no verdict.',
 };
 
+/** The line under the verdict when a later layer would have decided it too. */
+export const ALSO_TEXT = {
+  lead: 'Would also have decided it:',
+  tooltip: 'The basis names the first layer with something to say. This later layer would have decided the verdict on its own, so clearing the first does not clear the verdict.',
+} as const;
+
 export const STATE_TEXT: Record<Verdict['state'], { label: string; tone: 'pass' | 'fail' | 'unknown' }> = {
   pass: { label: 'PASS', tone: 'pass' },
   fail: { label: 'FAIL', tone: 'fail' },
