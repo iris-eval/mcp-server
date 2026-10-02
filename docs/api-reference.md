@@ -259,7 +259,7 @@ Anything else linked to a trace is kept **beside** it: `evaluate_output` with `o
 
 Before this, every linked evaluation carried `trace_id`, so an agent whose trace failed on a leaked credential could call `evaluate_output` with that `trace_id` and clean text (or the leaking text and `eval_type: "cost"`, or an empty `tool_calls`) and the trace read `pass` in its run, with no flag. Evaluations stored by earlier releases are left as they are: which of them judged the stored record cannot be told from the row.
 
-**Rules that changed while the server ran are named.** When a custom rule was deployed, deleted, enabled or disabled since the server started, the response carries `rules_changed`: `{ count, last_change_at, since, audit: "iris://audit" }` — how many changes, when the last one was, when counting began, and where each change is recorded with who made it. An agent that can deploy or disable rules can shape the rules it is then judged by; this is how a reader of the verdict sees that it might have. It never changes `passed`, `score` or `verdict`, and it is absent when the rules are the ones the server started with (in demo mode, the rules the demo seeds are its starting set). It belongs to the verdict as produced: `log_trace` with `evaluate: true`, `evaluate_runs` and `POST /api/v1/traces` carry it too, and a stored evaluation read back later (`iris://evaluations/{id}`) does not. Changes made by another process against the same rules file are not counted, because this server does not run them until it restarts.
+**Rules that changed while the server ran are named.** When a custom rule was deployed, deleted, enabled or disabled since the server started, the response carries `rules_changed`: `{ count, last_change_at, since, audit: "iris://audit" }` — how many changes, when the last one was, when counting began, and where each change is recorded with who made it. An agent that can deploy or disable rules can shape the rules it is then judged by; this is how a reader of the verdict sees that it might have. It never changes `passed`, `score` or `verdict`, and it is absent when the rules are the ones the server started with (in demo mode, the rules the demo seeds are its starting set). It belongs to the verdict as produced: `log_trace` with `evaluate: true`, `evaluate_runs` and `POST /api/v1/traces` carry it too, and a stored evaluation read back later (`iris://evaluations/{id}`) does not. A change another Iris process made to the same rules file is counted too, when this server reads it: every server on one Iris home runs the same rules (see [`deploy_rule`](#deploy_rule)).
 
 #### Example Request
 
@@ -520,6 +520,8 @@ Enumerate deployed custom eval rules. Read-only; returns the full rule catalog w
 ### deploy_rule
 
 Register a new custom eval rule so it fires automatically on every `evaluate_output` call of its `evalType`. Writes to the shared custom-rule store; rule is immediately visible in the dashboard Make-This-A-Rule composer.
+
+**Every server on the same Iris home runs it.** `install` gives each MCP client its own server process, and they share one rules file (`custom-rules.json`). Before an evaluation a server checks whether the file changed (one `stat`, no read, at most once every 20 ms) and re-reads it if so, so a rule deployed, switched off or deleted through one client applies in every other within 20 ms, and all of them stamp one `ruleset_hash`. A change is made under a lock file (`custom-rules.json.lock`) on what the file holds at that moment, so two servers changing rules at once lose neither change; a lock held longer than 5 seconds refuses the change with a message that says so, and one older than 30 seconds is treated as left by a process that died. Until 0.20.0 each process read the file once at start and wrote its own copy back: a rule deployed through one client was not applied by the others, and the next deploy from an older process deleted it.
 
 #### Parameters
 
@@ -1393,7 +1395,7 @@ One run with its counts and provenance, plus the evaluations in it — **collaps
 
 ### PATCH /api/v1/runs/:id
 
-Pin a run as the baseline every later run is compared against, or unpin it. Body `{ "baseline": true | false }`, strict. One baseline per tenant: pinning another run unpins the old one. Answers `{ "run_id", "baseline" }`; 404 when nothing mentions the run. `GET /api/v1/runs` and `GET /api/v1/runs/:id` carry `baseline` on every run, and `POST /api/v1/compare` and `compare_runs` take an omitted `before` as the pinned baseline (400 with the pin recipe when none is pinned).
+Pin a run as the baseline every later run is compared against, or unpin it. Body `{ "baseline": true | false }`, strict. One baseline per tenant: pinning another run unpins the old one. The retention sweep keeps the pinned run's traces and evaluations past `retention.days` and says so in the log each time it does; unpin the run and the next sweep deletes them. `delete_trace` and `--purge` remove them whether or not the run is pinned. Answers `{ "run_id", "baseline" }`; 404 when nothing mentions the run. `GET /api/v1/runs` and `GET /api/v1/runs/:id` carry `baseline` on every run, and `POST /api/v1/compare` and `compare_runs` take an omitted `before` as the pinned baseline (400 with the pin recipe when none is pinned).
 
 ### GET /api/v1/cases/:key
 

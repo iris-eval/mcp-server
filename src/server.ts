@@ -19,6 +19,12 @@ import { toIrisError } from './tools/errors.js';
 
 export interface IrisServer {
   mcpServer: McpServer;
+  /**
+   * Another MCP server over the same engine, store and rules. One MCP
+   * server speaks to one client, so the HTTP transport asks for one per
+   * session (transport/http.ts); everything they judge and store is shared.
+   */
+  newMcpServer: () => McpServer;
   evalEngine: EvalEngine;
   customRuleStore: CustomRuleStore;
   /** The instructions the client received at initialize — built from this server's runtime state. */
@@ -114,21 +120,23 @@ export function createIrisServer(
     relevanceJudge: relevanceJudgeState(evalEngine.relevanceJudgeInForce()),
   });
 
-  const mcpServer = new McpServer(
-    {
-      name: config.server.name,
-      version: config.server.version,
-    },
-    { instructions },
-  );
-
   const capabilities = (): Capabilities =>
     buildCapabilities({ config, evalEngine, customRuleStore: ruleStore, mode: options?.mode });
 
-  if (options?.gate) gateRequests(mcpServer, options.gate);
-  registerAllTools(mcpServer, storage, evalEngine, ruleStore);
-  registerAllResources(mcpServer, storage, capabilities, ruleStore.auditPath);
-  registerPrompts(mcpServer, config.server.version);
+  const newMcpServer = (): McpServer => {
+    const server = new McpServer(
+      {
+        name: config.server.name,
+        version: config.server.version,
+      },
+      { instructions },
+    );
+    if (options?.gate) gateRequests(server, options.gate);
+    registerAllTools(server, storage, evalEngine, ruleStore);
+    registerAllResources(server, storage, capabilities, ruleStore.auditPath);
+    registerPrompts(server, config.server.version);
+    return server;
+  };
 
-  return { mcpServer, evalEngine, customRuleStore: ruleStore, instructions, capabilities };
+  return { mcpServer: newMcpServer(), newMcpServer, evalEngine, customRuleStore: ruleStore, instructions, capabilities };
 }

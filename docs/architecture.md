@@ -439,6 +439,12 @@ Four of those indexes (`idx_traces_tenant_timestamp_cover`, `idx_traces_tenant_a
 
 The `IStorageAdapter` interface exposes `deleteTracesOlderThan(days)` which deletes traces older than the configured retention period (default: 30 days). Cascading deletes on spans are handled by the `ON DELETE CASCADE` foreign key constraint. Eval results linked to deleted traces have their `trace_id` set to `NULL` via `ON DELETE SET NULL`.
 
+Every stored thing has one of two lifetimes. Telemetry expires: traces, spans and evaluations are swept at the window. What a person set on purpose does not: the pinned baseline run (its traces and evaluations are skipped by the sweep, which reads the pin inside each step's transaction and logs what it kept), dataset cases and labels (neither is a trace or an evaluation, and the sweep never touches their tables). `delete_trace` and `--purge` remove a pinned run's traces like any others.
+
+### Several processes on one home
+
+`install` gives each MCP client its own server process, and they share one Iris home. The database is shared by construction (WAL mode, one writer at a time). Two things a process used to read once at start are now checked before an evaluation (`src/eval/shared-state.ts`): the deployed-rules file, by one `stat`, and the labels, by the database's change counter (`PRAGMA data_version`, which moves when another connection commits). Either is re-read only when it moved. The checks run at most once every 20 ms: together they cost about 50 µs on Windows against an evaluation of about 450 µs, so a burst of evaluations pays for one look per interval and a change made elsewhere is read within it. Changes to the rules file are made under a lock file on what the file holds at that moment (`src/custom-rule-store.ts`). What still needs a restart: `config.json` settings other than the API keys, and code plugins.
+
 ### Migration system
 
 Migrations are tracked in the `_iris_migrations` table. Each migration has a string ID (e.g., `001-initial-schema`) and an `up()` function. On startup, the migration runner:
@@ -494,8 +500,9 @@ MCP Client (remote)            Iris HTTP Server (Express)
        | <--- 200 -------------------- |
 ```
 
-- Uses `@modelcontextprotocol/sdk`'s `StreamableHTTPServerTransport`.
-- Each connection gets a random UUID session ID.
+- Uses `@modelcontextprotocol/sdk`'s `StreamableHTTPServerTransport`, one per session.
+- Each `initialize` opens a session with a random UUID session id and an MCP server of its own, over the one engine and store, so any number of clients connect to one address. Until 0.20.0 the endpoint held one transport for the life of the process: a second client got `400 Server already initialized`, and after the first ended its session every client got `404` until a restart.
+- Up to 256 sessions at a time. Clients often leave without `DELETE /mcp`, so at the limit a new client takes the place of the session used least recently, if that session has no event stream open and has been quiet for a minute; when every session is in use the new client gets `503` with `Retry-After`. A request naming a session the server no longer holds gets `404`, which the protocol answers by initializing again.
 - Express middleware stack: `helmet` -> `express.json` (with size limit) -> auth -> rate limiting -> error handler.
 - Security headers set by Helmet (no CSP since it's API-only).
 - Best for: multi-agent environments, remote agents, CI/CD pipelines, shared team servers.

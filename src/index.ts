@@ -19,7 +19,7 @@ import { createLogger } from './utils/logger.js';
 import { loadOrInitPreferences, shouldAutoLaunchDashboard, createPreferenceStore } from './preferences.js';
 import { openBrowser } from './utils/open-browser.js';
 import { createCustomRuleStore } from './custom-rule-store.js';
-import { createCustomRule } from './eval/rules/custom.js';
+import { keepInStep } from './eval/shared-state.js';
 import { EvalEngine } from './eval/engine.js';
 import { refreshLocalLabels } from './eval/local-labels.js';
 import { LOCAL_TENANT } from './types/tenant.js';
@@ -497,20 +497,14 @@ async function main(): Promise<void> {
   // via either surface is immediately visible from the other.
   const customRuleStore = createCustomRuleStore();
 
-  const { mcpServer, evalEngine } = createIrisServer(config, storage, customRuleStore, { warn: (line) => logger.warn(line), gate });
+  const { mcpServer, newMcpServer, evalEngine } = createIrisServer(config, storage, customRuleStore, { warn: (line) => logger.warn(line), gate });
 
-  // Load deployed custom rules from ~/.iris/custom-rules.json (B3 — workflow inversion).
-  // Each enabled rule is registered with the engine under its evalType so it fires on
-  // every evaluate_output call of that category. Persistence via custom-rule-store.
-  // OSS single-tenant: register rules under LOCAL_TENANT only. Cloud multi-tenant
-  // engine wiring is a v0.5 architectural item (the engine is a process singleton
-  // and would need per-tenant rule registration).
+  // The deployed rules (~/.iris/custom-rules.json), registered with the engine
+  // under their bundles, and kept in step from here on: every client's server
+  // process shares this file, so each evaluation first checks whether another
+  // process changed it, and the labels likewise (eval/shared-state.ts).
+  keepInStep(evalEngine, customRuleStore, storage, LOCAL_TENANT)();
   const enabled = customRuleStore.enabledRules(LOCAL_TENANT);
-  for (const rule of enabled) {
-    // Severity rides along: high/critical deployed rules hard-fail the
-    // evals they lose (createCustomRule sets EvalRule.critical from it).
-    evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
-  }
   if (enabled.length > 0) {
     logger.info(
       `Loaded ${enabled.length} deployed custom rule(s) from ${customRuleStore.pathFor(LOCAL_TENANT)}`,
@@ -532,11 +526,14 @@ async function main(): Promise<void> {
   const webhook = installWebhookNotifier(storage, config, logger);
 
   const httpServers: Server[] = [];
+  let closeMcpSessions: (() => Promise<void>) | undefined;
 
   if (config.transport.type === 'http') {
-    const { transport, httpServer } = await createHttpTransport(mcpServer, config, logger, { storage, customRuleStore, relevanceJudge: () => evalEngine.relevanceJudgeInForce() }, keyRing);
+    // One MCP server per session, so any number of clients connect (transport/http.ts).
+    const http = await createHttpTransport(newMcpServer, config, logger, { storage, customRuleStore, relevanceJudge: () => evalEngine.relevanceJudgeInForce() }, keyRing);
+    const { httpServer } = http;
     httpServers.push(httpServer);
-    await mcpServer.connect(transport);
+    closeMcpSessions = http.closeSessions;
     const addr = httpServer.address();
     const portStr = typeof addr === 'object' && addr ? addr.port : config.transport.port;
     logger.info(`HTTP transport listening on ${config.transport.host}:${portStr}`);
@@ -634,6 +631,8 @@ async function main(): Promise<void> {
     shuttingDown = true;
     logger.info('Shutting down gracefully...');
 
+    // Sessions first: an open event stream would hold its connection, and the server's close waits for every connection.
+    await closeMcpSessions?.().catch(() => undefined);
     const closePromises = httpServers.map(
       (server) => new Promise<void>((resolve) => server.close(() => resolve())),
     );
@@ -744,10 +743,8 @@ async function runDemo(): Promise<void> {
   const storage = withDemoIngestGuard(createStorage(config, { log: (level, line) => logger[level](line) }));
   await storage.initialize();
 
-  for (const rule of customRuleStore.enabledRules(LOCAL_TENANT)) {
-    // A fresh seed registered its own rules already; a reused database has them only in the store.
-    if (!evalEngine.hasRule(rule.id)) evalEngine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
-  }
+  // A fresh seed registered its own rules already; a reused database has them only in the store.
+  keepInStep(evalEngine, customRuleStore, storage, LOCAL_TENANT)();
   await registerPlugins(evalEngine, config, { log: (line) => logger.info(line) });
   await refreshLocalLabels(evalEngine, storage, LOCAL_TENANT);
   const preferenceStore = createPreferenceStore(demoPreferencesPath());

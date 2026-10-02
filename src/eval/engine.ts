@@ -179,6 +179,43 @@ export class EvalEngine {
     this.localLabels = source;
   }
 
+  /**
+   * What this engine holds that other processes on the same data folder can
+   * change: the deployed rules (a file) and the labels (the database). The
+   * server installs one function for each; the engine calls them before it
+   * reads what they keep current, so a rule another process deployed and a
+   * label another process wrote apply to this process's next evaluation.
+   * Until this an engine read both once, at start. Null on an engine
+   * nothing shares: the proof runner, a test, an embedder.
+   *
+   * `rules` is synchronous because the ruleset hash is read synchronously;
+   * it may call registerRule and unregisterRule, which never call it back.
+   */
+  private shared: { rules?: () => void; labels?: () => Promise<void> } | null = null;
+
+  setSharedState(shared: { rules?: () => void; labels?: () => Promise<void> } | null): void {
+    this.shared = shared;
+  }
+
+  /** Bring the rules, then the labels, in step. A failure to read either is not an evaluation failure: the engine keeps what it had. */
+  private async inStep(): Promise<void> {
+    if (this.shared === null) return;
+    this.rulesInStep();
+    try {
+      await this.shared.labels?.();
+    } catch {
+      // The labels as last read stay in force.
+    }
+  }
+
+  private rulesInStep(): void {
+    try {
+      this.shared?.rules?.();
+    } catch {
+      // The rules as last read stay in force.
+    }
+  }
+
   /** The source in force, for the surfaces that show it. */
   localLabelSource(): LocalLabelSource | null {
     return this.localLabels;
@@ -368,6 +405,12 @@ export class EvalEngine {
     return this.rulesById.has(ruleId);
   }
 
+  /** What is registered under a deployed rule id: its bundle and the hash of its content, or undefined when nothing is. */
+  registeredAs(ruleId: string): { evalType: EvalType; contentHash?: string } | undefined {
+    const entry = this.rulesById.get(ruleId);
+    return entry ? { evalType: entry.evalType, contentHash: entry.rule.contentHash } : undefined;
+  }
+
   async evaluate(
     evalType: EvalType,
     context: EvalContext,
@@ -393,6 +436,7 @@ export class EvalEngine {
      * holds. What it now also includes is the caller's own deployed rules,
      * which is the least surprising reading of having deployed them.
      */
+    await this.inStep();
     const rules: EvalRule[] = [
       ...getRulesForType(evalType),
       ...(this.additionalRules.get(evalType) ?? []),
@@ -425,6 +469,7 @@ export class EvalEngine {
    * disagree the first time the two drifted.
    */
   rulesetHashForAll(): string {
+    this.rulesInStep();
     const rules: EvalRule[] = [];
     for (const type of ALL_EVAL_TYPES) {
       rules.push(...getRulesForType(type), ...(this.additionalRules.get(type) ?? []));
@@ -433,6 +478,7 @@ export class EvalEngine {
   }
 
   async evaluateAll(context: EvalContext, customRules?: CustomRuleDefinition[]): Promise<EvalResult> {
+    await this.inStep();
     const rules: EvalRule[] = [];
     const categories: EvalType[] = [];
     for (const type of ALL_EVAL_TYPES) {

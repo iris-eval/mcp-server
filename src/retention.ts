@@ -16,6 +16,13 @@
  * The sweep deletes traces (spans cascade) and evaluations by their own
  * age; an evaluation younger than the window whose trace is swept keeps
  * its scores and loses its text (see SqliteAdapter.deleteTracesOlderThan).
+ *
+ * One thing is kept past the window: the pinned baseline run, with its
+ * evaluations. It is the `before` every later run is compared against, and
+ * the sweep used to delete it at the window like everything else. Every
+ * sweep that keeps some of it says so in the log, with the run and the
+ * counts, so the window is never quietly longer than its number. Dataset
+ * cases and labels are not traces or evaluations and were never swept.
  */
 import type { IrisConfig } from './types/config.js';
 import type { IStorageAdapter } from './types/query.js';
@@ -32,6 +39,8 @@ export interface SweepOutcome {
   deletedEvals: number;
   /** Copies of the database taken before a migration and older than the window (storage/backup.ts). */
   deletedBackups: number;
+  /** What is older than the window and was kept: the pinned baseline run's traces and evaluations. Null when there is none. */
+  kept: { runId: string; traces: number; evaluations: number } | null;
 }
 
 /**
@@ -62,7 +71,20 @@ export async function runRetentionSweep(storage: IStorageAdapter, config: IrisCo
      */
     const deletedBackups = config.storage.path === ':memory:' ? 0 : pruneBackups(config.storage.path, { olderThan: new Date(Date.now() - config.retention.days * 86_400_000) }).length;
     if (deletedBackups > 0) logger.info(`Retention cleanup: deleted ${deletedBackups} copy(ies) of the database taken before an upgrade, older than ${config.retention.days} days`);
-    return { deletedTraces, deletedEvals, deletedBackups };
+    // What was kept is a report on a sweep that already ran: a failure to count it does not undo the sweep or hide what it deleted.
+    let kept: SweepOutcome['kept'] = null;
+    try {
+      kept = await storage.keptPastRetention(LOCAL_TENANT, config.retention.days);
+    } catch (err) {
+      logger.warn(`Retention cleanup: could not count what the pinned baseline run keeps past the window: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    if (kept) {
+      logger.info(
+        `Retention cleanup: kept ${kept.traces} trace(s) and ${kept.evaluations} evaluation(s) older than ${config.retention.days} days: they belong to the pinned baseline run ${kept.runId}. ` +
+          'Unpin the run and the next sweep deletes them.',
+      );
+    }
+    return { deletedTraces, deletedEvals, deletedBackups, kept };
   } catch (err) {
     logger.warn(`Retention cleanup skipped: ${err instanceof Error ? err.message : String(err)}`);
     return null;
