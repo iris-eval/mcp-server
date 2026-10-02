@@ -593,13 +593,19 @@ Did this change make the agent worse? Reads every evaluation in each run — the
 
 When the two runs share case keys it **pairs** them and runs McNemar exact on the cases that disagreed, which sees a change an unpaired test of the same data cannot. Otherwise it compares two independent proportions with a Newcombe hybrid-score interval.
 
-It is allowed to say it cannot tell, and says so with a number attached: when the evidence cannot exclude "no change" it reports the smallest change that many cases could have detected. `worse` and `better` are separate booleans rather than one direction field, so *neither* is representable and is the default.
+It is allowed to say it cannot tell, and says so with a number attached: when the evidence cannot exclude "no change" it reports `smallest_detectable`, the smallest change that many cases would have detected four times in five (80% power for the one-sided 5% test, at a pass rate of one half). `worse` and `better` are separate booleans rather than one direction field, so *neither* is representable and is the default, and `call` is the one word to branch on: `worse`, `better`, `equivalent` or `undetermined`.
+
+**A rule that did not run is neither a pass nor a failure (0.20.0).** A rule that skipped on a case said nothing about it. Each rule row carries `judged_before` and `judged_after`, the cases the rule ran on in each run; its pass rate, its `difference` and its test are over those, and when the runs pair, over the shared cases it ran on in both. A rule that ran in one run and on no case in the other has `difference`, `p` and `q` null. `coverage.lost` lists the rules that ran on fewer cases in the second run (paired: on any shared case; unpaired: when the 90% interval on the share of cases judged excludes zero), and `coverage.gained` the reverse. **`better` is never declared while `coverage.lost` has entries**: `improvement_withheld` is true instead, and the summary says the second run was judged on less. A rule that stopped running cannot fire, so a run that logs less evidence passes more cases without failing less. A regression is declared either way. Each discordant case carries `not_judged_after`, the rules that judged it before and not after. Until 0.20.0 a run row held only the rules that fired, a skip counted as a pass, and a run that stopped sending its tool calls read "12 of 12 passed … This is an improvement".
+
+**Every word matches its number (0.20.0).** The tests are one-sided at 5%, so `difference` carries the 90% interval, which excludes zero exactly when the test finds a change, and `difference.significant` is true exactly then. Unpaired, that is the Newcombe interval on two independent samples, and `p` is that interval inverted. Paired, the test reads which way the changed cases went, and `paired.fell` is that: the share of changed cases that passed before and failed after, with its exact (Clopper–Pearson) 90% interval, which excludes one half exactly when McNemar's one-sided test finds a change; `difference` is then conditional on the pairs that changed. Until 0.20.0 the summary printed a 95% interval beside a one-sided 5% test, and read "This is a regression" beside an interval through zero.
+
+**A critical failure is counted, not tested (0.20.0).** `critical_rises` lists each critical rule that fires on more cases in the second run: `before`, `after`, and `new_on`, the shared case keys where it fires now and did not. Five outputs that newly leak personal data are five outputs that must not ship, whatever a significance test says about twelve cases, and a comparison with a critical rise is never called `equivalent`.
 
 Runs that measure different things — a different ruleset, configuration, engine minor or agent — are refused, naming which. The ruleset fingerprint covers each rule's name, version, kind, criticality and weight, and the content of every deployed, inline or plugin rule; the configuration fingerprint covers the thresholds, which rules are critical, the judge in force, and every composer setting that decides a verdict when it is not the shipped one (`eval.defaultsGate`, `eval.falsePassCost`, `eval.onCriticalSkipped`, `eval.requiredEvidence`, a prior set in config or estimated from your labels, `eval.priorMode`). `force` compares anyway and still names what changed: a pass rate that moved because the RULES changed is not a regression in your agent.
 
-**Per rule, with a test behind every row (0.14.0).** Each rule that fired in either run is tested one-sided in the regression direction — McNemar exact on that rule's own discordant pairs when the runs pair, else the z read off its Newcombe difference — and the p-values are corrected together with Benjamini–Hochberg, so twenty rules cannot manufacture a regression: on twenty rules that did not change, some rule reads "worse" uncorrected in about half of comparisons and in about 2% after the correction (the seeded guard in `tests/unit/eval/per-rule-stats.test.ts`). Every row carries `p`, `q`, the `test` and its own `difference`; `worse` on a row is true only at `q ≤ 0.05`; `rules_tested` is the family the correction ran over.
+**Per rule, with a test behind every row (0.14.0).** Each rule that fired in either run is tested one-sided in the regression direction — McNemar exact on that rule's own discordant pairs when the runs pair, else its Newcombe interval inverted — and the p-values are corrected together with Benjamini–Hochberg, so twenty rules cannot manufacture a regression: on twenty rules that did not change, some rule reads "worse" uncorrected in about half of comparisons and in about 2% after the correction (the seeded guard in `tests/unit/eval/per-rule-stats.test.ts`). Every row carries `p`, `q`, the `test` and its own `difference`; `worse` on a row is true only at `q ≤ 0.05`; `rules_tested` is the family the correction ran over.
 
-**Equivalence, the third answer (0.14.0).** `equivalent_within` is distinct from `worse` and from "not distinguishable": two one-sided tests at α = 0.05 — the 90% Newcombe interval on the difference lying inside (−δ, +δ). Pass `equivalence_margin` (a difference in pass rate, `0.05` = five points) to choose δ; absent, δ is the smallest difference these sizes could have detected and `margin_source` says so.
+**Equivalence, the third answer (0.14.0).** `equivalent_within` is distinct from `worse` and from "not distinguishable": two one-sided tests at α = 0.05 — the 90% Newcombe interval on the difference, over every case (the paired method when the runs pair), lying inside (−δ, +δ). Pass `equivalence_margin` (a difference in pass rate, `0.05` = five points) to choose δ. **Without it, equivalence is not tested and `equivalent_within` is null (0.20.0)**: how far apart two runs may be and still count as the same is a decision about your product. Until 0.20.0 an absent margin defaulted to the smallest detectable difference, so two runs of eight cases read "Equivalent within 40.3 points", and a fivefold rise in leaked personal data read "Equivalent within 26.3 points". `call` is `equivalent` only when the interval lies inside your margin, no critical rule fires on new cases, and no coverage was lost.
 
 Deterministic, local, no model call. Tag traces with `run` and `case_key` on `log_trace` to create the runs this reads.
 
@@ -610,7 +616,7 @@ Deterministic, local, no model call. Tag traces with `run` and `case_key` on `lo
 | `before` | `string` | Yes | The run id to treat as the baseline |
 | `after` | `string` | Yes | The run id to compare against it |
 | `force` | `boolean` | No | Compare even when the runs are not strictly comparable. The response still names what changed |
-| `equivalence_margin` | `number` | No | δ for the equivalence test, as a difference in pass rate in (0, 1]. Absent: the smallest detectable difference at these sizes |
+| `equivalence_margin` | `number` | No | δ for the equivalence test, as a difference in pass rate in (0, 1]. Absent: equivalence is not tested |
 | `dataset` | `string` | No | A dataset id or label (0.15.0): both runs are restricted to the case keys in it before anything is counted, and the response's `dataset` says how many rows each run matched. An unknown dataset is `IRIS_INVALID_ARGUMENT` |
 
 #### Response
@@ -623,21 +629,37 @@ Deterministic, local, no model call. Tag traces with `run` and `case_key` on `lo
   "method": "paired-mcnemar",
   "before": { "run_id": "nightly-1", "n": 40, "passed": 38, "rate": 0.95, "interval": { "lo": 0.84, "hi": 0.99 }, "superseded": 0 },
   "after":  { "run_id": "nightly-2", "n": 40, "passed": 29, "rate": 0.725, "interval": { "lo": 0.57, "hi": 0.84 }, "superseded": 0 },
-  "difference": { "delta": -0.225, "lo": -0.39, "hi": -0.05, "significant": true },
-  "paired": { "method": "mcnemar-exact", "b": 9, "c": 0, "concordant": 31, "pairs": 40, "p_value": 0.004, "significant": true },
+  "difference": { "delta": -0.225, "lo": -0.225, "hi": -0.098, "significant": true },
+  "paired": { "method": "mcnemar-exact", "b": 9, "c": 0, "concordant": 31, "pairs": 40, "p_value": 0.004, "significant": true, "fell": { "share": 1, "lo": 0.717, "hi": 1 } },
   "worse": true,
   "better": false,
+  "improvement_withheld": false,
+  "call": "worse",
   "smallest_detectable": null,
-  "equivalent_within": { "margin": 0.2, "margin_source": "smallest-detectable", "interval": { "lo": -0.36, "hi": -0.08 }, "holds": false },
+  "equivalent_within": null,
+  "coverage": { "lost": [], "gained": [] },
+  "critical_rises": [],
   "rules_tested": 1,
   "regressions": [
     {
       "rule": "no_silent_tool_failure", "failed_before": 0, "failed_after": 9, "delta": 9,
-      "difference": { "delta": -0.225, "lo": -0.39, "hi": -0.05, "significant": true },
+      "judged_before": 40, "judged_after": 40,
+      "difference": { "delta": -0.225, "lo": -0.349, "hi": -0.116, "significant": true },
       "test": "mcnemar-exact", "p": 0.002, "q": 0.002, "worse": true
     }
   ],
   "improvements": [],
+  "discordant": [
+    {
+      "case_key": "refund-policy",
+      "before": { "eval_id": "ev_1", "trace_id": "tr_1", "passed": true },
+      "after": { "eval_id": "ev_2", "trace_id": "tr_2", "passed": false },
+      "direction": "regressed",
+      "rules": [{ "rule": "no_silent_tool_failure", "before": true, "after": false }],
+      "not_judged_after": []
+    }
+  ],
+  "discordant_total": 9,
   "summary": "…"
 }
 ```
@@ -650,7 +672,9 @@ How reliably does the agent answer the same question? Groups every evaluation by
 
 A case answered **both ways** is reported as FLAKY, least reliable first: that is where determinism is worth buying, and a single run cannot show it.
 
-The overall rate comes from a **cluster bootstrap over cases**, not by pooling attempts. Ten repeats of one question are one question, and pooling would claim an *n* the data never earned. The pooled figure is reported beside it so the gap is visible rather than argued.
+The overall rate is taken **over cases**, not by pooling attempts: each case counts once, at its own pass rate, and the 95% interval is the exact (Clopper–Pearson) one for that many cases. Ten repeats of one question are one question, and pooling would claim an *n* the data never earned. The pooled figure is reported beside it so the gap is visible rather than argued. `overall.rate` is the mean of the cases' rates, so it differs from `pooled.rate` when cases were asked different numbers of times.
+
+Until 0.20.0 the interval was a percentile bootstrap over cases. Resampling cases that all passed returns "all passed" every time, so ten of ten cases read "95% interval [100.0%, 100.0%]", and at 10 cases with a true rate of 95% the interval held the true rate two times in five. The exact interval reads [69.2%, 100%] for ten of ten, and holds the true rate at least 93 times in 100 at 10, 20 and 50 cases for rates from 50% to 99% (a seeded simulation in `tests/unit/eval/cluster-interval-coverage.test.ts`).
 
 Deterministic, local, no model call.
 
@@ -1417,7 +1441,7 @@ The answer also carries `discordant[]` — the paired cases whose verdict flippe
 
 This window against the one before it, with both denominators and a 95% interval on the difference — computed by the same `newcombeDifference` the proof harness and `compare_runs` use.
 
-Below `minimumPerWindow` evaluations on either side no direction is offered: `difference` is null and `enoughEvidence` is false. When the interval cannot exclude zero, `smallestDetectable` reports the smallest change that much data could have seen.
+Below `minimumPerWindow` evaluations on either side no direction is offered: `difference` is null and `enoughEvidence` is false. When the interval cannot exclude zero, `smallestDetectable` reports the smallest change that much data would have detected four times in five (80% power for the two-sided 5% test this view makes, at a pass rate of one half).
 
 ```json
 {

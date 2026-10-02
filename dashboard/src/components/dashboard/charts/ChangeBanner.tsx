@@ -201,7 +201,7 @@ export function ChangeBanner({ currentMoments, priorMoments, periodLabel, drift 
               {drift.prior.evaluated}
               {drift.difference.significant
                 ? ''
-                : `; not enough to call — a change smaller than ${drift.smallestDetectable === null ? 'this' : pct(drift.smallestDetectable)} would not show`}
+                : `; not enough to call — a change smaller than ${drift.smallestDetectable === null ? 'this' : pct(drift.smallestDetectable)} would be missed more often than one time in five`}
               )
             </span>
           </>

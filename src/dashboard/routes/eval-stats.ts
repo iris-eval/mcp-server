@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { IStorageAdapter } from '../../types/query.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import { evalStatsPeriodSchema, evalStatsFailuresSchema, evalStatsTrendSchema, driftSchema } from '../validation.js';
-import { newcombeDifference, smallestDetectableDifference, wilson } from '../../eval/stats.js';
+import { newcombeDifference, smallestDetectableDifference, wilson, Z_95 } from '../../eval/stats.js';
 
 /*
  * Below this many evaluations on a side, the comparison is reported as
@@ -91,7 +91,8 @@ export function registerEvalStatsRoutes(router: Router, storage: IStorageAdapter
         : null;
       const smallestDetectable =
         difference !== null && !difference.significant
-          ? smallestDetectableDifference(current.evaluated, prior.evaluated)
+          ? // At 80% power for the two-sided 5% test this view makes (its word comes from the 95% interval).
+            smallestDetectableDifference(current.evaluated, prior.evaluated, 0.5, Z_95)
           : null;
 
       /*

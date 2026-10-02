@@ -175,7 +175,7 @@ export function deriveMomentDetail(
 function computeRuleSnapshot(evals: EvalResult[]): MomentRuleSnapshot {
   const failed: string[] = [];
   const skipped: string[] = [];
-  let passedCount = 0;
+  const passed: string[] = [];
   let totalCount = 0;
 
   for (const e of evals) {
@@ -184,14 +184,14 @@ function computeRuleSnapshot(evals: EvalResult[]): MomentRuleSnapshot {
       if (r.skipped) {
         skipped.push(r.ruleName);
       } else if (r.passed) {
-        passedCount++;
+        passed.push(r.ruleName);
       } else {
         failed.push(r.ruleName);
       }
     }
   }
 
-  return { failed, skipped, passedCount, totalCount };
+  return { failed, skipped, passed, passedCount: passed.length, totalCount };
 }
 
 /*

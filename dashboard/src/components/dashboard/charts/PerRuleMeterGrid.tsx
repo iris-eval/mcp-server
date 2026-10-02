@@ -10,9 +10,13 @@
  * Compact density — fits all 13 rules in ~3 columns × 5 rows on desktop.
  * Each rule is a drill-through to /moments?kind={inferredKind}&since=…
  *
- * Data: pulls per-rule pass + total counts from useEvalRules() (rule
- * breakdown), splits into current/prior windows by recomputing on the
- * filtered moment set client-side.
+ * Data: counted from the moments of each window. A rule's rate is over the
+ * moments it RAN on: each moment names the rules that failed, the rules
+ * that passed and the rules that skipped. A rule that did not run on a
+ * moment is not a pass there. The grid used to take "not in the failed
+ * list" for a pass, so a rule that skipped on every evaluation was drawn
+ * as a full green bar titled "84 firings, 100% pass". It now reads
+ * "not run (84)" with an empty bar.
  */
 import { useMemo } from 'react';
 import { Link } from 'react-router';
@@ -139,9 +143,36 @@ const styles = {
 interface RuleStat {
   rule: string;
   passRate: number;
+  /** Moments the rule ran on: passed or failed. */
   total: number;
+  /** Evaluated moments the rule did not run on: it skipped, or its bundle was not asked for. */
+  notRun: number;
   drift?: number; // delta vs prior period
   series: number[];
+}
+
+/** What a rule did on one moment: failed, passed, or null when it did not run there. */
+export function ruleOutcome(m: DecisionMoment, rule: string): 'failed' | 'passed' | null {
+  if (m.ruleSnapshot.failed.includes(rule)) return 'failed';
+  if ((m.ruleSnapshot.passed ?? []).includes(rule)) return 'passed';
+  return null;
+}
+
+/** Pass, ran and not-run counts for one rule over a window of moments. */
+export function tallyRule(moments: DecisionMoment[], rule: string): { pass: number; total: number; notRun: number } {
+  let pass = 0;
+  let total = 0;
+  let notRun = 0;
+  for (const m of moments) {
+    const outcome = ruleOutcome(m, rule);
+    if (outcome === null) {
+      if (m.evalCount > 0) notRun += 1;
+      continue;
+    }
+    total += 1;
+    if (outcome === 'passed') pass += 1;
+  }
+  return { pass, total, notRun };
 }
 
 function thresholdAccent(rate: number): string {
@@ -159,15 +190,13 @@ function bucketPassByRule(moments: DecisionMoment[], rule: string, buckets: numb
   const buckets_ = Array.from({ length: buckets }, () => ({ pass: 0, total: 0 }));
   for (const m of sorted) {
     const idx = Math.min(buckets - 1, Math.floor(((+new Date(m.timestamp) - t0) / span) * buckets));
-    if (m.ruleSnapshot.failed.includes(rule)) {
-      buckets_[idx].total += 1;
-    } else if (m.evalCount > 0) {
-      // Rule passed on this moment if not in failed list and any rules ran
-      buckets_[idx].pass += 1;
-      buckets_[idx].total += 1;
-    }
+    const outcome = ruleOutcome(m, rule);
+    if (outcome === null) continue;
+    buckets_[idx].total += 1;
+    if (outcome === 'passed') buckets_[idx].pass += 1;
   }
-  return buckets_.map((b) => (b.total > 0 ? b.pass / b.total : 0));
+  // Only the buckets the rule ran in: an empty bucket is not a pass rate of zero.
+  return buckets_.filter((b) => b.total > 0).map((b) => b.pass / b.total);
 }
 
 function computeRuleStats(
@@ -176,32 +205,15 @@ function computeRuleStats(
 ): Map<string, RuleStat> {
   const out = new Map<string, RuleStat>();
   for (const { name } of BUILT_IN_RULES) {
-    let curPass = 0;
-    let curTotal = 0;
-    for (const m of current) {
-      if (m.ruleSnapshot.failed.includes(name)) {
-        curTotal += 1;
-      } else if (m.evalCount > 0) {
-        curPass += 1;
-        curTotal += 1;
-      }
-    }
-    let priPass = 0;
-    let priTotal = 0;
-    for (const m of prior) {
-      if (m.ruleSnapshot.failed.includes(name)) {
-        priTotal += 1;
-      } else if (m.evalCount > 0) {
-        priPass += 1;
-        priTotal += 1;
-      }
-    }
+    const { pass: curPass, total: curTotal, notRun } = tallyRule(current, name);
+    const { pass: priPass, total: priTotal } = tallyRule(prior, name);
     const cur = curTotal > 0 ? curPass / curTotal : 0;
     const pri = priTotal > 0 ? priPass / priTotal : 0;
     out.set(name, {
       rule: name,
       passRate: cur,
       total: curTotal,
+      notRun,
       drift: priTotal > 0 && curTotal > 0 ? cur - pri : undefined,
       series: bucketPassByRule(current, name, 6),
     });
@@ -237,17 +249,19 @@ export function PerRuleMeterGrid({
     (acc, s) => acc + s.total,
     0,
   );
+  const totalNotRun = Array.from(ruleStats.values()).reduce((acc, s) => acc + s.notRun, 0);
 
   return (
     <div style={styles.card} role="region" aria-label="Per-rule performance">
       <div style={styles.header}>
         <h3 style={styles.title}>Per-rule performance</h3>
-        <span style={styles.hint}>
-          {totalEvalsAcrossRules.toLocaleString()} rule firings · {periodLabel}
+        <span style={styles.hint} data-rule-checks-run={totalEvalsAcrossRules} data-rule-checks-not-run={totalNotRun}>
+          {totalEvalsAcrossRules.toLocaleString()} rule checks run
+          {totalNotRun > 0 && ` · ${totalNotRun.toLocaleString()} not run`} · {periodLabel}
         </span>
       </div>
 
-      {totalEvalsAcrossRules === 0 ? (
+      {totalEvalsAcrossRules === 0 && totalNotRun === 0 ? (
         <div style={styles.empty}>
           No rule activity in {periodLabel}. Run agents through Iris to see per-rule meters land here.
         </div>
@@ -282,7 +296,14 @@ export function PerRuleMeterGrid({
                       key={r.name}
                       to={drillToMoments({ kind: ruleToSignificanceKind(r.name, ruleCategories), since: periodStartIso })}
                       style={styles.ruleRow}
-                      title={`${r.name}: ${stat.total} firings, ${ratePct}% pass`}
+                      title={
+                        stat.total > 0
+                          ? `${r.name}: ran on ${stat.total} of ${stat.total + stat.notRun} evaluated traces, ${ratePct}% passed`
+                          : `${r.name}: not run on any of ${stat.notRun} evaluated traces`
+                      }
+                      data-rule-meter={r.name}
+                      data-rule-ran={stat.total}
+                      data-rule-not-run={stat.notRun}
                     >
                       <div>
                         <div style={styles.ruleName}>{r.name}</div>
@@ -297,7 +318,7 @@ export function PerRuleMeterGrid({
                             />
                           </div>
                           <span style={styles.meterValue}>
-                            {stat.total > 0 ? `${ratePct}%` : '—'}
+                            {stat.total > 0 ? `${ratePct}%` : stat.notRun > 0 ? `not run (${stat.notRun})` : '—'}
                           </span>
                         </div>
                       </div>

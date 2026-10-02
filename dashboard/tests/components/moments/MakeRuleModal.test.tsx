@@ -29,7 +29,7 @@ function moment(failed: string[]): DecisionMomentDetail {
     verdict: failed.length ? 'partial' : 'pass',
     overallScore: 0.6,
     evalCount: 1,
-    ruleSnapshot: { failed, skipped: [], passedCount: 3, totalCount: 3 + failed.length },
+    ruleSnapshot: { failed, skipped: [], passed: [], passedCount: 3, totalCount: 3 + failed.length },
     significance: { kind: 'normal-fail', score: 0.4, label: 'Partial', reason: 'fixture' },
     evals: [],
   };

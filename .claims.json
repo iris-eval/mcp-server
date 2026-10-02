@@ -119,7 +119,7 @@
         "question": "Q1",
         "status": "has",
         "subject": "S4",
-        "summary": "Safe on nine of ten runs is readable for THIS question: compare_traces takes `question: safe_output` and counts only evaluations that judged it, an attempt passing when every rule answering it passed — a case's rate with a 95% Wilson interval, the flaky flag, and the run-level rate by a cluster bootstrap over cases, of the question rather than the composed verdict."
+        "summary": "Safe on nine of ten runs is readable for THIS question: compare_traces takes `question: safe_output` and counts only evaluations that judged it, an attempt passing when every rule answering it passed — a case's rate with a 95% Wilson interval, the flaky flag, and the run-level rate over cases with an exact interval, of the question rather than the composed verdict."
       },
       {
         "evidence": [
@@ -367,7 +367,7 @@
         "question": "Q3",
         "status": "has",
         "subject": "S4",
-        "summary": "Complete on most runs is readable for THIS question: compare_traces takes `question: complete` and counts only evaluations that judged it, an attempt passing when every rule answering it passed — a case's rate with a 95% Wilson interval, the flaky flag, and the run-level rate by a cluster bootstrap over cases, of the question rather than the composed verdict."
+        "summary": "Complete on most runs is readable for THIS question: compare_traces takes `question: complete` and counts only evaluations that judged it, an attempt passing when every rule answering it passed — a case's rate with a 95% Wilson interval, the flaky flag, and the run-level rate over cases with an exact interval, of the question rather than the composed verdict."
       },
       {
         "evidence": [
@@ -496,7 +496,7 @@
         "question": "Q4",
         "status": "has",
         "subject": "S4",
-        "summary": "On-task on most runs is readable for THIS question: compare_traces takes `question: relevant` and counts only evaluations that judged it, an attempt passing when every rule answering it passed — a case's rate with a 95% Wilson interval, the flaky flag, and the run-level rate by a cluster bootstrap over cases, of the question rather than the composed verdict."
+        "summary": "On-task on most runs is readable for THIS question: compare_traces takes `question: relevant` and counts only evaluations that judged it, an attempt passing when every rule answering it passed — a case's rate with a 95% Wilson interval, the flaky flag, and the run-level rate over cases with an exact interval, of the question rather than the composed verdict."
       },
       {
         "evidence": [
@@ -608,7 +608,7 @@
         "question": "Q5",
         "status": "has",
         "subject": "S4",
-        "summary": "Completes the task seven of ten runs is readable for THIS question: compare_traces takes `question: task_completed` and counts only evaluations that judged it, an attempt passing when every rule answering it passed — a case's rate with a 95% Wilson interval, the flaky flag, and the run-level rate by a cluster bootstrap over cases, of the question rather than the composed verdict (0.15.0)."
+        "summary": "Completes the task seven of ten runs is readable for THIS question: compare_traces takes `question: task_completed` and counts only evaluations that judged it, an attempt passing when every rule answering it passed — a case's rate with a 95% Wilson interval, the flaky flag, and the run-level rate over cases with an exact interval, of the question rather than the composed verdict (0.15.0)."
       },
       {
         "evidence": [],
@@ -701,7 +701,7 @@
         "question": "Q6",
         "status": "has",
         "subject": "S4",
-        "summary": "Acts well on most runs is readable for THIS question: compare_traces takes `question: tool_use_correct` and counts only evaluations that judged it, an attempt passing when every rule answering it passed — a case's rate with a 95% Wilson interval, the flaky flag, and the run-level rate by a cluster bootstrap over cases, of the question rather than the composed verdict."
+        "summary": "Acts well on most runs is readable for THIS question: compare_traces takes `question: tool_use_correct` and counts only evaluations that judged it, an attempt passing when every rule answering it passed — a case's rate with a 95% Wilson interval, the flaky flag, and the run-level rate over cases with an exact interval, of the question rather than the composed verdict."
       },
       {
         "evidence": [
@@ -829,7 +829,7 @@
         "question": "Q7",
         "status": "partial",
         "subject": "S4",
-        "summary": "Within budget across repeats of one input is readable as the case's pass rate under the cost rules: compare_traces takes `question: within_budget` and counts only evaluations that judged it — a case's rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases. The spread of the cost itself across repeats of one input is not reported: cost_anomaly reads an agent's cost history, not a case's."
+        "summary": "Within budget across repeats of one input is readable as the case's pass rate under the cost rules: compare_traces takes `question: within_budget` and counts only evaluations that judged it — a case's rate with a 95% Wilson interval and a flaky flag, and the run-level rate over cases with an exact interval. The spread of the cost itself across repeats of one input is not reported: cost_anomaly reads an agent's cost history, not a case's."
       },
       {
         "evidence": [
@@ -917,7 +917,7 @@
         "question": "Q8",
         "status": "has",
         "subject": "S4",
-        "summary": "Evaluations of the same case across runs are grouped by case key and reported as a per-case pass rate with a 95% interval; a case answered both ways is reported as flaky. The run-level rate is a cluster bootstrap over cases, so ten repeats of one question are not counted as ten questions."
+        "summary": "Evaluations of the same case across runs are grouped by case key and reported as a per-case pass rate with a 95% interval; a case answered both ways is reported as flaky. The run-level rate counts each case once, with an exact interval, so ten repeats of one question are not counted as ten questions."
       },
       {
         "evidence": [
@@ -1049,7 +1049,7 @@
         "question": "Q9",
         "status": "partial",
         "subject": "S4",
-        "summary": "Where it fails across repeats: a case answered both ways is reported as flaky, least reliable first. compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate by a cluster bootstrap over cases — of the composed verdict, or of one evaluation question with `question`. The rate says how often a case fails, not why: the reasons are on each evaluation, and nothing gathers them across the repeats."
+        "summary": "Where it fails across repeats: a case answered both ways is reported as flaky, least reliable first. compare_traces groups every evaluation of one case across runs and reports the case's pass rate with a 95% Wilson interval and a flaky flag, and the run-level rate over cases with an exact interval — of the composed verdict, or of one evaluation question with `question`. The rate says how often a case fails, not why: the reasons are on each evaluation, and nothing gathers them across the repeats."
       },
       {
         "evidence": [
@@ -1193,7 +1193,7 @@
         "question": "Q10",
         "status": "has",
         "subject": "S4",
-        "summary": "Trust over repeats is a case's pass rate with a 95% Wilson interval and a flaky flag, and a run-level rate by a cluster bootstrap over cases so ten repeats of one question are not ten questions; the interval is the trust statement. No composer votes over repeats — the rate is reported, not turned into one verdict — and the judge has no repeat harness."
+        "summary": "Trust over repeats is a case's pass rate with a 95% Wilson interval and a flaky flag, and a run-level rate over cases with an exact interval, so ten repeats of one question are not ten questions; the interval is the trust statement. No composer votes over repeats — the rate is reported, not turned into one verdict — and the judge has no repeat harness."
       },
       {
         "evidence": [
@@ -5053,8 +5053,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-10-02T16:37:38.827Z",
-  "generatedFromCommit": "350b2fca",
+  "generatedAt": "2026-10-02T17:53:27.678Z",
+  "generatedFromCommit": "f5147077",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -9245,16 +9245,16 @@
       "passed": null,
       "total": 51
     },
-    "totalCombined": 4747,
+    "totalCombined": 4801,
     "vitestDashboard": {
       "failed": 0,
-      "passed": 427,
-      "total": 427
+      "passed": 435,
+      "total": 435
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 4269,
-      "total": 4269
+      "passed": 4315,
+      "total": 4315
     }
   },
   "version": {

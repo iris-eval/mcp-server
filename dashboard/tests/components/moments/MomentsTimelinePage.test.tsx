@@ -38,7 +38,7 @@ function moment(id: string, kind: DecisionMoment['significance']['kind'], score:
     verdict: kind === 'normal-pass' ? 'pass' : 'fail',
     overallScore: 0.5,
     evalCount: 1,
-    ruleSnapshot: { failed: [], skipped: [], passedCount: 1, totalCount: 1 },
+    ruleSnapshot: { failed: [], skipped: [], passed: [], passedCount: 1, totalCount: 1 },
     significance: { kind, score, label: kind, reason: kind },
   };
 }

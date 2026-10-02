@@ -6,7 +6,7 @@ import { strictInput } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { advertisedOutput } from './advertise.js';
 import { guarded, respond } from './respond.js';
-import { clusterBootstrap, wilson } from '../eval/stats.js';
+import { clusterInterval, wilson } from '../eval/stats.js';
 
 /*
  * How reliably does the agent answer THIS question?
@@ -16,12 +16,13 @@ import { clusterBootstrap, wilson } from '../eval/stats.js';
  * with the confidence eighty of a hundred would give you — it is ONE
  * question answered eight times, and the interval has to say so.
  *
- * That is why the run-level rate here comes from a cluster bootstrap over
- * CASES rather than from pooling every attempt: pooling ten repeats of five
- * questions claims n = 50 and reports an interval built on fifty
- * independent observations, which is a claim the data never made. On real
- * numbers the honest interval comes out roughly twice as wide, and that
- * width is the whole point of computing it.
+ * That is why the run-level rate here is taken over CASES rather than from
+ * pooling every attempt: pooling ten repeats of five questions claims
+ * n = 50 and reports an interval built on fifty independent observations,
+ * which is a claim the data never made. Each case counts once, at its own
+ * pass rate, and the interval is the exact one for that many cases
+ * (stats.ts, clusterInterval). It replaced a bootstrap over cases that
+ * printed "95% interval [100.0%, 100.0%]" whenever every case passed.
  */
 
 const caseRowSchema = z.looseObject({
@@ -43,7 +44,7 @@ export const compareTracesOutputSchema = z.looseObject({
   overall: z
     .looseObject({ rate: z.number(), lo: z.number(), hi: z.number() })
     .nullable()
-    .describe('pass rate by a cluster bootstrap over CASES: repeats of one question are one question'),
+    .describe('pass rate over CASES, each counted once at its own rate, with the exact 95% interval for that many cases: repeats of one question are one question'),
   pooled: z
     .looseObject({ rate: z.number(), lo: z.number(), hi: z.number() })
     .nullable()
@@ -62,7 +63,7 @@ export function registerCompareTracesTool(server: McpServer, storage: IStorageAd
         summary:
           'How reliably does the agent answer the same question? Per-case pass rates, flaky cases, and an interval that respects repeats.',
         does:
-          'Groups evaluations by case_key (or session) and reports each case\'s pass rate with a Wilson interval, the flaky cases least reliable first, and an overall rate bootstrapped over cases rather than pooled attempts. Deterministic, local, no model call.',
+          'Groups evaluations by case_key (or session) and reports each case\'s pass rate with a Wilson interval, the flaky cases least reliable first, and an overall rate over cases, with an exact interval, rather than over pooled attempts. Deterministic, local, no model call.',
         whenNot:
           'To compare two runs (compare_runs). To score an output (evaluate_output).',
         returns: compareTracesOutputSchema,
@@ -127,7 +128,7 @@ export function registerCompareTracesTool(server: McpServer, storage: IStorageAd
 
       const attempts = cases.reduce((n, c) => n + c.attempts, 0);
       const totalPassed = cases.reduce((n, c) => n + c.passed, 0);
-      const boot = clusterBootstrap(cases.map((c) => ({ passed: c.passed, total: c.attempts })), `cases:${args.run ?? 'all'}:${args.case_key ?? 'all'}`);
+      const boot = clusterInterval(cases.map((c) => ({ passed: c.passed, total: c.attempts })));
       const pooledW = attempts > 0 ? wilson(totalPassed, attempts) : null;
       const flaky = cases.filter((c) => c.flaky);
 
@@ -139,7 +140,7 @@ export function registerCompareTracesTool(server: McpServer, storage: IStorageAd
             : 'No evaluations carry a case key for that filter. Pass case_key on log_trace, or send an input — a key is derived from it — and the repeats become comparable.'
           : [
               `${cases.length} case${cases.length === 1 ? '' : 's'} across ${attempts} attempt${attempts === 1 ? '' : 's'}.`,
-              boot ? `Pass rate ${pct(boot.rate)}, 95% interval [${pct(boot.lo)}, ${pct(boot.hi)}] over CASES.` : '',
+              boot ? `Pass rate ${pct(boot.rate)} over cases, 95% interval [${pct(boot.lo)}, ${pct(boot.hi)}]: each case counts once, at its own rate.` : '',
               pooledW && boot && pooledW.hi - pooledW.lo < boot.hi - boot.lo
                 ? `Pooling every attempt as independent would report [${pct(pooledW.lo)}, ${pct(pooledW.hi)}] — narrower than the data supports, because repeats of one question are one question.`
                 : '',

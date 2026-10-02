@@ -113,9 +113,12 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
     does:
       'Reads every evaluation in each run (most recent per trace) and compares pass rates. ' +
       'When the runs share case keys it PAIRS them and runs McNemar exact on the cases that disagreed (named, with the rules that flipped), which sees a change an unpaired test cannot; else a Newcombe interval on two proportions. ' +
-      'Says "not enough evidence" — with the smallest change that many cases could have seen — rather than guessing. ' +
+      'Says "not enough evidence" — with the smallest change that many cases would have detected four times in five — rather than guessing. ' +
+      'A rule that did not run on a case is neither a pass nor a failure there: each rule is compared only over the cases it ran on, coverage.lost names the rules that ran on fewer cases in the second run, and better is not declared while any did (improvement_withheld). ' +
+      'The interval beside the word is the 90% one the one-sided test reads, so it excludes zero exactly when the test finds a change; paired, paired.fell is the share of changed cases that fell, with its exact interval. ' +
+      'critical_rises counts critical rules firing on new cases; they are counted, not tested. ' +
       `Tests each rule one-sided and corrects the p-values together (Benjamini–Hochberg): a rule is marked worse only at q ≤ ${RULE_ALPHA}. ` +
-      'States equivalence within equivalence_margin (default: the smallest detectable difference) when the 90% interval lies inside ±δ. ' +
+      'States equivalence only against an equivalence_margin you supply, when the 90% interval on the difference lies inside ±δ; without one, equivalence is not tested. ' +
       'Refuses runs that measure different things (ruleset, config, engine minor, agent), naming which; force compares anyway, and the response still names what changed. ' +
       'Deterministic, local, no model call.',
     whenNot:
@@ -134,7 +137,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
     does:
       'Groups every evaluation by case_key (supplied on log_trace, or derived from the input) and reports how often each case passed, with a 95% Wilson interval per case. ' +
       'A case answered both ways is FLAKY, least reliable first: that is where determinism is worth buying, and a single run cannot show it. ' +
-      'The overall rate uses a cluster bootstrap over CASES, not pooled attempts — ten repeats of one question are one question, and pooling claims an n the data never earned. The pooled figure is shown beside it. ' +
+      'The overall rate is over CASES, not pooled attempts: each case counts once, at its own rate, with the exact 95% interval for that many cases — ten repeats of one question are one question, and pooling claims an n the data never earned. The pooled figure is shown beside it. ' +
       'Deterministic, local, no model call.',
     whenNot:
       'To compare two runs against each other (compare_runs). To score an output (evaluate_output). To read the traces themselves (get_traces).',

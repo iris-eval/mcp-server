@@ -57,6 +57,8 @@ export function RunsPage() {
   const [before, setBefore] = useState('');
   const [after, setAfter] = useState('');
   const [force, setForce] = useState(false);
+  // Points of pass rate, as typed. Empty: equivalence is not tested, because the margin is the reader's to choose.
+  const [margin, setMargin] = useState('');
   const [comparing, setComparing] = useState(false);
   const [comparison, setComparison] = useState<CompareRunsResult | null>(null);
   const [compareError, setCompareError] = useState<ApiError | null>(null);
@@ -87,7 +89,9 @@ export function RunsPage() {
     setComparing(true);
     setCompareError(null);
     try {
-      setComparison(await api.compareRuns({ before, after, force: force || undefined }));
+      const points = Number(margin);
+      const equivalence_margin = margin.trim() !== '' && points > 0 && points <= 100 ? points / 100 : undefined;
+      setComparison(await api.compareRuns({ before, after, force: force || undefined, equivalence_margin }));
     } catch (err) {
       setComparison(null);
       setCompareError(asApiError(err));
@@ -207,6 +211,21 @@ export function RunsPage() {
           <label style={styles.check}>
             <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} data-compare-force="true" />
             compare even if not comparable
+          </label>
+          <label style={styles.field} title="How far apart two runs may be and still count as the same, in points of pass rate. Leave it empty and equivalence is not tested: the comparison does not choose a margin for you.">
+            equivalent within ± points (optional)
+            <input
+              type="number"
+              min={0.1}
+              max={100}
+              step={0.1}
+              inputMode="decimal"
+              style={styles.select}
+              value={margin}
+              onChange={(e) => setMargin(e.target.value)}
+              placeholder="not tested"
+              data-compare-margin="true"
+            />
           </label>
           <button type="submit" className="iris-btn" disabled={!before || !after || comparing} data-compare-submit="true">
             {comparing ? 'Comparing…' : 'Compare'}

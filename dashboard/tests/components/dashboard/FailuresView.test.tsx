@@ -36,7 +36,7 @@ function makeFailure(id: string, overrides: Partial<RankedFailure> = {}): Ranked
     verdict: 'fail',
     overallScore: 0,
     evalCount: 1,
-    ruleSnapshot: { failed: ['no_pii'], skipped: [], passedCount: 0, totalCount: 1 },
+    ruleSnapshot: { failed: ['no_pii'], skipped: [], passed: [], passedCount: 0, totalCount: 1 },
     significance: {
       kind: 'safety-violation',
       score: 1,

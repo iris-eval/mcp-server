@@ -45,14 +45,18 @@ const comparison: CompareRunsResult = {
   before: { run_id: 'baseline', n: 10, passed: 8, rate: 0.8, interval: { lo: 0.49, hi: 0.94 }, agent_names: ['support-bot'], engine_versions: ['0.13.0'], ruleset_hashes: ['3f2a91c0'], config_hashes: ['9b'], superseded: 0 },
   after: { run_id: 'candidate', n: 10, passed: 9, rate: 0.9, interval: { lo: 0.6, hi: 0.98 }, agent_names: ['support-bot'], engine_versions: ['0.13.0'], ruleset_hashes: ['3f2a91c0'], config_hashes: ['9b'], superseded: 0 },
   difference: { delta: 0.1, lo: -0.2, hi: 0.4, significant: false },
-  paired: { method: 'mcnemar-exact', b: 1, c: 2, concordant: 7, pairs: 10, p_value: 1, significant: false },
+  paired: { method: 'mcnemar-exact', b: 1, c: 2, concordant: 7, pairs: 10, p_value: 1, significant: false, fell: { share: 0.333, lo: 0.017, hi: 0.865 } },
   worse: false,
   better: false,
+  improvement_withheld: false,
+  call: 'undetermined',
   smallest_detectable: 0.42,
-  equivalent_within: { margin: 0.42, margin_source: 'smallest-detectable', interval: { lo: -0.15, hi: 0.35 }, holds: true },
+  equivalent_within: null,
+  coverage: { lost: [], gained: [] },
+  critical_rises: [],
   rules_tested: 1,
   regressions: [],
-  improvements: [{ rule: 'min_output_length', failed_before: 2, failed_after: 1, delta: -1, difference: { delta: 0.1, lo: -0.2, hi: 0.4, significant: false }, test: 'mcnemar-exact', p: 0.75, q: 0.75, worse: false }],
+  improvements: [{ rule: 'min_output_length', failed_before: 2, failed_after: 1, delta: -1, judged_before: 10, judged_after: 10, difference: { delta: 0.1, lo: -0.2, hi: 0.4, significant: false }, test: 'mcnemar-exact', p: 0.75, q: 0.75, worse: false }],
   summary: 'Not enough evidence to call it either way.',
 };
 
@@ -116,6 +120,25 @@ describe('RunsPage', () => {
     await waitFor(() => expect(compareRunsMock).toHaveBeenCalled());
     expect(compareRunsMock).toHaveBeenCalledWith({ before: 'baseline', after: 'candidate', force: true });
     await waitFor(() => expect(container.querySelector('[data-forced]')).not.toBeNull());
+  });
+
+  it('compare: the reader chooses the margin: empty sends none, and a number is sent as a share of pass rate', async () => {
+    compareRunsMock.mockResolvedValue(comparison);
+    const { container } = page();
+    fireEvent.change(container.querySelector('[data-compare-before]')!, { target: { value: 'baseline' } });
+    fireEvent.change(container.querySelector('[data-compare-after]')!, { target: { value: 'candidate' } });
+    fireEvent.click(container.querySelector('[data-compare-submit]')!);
+    await waitFor(() => expect(compareRunsMock).toHaveBeenCalledTimes(1));
+    expect(compareRunsMock.mock.calls[0][0].equivalence_margin).toBeUndefined();
+    expect(container.querySelector('[data-equivalent-within]')).toBeNull();
+
+    compareRunsMock.mockResolvedValue({ ...comparison, call: 'equivalent', equivalent_within: { margin: 0.05, margin_source: 'caller', interval: { lo: -0.03, hi: 0.04 }, holds: true } });
+    fireEvent.change(container.querySelector('[data-compare-margin]')!, { target: { value: '5' } });
+    fireEvent.click(container.querySelector('[data-compare-submit]')!);
+    await waitFor(() => expect(compareRunsMock).toHaveBeenCalledTimes(2));
+    expect(compareRunsMock.mock.calls[1][0]).toMatchObject({ before: 'baseline', after: 'candidate', equivalence_margin: 0.05 });
+    await waitFor(() => expect(container.querySelector('[data-comparison-verdict]')?.textContent).toBe('EQUIVALENT'));
+    expect(container.querySelector('[data-equivalent-within]')?.textContent).toBe('interval inside ±5.0 pts');
   });
 
   it('compare: a failed request renders its typed error in place', async () => {

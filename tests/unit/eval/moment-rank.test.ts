@@ -16,7 +16,7 @@ function moment(id: string, timestamp: string, kind: MomentSignificanceKind, sco
     verdict: 'pass',
     overallScore: 1,
     evalCount: 1,
-    ruleSnapshot: { failed: [], skipped: [], passedCount: 1, totalCount: 1 },
+    ruleSnapshot: { failed: [], skipped: [], passed: [], passedCount: 1, totalCount: 1 },
     significance: { kind, score, label: kind, reason: kind },
   };
 }

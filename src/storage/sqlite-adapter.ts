@@ -340,6 +340,16 @@ export interface RunResultRow {
   passed: boolean;
   /** Rules that fired, for the per-rule breakdown. Skips are not failures. */
   failedRules: string[];
+  /**
+   * Rules that ran on this evaluation, whether they passed or fired. A rule
+   * absent from this list did not judge the case, and a comparison counts
+   * it as neither a pass nor a failure: until this list existed a row held
+   * only the rules that fired, so a rule that skipped read as one that
+   * passed, and a run that stopped sending evidence read as an improvement.
+   */
+  judgedRules: string[];
+  /** The fired rules that were critical under the configuration the evaluation ran with. */
+  criticalFailed: string[];
   engineVersion: string | null;
   rulesetHash: string | null;
   configHash: string | null;
@@ -2357,14 +2367,17 @@ export class SqliteAdapter implements IStorageAdapter {
         continue;
       }
       seen.add(traceId);
-      const ruleResults = parseRuleResults<{ ruleName: string; passed: boolean; skipped?: boolean }>(row.rule_results);
+      const ruleResults = parseRuleResults<{ ruleName: string; passed: boolean; skipped?: boolean; critical?: boolean }>(row.rule_results);
+      const fired = ruleResults.filter((r) => r.skipped !== true && r.passed === false);
       out.push({
         evalId: String(row.id),
         traceId: (row.trace_id as string | null) ?? null,
         caseKey: (row.case_key as string | null) ?? null,
         agentName: (row.agent_name as string | null) ?? null,
         passed: row.passed === 1 || row.passed === true,
-        failedRules: ruleResults.filter((r) => r.skipped !== true && r.passed === false).map((r) => r.ruleName),
+        failedRules: fired.map((r) => r.ruleName),
+        judgedRules: ruleResults.filter((r) => r.skipped !== true).map((r) => r.ruleName),
+        criticalFailed: fired.filter((r) => r.critical === true).map((r) => r.ruleName),
         engineVersion: (row.engine_version as string | null) ?? null,
         rulesetHash: (row.ruleset_hash as string | null) ?? null,
         configHash: (row.config_hash as string | null) ?? null,
