@@ -111,6 +111,19 @@ def test_against_a_server_assert_iris_judges_on_the_verdict(pytester: pytest.Pyt
     result.stdout.fnmatch_lines(["*assert_iris got unexpected keyword(s): colour*"])
 
 
+def test_the_message_names_every_layer_that_would_have_decided() -> None:
+    from iris_eval.pytest_plugin import _decided
+
+    assert _decided({"state": "fail", "basis": "detector_veto", "by": ["no_pii"]}) == "detector_veto by no_pii"
+    masked = {
+        "state": "fail",
+        "basis": "policy_gate",
+        "by": ["cost_under_threshold"],
+        "also": [{"basis": "detector_veto", "state": "fail", "by": ["no_pii"]}, {"basis": "required_evidence_missing", "state": "unknown", "by": []}],
+    }
+    assert _decided(masked) == "policy_gate by cost_under_threshold; also detector_veto by no_pii; also required_evidence_missing by —"
+
+
 def test_the_url_option_beats_the_environment(pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch, fake_server: str) -> None:
     monkeypatch.setenv("IRIS_URL", "http://127.0.0.1:1")
     pytester.makepyfile(TEST_FILE)

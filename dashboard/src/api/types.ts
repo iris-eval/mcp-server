@@ -163,15 +163,24 @@ export type VerdictBasis =
   | 'clean'
   | 'no_rules';
 
+/** A later layer that would have decided the verdict on its own. */
+export interface VerdictLayer {
+  basis: Exclude<VerdictBasis, 'policy_gate' | 'clean' | 'no_rules'>;
+  state: 'fail' | 'unknown';
+  by: string[];
+}
+
 export interface Verdict {
   state: 'pass' | 'fail' | 'unknown';
   passed: boolean;
-  /** Which layer of the composer decided. */
+  /** Which layer of the composer decided: the first with something to say. */
   basis: VerdictBasis;
   /** The rules (or failure classes, under risk_over_loss) that decided. */
   by: string[];
   risk: { pBad: number; lo: number; hi: number; perClass: Record<string, number | null>; assumptions: string[] } | null;
   confidence?: 'decisive' | 'marginal';
+  /** Every later layer that would have decided it too, in the order they are asked. Absent when there is none. */
+  also?: VerdictLayer[];
 }
 
 export type QuestionId = 'safe_output' | 'grounded' | 'complete' | 'relevant' | 'task_completed' | 'tool_use_correct' | 'within_budget';

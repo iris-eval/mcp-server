@@ -11,7 +11,7 @@ echo '{"agent_name":"release-bot","input":"...","output":"...","tool_calls":[...
 npx -y @iris-eval/mcp-server ingest --file traces.ndjson --evaluate --fail-on any
 ```
 
-Each line printed is `{ "trace_id", "evaluation_id", "passed", "verdict": { "state", "basis", "by" }, "unjudged"?: [...], "spans"?: [{ "rule", "label", "source", "start", "end" }] }` and, when a verdict tripped the gate, `"tripped": "<basis>"`. Exit codes: **0** stored and nothing tripped · **1** at least one verdict tripped `--fail-on` · **2** usage error, or nothing was stored.
+Each line printed is `{ "trace_id", "evaluation_id", "passed", "verdict": { "state", "basis", "by", "also"?: [{ "basis", "state", "by" }] }, "unjudged"?: [...], "spans"?: [{ "rule", "label", "source", "start", "end" }] }` and, when a verdict tripped the gate, `"tripped": "<basis>"`. Exit codes: **0** every trace read was judged and nothing tripped · **1** at least one verdict tripped `--fail-on` · **2** usage error, nothing was stored, or a gate that did not judge every trace it read ([below](#what-exit-0-means)).
 
 ## `--fail-on`
 
@@ -26,6 +26,30 @@ Each line printed is `{ "trace_id", "evaluation_id", "passed", "verdict": { "sta
 | `unknown` | any verdict that could not be reached — the fail-closed choice |
 | `any` | anything but a clean pass |
 
+**A basis trips when that layer decided the verdict or would have.** The layers are asked in order (a policy you configured, a critical detector, a critical check that could not answer, required evidence, the risk estimate) and `verdict.basis` names the first with something to say. They do not exclude each other: an output can break your cost policy and leak a credential. `verdict.also` lists every later layer that would have decided on its own, and `--fail-on` reads both, so that output trips `detector_veto` as well as `policy_gate`:
+
+```json
+{ "verdict": { "state": "fail", "basis": "policy_gate", "by": ["cost_under_threshold"],
+               "also": [{ "basis": "detector_veto", "state": "fail", "by": ["no_pii"] }] },
+  "tripped": "detector_veto",
+  "spans": [{ "rule": "no_pii", "label": "SSN", "source": "output", "start": 38, "end": 49 }] }
+```
+
+`fail` and `unknown` read the state of every layer the same way: a verdict left `unknown` by a critical check that could not answer still trips `fail` when the risk estimate is over your loss cut. The spans printed are those of the layer that tripped.
+
+## What exit 0 means
+
+With `--fail-on`, exit 0 says every trace that was read was judged and none matched. Anything short of that exits 2, with a sentence on stderr saying which:
+
+| What happened | Exit |
+|---|---|
+| A trace was rejected: a malformed field, or no `output` to score (the run that crashed before answering) | 2 |
+| A trace was stored without being evaluated: no `--evaluate`, and no `"evaluate": true` on the trace | 2 |
+| No trace was in the gate: an empty file, or with `--dataset` a run that held none of its cases | 2, or 0 with `--allow-empty` |
+| `--file` names a path that is not a file | 2 |
+
+`--allow-empty` is for a job that legitimately has nothing to gate, such as one shard of a split run. It needs `--fail-on`, and it never excuses a rejected or unevaluated trace. Without `--fail-on` nothing is promised and an empty input is exit 0.
+
 ## `--dataset` — gate only the cases the reader chose (0.15.0)
 
 `--dataset <id|label>` restricts `--fail-on` to the case keys in a dataset. Every trace is still stored and evaluated; only a trace whose case key (supplied as `case_key`, or derived from `input`) is in the dataset can trip the gate. Each receipt gains `"gated": true|false`, and the summary line says how many of the evaluated traces were in the gate:
@@ -34,7 +58,7 @@ Each line printed is `{ "trace_id", "evaluation_id", "passed", "verdict": { "sta
 iris-eval ingest: 40 stored, 1 tripped --fail-on detector_veto (12 of 40 evaluated in dataset "release-gate")
 ```
 
-Create the dataset once from a run's case keys — `POST /api/v1/datasets` with `{ "label": "release-gate", "from_run": "nightly-1" }` — or name the keys explicitly. `--dataset` needs `--fail-on` (it restricts the gate, nothing else); an unknown dataset is a usage error (exit 2) before any trace is read. The same dataset restricts `compare_runs` to the same cases.
+Create the dataset once from a run's case keys — `POST /api/v1/datasets` with `{ "label": "release-gate", "from_run": "nightly-1" }` — or name the keys explicitly. `--dataset` needs `--fail-on` (it restricts the gate, nothing else); an unknown dataset is a usage error (exit 2) before any trace is read, and a run with none of the dataset's cases exits 2 unless `--allow-empty` is passed. The same dataset restricts `compare_runs` to the same cases.
 
 ## The walk-through — from a fresh install to a gate that names the leak (0.15.0)
 
@@ -53,13 +77,14 @@ Four steps, in the order the person who gates deploys does them; each prints one
     traces: traces.ndjson
 ```
 
-That runs `iris-eval ingest --file traces.ndjson --evaluate --fail-on detector_veto`, fails the job when a verdict trips, writes the receipt to the job summary and, on a pull request, posts it as **one comment updated in place** on every run (found by a marker naming the traces file, so two gates in one workflow keep two comments). The job needs `permissions: pull-requests: write` for the comment; without it, or on a pull request from a fork (whose token is read-only), the receipt still reaches the summary and the action says the comment was skipped and why. A traces file that is empty fails the job: an unwritten file cannot pass as green.
+That runs `iris-eval ingest --file traces.ndjson --evaluate --fail-on detector_veto`, fails the job when a verdict trips, writes the receipt to the job summary and, on a pull request, posts it as **one comment updated in place** on every run (found by a marker naming the traces file, so two gates in one workflow keep two comments). The job needs `permissions: pull-requests: write` for the comment; without it, or on a pull request from a fork (whose token is read-only), the receipt still reaches the summary and the action says the comment was skipped and why. A traces file that is empty fails the job: an unwritten file cannot pass as green. So does a trace the gate could not judge ([what exit 0 means](#what-exit-0-means)).
 
 | Input | Default | What it is |
 |---|---|---|
 | `traces` | — (required) | The traces file: NDJSON, or one JSON trace |
 | `fail-on` | `detector_veto` | The basis that trips the gate — the table above |
 | `dataset` | — | Restrict the gate to a dataset's case keys (id or label) that exists under `iris-home` |
+| `allow-empty` | `false` | Pass the job when no trace was in the gate: an empty file, or a run with none of the dataset's cases |
 | `eval-type` | every bundle | `completeness` · `relevance` · `safety` · `cost` · `custom` · `all` |
 | `redact` | the server's default | `none` · `critical_spans` |
 | `iris-home` | a scratch directory | Where the database lives; a cached directory keeps history across runs and holds the dataset |

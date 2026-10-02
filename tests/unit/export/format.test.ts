@@ -126,6 +126,21 @@ describe('evaluation export', () => {
     expect(cell('failed_rules')).toBe('no_pii');
     expect(cell('verdict')).toBe('fail');
     expect(cell('verdict_by')).toBe('no_pii');
+    expect(cell('verdict_also'), 'one layer decided alone').toBe('');
+  });
+
+  it('CSV: a veto a policy gate decided ahead of is in verdict_also, so a filter on the basis alone does not lose it', () => {
+    const masked = {
+      ...record.evals[0],
+      verdict: { state: 'fail', passed: false, basis: 'policy_gate', by: ['cost_under_threshold'], risk: null, also: [{ basis: 'detector_veto', state: 'fail', by: ['no_pii'] }, { basis: 'risk_over_loss', state: 'fail', by: ['pii_leak'] }] },
+    } as EvalResult;
+    const enc = evalEncoder('csv');
+    const [header, row] = parseCsv((enc.header + enc.batch([masked])).slice(CSV_BOM.length));
+    expect(row[header.indexOf('verdict_basis')]).toBe('policy_gate');
+    expect(row[header.indexOf('verdict_also')]).toBe('detector_veto; risk_over_loss');
+    const trace = traceEncoder('csv');
+    const [th, tr] = parseCsv((trace.header + trace.batch([{ ...record, evals: [masked] }])).slice(CSV_BOM.length));
+    expect(tr[th.indexOf('latest_verdict_also')]).toBe('detector_veto; risk_over_loss');
   });
 });
 

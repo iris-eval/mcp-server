@@ -76,6 +76,9 @@ def assert_iris(
 
     The message names the basis and the rules that decided, so a failing
     test reads like the dashboard: ``verdict fail on detector_veto by no_pii``.
+    Every later layer that would have decided it too is named after it
+    (``policy_gate by cost_under_threshold; also detector_veto by no_pii``),
+    so fixing the first is not mistaken for fixing the verdict.
     Extra keyword arguments (``tool_calls``, ``tools``, ``cost_usd``,
     ``token_usage``, ``run``, ``case_key``, ``session_id``, ``metadata``) go on
     the trace. Returns the evaluation for further assertions.
@@ -90,12 +93,17 @@ def assert_iris(
     verdict = evaluation.get("verdict") or {}
     state = verdict.get("state")
     if state != expect:
-        by = ", ".join(verdict.get("by") or []) or "—"
         raise AssertionError(
-            f"Iris verdict {state} on {verdict.get('basis')} by {by} (expected {expect}); "
+            f"Iris verdict {state} on {_decided(verdict)} (expected {expect}); "
             f"score {evaluation.get('score')}; evaluation {evaluation.get('id')} on trace {evaluation.get('trace_id')}"
         )
     return evaluation
+
+
+def _decided(verdict: Mapping[str, Any]) -> str:
+    """The layer that decided and every later one that would have: ``basis by rules; also basis by rules``."""
+    layers = [verdict, *(verdict.get("also") or [])]
+    return "; also ".join(f"{layer.get('basis')} by {', '.join(layer.get('by') or []) or '—'}" for layer in layers)
 
 
 def _trace_fields(fields: Mapping[str, Any]) -> dict[str, Any]:

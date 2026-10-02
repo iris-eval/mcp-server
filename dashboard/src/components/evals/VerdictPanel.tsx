@@ -17,6 +17,7 @@ import { ScoreBadge } from '../shared/ScoreBadge';
 import { Tooltip } from '../shared/Tooltip';
 import {
   ADDRESSEE_TEXT,
+  ALSO_TEXT,
   BASIS_TEXT,
   NO_VERDICT_TEXT,
   QUESTION_LABEL,
@@ -169,6 +170,23 @@ export function VerdictPanel({
           {counts.passed}p · {counts.failed}f · {counts.skipped}s
         </span>
       </div>
+
+      {verdict?.also && verdict.also.length > 0 && (
+        <div style={styles.head} data-also={verdict.also.map((l) => l.basis).join(',')}>
+          <span style={styles.muted}>{ALSO_TEXT.lead}</span>
+          {verdict.also.map((l) => (
+            <span key={l.basis} style={styles.question}>
+              <Chip
+                label={l.basis}
+                tone={l.state === 'fail' ? 'fail' : 'unknown'}
+                tooltip={`${BASIS_TEXT[l.basis]} ${ALSO_TEXT.tooltip}`}
+                attr={{ 'data-also-basis': l.basis, 'data-also-state': l.state }}
+              />
+              {l.by.length > 0 && <span style={{ ...styles.muted, ...styles.mono }}>by {l.by.join(', ')}</span>}
+            </span>
+          ))}
+        </div>
+      )}
 
       {!verdict && <p style={styles.muted} data-no-verdict="true">{NO_VERDICT_TEXT}</p>}
 

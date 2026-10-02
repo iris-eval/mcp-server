@@ -36,7 +36,8 @@ export interface WebhookMoment {
   session_id: string | null;
   /** When the evaluation was stored (ISO-8601). */
   evaluated_at: string;
-  verdict: { state: 'pass' | 'fail' | 'unknown'; basis: string; by: string[] } | null;
+  /** `also`: every later layer that would have decided the verdict too (`Verdict.also`). */
+  verdict: { state: 'pass' | 'fail' | 'unknown'; basis: string; by: string[]; also?: Array<{ basis: string; state: 'fail' | 'unknown'; by: string[] }> } | null;
   score: number;
   /** Rules that ran and failed, sorted; skips excluded. */
   failed_rules: string[];
@@ -63,7 +64,8 @@ export async function momentsOf(storage: MomentSource, tenantId: TenantId, resul
     .filter(fired)
     .map((r) => r.ruleName)
     .sort();
-  const verdict = result.verdict ? { state: result.verdict.state, basis: result.verdict.basis, by: [...result.verdict.by] } : null;
+  const also = result.verdict?.also?.map((l) => ({ basis: l.basis, state: l.state, by: [...l.by] })) ?? [];
+  const verdict = result.verdict ? { state: result.verdict.state, basis: result.verdict.basis, by: [...result.verdict.by], ...(also.length > 0 ? { also } : {}) } : null;
   const base = {
     evaluation_id: result.id,
     trace_id: result.trace_id ?? null,
@@ -80,7 +82,8 @@ export async function momentsOf(storage: MomentSource, tenantId: TenantId, resul
   const who = agent ?? 'an agent';
   const out: WebhookMoment[] = [];
 
-  const failedVerdict = verdict ? verdict.state === 'fail' : !result.passed;
+  // A verdict an earlier layer left unknown is still a failed one when a later layer would have failed it.
+  const failedVerdict = verdict ? verdict.state === 'fail' || also.some((l) => l.state === 'fail') : !result.passed;
   if (wanted.has('verdict_fail') && failedVerdict) {
     const by = verdict?.by ?? failed;
     out.push({
@@ -92,13 +95,20 @@ export async function momentsOf(storage: MomentSource, tenantId: TenantId, resul
     });
   }
 
-  if (wanted.has('detector_veto') && verdict?.basis === 'detector_veto') {
+  /*
+   * The veto layer, whether it decided or an earlier layer got there first.
+   * Keyed on `basis` alone this never fired for an output that leaked a
+   * credential and also broke a policy the deployment set: the gate layer is
+   * asked first, and the pager stayed silent on the leak.
+   */
+  const veto = verdict?.basis === 'detector_veto' ? verdict.by : also.find((l) => l.basis === 'detector_veto')?.by;
+  if (wanted.has('detector_veto') && veto !== undefined) {
     out.push({
       ...base,
       event: 'detector_veto',
-      subject: verdict.by[0] ?? 'detector',
-      summary: `${who}: a critical detection vetoed the verdict — ${verdict.by.join(', ')}.`,
-      detail: { by: verdict.by, critical_failures: base.critical_failures },
+      subject: veto[0] ?? 'detector',
+      summary: `${who}: a critical detection vetoed the verdict — ${veto.join(', ')}.`,
+      detail: { by: veto, critical_failures: base.critical_failures },
     });
   }
 

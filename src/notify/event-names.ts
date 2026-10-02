@@ -10,7 +10,7 @@
 export const WEBHOOK_EVENTS = [
   /** The composed verdict failed, on any basis. Issue #5's ask. */
   'verdict_fail',
-  /** A critical detection vetoed the verdict (`verdict.basis === 'detector_veto'`). */
+  /** A critical detection fired: the veto layer decided the verdict (`verdict.basis`), or would have behind an earlier layer (`verdict.also`). */
   'detector_veto',
   /** The `cost_anomaly` rule fired: this trace's cost is an outlier against the agent's own recent costs. */
   'cost_anomaly',

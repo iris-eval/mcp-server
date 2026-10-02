@@ -38,13 +38,13 @@ The webhook is the server's. `iris-eval ingest` runs in its own process and post
 
 | Event | When | The cooldown's subject |
 |---|---|---|
-| `verdict_fail` | The composed verdict failed, on any basis — the alert issue #5 asked for. | the rule that decided |
-| `detector_veto` | A critical detection vetoed the verdict (`verdict.basis === "detector_veto"`): PII, an injection, an action policy. | the detector |
+| `verdict_fail` | The composed verdict failed, on any basis — the alert issue #5 asked for. A verdict left `unknown` that a later layer would have failed counts. | the rule that decided |
+| `detector_veto` | A critical detection fired: PII, an injection, an action policy. `verdict.basis` is `"detector_veto"`, or an earlier layer decided first and `verdict.also` carries it. | the detector |
 | `cost_anomaly` | The `cost_anomaly` rule fired: this trace's cost is an outlier against the agent's own last two hundred costed traces (modified z ≥ 3.5). | `cost_anomaly` |
 | `regression_alarm` | The CUSUM watcher crossed its line at this evaluation for one rule: the fail rate has shifted against the baseline it settled on. It reports and never gates; the watcher resets and re-baselines. | the rule (and the run, when the stream is per run) |
 | `flaky_case` | A case was answered both ways for the first time: every earlier attempt agreed and this one differs. Fires once per case, at the transition. | the case key |
 
-One evaluation can be several events — a vetoed verdict is also a failed one — and each is its own delivery, so subscribe to what you want to act on. `detector_veto` and `regression_alarm` are the two worth a pager; `verdict_fail` on a busy agent is a feed, and the cooldown is what keeps it readable.
+One evaluation can be several events — a vetoed verdict is also a failed one — and each is its own delivery, so subscribe to what you want to act on. `verdict.basis` names only the first layer with something to say: an output that breaks a policy you configured and leaks a credential reads `"basis": "policy_gate"` with `"also": [{ "basis": "detector_veto", "state": "fail", "by": ["no_pii"] }]`, and `detector_veto` is delivered for it. `detector_veto` and `regression_alarm` are the two worth a pager; `verdict_fail` on a busy agent is a feed, and the cooldown is what keeps it readable.
 
 ### How often `regression_alarm` fires when nothing has changed
 

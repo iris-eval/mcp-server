@@ -208,6 +208,36 @@ describe('VerdictPanel: the verdict with its basis, coverage and reasons', () =>
     expect(container.querySelector('[data-vetoed-by="no_pii"]')?.textContent).toContain('a critical rule failed');
   });
 
+  it('a policy gate with a leak behind it shows the later layers under the basis, each with its rules', () => {
+    const { container } = panel({
+      passed: false,
+      verdict: {
+        state: 'fail',
+        passed: false,
+        basis: 'policy_gate',
+        by: ['cost_under_threshold'],
+        risk: null,
+        also: [
+          { basis: 'detector_veto', state: 'fail', by: ['no_pii'] },
+          { basis: 'critical_unknown', state: 'unknown', by: ['no_injection_patterns'] },
+        ],
+      },
+      criticalFailures: ['no_pii'],
+    });
+    expect(container.querySelector('[data-basis]')?.getAttribute('data-basis')).toBe('policy_gate');
+    const also = container.querySelector('[data-also]');
+    expect(also?.getAttribute('data-also')).toBe('detector_veto,critical_unknown');
+    expect(also?.textContent).toContain('Would also have decided it:');
+    expect(also?.textContent).toContain('by no_pii');
+    expect(container.querySelector('[data-also-basis="detector_veto"]')?.getAttribute('data-also-state')).toBe('fail');
+    expect(container.querySelector('[data-also-basis="critical_unknown"]')?.getAttribute('data-also-state')).toBe('unknown');
+  });
+
+  it('a verdict one layer decided alone shows no such line', () => {
+    const { container } = panel({ passed: false, verdict: { state: 'fail', passed: false, basis: 'detector_veto', by: ['no_pii'], risk: null }, criticalFailures: ['no_pii'] });
+    expect(container.querySelector('[data-also]')).toBeNull();
+  });
+
   it('an evaluation from before the composer says it has no verdict and offers no ladder', () => {
     const { container } = panel({ verdict: null, coverage: null, interpretations: null, provenance: null });
     expect(container.querySelector('[data-no-verdict]')?.textContent).toBe(NO_VERDICT_TEXT);

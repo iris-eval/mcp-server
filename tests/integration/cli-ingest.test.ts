@@ -71,6 +71,70 @@ describe('iris-eval ingest', () => {
     expect(good.code, good.stderr).toBe(0);
   }, 90_000);
 
+  /*
+   * `basis` names the first layer with something to say, and the gate layer
+   * is asked before the veto layer. With a policy that gates, an output that
+   * also leaked a Social Security number read `policy_gate`, and
+   * `--fail-on detector_veto` (the gate action's default) exited 0 on it.
+   */
+  it('a leak in an output that also broke a gating policy still trips --fail-on detector_veto, and the receipt names both layers', async () => {
+    writeFileSync(join(home, 'config.json'), JSON.stringify({ eval: { defaultsGate: true } }));
+    const both = { ...PII, cost_usd: 5 };
+    const veto = await run(['ingest', '--evaluate', '--fail-on', 'detector_veto'], JSON.stringify(both));
+    expect(veto.code, veto.stderr).toBe(1);
+    const [line] = lines(veto.stdout);
+    const verdict = line.verdict as { basis: string; by: string[]; also?: Array<{ basis: string; state: string; by: string[] }> };
+    expect(verdict.basis).toBe('policy_gate');
+    expect(verdict.by).toContain('cost_under_threshold');
+    expect(verdict.also).toContainEqual({ basis: 'detector_veto', state: 'fail', by: ['no_pii'] });
+    expect(line.tripped).toBe('detector_veto');
+    // The spans are the leak's, not the cost rule's: the receipt says where the number sits.
+    expect(line.spans).toContainEqual(expect.objectContaining({ rule: 'no_pii', label: 'SSN' }));
+    const gate = await run(['ingest', '--evaluate', '--fail-on', 'policy_gate'], JSON.stringify(both));
+    expect(gate.code, gate.stderr).toBe(1);
+    // A policy failure with no leak beside it does not trip detector_veto.
+    const costOnly = await run(['ingest', '--evaluate', '--fail-on', 'detector_veto'], JSON.stringify({ ...CLEAN, cost_usd: 5 }));
+    expect(costOnly.code, costOnly.stderr).toBe(0);
+    expect((lines(costOnly.stdout)[0].verdict as { basis: string }).basis).toBe('policy_gate');
+  }, 120_000);
+
+  /*
+   * Exit 0 from a gate says every trace read was judged and none matched.
+   * Each of these exited 0 (the missing file exited 1 with a stack trace,
+   * the code a tripped gate uses).
+   */
+  it('a gate that did not judge every trace it read exits 2, never 0', async () => {
+    const empty = join(home, 'empty.ndjson');
+    writeFileSync(empty, '');
+    const none = await run(['ingest', '--file', empty, '--evaluate', '--fail-on', 'any']);
+    expect(none.code, none.stderr).toBe(2);
+    expect(none.stderr).toMatch(/no trace was read from .*empty\.ndjson, so --fail-on any judged nothing and cannot pass/);
+    const allowed = await run(['ingest', '--file', empty, '--evaluate', '--fail-on', 'any', '--allow-empty']);
+    expect(allowed.code, allowed.stderr).toBe(0);
+
+    const missing = await run(['ingest', '--file', join(home, 'nope.ndjson'), '--evaluate', '--fail-on', 'any']);
+    expect(missing.code).toBe(2);
+    expect(missing.stderr).toMatch(/nope\.ndjson is not a file/);
+    expect(missing.stderr).not.toMatch(/\n\s+at /);
+
+    const unevaluated = await run(['ingest', '--fail-on', 'any'], JSON.stringify(CLEAN));
+    expect(unevaluated.code).toBe(2);
+    expect(unevaluated.stderr).toMatch(/1 of 1 trace was stored without being evaluated, so --fail-on any cannot pass/);
+
+    // The run that crashed before answering: one clean trace, and one with no output.
+    const rejected = await run(['ingest', '--evaluate', '--fail-on', 'any'], [JSON.stringify(CLEAN), JSON.stringify({ agent_name: 'gate-bot', input: 'no output' })].join('\n'));
+    expect(rejected.code).toBe(2);
+    expect(rejected.stderr).toMatch(/1 stored, 0 tripped --fail-on any, 1 rejected/);
+    expect(rejected.stderr).toMatch(/1 trace was rejected and never judged, so --fail-on any cannot pass/);
+
+    // Without a gate nothing was promised: an empty file is still exit 0.
+    const plain = await run(['ingest', '--file', empty, '--evaluate']);
+    expect(plain.code, plain.stderr).toBe(0);
+    const stray = await run(['ingest', '--file', empty, '--allow-empty']);
+    expect(stray.code).toBe(2);
+    expect(stray.stderr).toMatch(/--allow-empty is about the gate, so it needs --fail-on/);
+  }, 180_000);
+
   it('reads NDJSON from --file, one line out per line in, and records --source hook', async () => {
     const file = join(home, 'traces.ndjson');
     writeFileSync(file, [JSON.stringify(CLEAN), JSON.stringify({ ...CLEAN, run: 'nightly-1', case_key: 'q1' })].join('\n') + '\n');
@@ -179,13 +243,26 @@ describe('iris-eval ingest --dataset', () => {
     expect(stderr).toMatch(/3 stored, 1 tripped --fail-on detector_veto \(2 of 3 evaluated in dataset "release-gate"\)/);
   }, 60_000);
 
-  it('a PII trace outside the dataset does not fail the job', async () => {
+  it('a PII trace outside the dataset does not fail the job when a case inside it was judged clean', async () => {
     await createDataset('release-gate', ['in-gate']);
-    const { code, stdout, stderr } = await run(['ingest', '--evaluate', '--fail-on', 'detector_veto', '--dataset', 'release-gate'], JSON.stringify({ ...PII, case_key: 'outside' }));
+    const ndjson = [JSON.stringify({ ...PII, case_key: 'outside' }), JSON.stringify({ ...CLEAN, case_key: 'in-gate' })].join('\n');
+    const { code, stdout, stderr } = await run(['ingest', '--evaluate', '--fail-on', 'detector_veto', '--dataset', 'release-gate'], ndjson);
     expect(code, stderr).toBe(0);
     expect(lines(stdout)[0]).toMatchObject({ gated: false, passed: false });
-    expect(stderr).toMatch(/1 stored, 0 tripped --fail-on detector_veto \(0 of 1 evaluated in dataset "release-gate"\)/);
+    expect(stderr).toMatch(/2 stored, 0 tripped --fail-on detector_veto \(1 of 2 evaluated in dataset "release-gate"\)/);
   }, 60_000);
+
+  it('a run with none of the dataset\'s cases judged nothing: exit 2, and exit 0 only with --allow-empty', async () => {
+    await createDataset('release-gate', ['in-gate']);
+    const outside = JSON.stringify({ ...PII, case_key: 'outside' });
+    const refused = await run(['ingest', '--evaluate', '--fail-on', 'detector_veto', '--dataset', 'release-gate'], outside);
+    expect(refused.code, refused.stderr).toBe(2);
+    expect(lines(refused.stdout)[0]).toMatchObject({ gated: false, passed: false });
+    expect(refused.stderr).toMatch(/1 stored, 0 tripped --fail-on detector_veto \(0 of 1 evaluated in dataset "release-gate"\)/);
+    expect(refused.stderr).toMatch(/none of the 1 evaluated trace is in dataset "release-gate", so --fail-on detector_veto judged nothing and cannot pass/);
+    const allowed = await run(['ingest', '--evaluate', '--fail-on', 'detector_veto', '--dataset', 'release-gate', '--allow-empty'], outside);
+    expect(allowed.code, allowed.stderr).toBe(0);
+  }, 90_000);
 
   it('--dataset without --fail-on, or an unknown dataset, is a usage error before any trace is read', async () => {
     const noGate = await run(['ingest', '--evaluate', '--dataset', 'release-gate'], JSON.stringify(CLEAN));

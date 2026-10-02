@@ -80,6 +80,43 @@
             "decisive",
             "marginal"
           ]
+        },
+        "also": {
+          "description": "every later layer that would have decided this verdict on its own, in the order the layers are asked. basis names only the first layer with something to say; anything that acts on one basis reads basis AND also. Absent when the deciding layer was the only one, and on every pass.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "basis": {
+                "type": "string",
+                "enum": [
+                  "detector_veto",
+                  "critical_unknown",
+                  "required_evidence_missing",
+                  "risk_over_loss"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "fail",
+                  "unknown"
+                ]
+              },
+              "by": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "basis",
+              "state",
+              "by"
+            ],
+            "additionalProperties": {}
+          }
         }
       },
       "required": [

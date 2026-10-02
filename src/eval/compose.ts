@@ -37,7 +37,7 @@
  * with its failure mode stated, not a settled answer. Each surface that
  * shows a default says it is a recommendation.
  */
-import type { EvalResult, EvalRuleResult, Interpretation, Need, Role, Verdict, VerdictNode } from '../types/eval.js';
+import type { EvalResult, EvalRuleResult, Interpretation, Need, Role, Verdict, VerdictLayer, VerdictNode } from '../types/eval.js';
 import { riskEstimate, detectorsOf, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
 import { verdictConfidence, MIN_BIN_N, MIN_BIN_PATTERNS, type ConfidenceCall } from './confidence.js';
 import { PUBLISHED_CALIBRATION } from './published-calibration.js';
@@ -132,14 +132,34 @@ function inputsSeen(rows: readonly EvalRuleResult[]): Set<Need> {
  * draw the chain) had to re-implement these five questions, and a second
  * implementation of a decision is a second decision.
  *
- * Nodes after the one that decided are not in the path: they were never
- * asked. A node that was asked and found nothing is in the path with an
- * empty `by` — "we looked, there was nothing" is different from "we never
- * looked", and the difference is the whole point of the unknown layer.
+ * Nodes after the one that decided are not in the path. A node that was
+ * asked and found nothing is in the path with an empty `by` — "we looked,
+ * there was nothing" is different from "we never looked", and the
+ * difference is the whole point of the unknown layer.
+ *
+ * The layers do not exclude each other, and compose() asks every one of
+ * them: what the later layers would have decided is on the verdict as
+ * `also`, so a reader acting on one basis is never told a credential leak
+ * did not happen because a cost ceiling was broken first.
  */
 export function verdictPath(
   result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated'>,
   cfg: ComposeConfig,
+): VerdictNode[] {
+  return walk(result, cfg, true);
+}
+
+/**
+ * The layers in the order they are asked. With `stopAtDecision` the walk
+ * ends at the first layer that decides, which is the path; without it every
+ * layer is asked, and `decided` on a later node means it would have decided
+ * on its own. One function for both, so the path and `Verdict.also` cannot
+ * disagree about what a layer is.
+ */
+function walk(
+  result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated'>,
+  cfg: ComposeConfig,
+  stopAtDecision: boolean,
 ): VerdictNode[] {
   const rows = result.rule_results;
   const evaluated = result.rules_evaluated ?? rows.filter((r) => !r.skipped).length;
@@ -159,7 +179,7 @@ export function verdictPath(
    */
   const gates = rows.filter((r) => fired(r) && ((r.kind === 'policy' && decides(r, cfg.defaultsGate)) || r.kind === 'judgment'));
   path.push({ node: 'gate', by: gates.map((r) => r.ruleName), decided: gates.length > 0 });
-  if (gates.length > 0) return path;
+  if (stopAtDecision && gates.length > 0) return path;
 
   /*
    * 2. Vetoes: an effectively-critical rule that is not a policy. Keyed on
@@ -167,11 +187,12 @@ export function verdictPath(
    * by hand without metadata — a test double, an embedder's own rule —
    * still vetoes when it is marked critical. Silently ignoring a critical
    * rule because it forgot to declare its kind is the failure mode this
-   * composer exists to remove, not one to introduce.
+   * composer exists to remove, not one to introduce. A judgment is a gate
+   * above, critical or not, and is not counted a second time here.
    */
-  const vetoes = rows.filter((r) => r.kind !== 'policy' && fired(r) && isCritical(r));
+  const vetoes = rows.filter((r) => r.kind !== 'policy' && r.kind !== 'judgment' && fired(r) && isCritical(r));
   path.push({ node: 'veto', by: vetoes.map((r) => r.ruleName), decided: vetoes.length > 0 });
-  if (vetoes.length > 0) return path;
+  if (stopAtDecision && path.some((n) => n.decided)) return path;
 
   /*
    * 3. Asked and could not answer. `not_applicable` is NEVER this: a
@@ -183,14 +204,14 @@ export function verdictPath(
    */
   const unknown = rows.filter((r) => isCritical(r) && r.skipped === true && r.skipClass !== undefined && r.skipClass !== 'not_applicable');
   path.push({ node: 'unknown', by: unknown.map((r) => r.ruleName), decided: unknown.length > 0 && cfg.onCriticalSkipped !== 'pass' });
-  if (unknown.length > 0 && cfg.onCriticalSkipped !== 'pass') return path;
+  if (stopAtDecision && path.some((n) => n.decided)) return path;
 
   // 4. Evidence the deployment insists on. `by` is the missing inputs, not rules.
   const seen = cfg.requiredEvidence.length > 0 ? inputsSeen(rows) : null;
   const missing = seen ? cfg.requiredEvidence.filter((n) => !seen.has(n)) : [];
   if (cfg.requiredEvidence.length > 0) {
     path.push({ node: 'evidence', by: [...missing], decided: missing.length > 0 });
-    if (missing.length > 0) return path;
+    if (stopAtDecision && path.some((n) => n.decided)) return path;
   }
 
   /*
@@ -231,6 +252,21 @@ export function confidenceCall(
 }
 
 const pct = (x: number): string => `${Math.round(x * 100)}%`;
+
+/** One later layer, as a clause. */
+function layerText(l: VerdictLayer): string {
+  const by = l.by.join(', ');
+  switch (l.basis) {
+    case 'detector_veto':
+      return `a critical rule fired (${by})`;
+    case 'critical_unknown':
+      return `a critical check was asked and could not answer (${by})`;
+    case 'required_evidence_missing':
+      return `evidence this deployment requires is missing (${by})`;
+    default:
+      return `the rules that fired put the risk of a bad output over the loss threshold${by ? ` (${by})` : ''}`;
+  }
+}
 
 /** What the labelled corpus measured in the region a verdict's risk estimate fell in, as a clause. */
 function measured(r: NonNullable<ConfidenceCall['region']>): string {
@@ -292,44 +328,56 @@ function unlabelledText(cfg: Pick<ComposeConfig, 'calibration'>): string {
  * The verdict for one evaluation. The weighted mean is never consulted: it
  * survives as a quality gradient on the score field and is never re-meant.
  *
- * Every question this asks is asked by verdictPath() above; this reads the
- * node that decided and stamps it. Adding a layer means adding a node.
+ * Every question this asks is asked by walk() above, the function
+ * verdictPath() reads; this stamps the verdict from the first layer that
+ * decided and lists the later ones that would have. Adding a layer means
+ * adding a node.
  */
 export function compose(
   result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated'>,
   cfg: ComposeConfig,
 ): Verdict {
-  const path = verdictPath(result, cfg);
-  const decided = path.find((n) => n.decided);
-  const riskNode = path.find((n) => n.node === 'risk');
-  const risk = riskNode?.risk ?? null;
+  const nodes = walk(result, cfg, false);
+  const [decided, ...later] = nodes.filter((n) => n.decided);
+  if (decided?.node === 'nothing_judged') return { state: 'unknown', passed: false, basis: 'no_rules', by: [], risk: null };
+
+  /*
+   * The estimate and its label ride on the verdict only when the risk layer
+   * was the last word: it decided, or nothing did. Under an earlier basis
+   * the `also` entry speaks for it and no label is computed.
+   */
+  if (decided !== undefined && decided.node !== 'risk') {
+    const first = layerOf(decided, cfg);
+    const also = later.map((n) => layerOf(n, cfg) as VerdictLayer);
+    return { state: first.state, passed: false, basis: first.basis, by: first.by, risk: null, ...(also.length > 0 ? { also } : {}) };
+  }
+  const head = decided ?? null;
+  const risk = nodes.find((n) => n.node === 'risk')?.risk ?? null;
+  if (risk === null) return { state: 'pass', passed: true, basis: 'clean', by: [], risk: null };
   /*
    * Decisive only where the composite corpus measured the estimate to hold
    * (./confidence.ts), and only under the table the verdict was given with:
    * a stored row labelled under another table carries no label on read.
    */
-  const confidence: Verdict['confidence'] = risk === null || !calibrationAvailable(cfg) ? undefined : confidenceCall(result, risk, cfg).confidence;
+  const confidence: Verdict['confidence'] = calibrationAvailable(cfg) ? confidenceCall(result, risk, cfg).confidence : undefined;
+  return head === null
+    ? { state: 'pass', passed: true, basis: 'clean', by: [], risk, confidence }
+    : { state: 'fail', passed: false, basis: 'risk_over_loss', by: head.by, risk, confidence };
+}
 
-  switch (decided?.node) {
-    case 'nothing_judged':
-      return { state: 'unknown', passed: false, basis: 'no_rules', by: [], risk: null };
-    case 'gate':
-      return { state: 'fail', passed: false, basis: 'policy_gate', by: decided.by, risk: null };
-    case 'veto':
-      return { state: 'fail', passed: false, basis: 'detector_veto', by: decided.by, risk: null };
-    case 'unknown':
-      return cfg.onCriticalSkipped === 'fail'
-        ? { state: 'fail', passed: false, basis: 'critical_unknown', by: decided.by, risk: null }
-        : { state: 'unknown', passed: false, basis: 'critical_unknown', by: decided.by, risk: null };
-    case 'evidence':
-      return { state: 'unknown', passed: false, basis: 'required_evidence_missing', by: decided.by, risk: null };
-    case 'risk':
-      return { state: 'fail', passed: false, basis: 'risk_over_loss', by: decided.by, risk, confidence };
-    default:
-      return risk === null
-        ? { state: 'pass', passed: true, basis: 'clean', by: [], risk: null }
-        : { state: 'pass', passed: true, basis: 'clean', by: [], risk, confidence };
-  }
+const BASIS_OF = {
+  gate: 'policy_gate',
+  veto: 'detector_veto',
+  unknown: 'critical_unknown',
+  evidence: 'required_evidence_missing',
+  risk: 'risk_over_loss',
+} as const;
+
+/** What a deciding layer makes the verdict: the one place a node becomes a basis and a state. */
+function layerOf(n: VerdictNode, cfg: ComposeConfig): { basis: (typeof BASIS_OF)[keyof typeof BASIS_OF]; state: 'fail' | 'unknown'; by: string[] } {
+  const basis = BASIS_OF[n.node as keyof typeof BASIS_OF];
+  const state = n.node === 'evidence' || (n.node === 'unknown' && cfg.onCriticalSkipped !== 'fail') ? 'unknown' : 'fail';
+  return { basis, state, by: n.by };
 }
 
 /**
@@ -400,9 +448,27 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
       out.push({ severity: 'warn', addressee: 'operator', rule: r.ruleName, text: sameFamilyWarning(j.model, j.agentModel).message, configKey: RELEVANCE_JUDGE_MODEL_VAR });
     }
   }
+  /*
+   * The layers after the one that decided. `basis` names one layer and a
+   * reader fixes what it names: an agent told only that its cost ceiling
+   * failed lowers the cost and ships the credential that was in the same
+   * output. A risk layer that follows a veto is not a second finding (it is
+   * the vetoing detector read again, as a probability), so it stays on the
+   * `also` field and gets no sentence.
+   */
+  const laterRules = new Set((verdict.also ?? []).filter((l) => l.basis !== 'risk_over_loss').flatMap((l) => l.by));
+  const vetoed = verdict.basis === 'detector_veto' || (verdict.also ?? []).some((l) => l.basis === 'detector_veto');
+  const said = (verdict.also ?? []).filter((l) => !(l.basis === 'risk_over_loss' && vetoed)).map(layerText);
+  if (said.length > 0) {
+    out.push({
+      severity: 'block',
+      addressee: 'agent',
+      text: `${verdict.basis} decided this verdict, and it is not the only layer that would have: ${said.join('; ')}. Clearing ${verdict.by.join(', ') || 'the first'} alone does not clear the verdict.`,
+    });
+  }
   for (const r of result.rule_results) {
     if (!fired(r)) continue;
-    if (verdict.by.includes(r.ruleName)) continue;
+    if (verdict.by.includes(r.ruleName) || laterRules.has(r.ruleName)) continue;
     if (r.ruleName === 'answers_the_ask' && r.kind === 'policy' && r.judge === undefined && !decides(r, cfg.defaultsGate)) {
       /*
        * Without a judge the rule advises, and says why (#649): the generic

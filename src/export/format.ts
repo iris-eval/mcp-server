@@ -94,10 +94,15 @@ export const TRACE_COLUMNS: ReadonlyArray<Column<TraceRecord>> = [
   { name: 'latest_passed', value: (r) => r.evals[0]?.passed },
   { name: 'latest_verdict', value: (r) => r.evals[0]?.verdict?.state },
   { name: 'latest_verdict_basis', value: (r) => r.evals[0]?.verdict?.basis },
+  { name: 'latest_verdict_also', value: (r) => alsoBases(r.evals[0]) },
   { name: 'latest_failed_rules', value: (r) => (r.evals[0] ? failedRules(r.evals[0]) : undefined) },
   { name: 'metadata', value: (r) => json(r.trace.metadata) },
   { name: 'tool_calls', value: (r) => json(r.trace.tool_calls) },
 ];
+
+function alsoBases(e: EvalResult | undefined): string | undefined {
+  return e?.verdict?.also?.map((l) => l.basis).join('; ');
+}
 
 /** The evaluation CSV columns, in order. */
 export const EVAL_COLUMNS: ReadonlyArray<Column<EvalResult>> = [
@@ -111,6 +116,8 @@ export const EVAL_COLUMNS: ReadonlyArray<Column<EvalResult>> = [
   { name: 'verdict', value: (e) => e.verdict?.state },
   { name: 'verdict_basis', value: (e) => e.verdict?.basis },
   { name: 'verdict_by', value: (e) => e.verdict?.by.join('; ') },
+  // Every later layer that would have decided it too: a filter on verdict_basis alone misses a veto a policy gate decided ahead of.
+  { name: 'verdict_also', value: alsoBases },
   { name: 'rules_evaluated', value: (e) => e.rules_evaluated },
   { name: 'rules_skipped', value: (e) => e.rules_skipped },
   { name: 'failed_rules', value: failedRules },
