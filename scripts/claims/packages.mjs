@@ -51,6 +51,17 @@ export const PYPI_DIR = 'packages/python';
 export const NPM_PACKAGE_DIRS = ['packages/sdk', 'packages/langchain'];
 /** Whether each is on the registry: a recorded fact (see above). */
 export const NPM_PUBLISHED = { 'packages/sdk': false, 'packages/langchain': false };
+/**
+ * Whether release.yml publishes each library and the launcher with the
+ * server: a recorded fact, true only once it can. A later version needs the
+ * package's trusted publisher (this repository, release.yml) set on
+ * npmjs.com, which npm accepts only for a package that already exists; a
+ * first version needs NPM_FIRST_PUBLISH_TOKEN. Both are steps an npm account
+ * owner takes. A package release.yml cannot publish is left out of the
+ * release (still built and tested in CI) rather than failing the run after
+ * the server is already public. Flip one in the PR that follows the step.
+ */
+export const RELEASED_WITH_SERVER = { 'packages/sdk': false, 'packages/langchain': false, [LAUNCHER_DIR]: false };
 
 /** Top-level directories that are not packages Iris ships: the site, the dashboard SPA (built into the server) and examples. */
 export const EXCLUDED_TOP_LEVEL = new Set(['website', 'dashboard', 'examples']);
