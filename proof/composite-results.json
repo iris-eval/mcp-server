@@ -5322,7 +5322,7 @@
       "split": "dev"
     }
   ],
-  "commit": "33a52fb6",
+  "commit": "6318403d",
   "compositeVersion": "ed158f72a620",
   "confidence": {
     "changed": {
@@ -5550,7 +5550,8 @@
       "compositeVersion": "ed158f72a620",
       "prior": 0.5,
       "priorMode": "per-output",
-      "split": "dev"
+      "split": "dev",
+      "version": "f6cf4f92b59d"
     }
   },
   "corpusVersion": "451a94a7bc92",
@@ -5609,7 +5610,7 @@
       }
     }
   },
-  "generatedAt": "2026-10-03T02:59:19.163Z",
+  "generatedAt": "2026-10-03T05:59:34.911Z",
   "legacy": {
     "dev": {
       "accuracy": {
@@ -5622,6 +5623,7 @@
         "rate": 0.5225
       },
       "calibration": {
+        "auc": 0.7628,
         "bins": [
           {
             "from": 0,
@@ -5740,6 +5742,7 @@
         "rate": 0.4583
       },
       "calibration": {
+        "auc": 0.8889,
         "bins": [
           {
             "from": 0,
@@ -5858,6 +5861,7 @@
         "rate": 0.3529
       },
       "calibration": {
+        "auc": 0.8729,
         "bins": [
           {
             "from": 0,
@@ -6157,6 +6161,7 @@
         "rate": 0.7748
       },
       "calibration": {
+        "auc": 0.8297,
         "bins": [
           {
             "from": 0,
@@ -6275,6 +6280,7 @@
         "rate": 0.7083
       },
       "calibration": {
+        "auc": 0.8102,
         "bins": [
           {
             "from": 0,
@@ -6393,6 +6399,7 @@
         "rate": 0.6471
       },
       "calibration": {
+        "auc": 0.7771,
         "bins": [
           {
             "from": 0,
@@ -6513,6 +6520,7 @@
         "rate": 0.6847
       },
       "calibration": {
+        "auc": 0.8102,
         "bins": [
           {
             "from": 0,
@@ -6631,6 +6639,7 @@
         "rate": 0.75
       },
       "calibration": {
+        "auc": 0.8102,
         "bins": [
           {
             "from": 0,
@@ -6749,6 +6758,7 @@
         "rate": 0.7059
       },
       "calibration": {
+        "auc": 0.6979,
         "bins": [
           {
             "from": 0,

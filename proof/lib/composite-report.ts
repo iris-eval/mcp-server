@@ -33,6 +33,7 @@
  * Writes proof/composite-results.json and proof/COMPOSITE.md; `--check
  * --composite` regenerates both to a temp path and fails on any difference.
  */
+import { createHash } from 'node:crypto';
 import type { EvalResult, FailureClass } from '../../src/types/eval.js';
 import { EvalEngine } from '../../src/eval/engine.js';
 import { defaultConfig } from '../../src/config/defaults.js';
@@ -282,13 +283,15 @@ function calibrationTable(rows: CaseRow[], compositeVersion: string, patternOf: 
     b.sum += r.risk.pBad;
     b.patterns.add(patternOf.get(r.id)!);
   }
-  return {
+  const table = {
     compositeVersion,
-    split: 'dev',
+    split: 'dev' as const,
     prior: DEFAULT_PRIOR,
     priorMode: DEFAULT_PRIOR_MODE,
     bins: bins.map((b) => ({ from: b.from, to: b.to, n: b.n, bad: b.bad, patterns: b.patterns.size, meanPredicted: b.n === 0 ? null : round4(b.sum / b.n) })),
   };
+  // The table's version is its content: a rule that moves a verdict changes it, though the corpus has not changed.
+  return { version: createHash('sha256').update(JSON.stringify(table)).digest('hex').slice(0, 12), ...table };
 }
 
 function labelAccuracy(rows: CaseRow[], label: (r: CaseRow) => Confidence | null, patternOf: ReadonlyMap<string, string>): LabelAccuracy {
@@ -507,12 +510,15 @@ export function renderCompositeMarkdown(r: CompositeResults): string {
   L.push('');
   L.push(`**legacy** — ${r.method.legacy}. **risk** — the product's own composer: ${r.method.risk}; τ = ${r.method.tau} (a false pass costs ${r.method.falsePassCost}× a false block), prior ${r.method.prior}. Two readings of the prior are measured: *per-output* (${r.method.priorModes['per-output']}) and *per-class* (${r.method.priorModes['per-class']}).`);
   L.push('');
-  L.push('| Split | Composer | Accuracy vs shouldShip (95% CI) | False blocks on clean (95% CI) | Missed blocks (95% CI) | Brier | ECE |');
-  L.push('|---|---|---|---|---|--:|--:|');
+  L.push(`AUC is the chance that a bad output gets a higher P(bad) than a good one (ties count half). Brier and ECE move when every estimate moves; AUC does not, so it separates a composer that ranks outputs better from one that only shifts them. On a corpus whose cases are mostly bad by construction (${r.counts.mustNotShip} of ${r.counts.cases} here), a composer that rates every less-checked output higher also ranks better, so read it beside how many classes a case was checked for.`);
+  L.push('');
+  L.push('| Split | Composer | Accuracy vs shouldShip (95% CI) | False blocks on clean (95% CI) | Missed blocks (95% CI) | Brier | ECE | AUC |');
+  L.push('|---|---|---|---|---|--:|--:|--:|');
   for (const [name, split] of [['test', 'test'], ['real transcripts (held out, staged)', 'realTranscripts'], ['dev', 'dev']] as const) {
     for (const [label, comp] of [['legacy', 'legacy'], ['risk, per-output prior', 'risk'], ['risk, per-class prior', 'riskPerClass']] as const) {
       const s = r[comp][split];
-      L.push(`| ${name} | ${label} | ${pct(s.accuracy.rate)} ${ci(s.accuracy.ci95)} (n=${s.accuracy.n}) | ${pct(s.falseBlock.rate)} ${ci(s.falseBlock.ci95)} (n=${s.falseBlock.n}) | ${pct(s.missedBlock.rate)} ${ci(s.missedBlock.ci95)} (n=${s.missedBlock.n}) | ${s.calibration ? s.calibration.brier.toFixed(3) : '—'} | ${s.calibration ? s.calibration.ece.toFixed(3) : '—'} |`);
+      const cal = s.calibration;
+      L.push(`| ${name} | ${label} | ${pct(s.accuracy.rate)} ${ci(s.accuracy.ci95)} (n=${s.accuracy.n}) | ${pct(s.falseBlock.rate)} ${ci(s.falseBlock.ci95)} (n=${s.falseBlock.n}) | ${pct(s.missedBlock.rate)} ${ci(s.missedBlock.ci95)} (n=${s.missedBlock.n}) | ${cal ? cal.brier.toFixed(3) : '—'} | ${cal ? cal.ece.toFixed(3) : '—'} | ${cal && cal.auc !== null ? cal.auc.toFixed(3) : '—'} |`);
     }
   }
   L.push('');
@@ -634,6 +640,7 @@ export function renderPublishedCalibration(r: CompositeResults): string {
   L.push(' */');
   L.push('');
   L.push('export const PUBLISHED_CALIBRATION = {');
+  L.push(`  version: '${t.version}',`);
   L.push(`  compositeVersion: '${t.compositeVersion}',`);
   L.push(`  split: '${t.split}',`);
   L.push(`  prior: ${t.prior},`);

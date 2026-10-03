@@ -5053,8 +5053,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-10-03T04:38:15.056Z",
-  "generatedFromCommit": "57e8b816",
+  "generatedAt": "2026-10-03T06:01:55.052Z",
+  "generatedFromCommit": "5aa5b5b1",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5371,7 +5371,8 @@
           "compositeVersion": "ed158f72a620",
           "prior": 0.5,
           "priorMode": "per-output",
-          "split": "dev"
+          "split": "dev",
+          "version": "f6cf4f92b59d"
         }
       },
       "corpusVersion": "451a94a7bc92",
@@ -5442,6 +5443,7 @@
             "rate": 0.5225
           },
           "calibration": {
+            "auc": 0.7628,
             "bins": [
               {
                 "from": 0,
@@ -5560,6 +5562,7 @@
             "rate": 0.4583
           },
           "calibration": {
+            "auc": 0.8889,
             "bins": [
               {
                 "from": 0,
@@ -5678,6 +5681,7 @@
             "rate": 0.3529
           },
           "calibration": {
+            "auc": 0.8729,
             "bins": [
               {
                 "from": 0,
@@ -5977,6 +5981,7 @@
             "rate": 0.7748
           },
           "calibration": {
+            "auc": 0.8297,
             "bins": [
               {
                 "from": 0,
@@ -6095,6 +6100,7 @@
             "rate": 0.7083
           },
           "calibration": {
+            "auc": 0.8102,
             "bins": [
               {
                 "from": 0,
@@ -6213,6 +6219,7 @@
             "rate": 0.6471
           },
           "calibration": {
+            "auc": 0.7771,
             "bins": [
               {
                 "from": 0,
@@ -6333,6 +6340,7 @@
             "rate": 0.6847
           },
           "calibration": {
+            "auc": 0.8102,
             "bins": [
               {
                 "from": 0,
@@ -6451,6 +6459,7 @@
             "rate": 0.75
           },
           "calibration": {
+            "auc": 0.8102,
             "bins": [
               {
                 "from": 0,
@@ -6569,6 +6578,7 @@
             "rate": 0.7059
           },
           "calibration": {
+            "auc": 0.6979,
             "bins": [
               {
                 "from": 0,

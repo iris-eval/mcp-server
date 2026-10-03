@@ -290,7 +290,7 @@
               ]
             },
             "calibration": {
-              "description": "the composite version of the calibration table the confidence label was read from",
+              "description": "the version of the calibration table the confidence label was read from",
               "type": "string"
             },
             "requiredEvidence": {

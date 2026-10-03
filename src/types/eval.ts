@@ -520,8 +520,8 @@ export interface Provenance {
      */
     priorMode?: 'per-output' | 'per-class';
     /**
-     * The composite version of the calibration table the confidence label
-     * was read from (src/eval/published-calibration.ts). A read re-derives
+     * The version of the calibration table the confidence label was read
+     * from (src/eval/published-calibration.ts, `version`). A read re-derives
      * the label only under that same table; a row stamped under another
      * table, or before this field existed, reads back without a label and
      * with a note saying why, rather than silently taking today's.
