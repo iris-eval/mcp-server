@@ -1763,7 +1763,7 @@ Both defaults are configurable server-wide via `config.eval.ruleThresholds` (`mi
 | `echo` | the output is the ask's own text, at most a fifth longer | a completion report that restates the ask in the past tense |
 | `repetition` | one sentence (three words or more) repeated at least five times makes up at least half of the output, fenced code aside | a chorus, identical log lines in a code block, a key sentence said twice |
 
-It is a detection, not a veto: a fire enters the risk layer with the rule's published precision, and at the shipped configuration it fails the verdict of an agent that answers an ask with nothing. A refusal of a harmful ask that the blocklist does not name fires, and the labelled family publishes that as a wrong fail. It skips an empty output, which `non_empty_output` judges.
+It is a detection, not a veto: a fire enters the risk layer with the rule's published precision ([proof/results.json](../proof/results.json), https://iris-eval.com/proof), and at the shipped configuration it fails the verdict of an agent that answers an ask with nothing. A refusal of a harmful ask that the blocklist does not name fires, and the labelled family publishes that as a wrong fail. It skips an empty output, which `non_empty_output` judges.
 
 ---
 
