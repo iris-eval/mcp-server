@@ -1,11 +1,11 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-10-03T02:59:05.943Z for v0.19.0 (local generating commit `33a52fb6` — branch commits are squashed on merge, so cite the version).
-Corpus version `451a94a7bc92` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
+Generated 2026-10-03T03:14:10.792Z for v0.19.0 (local generating commit `070b199a` — branch commits are squashed on merge, so cite the version).
+Corpus version `a1138e84e693` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
-**What the 25 measured rules show is two different things.** 12 are measured against labels a model gave by reading the failure itself, without running the rule (a synthetic, model-labelled corpus; a human blind label is pending): those numbers measure detection (1 of 12 score F1 1.00). 13 are checked against their own documented definition, applied independently by script or by counting: those numbers show the code implements its formula, not that the formula catches what a reader would call the failure (12 of 13 score F1 1.00). The "Labels" column says which; each family's `labelling` statement says how.
+**What the 26 measured rules show is two different things.** 13 are measured against labels a model gave by reading the failure itself, without running the rule (a synthetic, model-labelled corpus; a human blind label is pending): those numbers measure detection (1 of 13 score F1 1.00). 13 are checked against their own documented definition, applied independently by script or by counting: those numbers show the code implements its formula, not that the formula catches what a reader would call the failure (12 of 13 score F1 1.00). The "Labels" column says which; each family's `labelling` statement says how.
 
 | Rule | Bundle | Labels | n | pos | skip | TP | FP | FN | TN | Precision (95% CI) | Recall (95% CI) | F1 (95% CI) | F1 credible | PPV at 5% / 50% |
 |---|---|---|--:|--:|--:|--:|--:|--:|--:|---|---|---|---|---|
@@ -16,6 +16,7 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `valid_tool_arguments` | completeness | own definition | 33 | 15 | 0 | 15 | 0 | 0 | 18 | 100.0% [79.6, 100.0] | 100.0% [79.6, 100.0] | 1.000 [100.0, 100.0] | [88.1, 99.9] | 100.0% / 100.0% |
 | `ask_coverage` | completeness | reader | 30 | 13 | 5 | 11 | 4 | 2 | 13 | 73.3% [48.0, 89.1] | 84.6% [57.8, 95.7] | 0.786 [58.3, 92.9] | [56.5, 90.1] | 15.9% / 78.2% |
 | `tool_sequence` | completeness | own definition | 51 | 28 | 0 | 28 | 0 | 0 | 23 | 100.0% [87.9, 100.0] | 100.0% [87.9, 100.0] | 1.000 [100.0, 100.0] | [93.5, 100.0] | 100.0% / 100.0% |
+| `says_something` | completeness | reader | 42 | 20 | 0 | 19 | 2 | 1 | 20 | 90.5% [71.1, 97.4] | 95.0% [76.4, 99.1] | 0.927 [82.3, 100.0] | [78.5, 97.3] | 35.5% / 91.3% |
 | `keyword_overlap` | relevance | own definition | 24 | 11 | 0 | 11 | 0 | 0 | 13 | 100.0% [74.1, 100.0] | 100.0% [74.1, 100.0] | 1.000 [100.0, 100.0] | [83.3, 99.9] | 100.0% / 100.0% |
 | `topic_consistency` | relevance | own definition | 24 | 12 | 1 | 11 | 0 | 1 | 12 | 100.0% [74.1, 100.0] | 91.7% [64.6, 98.5] | 0.957 [84.2, 100.0] | [77.2, 99.1] | 100.0% / 100.0% |
 | `tool_choice` | relevance | reader | 46 | 20 | 4 | 18 | 0 | 2 | 26 | 100.0% [82.4, 100.0] | 90.0% [69.9, 97.2] | 0.947 [85.7, 100.0] | [81.0, 98.4] | 100.0% / 100.0% |
@@ -46,6 +47,7 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 - `valid_tool_arguments` — FP: none · FN: none
 - `ask_coverage` — FP: ask-015, ask-018, ask-019, ask-021 · FN: ask-008, ask-010
 - `tool_sequence` — FP: none · FN: none
+- `says_something` — FP: says-028, says-032 · FN: says-013
 - `keyword_overlap` — FP: none · FN: none
 - `topic_consistency` — FP: none · FN: topic-021
 - `tool_choice` — FP: none · FN: choice-005, choice-016
@@ -153,7 +155,7 @@ each custom rule type built by createCustomRule under the family's config and ru
 <!-- latency:start -->
 ## How long one evaluation takes
 
-EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1081; p50 0.887 ms, p95 5.329 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
+EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1123; p50 0.885 ms, p95 6.436 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
 
 Re-measured on every `npm run proof` and excluded from `--check`: it is a property of the machine, so CI cannot hold it byte-for-byte.
 
