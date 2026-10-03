@@ -7,7 +7,7 @@ export function Install(): React.ReactElement {
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-text-accent">
-            Open Source — Free Forever to Self-Host
+            Open Source — Free to Self-Host
           </p>
           <h2 className="mt-4 font-display text-4xl font-extrabold tracking-tight text-text-primary md:text-5xl lg:text-6xl">
             60 seconds to{" "}

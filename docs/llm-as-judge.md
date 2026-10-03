@@ -12,7 +12,7 @@ until a keyed run replaces the committed placeholder the number is pending. See
 [`proof/judge/README.md`](../proof/judge/README.md), `proof/judge-results.json`, and the judge status
 on https://iris-eval.com/proof beside the deterministic rules' numbers.
 
-> **Bring your own key.** Iris doesn't proxy LLM calls, doesn't bundle credits, and doesn't have a hosted-judge tier. To use LLM-as-judge you set `IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY` in your environment, and Iris calls the provider directly with your key. No third party in the loop. The deterministic eval rules (`evaluate_output`) need no key and stay free forever.
+> **Bring your own key.** Iris doesn't proxy LLM calls, doesn't bundle credits, and doesn't have a hosted-judge tier. To use LLM-as-judge you set `IRIS_ANTHROPIC_API_KEY` or `IRIS_OPENAI_API_KEY` in your environment, and Iris calls the provider directly with your key. No third party in the loop. The deterministic eval rules (`evaluate_output`) need no key and cost nothing to run.
 
 This guide is the operational reference. Design rationale is at the end.
 

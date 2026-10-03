@@ -56,7 +56,7 @@ export function Pricing(): React.ReactElement {
           <h3 className="font-display text-lg font-bold text-text-primary">Self-Hosted</h3>
           <div className="mt-3 flex items-baseline gap-1">
             <span className="font-display text-4xl font-extrabold text-text-primary">$0</span>
-            <span className="text-[14px] text-text-muted">forever</span>
+            <span className="text-[14px] text-text-muted">MIT licensed</span>
           </div>
           <p className="mt-3 text-[13px] leading-relaxed text-text-secondary">
             Everything you need to evaluate your MCP agents in production. Your machine, your data, your eval rules.

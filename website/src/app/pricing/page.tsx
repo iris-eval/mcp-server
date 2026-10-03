@@ -71,7 +71,7 @@ const faq: FaqItem[] = [
   },
   {
     q: "Do you have SOC 2 or other compliance certifications?",
-    a: "No. None have been started, and we will say so plainly rather than imply otherwise. Because the server runs entirely on your infrastructure and sends no telemetry, many teams with compliance requirements can still use it — but that is your assessment to make, not a certification we hold.",
+    a: "No. Iris runs on your infrastructure and sends no telemetry, so many teams with compliance requirements can use it; whether it meets yours is your assessment to make. Iris itself holds no certification, and none will be claimed before it is held.",
   },
 ];
 
