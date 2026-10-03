@@ -1,6 +1,7 @@
 import type { EvalRule, EvalContext, EvalRuleResult, Evidence } from '../../types/eval.js';
 import { MAX_EVIDENCE_ITEMS } from '../../types/eval.js';
 import { countSentences } from '../text/sentences.js';
+import { withoutValueBreaks } from '../text/structured.js';
 import { thresholdSourceOf } from '../thresholds.js';
 import { MAX_ASK_CHARS, MIN_MEASURABLE_TERMS, answerIndex, coversPart, hitsPart, measurableParts, requiredHits, splitAsk, type AskPart } from '../text/asks.js';
 import { catalogueIndex } from '../catalogue.js';
@@ -32,7 +33,8 @@ export const minOutputLength: EvalRule = {
     const minLen = (context.customConfig?.min_output_length as number)
       ?? (context.customConfig?.min_length as number)
       ?? 50;
-    const len = context.output.length;
+    // In the values reading of a structured output, the breaks the reading put between values are not the answer's length.
+    const len = (context.outputRead === 'values' ? withoutValueBreaks(context.output) : context.output).length;
     const passed = len >= minLen;
     return {
       ruleName: 'min_output_length',

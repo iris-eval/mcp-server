@@ -96,7 +96,7 @@
     }
   ],
   "cases": 145,
-  "commit": "10f618ae",
+  "commit": "32a0b4eb",
   "compositeVersion": "ed158f72a620",
   "contracts": [
     {
@@ -512,7 +512,7 @@
       "what": "the call supplied an expected trajectory"
     }
   ],
-  "generatedAt": "2026-10-03T01:21:42.347Z",
+  "generatedAt": "2026-10-03T02:27:56.809Z",
   "removals": [
     {
       "carried": 127,

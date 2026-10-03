@@ -33,8 +33,11 @@
  * Between two values is a paragraph mark on its own line (VALUE_BREAK), not
  * just a blank line: the folds the detectors apply turn a run of blank
  * lines into one line break, which a phone number or a phrase reads
- * across, and `[100, 250, 1000]` became a phone number. The sentence
- * splitter counts no segment without a letter or a digit as a sentence.
+ * across, and `[100, 250, 1000]` became a phone number. The mark survives
+ * every fold. The sentence splitters end a sentence at it and count no
+ * segment without a letter or a digit as a sentence; the quotation rule
+ * ends a quotation at it, so quote marks in two fields cannot bracket the
+ * one between them.
  *
  * Every view keeps, for each character it holds, where that character came
  * from in the output as sent. A rule reports offsets into the text it read,
@@ -44,9 +47,9 @@
  *
  * What counts as structured: an output that is one JSON object or one JSON
  * array with nothing around it but JSON whitespace (space, tab, line
- * breaks), and that JSON.parse accepts. A byte-order mark or a no-break
- * space beside it, a sentence that contains JSON, a fenced code block and
- * a bare JSON string are read as written. Past STRUCTURED_OUTPUT_MAX_CHARS
+ * breaks) and, at the very start, a byte-order mark, and that JSON.parse
+ * accepts. A no-break space beside it, a sentence that contains JSON, a
+ * fenced code block and a bare JSON string are read as written. Past STRUCTURED_OUTPUT_MAX_CHARS
  * the output is read as written.
  *
  * Emptiness: a blank string says nothing, so `{"answer": ""}` reads as
@@ -64,8 +67,16 @@
 /** The longest output read as structured. Past it the output is read as written. */
 export const STRUCTURED_OUTPUT_MAX_CHARS = 512_000;
 
-/** Between two values in a view: a paragraph mark on a line of its own, which no detector reads across. */
-const VALUE_BREAK = '\n\n¶\n\n';
+/** The mark between two values in a view. Every fold keeps it; the sentence splitters and the quotation rule stop at it. */
+export const VALUE_MARK = '¶';
+
+/** Between two values in a view: the mark on a line of its own. */
+const VALUE_BREAK = `\n\n${VALUE_MARK}\n\n`;
+
+/** A view's text without the breaks it inserted between values: what the values themselves say, for a rule that measures length. */
+export function withoutValueBreaks(text: string): string {
+  return text.split(VALUE_BREAK).join('\n');
+}
 
 /** One reading of a structured output, and where each of its characters came from. */
 export interface OutputView {
@@ -210,7 +221,7 @@ function entriesOf(raw: string): { entries: Array<KeyEntry | ValueEntry>; anyVal
         if (token.text.trim() !== '') entries.push({ kind: 'value', value: token, key: take(top) });
       }
       i = next;
-    } else if (c === ' ' || c === '\n' || c === '\r' || c === '\t') {
+    } else if (c === ' ' || c === '\n' || c === '\r' || c === '\t' || (i === 0 && c === '\uFEFF')) {
       i += 1;
     } else {
       const { token, next } = readScalar(raw, i);
@@ -257,7 +268,7 @@ function viewOf(pieces: readonly Piece[]): OutputView {
 
 /** The output with JSON whitespace (and only that) taken off both ends, and where what is left starts. */
 function jsonTrimmed(output: string): { body: string; offset: number } {
-  let a = 0;
+  let a = output.startsWith('\uFEFF') ? 1 : 0;
   let b = output.length;
   const ws = (c: string | undefined): boolean => c === ' ' || c === '\n' || c === '\r' || c === '\t';
   while (a < b && ws(output[a])) a += 1;

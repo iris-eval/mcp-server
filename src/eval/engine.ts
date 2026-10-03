@@ -610,6 +610,7 @@ export class EvalEngine {
      * so a rule that compares the two compares like with like.
      */
     const structured = readingsOf(context);
+    delete evalContext.outputRead;
     /*
      * The relevance judge, asked once and before any rule (#649). Only when
      * the deployment installed one, answers_the_ask is among the rules this
@@ -932,7 +933,7 @@ function readingAs(
   if (structured === null || rule.outputView === undefined) return run(rule, context);
   const view = structured[rule.outputView];
   const expected = readings.expected?.[rule.outputView].text;
-  const result = run(rule, { ...context, output: view.text, ...(expected !== undefined ? { expected } : {}) });
+  const result = run(rule, { ...context, output: view.text, outputRead: rule.outputView, ...(expected !== undefined ? { expected } : {}) });
   const evidence = result.evidence?.map((e) => (e.type === 'span' && e.source === 'output' ? { ...e, ...spanInOutput(view, e.start, e.end) } : e));
   return { ...result, ...(evidence !== undefined ? { evidence } : {}), ...(result.skipped === true ? {} : { read: rule.outputView }) };
 }
@@ -945,7 +946,9 @@ function readingAs(
  * throws throws here, so a measurement never counts an error as a skip.
  */
 export function evaluateRuleAsRead(rule: EvalRule, context: EvalContext): EvalRuleResult {
-  return readingAs(rule, context, readingsOf(context), (r, c) => r.evaluate(c));
+  const asSent: EvalContext = { ...context };
+  delete asSent.outputRead;
+  return readingAs(rule, asSent, readingsOf(asSent), (r, c) => r.evaluate(c));
 }
 
 /**

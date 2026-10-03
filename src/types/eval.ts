@@ -160,6 +160,14 @@ export interface ExpectedTrajectory {
 
 export interface EvalContext {
   output: string;
+  /**
+   * Set by the engine, never by a caller: which reading of a structured
+   * output `output` holds when the engine hands a rule its declared
+   * reading (EvalRule.outputView). Absent: `output` is the output as sent.
+   * The injection rule reads one shape only in the labelled reading: an
+   * override as the value of a field.
+   */
+  outputRead?: 'values' | 'labelled';
   expected?: string;
   /** The trajectory the caller expected. */
   expectedTrajectory?: ExpectedTrajectory;

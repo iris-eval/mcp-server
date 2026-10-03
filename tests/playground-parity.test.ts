@@ -87,7 +87,7 @@ const SERVER_TEXT_FILES: Array<[string, string[]]> = [
    * JSON, so a reader that drifted would make the two libraries disagree on
    * every structured answer.
    */
-  ['src/eval/text/structured.ts', ['STRUCTURED_OUTPUT_MAX_CHARS', 'VALUE_BREAK', 'readString', 'readScalar', 'entriesOf', 'viewOf', 'jsonTrimmed', 'readStructured', 'spanInOutput']],
+  ['src/eval/text/structured.ts', ['STRUCTURED_OUTPUT_MAX_CHARS', 'VALUE_MARK', 'VALUE_BREAK', 'withoutValueBreaks', 'readString', 'readScalar', 'entriesOf', 'viewOf', 'jsonTrimmed', 'readStructured', 'spanInOutput']],
   ['src/eval/text/sentences.ts', ['ALWAYS_ABBREVIATION', 'ABBREVIATION_BEFORE_NUMBER', 'TERMINATORS', 'blankLineFollows', 'opensSentence', 'isDigit', 'precedingToken', 'saysAWord', 'sentencesOf', 'countSentences']],
   /*
    * ask_coverage is the one act-layer rule that RUNS in the playground —
@@ -457,6 +457,7 @@ const SHARED_SAFETY_BLOCKS = [
   // no_injection_patterns — the whole library and the obfuscation fold
   'INJECTION_PATTERNS',
   'PHRASE_PATTERN_COUNT',
+  'FIELD_VALUE_OVERRIDE',
   'REMOVED_MARKER',
   'precededByRemoval',
   'ZERO_WIDTH_CHARS',

@@ -113,8 +113,8 @@ export function sentencesOf(text: string): string[] {
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
 
-    // A blank line ends a sentence whatever came before it.
-    if (ch === '\n' && blankLineFollows(text, i + 1)) {
+    // A blank line ends a sentence whatever came before it, and so does the mark between two values of a structured output.
+    if ((ch === '\n' && blankLineFollows(text, i + 1)) || ch === '¶') {
       const piece = text.slice(start, i).trim();
       if (saysAWord(piece)) out.push(piece);
       start = i + 1;
