@@ -18,10 +18,11 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { spawn, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { PKG_VERSION } from '../../src/config/defaults.js';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
@@ -355,5 +356,48 @@ describe(`the later migrations are safe for ${PREVIOUS} to write through`, () =>
     expect((await now020.queryTraces(LOCAL_TENANT, { search: 'narwhal' })).traces.map((t) => t.trace_id)).toEqual(['n0000000000000000000000000000001']);
     expect(now020.judgeSpendLedger().read(LOCAL_TENANT, '2026-09-28')).toEqual(spend);
     await now020.close();
+  });
+});
+
+describe('the Claude Code capture plugin and the release it pins', () => {
+  /*
+   * The plugin runs `npx @iris-eval/mcp-server@<pin> ingest`. Its own tests
+   * point that at this checkout, which reads every field the plugin writes,
+   * so they cannot see a field the pinned release would refuse: a release
+   * whose ingest schema is strict refuses the whole turn over one unknown
+   * key. Between releases the plugin pins the last one (this suite's
+   * PREVIOUS); from the release bump on, it pins this checkout. Either way, a
+   * turn its real hooks build, fitted by its ingest runner, must be stored by
+   * what it pins.
+   */
+  it('a turn the plugin builds is stored by the release it pins', async () => {
+    const plugin = join(repoRoot, 'claude-plugin-capture');
+    const pin = (JSON.parse(readFileSync(join(plugin, '.claude-plugin', 'plugin.json'), 'utf-8')) as { version: string }).version;
+    const target = pin === PREVIOUS ? [previousBin] : pin === PKG_VERSION ? ['--import', 'tsx', entryPoint] : undefined;
+    expect(target, `the plugin pins ${pin}, which is neither ${PREVIOUS} nor this checkout (${PKG_VERSION})`).toBeDefined();
+
+    const data = join(root, 'plugin-data');
+    const pluginHome = join(root, 'plugin-home');
+    mkdirSync(data, { recursive: true });
+    mkdirSync(pluginHome, { recursive: true });
+    const hookEnv = { ...env(), CLAUDE_PLUGIN_DATA: data, IRIS_HOME: pluginHome };
+    const hook = (name: string, payload: unknown, extra: Record<string, string> = {}) =>
+      spawnSync(process.execPath, [join(plugin, 'hooks', `${name}.mjs`)], { cwd: repoRoot, env: { ...hookEnv, ...extra }, input: JSON.stringify(payload), encoding: 'utf-8', windowsHide: true });
+    const session = 'upgrade-capture';
+    const promptId = '550e8400-e29b-41d4-a716-4466554400aa';
+    expect(hook('prompt', { session_id: session, prompt_id: promptId, cwd: '/w', hook_event_name: 'UserPromptSubmit', prompt: 'Read package.json and run the tests.' }).status).toBe(0);
+    expect(hook('tool', { session_id: session, prompt_id: promptId, hook_event_name: 'PostToolUse', tool_name: 'Read', tool_input: { file_path: 'package.json' }, tool_response: '{"version":"1.2.3"}', tool_use_id: 'toolu_1' }).status).toBe(0);
+    expect(hook('tool', { session_id: session, prompt_id: promptId, hook_event_name: 'PostToolUseFailure', tool_name: 'Bash', tool_input: { command: 'npm test' }, tool_use_id: 'toolu_2', error: 'Exit code 1\n 2 failed | 9 passed', is_interrupt: false, duration_ms: 1200 }).status).toBe(0);
+    const stop = hook('stop', { session_id: session, prompt_id: promptId, cwd: '/w', hook_event_name: 'Stop', stop_hook_active: false, last_assistant_message: 'The version is 1.2.3. Two tests fail.', background_tasks: [] }, { IRIS_CAPTURE_DRY_RUN: '1' });
+    expect(stop.status).toBe(0);
+    const built = JSON.parse(stop.stdout) as { trace: Record<string, unknown> };
+    expect(built.trace.capture).toBeDefined();
+
+    const runner = (await import(pathToFileURL(join(plugin, 'hooks', 'ingest-runner.mjs')).href)) as { INGEST_ARGS: string[]; fitToServer: (file: string, version?: string) => void };
+    const file = join(data, 'turn.json');
+    writeFileSync(file, JSON.stringify(built.trace));
+    runner.fitToServer(file, pin);
+    const r = spawnSync(process.execPath, [...target!, ...runner.INGEST_ARGS, '--evaluate', '--file', file], { cwd: repoRoot, env: { ...env(), IRIS_HOME: pluginHome }, encoding: 'utf-8', windowsHide: true });
+    expect(r.status, r.stderr).toBe(0);
   });
 });

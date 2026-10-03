@@ -434,6 +434,43 @@ describe('iris-eval-capture ingest runner', () => {
     }
   });
 
+  it('fits each part to the release it pins: one before 0.20.0 gets the part without `capture`, which its strict schema would refuse, retried parts included', async () => {
+    const { readsCapture, fitToServer } = (await import(pathToFileURL(join(hooks, 'ingest-runner.mjs')).href)) as {
+      readsCapture: (v: string | undefined) => boolean;
+      fitToServer: (file: string, version?: string) => void;
+    };
+    expect(readsCapture('0.19.0')).toBe(false);
+    expect(readsCapture('0.20.0')).toBe(true);
+    expect(readsCapture('0.20.0-rc.1')).toBe(true);
+    expect(readsCapture('0.21.3')).toBe(true);
+    expect(readsCapture('1.0.0')).toBe(true);
+    expect(readsCapture(undefined)).toBe(false);
+
+    const part = { agent_name: 'claude-code', input: 'Ask.', output: 'Answer.', run: 's', capture: { name: 'iris-eval-capture', version: '0.19.0', complete: ['input'] } };
+    const { capture, ...withoutCapture } = part;
+    expect(capture).toBeDefined();
+    const file = join(data, 'part.json');
+    const saved = process.env.IRIS_CAPTURE_INGEST_ARGV;
+    delete process.env.IRIS_CAPTURE_INGEST_ARGV;
+    try {
+      writeFileSync(file, JSON.stringify(part));
+      fitToServer(file, '0.19.0');
+      expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(withoutCapture);
+
+      writeFileSync(file, JSON.stringify(part));
+      fitToServer(file, '0.20.0');
+      expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(part);
+
+      // The repository's own entry point reads every field, whatever the pin says.
+      process.env.IRIS_CAPTURE_INGEST_ARGV = '["node","index.js"]';
+      fitToServer(file, '0.19.0');
+      expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(part);
+    } finally {
+      if (saved !== undefined) process.env.IRIS_CAPTURE_INGEST_ARGV = saved;
+      else delete process.env.IRIS_CAPTURE_INGEST_ARGV;
+    }
+  });
+
   it('end to end: stores the turn with source hook and a verdict, retries a failed one, and stores an API-error turn without one', async () => {
     const ingest = JSON.stringify([process.execPath, '--import', 'tsx', resolve(root, 'src', 'index.ts')]);
     const env = { IRIS_CAPTURE_INGEST_ARGV: ingest, IRIS_CAPTURE_WAIT: '1' };
