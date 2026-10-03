@@ -111,6 +111,23 @@ describe('an announcement with nothing after it', () => {
     }
   });
 
+  it('fails a longer announcement ending on a colon, and one whose list after the colon is empty', () => {
+    expect(shape({ output: "Here's a shell one-liner that finds every file over 100 MB in the current directory and its subdirectories:", input: WRITE })).toBe('lead-in');
+    expect(shape({ output: ['Here are five names for the new analytics dashboard:', '', '1.', '2.', '3.', '4.', '5.'].join('\n'), input: WRITE })).toBe('lead-in');
+    expect(shape({ output: ['The open incidents are:', '- ', '- '].join('\n'), input: QUESTION, toolCalls: TOOL })).toBe('lead-in');
+  });
+
+  it('passes an answer after its colon, an answer that ends on an empty heading, and a long answer that ends on a colon', () => {
+    expect(fires({ output: 'The count is: 3.', input: QUESTION })).toBe(false);
+    expect(fires({ output: 'Replicas: 1.', input: QUESTION })).toBe(false);
+    expect(fires({ output: 'The deploy succeeded at 14:02. Notes:', input: QUESTION })).toBe(false);
+    expect(fires({ output: 'Meet at 10:30', input: QUESTION })).toBe(false);
+    expect(fires({ output: 'See https://iris-eval.com/proof', input: QUESTION })).toBe(false);
+    expect(fires({ output: 'Three steps: 1. stop the worker 2. clear the queue 3. start it', input: QUESTION })).toBe(false);
+    const long = 'The migration ran in three phases, each guarded by a feature flag, and the backfill finished overnight with no errors in the job log, so the remaining work is the cleanup of the old columns and the index that the reports still use; those are listed in the ticket under';
+    expect(fires({ output: `${long}:`, input: QUESTION })).toBe(false);
+  });
+
   it('fails "here is …" with nothing after it, to an ask for something written with no tool call recorded', () => {
     expect(shape({ output: "Here's the quarterly revenue summary.", input: WRITE })).toBe('lead-in');
     expect(fires({ output: "Here's the quarterly revenue summary.", input: WRITE, toolCalls: TOOL })).toBe(false);
@@ -183,6 +200,14 @@ describe('one passage on repeat', () => {
       expect(shape({ output }), output.slice(0, 40)).toBe('loop');
     }
     expect(run({ output: 'Working on the weekly status update now. '.repeat(30) }).message).toMatch(/repeated 30 times/);
+  });
+
+  it('fails a long passage repeated three times, cut off or not', () => {
+    const sentence = 'A hash map handles collisions by using a hash function to handle the collisions. ';
+    expect(shape({ output: sentence.repeat(3), input: 'Explain how a hash map handles collisions.' })).toBe('loop');
+    expect(shape({ output: sentence.repeat(3) + 'A hash map handles collisions by', input: 'Explain how a hash map handles collisions.' })).toBe('loop');
+    // A short line three times is a list or a refrain, not a loop.
+    expect(fires({ output: ['No issues found.', 'No issues found.', 'No issues found.'].join('\n'), input: 'Lint the three changed files.' })).toBe(false);
   });
 
   it('passes a refrain, quoted log lines, code, a run of one token, a list of records, and a repeat the ask asked for', () => {

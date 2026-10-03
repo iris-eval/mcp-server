@@ -69,6 +69,11 @@ import { MIN_ASK_TERMS_TO_JUDGE } from './relevance.js';
 export const BARE_ANSWER_MAX_WORDS = 12;
 /** How many times one passage must recur, and how much of the output its copies must cover, to be a loop. */
 export const LOOP_MIN_COUNT = 10;
+/** A passage this long repeats three times only when the writer is stuck: "A hash map handles collisions by …" three times over. */
+export const LONG_PASSAGE_WORDS = 8;
+export const LONG_LOOP_MIN_COUNT = 3;
+/** The most words before a closing colon for the output to be only an announcement: a long answer that ends on "Sources:" has said its piece. */
+export const LEAD_IN_MAX_WORDS = 40;
 export const LOOP_MIN_SHARE = 0.8;
 /** The longest output read for a loop. Past it the first part is read: a loop shows long before. */
 export const LOOP_SCAN_CHARS = 200_000;
@@ -211,11 +216,37 @@ function placeholderOf(output: string, ask: string, kind: AskKind, noToolCalls: 
 }
 
 /** The output announces content and stops: it ends on a colon, or it is a short "here is …". */
+/** A word that is only a list marker: "1.", "2)", "-", "*", "•". */
+function isBareMarker(word: string): boolean {
+  const t = word.trim();
+  if (t === '-' || t === '*' || t === '•' || t === '+') return true;
+  let i = 0;
+  while (i < t.length && t[i] >= '0' && t[i] <= '9') i++;
+  return i > 0 && i <= 3 && (t.slice(i) === '.' || t.slice(i) === ')');
+}
+
+/**
+ * The output announces content and stops. It ends on a colon, or its last
+ * colon is followed only by empty list items ("Here are 10 subject lines:
+ * 1. 2. 3."), and what comes before the colon is short; or, to an ask for
+ * something written with no tool call recorded, it is a short "here is …".
+ */
 function leadInOf(output: string, kind: AskKind, workRecorded: boolean): string | null {
   const text = output.trim();
+  const colon = text.lastIndexOf(':');
+  if (colon > 0) {
+    // One sentence before the colon: "The deploy succeeded at 14:02. Notes:" has said its piece before the empty heading.
+    const opening = text.slice(0, colon);
+    const before = /[.!?]\s/.test(opening) ? [] : wordsOf(opening);
+    // What follows, word by word: nothing, or two or more bare list markers ("1. 2. 3."). One "3." after a colon is an answer.
+    const after = text.slice(colon + 1).split(/\s+/).filter((t) => t.length > 0);
+    const empty = after.length === 0 || (after.length >= 2 && after.every(isBareMarker));
+    if (before.length > 0 && before.length <= LEAD_IN_MAX_WORDS && empty) {
+      return text.endsWith(':') ? 'it ends on a colon, and nothing follows' : 'the list after its colon is empty';
+    }
+  }
   const words = wordsOf(text);
   if (words.length === 0 || words.length > BARE_ANSWER_MAX_WORDS || text.includes('\n')) return null;
-  if (text.endsWith(':')) return 'it ends on a colon, and nothing follows';
   // "Here is the answer: 42." gives its answer after the colon.
   if (!kind.write || workRecorded || text.includes(':')) return null;
   const lead = words.slice(0, 3).join(' ');
@@ -312,12 +343,14 @@ function loopOf(output: string, ask: string): { count: number; share: number } |
 
   // A passage has two words at least: a run of zeros, "hahaha" or a rule of "=" is data, not a loop.
   const passage = (unit: string): boolean => wordsOf(unit).length >= 2;
+  // A long passage loops at three copies; a short one at ten, since short lines repeat in lists and refrains.
+  const enough = (unit: string): number => (wordsOf(unit).length >= LONG_PASSAGE_WORDS ? LONG_LOOP_MIN_COUNT : LOOP_MIN_COUNT);
   const period = shortestPeriod(text);
   // The last copy may have lost its trailing space when the whitespace was collapsed.
   const copies = Math.floor((text.length + 1) / period);
-  if (copies >= LOOP_MIN_COUNT) {
+  if (copies >= LONG_LOOP_MIN_COUNT) {
     const unit = text.slice(0, period);
-    if (passage(unit) && !asked(unit)) return { count: copies, share: 1 };
+    if (passage(unit) && copies >= enough(unit) && !asked(unit)) return { count: copies, share: 1 };
   }
 
   const counts = new Map<string, { n: number; chars: number }>();
@@ -344,7 +377,7 @@ function loopOf(output: string, ask: string): { count: number; share: number } |
   flush(text.length);
   let best: [string, { n: number; chars: number }] | null = null;
   for (const entry of counts) if (best === null || entry[1].chars > best[1].chars) best = entry;
-  if (best === null || best[1].n < LOOP_MIN_COUNT || asked(best[0])) return null;
+  if (best === null || best[1].n < enough(best[0]) || asked(best[0])) return null;
   const share = best[1].chars / text.length;
   return share >= LOOP_MIN_SHARE ? { count: best[1].n, share } : null;
 }
