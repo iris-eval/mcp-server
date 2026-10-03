@@ -290,7 +290,7 @@
               ]
             },
             "calibration": {
-              "description": "the composite version of the calibration table the confidence label was read from",
+              "description": "the version of the calibration table the confidence label was read from",
               "type": "string"
             },
             "requiredEvidence": {
@@ -302,6 +302,10 @@
             },
             "rules": {
               "description": "which composer rules produced the verdict: 2 from 0.20.0 (a failure outranks a layer that could not check); absent on earlier rows, which read back under rules 1",
+              "type": "number"
+            },
+            "risk": {
+              "description": "which arithmetic the risk estimate was computed under: 2 from 0.20.0 (the prior spread over every failure class, and a class no rule examined keeps its share); absent on earlier rows, which read back under arithmetic 1 (spread over the examined classes only)",
               "type": "number"
             }
           },
