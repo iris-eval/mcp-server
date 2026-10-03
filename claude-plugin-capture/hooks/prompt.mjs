@@ -16,4 +16,4 @@ try {
 } catch (err) {
   log(`prompt hook: ${err instanceof Error ? err.message : String(err)}`);
 }
-process.exit(0);
+// No process.exit: the process ends when stdout has drained, and a detached runner is unref'd, so nothing holds it open.

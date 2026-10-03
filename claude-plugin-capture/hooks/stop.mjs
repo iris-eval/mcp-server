@@ -32,19 +32,21 @@ try {
   const output = typeof input.last_assistant_message === 'string' ? input.last_assistant_message : undefined;
   const built = assemble({ sessionId: input.session_id, key, header, calls, sent, how, output, input });
   if (process.env.IRIS_CAPTURE_DRY_RUN === '1') {
-    // The test seam: print what would be sent, send nothing.
+    // The test seam: print what would be sent, send nothing. The process ends
+    // when the write has drained: on a pipe, POSIX stdout is asynchronous, and
+    // an exit right after a large write cuts it off.
     if (built) markSent(input.session_id, key, built.sentAfter);
     process.stdout.write(JSON.stringify(built ? { trace: built.trace, evaluate: built.evaluate } : { skipped: 'nothing to record' }) + '\n');
-    process.exit(0);
+  } else {
+    sweep({ sessionId: input.session_id });
+    if (!built) {
+      log('stop hook: skipped — nothing to record');
+    } else {
+      markSent(input.session_id, key, built.sentAfter);
+      // Turns an earlier runner could not ingest ride along, a few at a time.
+      send(built, retryable());
+    }
   }
-  sweep({ sessionId: input.session_id });
-  if (!built) {
-    log('stop hook: skipped — nothing to record');
-    process.exit(0);
-  }
-  markSent(input.session_id, key, built.sentAfter);
-  // Turns an earlier runner could not ingest ride along, a few at a time.
-  send(built, retryable());
 } catch (err) {
   log(`stop hook: ${err instanceof Error ? err.message : String(err)}`);
 }
