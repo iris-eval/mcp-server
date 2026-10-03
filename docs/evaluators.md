@@ -112,7 +112,7 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 
 ### `non_empty_output` (the built-in rules)
 
-- **Q1** measured — proof/results.json → rules[non_empty_output] (precision, recall and F1 on 24 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
+- **Q1** measured — proof/results.json → rules[non_empty_output] (precision, recall and F1 on 28 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
 - **Q2** partial — proof/RESULTS.md → misses by case id (every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical))
 - **Q3** stated — list_rules → kind: policy, mechanism: formula; proof/corpus → definition (a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure)
 - **Q4** stated — every result since 0.9.0 carries kind and mechanism (the kind label says it is a formula, so it cannot appear to be a detector)
@@ -272,7 +272,7 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 
 ### `no_pii` (the built-in rules)
 
-- **Q1** measured — proof/results.json → rules[no_pii] (precision, recall and F1 on 93 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
+- **Q1** measured — proof/results.json → rules[no_pii] (precision, recall and F1 on 101 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
 - **Q2** measured — proof/results.json → transforms.rows[rule=no_pii] (recall under 7 evasion transforms inside the evidence span, plus the false-positive and false-negative ids in proof/RESULTS.md)
 - **Q3** stated — list_rules → kind: detection, mechanism: pattern; proof/corpus → definition (a detection or inference: the family measures detection of the named failure classes)
 - **Q4** stated — every result since 0.9.0 carries kind and mechanism (the kind label names the claim; what it appears to measure beyond that is not measured)
@@ -304,7 +304,7 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 
 ### `no_injection_patterns` (the built-in rules)
 
-- **Q1** measured — proof/results.json → rules[no_injection_patterns] (precision, recall and F1 on 90 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
+- **Q1** measured — proof/results.json → rules[no_injection_patterns] (precision, recall and F1 on 97 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
 - **Q2** measured — proof/results.json → transforms.rows[rule=no_injection_patterns] (recall under 7 evasion transforms inside the evidence span, plus the false-positive and false-negative ids in proof/RESULTS.md)
 - **Q3** stated — list_rules → kind: detection, mechanism: pattern; proof/corpus → definition (a detection or inference: the family measures detection of the named failure classes)
 - **Q4** stated — every result since 0.9.0 carries kind and mechanism (the kind label names the claim; what it appears to measure beyond that is not measured)
@@ -320,7 +320,7 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 
 ### `no_stub_output` (the built-in rules)
 
-- **Q1** measured — proof/results.json → rules[no_stub_output] (precision, recall and F1 on 89 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
+- **Q1** measured — proof/results.json → rules[no_stub_output] (precision, recall and F1 on 93 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
 - **Q2** partial — proof/RESULTS.md → misses by case id (every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical))
 - **Q3** stated — list_rules → kind: inference, mechanism: heuristic; proof/corpus → definition (a detection or inference: the family measures detection of the named failure classes)
 - **Q4** stated — every result since 0.9.0 carries kind and mechanism (the kind label names the claim; what it appears to measure beyond that is not measured)
