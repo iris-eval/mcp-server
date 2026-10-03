@@ -7,7 +7,7 @@ import { Footer } from "@/components/footer";
 export const metadata: Metadata = {
   title: "Pricing — Iris",
   description:
-    "Iris is open source and free, with every feature included — no evaluation limit, no account.",
+    "Iris is open source and free to run — no evaluation limit, no account. Hosted and team features are under consideration, not under construction.",
   alternates: { canonical: "https://iris-eval.com/pricing" },
   openGraph: {
     title: "Pricing — Iris",
@@ -27,7 +27,9 @@ export const metadata: Metadata = {
 };
 
 /*
- * One edition: the open-source server is all of Iris, so it is the only card.
+ * What exists today: the open-source server, so it is the only card. Hosted
+ * and team features are under consideration, not under construction, and get
+ * a card when they exist.
  */
 const edition = {
   name: "Open Source",
@@ -59,7 +61,7 @@ const faq: FaqItem[] = [
   },
   {
     q: "Is LLM-as-judge a paid feature?",
-    a: "No. LLM-as-judge and citation verification ship in the open-source server. They call Anthropic or OpenAI with your own API key and never route through us, so you pay your provider directly with no markup. A per-evaluation cost cap is enforced before each call, and the heuristic rules stay free and offline.",
+    a: "No. LLM-as-judge and citation verification ship in the open-source server. They call Anthropic or OpenAI with your own API key and do not route through us, so you pay your provider directly with no markup. A per-evaluation cost cap is enforced before each call, and the heuristic rules stay free and offline.",
   },
   {
     q: "Can I self-host?",
@@ -67,7 +69,7 @@ const faq: FaqItem[] = [
   },
   {
     q: "Is there a hosted or paid version?",
-    a: "No. Iris is the open-source server you run yourself, with every feature in it. No feature that is free today will move behind a paywall.",
+    a: "Not today. Iris runs as the open-source server on your machine or your own infrastructure. Hosted storage, shared team history and alerting are under consideration, not under construction. No feature that is free today will move behind a paywall: if a hosted version is offered, it will earn its price on hosting, shared team history and scale, not by taking away what you already have.",
   },
   {
     q: "Do you have SOC 2 or other compliance certifications?",
@@ -84,7 +86,7 @@ export default function PricingPage(): React.ReactElement {
       <section className="mx-auto max-w-3xl text-center">
         <p className="text-sm font-medium uppercase tracking-wider text-text-accent">Pricing</p>
         <h1 className="mt-3 font-display text-4xl font-bold tracking-tight text-text-primary sm:text-5xl lg:text-6xl">
-          Free to run. Every feature included.
+          Free to run. Open source, no limits.
         </h1>
         <p className="mt-6 text-lg text-text-secondary sm:text-xl">
           Iris scores agent output for quality, safety, and cost, and it runs entirely on your machine — MIT licensed, no evaluation limit, no account.
@@ -105,7 +107,7 @@ export default function PricingPage(): React.ReactElement {
         </div>
       </section>
 
-      {/* The one edition */}
+      {/* What exists today */}
       <section className="mx-auto mt-20 max-w-xl" data-edition={edition.name}>
         <div className="flex flex-col rounded-2xl border border-border-subtle bg-bg-base p-8">
           <div className="mb-6">
@@ -150,10 +152,10 @@ export default function PricingPage(): React.ReactElement {
       {/* Footer banner */}
       <section className="mx-auto mt-24 max-w-3xl rounded-2xl border border-border-subtle bg-bg-base p-8 text-center sm:p-12">
         <h2 className="font-display text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
-          One edition
+          What exists today
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-base text-text-secondary">
-          The open-source server is all of Iris. It has no evaluation limit and no account, and nothing is held back for a paid plan. If something you need is missing, tell us at {SUPPORT_EMAIL}.
+          Today Iris is the open-source server. It has no evaluation limit and no account, and nothing in it is held back. If shared team history or hosted storage would help you, or something you need is missing, tell us at {SUPPORT_EMAIL}.
         </p>
         <a
           href="https://github.com/iris-eval/mcp-server#install"

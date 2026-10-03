@@ -324,7 +324,7 @@ docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data \
 | **LLM-as-Judge** | Optional semantic scoring via Anthropic or OpenAI — bring your own API key. Seven templates. With `IRIS_RELEVANCE_JUDGE_MODEL` set, `answers_the_ask` asks the `relevance` judge and fails an off-topic answer; without it the rule reads the ask lexically and advises. Hard per-eval cost cap (`IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL`, default $0.25), per-eval pricing disclosed in the result. |
 | **Cost Visibility** | Aggregate cost across all agents over any time window. Set budget thresholds. Get flagged when agents overspend. A trace that sends token counts and a model but no cost (most OpenTelemetry and framework traces) is priced at the model's list price and marked estimated everywhere it shows; `pricing.models` in `config.json` prices models the built-in table does not — [docs/cost.md](https://github.com/iris-eval/mcp-server/blob/main/docs/cost.md). |
 | **Web Dashboard** | Real-time dark-mode UI that lands on the failures, worst and newest first — trace visualization with full-text search over every trace's text, eval results, cost breakdowns, and a command palette (⌘K) that searches your own rules, traces, and evals. |
-| **Local-first** | Everything lives in SQLite on your disk. No account, no sign-up, no telemetry. Outbound HTTP happens only where you opt in: your own LLM-judge key, citation fetching, an OTel exporter you configure, or a webhook you set. |
+| **Local-first** | Everything lives in SQLite on your disk. The self-hosted server needs no account or sign-up and sends no telemetry. Outbound HTTP happens only where you opt in: your own LLM-judge key, citation fetching, an OTel exporter you configure, or a webhook you set. |
 
 Where this is going next: [the capability map](https://iris-eval.com/capabilities) — every question Iris can be asked about every subject, with what it has and what it lacks — and [the three tracks](https://iris-eval.com/#roadmap).
 
@@ -407,9 +407,9 @@ From the very next `evaluate_output` with `eval_type: "safety"`, an output that 
 
 Full tool schemas and configuration: [iris-eval.com](https://iris-eval.com)
 
-## Self-hosted, every feature included
+## Self-hosted and free
 
-Iris runs on your machine or your own infrastructure, and the open-source server is all of it: every feature, free and MIT licensed, with no limits and no account. There is no separate hosted or paid edition.
+Iris runs on your machine or your own infrastructure. The open-source core is free and MIT licensed, with no usage limits and no account. Hosted storage, shared team history and alerting are under consideration, not under construction; if they would help you, tell us at hello@iris-eval.com.
 
 Two commitments hold: **nothing that is free today will move behind a paywall**, and **no compliance certification will be claimed before it is held**.
 

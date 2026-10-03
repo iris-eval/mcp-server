@@ -130,7 +130,7 @@ export default function CompareIndex() {
             </li>
             <li>
               <span className="font-medium text-text-primary">Self-hosted</span>{" "}
-              — {DATA_RESIDENCY} Free and MIT licensed, every feature included.
+              — {DATA_RESIDENCY} Free and MIT licensed: the open-source core, with no usage limits.
             </li>
           </ul>
         </div>

@@ -32,7 +32,7 @@ export default function Privacy(): React.ReactElement {
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-text-primary md:text-4xl">
           Privacy Policy
         </h1>
-        <p className="mt-2 text-[13px] text-text-muted">Last updated: March 17, 2026</p>
+        <p className="mt-2 text-[13px] text-text-muted">Last updated: October 3, 2026</p>
 
         <div className="mt-10 space-y-8 text-[15px] leading-relaxed text-text-secondary">
           <section>
@@ -63,7 +63,7 @@ export default function Privacy(): React.ReactElement {
           <section>
             <h2 className="mb-3 font-display text-xl font-bold text-text-primary">How we use your data</h2>
             <ul className="list-disc space-y-2 pl-6">
-              <li><strong>Waitlist emails:</strong> Solely to tell you if a hosted version is ever offered. None is being built. We do not sell, share, or use your email for any other purpose, and we delete it when you ask.</li>
+              <li><strong>Waitlist emails:</strong> Solely to tell you if a hosted version is offered. We do not sell, share, or use your email for any other purpose, and we delete it when you ask.</li>
               <li><strong>IP hashes:</strong> Solely for rate limiting to prevent abuse. Automatically expire after 1 hour.</li>
             </ul>
           </section>
