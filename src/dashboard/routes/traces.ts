@@ -14,6 +14,7 @@ import { sendExport } from '../export-response.js';
 import { traceEncoder } from '../../export/format.js';
 import { searchOf } from '../../tools/get-traces.js';
 import { costFieldsOf, resolveTraceCost } from '../../cost/trace-cost.js';
+import { canonicalCapture } from '../../eval/evidence.js';
 
 export interface TraceRouteOptions {
   /**
@@ -79,6 +80,7 @@ export function registerTraceRoutes(
         case_key: body.case_key,
         session_id: body.session_id ?? sessionFromBaggage(traceContextFrom(req.headers as Record<string, unknown>)),
         source: 'http',
+        ...(body.capture ? { capture: canonicalCapture(body.capture) } : {}),
         spans: body.spans?.map((s) => ({
           ...s,
           span_id: s.span_id ?? generateSpanId(),

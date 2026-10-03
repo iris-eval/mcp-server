@@ -169,7 +169,7 @@ describe('the sentences on a verdict that failed and also could not check someth
     const texts = (r.interpretations ?? []).map((i) => i.text);
     expect(texts).toContain('Also not checked: cost_under_threshold could not run without cost (this deployment asks for it). Send cost so it can be.');
     expect(texts.some((t) => t.startsWith('Not checked, which is not a pass'))).toBe(false);
-    expect(texts.some((t) => t.includes('evidence that was asked for was not sent (cost)'))).toBe(true);
+    expect(texts.some((t) => t.includes('evidence that was asked for or promised is not in the record (cost)'))).toBe(true);
     expect(texts.some((t) => t.includes('this deployment requires'))).toBe(false);
   });
 

@@ -12,10 +12,11 @@
 // metadata, since a tool call record has no field for it. An output or an
 // error larger than the cap is kept as its head and its tail, marked
 // truncated, so the hook finishes inside its timeout whatever the tool said.
-import { appendCall, cappedCall, log, readStdin, turnKeyOf } from './common.mjs';
+import { appendCall, cappedCall, log, markLost, readStdin, turnKeyOf } from './common.mjs';
 
+let input;
 try {
-  const input = await readStdin();
+  input = await readStdin();
   const failed = input.hook_event_name === 'PostToolUseFailure';
   const call = {
     tool_name: String(input.tool_name ?? 'unknown'),
@@ -39,5 +40,11 @@ try {
   appendCall(input.session_id, turnKeyOf(input), cappedCall(recorded));
 } catch (err) {
   log(`tool hook: ${err instanceof Error ? err.message : String(err)}`);
+  // The call is not recorded: say so on its turn, so the turn's list is not declared whole.
+  try {
+    if (input && input.session_id) markLost(input.session_id, turnKeyOf(input));
+  } catch {
+    /* nothing more can be recorded */
+  }
 }
 process.exit(0);

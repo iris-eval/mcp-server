@@ -13,6 +13,7 @@ import { irisError } from './errors.js';
 import { insertLinkedEvalResult } from './trace-link.js';
 import type { RuleChangesSinceStart } from '../custom-rule-store.js';
 import { costContextOf } from '../eval/cost-basis.js';
+import { recordOfTrace } from '../eval/evidence.js';
 
 /*
  * Score a run again under today's rules.
@@ -167,6 +168,8 @@ export function registerEvaluateRunsTool(
           toolCalls: trace.tool_calls,
           spans,
           tools: trace.tools,
+          // The same record the trace was stored as: who recorded it, and what its capture source records in full.
+          ...recordOfTrace(trace),
           ...(trace.metadata ? { metadata: trace.metadata } : {}),
           tenantId: LOCAL_TENANT,
           judgeRequest,

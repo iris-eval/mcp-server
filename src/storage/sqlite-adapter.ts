@@ -51,7 +51,7 @@ import type {
   RuleFireStat,
   VerdictLabel,
 } from '../types/query.js';
-import type { Trace, Span } from '../types/trace.js';
+import type { Trace, Span, TraceCapture } from '../types/trace.js';
 import type { EvalResult, QuestionId, Provenance, EvalRuleResult, Evidence } from '../types/eval.js';
 import { deriveCoverage, deriveCriticalSkipped } from '../eval/verdict.js';
 import { compose, interpretations, DEFAULT_COMPOSE, type ComposeConfig } from '../eval/compose.js';
@@ -1513,8 +1513,8 @@ export class SqliteAdapter implements IStorageAdapter {
      */
     while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     const insertTraceStmt = this.db.prepare(`
-      INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key, source, session_id, cost_source, cost_estimate)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO traces (tenant_id, trace_id, agent_name, framework, input, output, tool_calls, latency_ms, token_usage, cost_usd, metadata, timestamp, tools, tools_hash, run_id, case_key, source, session_id, cost_source, cost_estimate, capture)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     // Compiling this insert compiles the six span triggers of the search index: a batch without spans never asks for it.
     const insertSpanStmt = traces.some((t) => t.spans?.length)
@@ -1564,6 +1564,8 @@ export class SqliteAdapter implements IStorageAdapter {
         t.session_id ?? null,
         t.cost_source ?? null,
         t.cost_estimate ? JSON.stringify(t.cost_estimate) : null,
+        // Never on a trace the agent logged itself: a record cannot vouch for itself (src/eval/evidence.ts).
+        t.capture && t.source !== 'tool' ? JSON.stringify(t.capture) : null,
       );
 
       if (t.spans && insertSpanStmt) {
@@ -3736,6 +3738,7 @@ export class SqliteAdapter implements IStorageAdapter {
        */
       ...(row.cost_source != null ? { cost_source: row.cost_source as Trace['cost_source'] } : row.cost_usd != null ? { cost_source: 'reported' as const } : {}),
       ...(row.cost_estimate != null ? { cost_estimate: JSON.parse(row.cost_estimate as string) as Trace['cost_estimate'] } : {}),
+      ...(row.capture != null ? { capture: JSON.parse(row.capture as string) as TraceCapture } : {}),
     };
   }
 
@@ -3798,7 +3801,9 @@ export class SqliteAdapter implements IStorageAdapter {
      */
     const criticalSkipped = deriveCriticalSkipped(result.rule_results);
     if (criticalSkipped) result.critical_skipped = criticalSkipped;
-    if (result.rule_results.some((r) => r.question !== undefined)) result.coverage = deriveCoverage(result.rule_results);
+    // What the call carried, from the evidence record when the row has one (0.20.0); before it, from what the rules saw.
+    const evidence = result.provenance?.evidence;
+    if (result.rule_results.some((r) => r.question !== undefined)) result.coverage = deriveCoverage(result.rule_results, evidence ? new Set(evidence.carried) : undefined, evidence);
     /*
      * Read back under the SAME composer facts that wrote it, or a stored row
      * would report a different verdict than the one the caller was given.

@@ -25,7 +25,7 @@
  * call that never mentions a field looks the same as a call from an agent
  * that has no such field: nothing in one self-reported call shows that
  * anything is missing. It holds exactly where somebody has said the field
- * must be there (a contract), and three kinds of contract exist:
+ * must be there (a contract), and four kinds of contract exist:
  *
  *   required   the deployment requires the input on every evaluation
  *              (eval.requiredEvidence)
@@ -33,6 +33,8 @@
  *              (a cost ceiling, a step ceiling)
  *   call       the call itself supplied what the input is compared with
  *              (an expected trajectory)
+ *   capture    the trace's capture source declared that it records the
+ *              field in full (Trace.capture, src/eval/evidence.ts)
  *
  * For every (removal, contract) pair that is held, the count of verdicts
  * that pass with the field left out must be zero, and
@@ -45,12 +47,14 @@
  * and sending a blank in its place (one space for the input, an empty
  * string for every tool output). A blank passed a contract until 0.20.0.
  *
- * One pair is measured and NOT held: an explicit empty list of tool calls
- * under a contract that a rule's threshold or the call's own expectation
- * makes. An empty list is the caller saying no calls were made, and a rule
- * with nothing to judge then lacks nothing. A caller that made calls and
- * reports none cannot be told from one that made none. `requiredEvidence`
- * is the contract that refuses an empty list.
+ * Some pairs are measured and NOT held. An explicit empty list of tool
+ * calls under a contract that a rule's threshold makes: an empty list is
+ * the caller saying no calls were made, and a rule with nothing to judge
+ * then lacks nothing. A caller that made calls and reports none cannot be
+ * told from one that made none; `requiredEvidence` is the contract that
+ * refuses an empty list. And under a capture source's declaration, its
+ * empty list and its blank outputs are what it observed: no call was made,
+ * the tool returned nothing.
  *
  * The additions are five fixed ones that are held (none may rescue a case)
  * and one that is measured and not held: a sentence of refusal appended to
@@ -310,7 +314,7 @@ export const DEGENERATE_SHAPES: ReadonlyArray<{ id: string; what: string; held: 
 
 /** A contract under which a removal must not pass: the engine settings it needs, and what to add to the call. */
 interface Contract {
-  kind: 'required' | 'policy' | 'call';
+  kind: 'required' | 'policy' | 'call' | 'capture';
   what: string;
   /** Removals it covers. */
   covers: readonly string[];
@@ -343,6 +347,23 @@ export const CONTRACTS: readonly Contract[] = [
     engine: shipped,
     withCall: (ctx) => ({ ...ctx, expectedTrajectory: { tool_calls: (ctx.toolCalls ?? []).slice(0, 1).map((t) => ({ tool_name: t.tool_name })) } }) as EvalContext,
   },
+  // The trace's capture source declared the field complete: a field it promised and the record lacks is a hole.
+  ...(
+    [
+      ['tool_calls', ['tool_calls'], ['tool_calls_empty']],
+      ['tool_outputs', ['tool_outputs'], ['tool_outputs_blank']],
+      ['input', ['input', 'input_blank'], []],
+    ] as const
+  ).map(
+    ([field, covers, measures]): Contract => ({
+      kind: 'capture',
+      what: `the trace's capture source declares it records ${field} in full`,
+      covers,
+      ...(measures.length > 0 ? { measures } : {}),
+      engine: shipped,
+      withCall: (ctx) => ({ ...ctx, recordedBy: 'harness', capture: { name: 'a capture source', complete: [field] } }),
+    }),
+  ),
 ];
 
 export interface RemovalRow {
@@ -591,11 +612,11 @@ export function renderInvariantsMarkdown(r: InvariantResults): string {
     L.push(`| ${x.what} | ${x.carried} | ${x.complete.fail} | **${x.improved.failToPass}** | ${x.improved.failToNotChecked} | ${x.improved.notCheckedToPass} | ${x.need ? `yes: \`${x.need}\`` : 'no: nothing in the call names what is missing'} |`);
   }
   L.push('');
-  L.push('The two rows a deployment cannot require are an agent editing its own record: dropping the error from a call that failed, or dropping a call. No rule over a self-reported trace can see either. The evidence has to come from something other than the agent (a hook, a proxy, an OpenTelemetry exporter) for those rows to close.');
+  L.push('The two rows a deployment cannot require are an agent editing its own record: dropping the error from a call that failed, or dropping a call. No rule over a self-reported trace can see either. The evidence has to come from something other than the agent (a hook, a proxy, an OpenTelemetry exporter) for those rows to close, and every verdict says which it came from (`provenance.evidence.recordedBy`: a capture source that declared itself, the agent, or not declared).');
   L.push('');
   L.push('## Sending less, with a contract in force');
   L.push('');
-  L.push('Where somebody has said the field must be there, leaving it out never yields a pass. Three kinds of contract: the deployment requires the input on every evaluation (`eval.requiredEvidence`), the deployment set the threshold of a rule that reads it, or the call itself supplied what the input is compared against. **Every count in the last column must be zero**, and `tests/proof/evidence-invariants.test.ts` fails when one is not.');
+  L.push('Where somebody has said the field must be there, leaving it out never yields a pass. Four kinds of contract: the deployment requires the input on every evaluation (`eval.requiredEvidence`), the deployment set the threshold of a rule that reads it, the call itself supplied what the input is compared against, or the trace\'s capture source declared that it records the field in full (`capture.complete`). **Every count in the last column must be zero**, and `tests/proof/evidence-invariants.test.ts` fails when one is not.');
   L.push('');
   L.push('| Contract | Left out | Cases | Fail | Not checked | **Pass** |');
   L.push('|---|---|--:|--:|--:|--:|');
@@ -604,7 +625,7 @@ export function renderInvariantsMarkdown(r: InvariantResults): string {
     L.push(`| ${c.what} | ${removal.what} | ${c.carried} | ${c.after.fail} | ${c.after.unknown} | **${c.passed.length}** |`);
   }
   L.push('');
-  L.push('**An explicit empty list of tool calls is measured, and not held at zero**, under the contract a ceiling on the calls makes. An empty list is the caller saying no calls were made, and zero calls are within any ceiling: an honest turn that used no tool must not read "not checked" because a step ceiling is set. A caller that made calls and reports none cannot be told from one that made none. `eval.requiredEvidence` is the contract that refuses an empty list (the rows above), and it is how a deployment says it wants calls it can look at. Against an expectation of calls, an empty list is judged and fails (the last row above).');
+  L.push('**An explicit empty list of tool calls is measured, and not held at zero**, under the contract a ceiling on the calls makes. An empty list is the caller saying no calls were made, and zero calls are within any ceiling: an honest turn that used no tool must not read "not checked" because a step ceiling is set. A caller that made calls and reports none cannot be told from one that made none. `eval.requiredEvidence` is the contract that refuses an empty list (the rows above), and it is how a deployment says it wants calls it can look at. Against an expectation of calls, an empty list is judged and fails (the expected-trajectory rows above). Under a capture source\'s declaration, its empty list and its blank outputs are measured and not held either: they are what it observed (no call was made, the tool returned nothing), and an honest turn must read on what happened.');
   L.push('');
   L.push('| Contract | Left out | Cases | Fail | Not checked | Pass |');
   L.push('|---|---|--:|--:|--:|--:|');

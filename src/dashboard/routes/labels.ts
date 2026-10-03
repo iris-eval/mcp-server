@@ -29,6 +29,7 @@ import { costHistoryFor } from '../../eval/ingest.js';
 import { toEvaluationResponse } from '../../eval/response.js';
 import { insertLinkedEvalResult } from '../../tools/trace-link.js';
 import { costContextOf } from '../../eval/cost-basis.js';
+import { recordOfTrace } from '../../eval/evidence.js';
 
 const LabelBody = strictBody({
   eval_id: z.string().min(1).max(200),
@@ -215,6 +216,8 @@ export function registerLabelRoutes(router: Router, storage: IStorageAdapter, op
       toolCalls: trace.tool_calls,
       spans,
       tools: trace.tools,
+      // The same record the first evaluation judged: who recorded it, and what its capture source records in full.
+      ...recordOfTrace(trace),
       ...(trace.metadata ? { metadata: trace.metadata } : {}),
       tenantId,
     };

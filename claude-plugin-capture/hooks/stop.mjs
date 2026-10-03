@@ -27,10 +27,10 @@ import { assemble, log, markSent, readStdin, readTurn, retryable, send, sweep, t
 try {
   const input = await readStdin();
   const key = turnKeyOf(input);
-  const { header, calls, sent } = readTurn(input.session_id, key);
+  const { header, calls, sent, lost } = readTurn(input.session_id, key);
   const how = input.hook_event_name === 'StopFailure' ? 'failed' : sent.stopped || input.stop_hook_active === true ? 'continued' : 'answered';
   const output = typeof input.last_assistant_message === 'string' ? input.last_assistant_message : undefined;
-  const built = assemble({ sessionId: input.session_id, key, header, calls, sent, how, output, input });
+  const built = assemble({ sessionId: input.session_id, key, header, calls, sent, how, output, input, lost });
   if (process.env.IRIS_CAPTURE_DRY_RUN === '1') {
     // The test seam: print what would be sent, send nothing. The process ends
     // when the write has drained: on a pipe, POSIX stdout is asynchronous, and

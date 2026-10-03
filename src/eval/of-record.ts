@@ -69,7 +69,14 @@ export function differsFromRecord(call: CallShape, trace: Pick<Trace, 'output' |
   if (stored === undefined || stored === null || stored === '') out.push('no_stored_output');
   else if (call.output !== undefined && call.output !== stored) out.push('output');
   if (call.input !== undefined && call.input !== (trace.input ?? undefined)) out.push('input');
-  if (call.tool_calls !== undefined && !same(call.tool_calls, trace.tool_calls ?? [])) out.push('tool_calls');
+  /*
+   * An empty list is not the same as none. A trace stored without its tool
+   * calls, and a call that sends `tool_calls: []` for it, is the caller
+   * saying "no tool was called" where the record said nothing: other
+   * evidence. Compared as equal, the call scored the record, and a capture
+   * source's promise to record every call vouched for the caller's "none".
+   */
+  if (call.tool_calls !== undefined && !same(call.tool_calls, trace.tool_calls)) out.push('tool_calls');
   if (call.tools !== undefined && !same(call.tools, trace.tools ?? [])) out.push('tools');
   if (call.cost_usd !== undefined && call.cost_usd !== (trace.cost_usd ?? undefined)) out.push('cost_usd');
   if (call.token_usage !== undefined && !same(call.token_usage, trace.token_usage)) out.push('token_usage');

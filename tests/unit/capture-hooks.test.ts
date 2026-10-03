@@ -12,7 +12,7 @@
  * that keeps the turn going, a turn that ended in an API error.
  */
 import { spawn } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, existsSync, statSync, utimesSync, writeFileSync, appendFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, existsSync, statSync, utimesSync, writeFileSync, appendFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -59,6 +59,7 @@ interface Built {
     output: string;
     run: string;
     tool_calls?: Array<{ tool_name: string; call_id?: string; output?: unknown; error?: string; latency_ms?: number; truncated?: boolean }>;
+    capture?: { name: string; version?: string; complete?: string[] };
     metadata: {
       turn: { prompt_id?: string; part: number; ended: string };
       model_logged?: { calls: number; trace_ids: string[]; failed?: number };
@@ -129,6 +130,79 @@ describe('iris-eval-capture hooks: one turn', () => {
     const resumed = built((await hook('stop', stop, DRY)).stdout);
     expect(resumed.trace.input).toBeUndefined();
     expect(resumed.trace.tool_calls).toBeUndefined();
+  }, 60_000);
+
+  it('declares itself on every part, and declares complete only what that part holds', async () => {
+    const version = (JSON.parse(readFileSync(resolve(root, 'claude-plugin-capture', '.claude-plugin', 'plugin.json'), 'utf8')) as { version: string }).version;
+    const declared = async (over: Record<string, unknown> = {}) => built((await hook('stop', { ...stop, ...over }, DRY)).stdout).trace.capture;
+    const fresh = () => rmSync(join(data, 'sessions'), { recursive: true, force: true });
+    // A whole turn with calls, and one with none: the prompt, every call, every call's result.
+    await hook('prompt', prompt);
+    await hook('tool', read);
+    expect(await declared()).toEqual({ name: 'iris-eval-capture', version, complete: ['input', 'tool_calls', 'tool_outputs'] });
+    fresh();
+    await hook('prompt', prompt);
+    expect(await declared()).toEqual({ name: 'iris-eval-capture', version, complete: ['input', 'tool_calls', 'tool_outputs'] });
+    // A failed call's result is its error.
+    fresh();
+    await hook('prompt', prompt);
+    await hook('tool', failedTest);
+    expect((await declared())?.complete).toEqual(['input', 'tool_calls', 'tool_outputs']);
+    // Something still running in the background: the calls may not all be in.
+    fresh();
+    await hook('prompt', prompt);
+    expect((await declared({ background_tasks: [{ id: 't1', type: 'subagent', status: 'running' }] }))?.complete).toEqual(['input', 'tool_outputs']);
+    // A call whose result the host did not send.
+    fresh();
+    await hook('prompt', prompt);
+    await hook('tool', { ...read, tool_response: undefined });
+    expect((await declared())?.complete).toEqual(['input', 'tool_calls']);
+    // No prompt seen (a resumed session): neither the prompt nor the calls.
+    fresh();
+    expect(await declared()).toEqual({ name: 'iris-eval-capture', version, complete: ['tool_outputs'] });
+  }, 120_000);
+
+  it('never declares the calls whole when its list leaves one out: an Iris tool filtered out, a line it could not read, a hook that failed', async () => {
+    const turn = async () => built((await hook('stop', stop, DRY)).stdout).trace;
+    const fresh = () => rmSync(join(data, 'sessions'), { recursive: true, force: true });
+    // Only Iris's own tools were called: the list is empty, and "no tool was called" would be false.
+    await hook('prompt', prompt);
+    await hook('tool', { ...grep, tool_name: 'mcp__iris-eval__deploy_rule', tool_input: { name: 'x' }, tool_use_id: 'toolu_i1' });
+    let t = await turn();
+    expect(t.tool_calls).toBeUndefined();
+    expect(t.capture?.complete).toEqual(['input', 'tool_outputs']);
+    // A call a killed hook left half written.
+    fresh();
+    await hook('prompt', prompt);
+    await hook('tool', read);
+    const dir = join(data, 'sessions', SID);
+    const calls = readdirSync(dir).find((n) => n.endsWith('.calls.jsonl'))!;
+    appendFileSync(join(dir, calls), '{"tool_name":"Bash","input":{"command":"npm test"},"output":"rem');
+    t = await turn();
+    expect(t.tool_calls!.map((c) => c.tool_name)).toEqual(['Read']);
+    expect(t.capture?.complete).toEqual(['input']);
+    // A hook that could not write its call: the calls file is read-only. It marks the call lost in a file of its own.
+    fresh();
+    await hook('prompt', prompt);
+    await hook('tool', read);
+    const callsPath = join(data, 'sessions', SID, `${P1}.calls.jsonl`);
+    chmodSync(callsPath, 0o444);
+    try {
+      await hook('tool', { ...read, tool_name: 'Bash', tool_input: { command: 'rm -rf build' }, tool_use_id: 'toolu_rm' });
+      t = await turn();
+    } finally {
+      chmodSync(callsPath, 0o644);
+    }
+    expect(t.tool_calls!.map((c) => c.tool_name)).toEqual(['Read']);
+    expect(t.capture?.complete).toEqual(['input']);
+  }, 120_000);
+
+  it('does not declare the results in full when one was cut to its head and tail', async () => {
+    await hook('prompt', prompt);
+    await hook('tool', { ...read, tool_name: 'Bash', tool_input: { command: 'cat big.log' }, tool_response: 'x'.repeat(300_000) });
+    const t = built((await hook('stop', stop, DRY)).stdout).trace;
+    expect(t.tool_calls![0].truncated).toBe(true);
+    expect(t.capture?.complete).toEqual(['input', 'tool_calls']);
   }, 60_000);
 
   it('loses no call when the host runs several at once', async () => {
@@ -396,6 +470,9 @@ describe('iris-eval-capture ingest runner', () => {
     expect(evals).toHaveLength(1);
     expect(evals[0].verdict?.basis).toBe('detector_veto');
     expect(evals[0].output_text).not.toContain('123-45-6789');
+    // Recorded by the plugin, which said so, and the verdict names it.
+    expect(answered.capture?.name).toBe('iris-eval-capture');
+    expect(evals[0].provenance?.evidence).toMatchObject({ recordedBy: 'harness', capture: { name: 'iris-eval-capture' }, toolCalls: 1 });
     // The API-error turn: stored with its failed call, and no verdict about an answer it never gave.
     const failedTurn = traces.find((t) => t.run_id === SID && t.output === '')!;
     expect(failedTurn.tool_calls?.map((c) => c.error)).toEqual([failedTest.error]);

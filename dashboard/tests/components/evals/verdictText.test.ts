@@ -10,11 +10,22 @@ import {
   stateBadge,
   composerFacts,
   confidenceChip,
+  evidenceText,
   fmtRisk,
   tauOf,
 } from '../../../src/components/evals/verdictText';
 
 describe('verdictText', () => {
+  it('says who recorded what was judged: the capture source and what it holds in full, the agent, or nobody; nothing on a row from before the record', () => {
+    expect(evidenceText(undefined)).toBeNull();
+    expect(
+      evidenceText({ recordedBy: 'harness', capture: { name: 'iris-eval-capture', version: '0.20.0', complete: ['input', 'tool_calls'] }, carried: ['input', 'output', 'tool_calls'], toolCalls: 0 }),
+    ).toBe('Recorded by iris-eval-capture 0.20.0, which records input, tool_calls in full, watching the agent. Carried: input, output, tool_calls. It recorded no tool call: none was made.');
+    expect(evidenceText({ recordedBy: 'harness', capture: { name: 'otel-agent' }, carried: ['output'] })).toBe('Recorded by otel-agent, watching the agent. Carried: output.');
+    expect(evidenceText({ recordedBy: 'agent', carried: ['input', 'output'] })).toBe("The agent's own report, through its Iris tool: nothing outside the agent recorded it. Carried: input, output.");
+    expect(evidenceText({ recordedBy: 'not_declared', carried: ['output'] })).toMatch(/^Recorder not declared/);
+  });
+
   it('every basis the composer can return has its own sentence', () => {
     const bases = ['policy_gate', 'detector_veto', 'critical_unknown', 'required_evidence_missing', 'risk_over_loss', 'clean', 'no_rules'];
     expect(Object.keys(BASIS_TEXT).sort()).toEqual([...bases].sort());

@@ -37,6 +37,8 @@ export const STALE_SESSION_HOURS = 24;
 export const LOG_MAX_BYTES = 1_048_576;
 /** A tool call's output or error longer than this is kept as its head and its tail, marked truncated: a hook must finish well inside its timeout. */
 export const FIELD_MAX_CHARS = 262_144;
+/** How this plugin names itself on the traces it records (the trace's `capture.name`). */
+export const CAPTURE_NAME = 'iris-eval-capture';
 /** A turn that failed to ingest is retried when it is at least this old, so a retry never races the first attempt. */
 export const RETRY_AFTER_MS = 10 * 60_000;
 /** At most this many failed turns are retried by one Stop. */
@@ -92,6 +94,8 @@ function sessionDir(sessionId) {
 const turnFile = (sessionId, key) => join(sessionDir(sessionId), `${key}.turn.json`);
 const callsFile = (sessionId, key) => join(sessionDir(sessionId), `${key}.calls.jsonl`);
 const sentFile = (sessionId, key) => join(sessionDir(sessionId), `${key}.sent.json`);
+// Its own file: a hook that could not write its call to the calls file (read-only, held open by another process) can still say it lost one.
+const lostFile = (sessionId, key) => join(sessionDir(sessionId), `${key}.lost.jsonl`);
 const currentFile = (sessionId) => join(sessionDir(sessionId), 'current');
 
 /**
@@ -156,7 +160,11 @@ export function appendCall(sessionId, key, call) {
   appendFileSync(callsFile(sessionId, key), `\n${JSON.stringify(call)}\n`, { mode: FILE_MODE });
 }
 
-/** A turn as recorded: its header (when its prompt was seen), every call in the order they finished, and how much of it was sent. */
+/**
+ * A turn as recorded: its header (when its prompt was seen), every call in the
+ * order they finished, how much of it was sent, and how many calls it lost (a
+ * line a killed hook left unreadable, or a hook that failed and said so).
+ */
 export function readTurn(sessionId, key, path = callsFile(sessionId, key)) {
   let header = null;
   try {
@@ -165,15 +173,25 @@ export function readTurn(sessionId, key, path = callsFile(sessionId, key)) {
     /* a resumed session, or a part that outlived its prompt's header */
   }
   const calls = [];
+  let lost = 0;
   if (existsSync(path)) {
     for (const line of readFileSync(path, 'utf8').split('\n')) {
       if (line.trim() === '') continue;
+      let record;
       try {
-        calls.push(JSON.parse(line));
+        record = JSON.parse(line);
       } catch {
+        lost += 1;
         log(`a recorded call could not be read and is left out: ${line.slice(0, 80)}`);
+        continue;
       }
+      calls.push(record);
     }
+  }
+  try {
+    lost += readFileSync(lostFile(sessionId, key), 'utf8').split('\n').filter((l) => l.trim() !== '').length;
+  } catch {
+    /* no hook of this turn failed */
   }
   let sent = { parts: 0, calls: 0, stopped: false };
   try {
@@ -181,7 +199,18 @@ export function readTurn(sessionId, key, path = callsFile(sessionId, key)) {
   } catch {
     /* nothing sent yet */
   }
-  return { header, calls, sent };
+  return { header, calls, sent, lost };
+}
+
+/**
+ * Marks a call this turn lost: its hook failed before the call was recorded.
+ * Written to the turn's own lost file, not the calls file the failed write
+ * could not reach, and read by readTurn, so the turn's list is never
+ * declared whole. A hook Claude Code did not run at all leaves no mark: no
+ * hook can see it.
+ */
+export function markLost(sessionId, key) {
+  appendFileSync(lostFile(sessionId, key), `${new Date().toISOString()}\n`, { mode: FILE_MODE });
 }
 
 export function markSent(sessionId, key, sent) {
@@ -189,7 +218,7 @@ export function markSent(sessionId, key, sent) {
 }
 
 function removeTurn(sessionId, key) {
-  for (const p of [turnFile(sessionId, key), callsFile(sessionId, key), sentFile(sessionId, key)]) {
+  for (const p of [turnFile(sessionId, key), callsFile(sessionId, key), sentFile(sessionId, key), lostFile(sessionId, key)]) {
     try {
       unlinkSync(p);
     } catch {
@@ -202,7 +231,7 @@ function removeTurn(sessionId, key) {
 function turnKeys(dir) {
   const keys = new Set();
   for (const name of readdirSync(dir)) {
-    const m = /^(.+)\.(?:turn|calls|sent)\.jsonl?$/.exec(name);
+    const m = /^(.+)\.(?:turn|calls|sent|lost)\.jsonl?$/.exec(name);
     if (m) keys.add(m[1]);
   }
   return [...keys];
@@ -234,7 +263,7 @@ function loggedTraceIds(call) {
  *              calls came after it ended (a background sub-agent); not judged
  * Returns null when there is nothing to send.
  */
-export function assemble({ sessionId, key, header, calls, sent, how, output, input = {} }) {
+export function assemble({ sessionId, key, header, calls, sent, how, output, input = {}, lost = 0 }) {
   const fresh = calls.slice(sent.calls);
   const own = fresh.filter((c) => IRIS_TOOL.exec(c.tool_name)?.[1] === 'log_trace');
   const logged = own.filter((c) => c.error === undefined);
@@ -247,11 +276,31 @@ export function assemble({ sessionId, key, header, calls, sent, how, output, inp
   /*
    * An empty list says no call was made, and Iris reads it so. It is sent only
    * when the record is known whole: the turn's prompt was seen, it ended with
-   * Stop on its first end, and nothing was left running in the background.
-   * Otherwise a turn with no recorded call sends no list, which says nothing.
+   * Stop on its first end, nothing was left running in the background, no
+   * call was lost (an unreadable line, a hook that failed), and the list
+   * leaves none out (Iris's own tools are not in it, so a turn that called
+   * one does not have its every call in the list). Otherwise a turn with no
+   * recorded call sends no list, which says nothing either way.
    */
-  const whole = how === 'answered' && header !== null && sent.parts === 0 && Array.isArray(input.background_tasks) && input.background_tasks.length === 0;
+  const leftOut = fresh.some((c) => IRIS_TOOL.test(c.tool_name));
+  const whole = how === 'answered' && header !== null && sent.parts === 0 && Array.isArray(input.background_tasks) && input.background_tasks.length === 0 && lost === 0 && !leftOut;
   const part = sent.parts + 1;
+  /*
+   * What this record holds in full, declared to Iris (its trace `capture`):
+   * the prompt when it was seen and has text, every tool call when the record
+   * is whole (Iris's own tools are left out of the list, as above), and every
+   * call's output or error when each recorded call has one. Iris then reads
+   * the empty list as "no tool was called", and a field declared here that
+   * the trace lacks as a hole in the record. Only what this part holds is
+   * declared, so the declaration is never false: a result cut to its head
+   * and tail is not one recorded in full.
+   */
+  const complete = [
+    ...(typeof header?.prompt === 'string' && header.prompt.trim() !== '' ? ['input'] : []),
+    ...(whole ? ['tool_calls'] : []),
+    ...(lost === 0 && tool_calls.every((c) => (c.output !== undefined || c.error !== undefined) && c.truncated !== true) ? ['tool_outputs'] : []),
+  ];
+  const version = pinnedVersion();
   return {
     evaluate: answered,
     trace: {
@@ -261,10 +310,10 @@ export function assemble({ sessionId, key, header, calls, sent, how, output, inp
       ...(answered ? { output } : { output: '' }),
       ...(tool_calls.length > 0 || whole ? { tool_calls } : {}),
       run: String(sessionId ?? 'unknown'),
+      capture: { name: CAPTURE_NAME, ...(version ? { version } : {}), ...(complete.length > 0 ? { complete } : {}) },
       metadata: {
         session_id: sessionId,
         cwd: input.cwd ?? header?.cwd,
-        captured_by: 'iris-eval-capture',
         turn: { ...(header?.prompt_id ? { prompt_id: header.prompt_id } : { key }), part, ended: how },
         ...(subagent.length > 0 ? { subagent_calls: subagent } : {}),
         ...(own.length > 0 ? { model_logged: { calls: logged.length, trace_ids: ids, ...(own.length > logged.length ? { failed: own.length - logged.length } : {}) } } : {}),
@@ -330,8 +379,8 @@ export function flushTurn(sessionId, key, dryRun = []) {
   } catch {
     /* no calls file */
   }
-  const { header, calls, sent } = readTurn(sessionId, key, moved ? moving : path);
-  const built = assemble({ sessionId, key, header, calls, sent, how: 'unfinished' });
+  const { header, calls, sent, lost } = readTurn(sessionId, key, moved ? moving : path);
+  const built = assemble({ sessionId, key, header, calls, sent, how: 'unfinished', lost });
   if (built) {
     if (process.env.IRIS_CAPTURE_DRY_RUN === '1') dryRun.push(built);
     else send(built);

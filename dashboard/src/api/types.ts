@@ -242,6 +242,13 @@ export interface Provenance {
   supersedes?: string;
   /** Why the evaluation sits beside a trace: record fields that differed, `eval_type`, `no_stored_output`, `judge` or `citations`. */
   beside?: string[];
+  /** What the call carried and who recorded it (0.20.0): a capture source that declared itself, the agent's own report, or not declared. */
+  evidence?: {
+    recordedBy: 'harness' | 'agent' | 'not_declared';
+    capture?: { name: string; version?: string; complete?: string[] };
+    carried: string[];
+    toolCalls?: number;
+  };
   [key: string]: unknown;
 }
 

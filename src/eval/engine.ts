@@ -7,6 +7,7 @@ import type {
   EvalType,
   EvalCategoryResult,
   CustomRuleDefinition,
+  EvidenceRecord,
   Provenance,
 } from '../types/eval.js';
 import { getRulesForType, createCustomRule } from './rules/index.js';
@@ -18,6 +19,7 @@ import { toSteps } from './steps.js';
 import { readStructured, spanInOutput, type StructuredOutput } from './text/structured.js';
 import { toolsHash } from './catalogue.js';
 import { buildProvenance, configHash, deriveCoverage, rulesetHash } from './verdict.js';
+import { evidenceOf } from './evidence.js';
 import { PUBLISHED_CALIBRATION } from './published-calibration.js';
 import { answersTheAsk } from './rules/relevance.js';
 import { agentModelOf } from './llm-judge/family.js';
@@ -325,8 +327,10 @@ export class EvalEngine {
    * meant the threshold on those two and the composer everywhere else.
    * Every stored row now carries the same verdict, basis and
    * interpretations, from the one composer, under this engine's config.
+   * `evidence` is what the judged call carried and who recorded it
+   * (src/eval/evidence.ts), as the tool that judged it knows them.
    */
-  verdictOf(result: EvalResult): EvalResult {
+  verdictOf(result: EvalResult, evidence?: EvidenceRecord): EvalResult {
     /*
      * The receipt too: a stored row derives its verdict on read only under
      * the composer facts its provenance carries (rowToEvalResult), so a
@@ -341,6 +345,7 @@ export class EvalEngine {
       threshold: this.threshold,
       ruleThresholds: this.ruleThresholds,
       composer: this.composerFacts(),
+      ...(evidence !== undefined ? { evidence } : {}),
       judgedAt: new Date().toISOString(),
     });
     return this.decide(result);
@@ -361,7 +366,7 @@ export class EvalEngine {
      * every row could say passed on an evaluation that failed.
      */
     for (const [type, row] of Object.entries(result.categories ?? {})) {
-      row.state = bundleState(result.rule_results.filter((r) => r.category === type), verdict, cfg, result.rule_results);
+      row.state = bundleState(result.rule_results.filter((r) => r.category === type), verdict, cfg, result.rule_results, result.provenance?.evidence);
       // null for a row that was not checked, whatever the reason: it is not a pass and it is not a failure.
       row.passed = row.state === 'unknown' ? null : row.state === 'pass';
     }
@@ -729,9 +734,11 @@ export class EvalEngine {
       threshold: this.threshold,
       ruleThresholds: this.ruleThresholds,
       composer: this.composerFacts(),
+      // What the call carried and who recorded it: the composer reads it, now and on every read of the stored row.
+      evidence: evidenceOf(context),
       judgedAt: new Date().toISOString(),
     });
-    const coverage = deriveCoverage(ruleResults, inputsPresent(context));
+    const coverage = deriveCoverage(ruleResults, inputsPresent(context), provenance.evidence);
 
     // Handle "all rules skipped" — insufficient data
     if (overall.rulesEvaluated === 0) {

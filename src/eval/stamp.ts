@@ -17,8 +17,9 @@
  * values nothing produced).
  */
 import type { EvalContext, EvalRule, EvalRuleResult, Need, RuleState, SkipClass, Uncertainty } from '../types/eval.js';
+import type { CaptureField } from '../types/trace.js';
 import type { EffectiveCriticality } from './criticality.js';
-import { stepsOf } from './steps.js';
+import { everyCallRecorded, stepsOf } from './steps.js';
 import { DEFAULT_PREVALENCE, missRateInterval, ppvInterval, publishedAccuracyFor, publishedProvenance } from './accuracy.js';
 import type { LocalPrecision } from './labels.js';
 import { thresholdSetBy } from './thresholds.js';
@@ -41,12 +42,19 @@ export interface StampOptions {
 
 const DEFAULT_PRIOR_IN_FORCE: PriorInForce = { pi: DEFAULT_PREVALENCE, source: 'default' };
 
+/** The fields a context's capture source declared complete (src/eval/evidence.ts); none unless a capture source recorded it. */
+export function declaredComplete(context: Pick<EvalContext, 'recordedBy' | 'capture'>): ReadonlySet<CaptureField> {
+  if (context.recordedBy !== 'harness') return new Set();
+  return new Set(context.capture?.complete ?? []);
+}
+
 /** Which needs the call actually carried. `tools_catalogue` and `citations` arrive with later releases. */
 export function inputsPresent(context: EvalContext): Set<Need> {
   const present = new Set<Need>(['output']);
-  // A blank input is no input: one space satisfied "the call carried an input" until 0.20.0.
+  const declared = declaredComplete(context);
+  // A blank is not sent: one space satisfied "the call carried an input" until 0.20.0, and a blank expected answer met a requirement for one.
   if (typeof context.input === 'string' && context.input.trim().length > 0) present.add('input');
-  if (typeof context.expected === 'string' && context.expected.length > 0) present.add('expected');
+  if (typeof context.expected === 'string' && context.expected.trim().length > 0) present.add('expected');
   /*
    * The DERIVED trajectory, not the raw field: a trace captured as
    * OpenTelemetry TOOL spans supplied its trajectory just as surely as one
@@ -59,7 +67,24 @@ export function inputsPresent(context: EvalContext): Set<Need> {
     // What a call returned: its output, or the error it failed with. An output that is absent, null or blank is not one: every output replaced by "" read as "outputs were sent".
     const returned = (s: (typeof steps)[number]): boolean =>
       (s.output !== undefined && s.output !== null && !(typeof s.output === 'string' && s.output.trim() === '')) || (typeof s.error === 'string' && s.error.trim() !== '');
-    if (steps.some(returned)) present.add('tool_outputs');
+    /*
+     * A capture source that records every call's result promised one on each:
+     * a blank one is what the tool returned, and a call with none at all is a
+     * hole in the record. The promise is checked over every call the record
+     * carries, not only the first MAX_STEPS_DERIVED the trajectory rules
+     * read. Without that promise, one call that returned something is enough.
+     */
+    if (declared.has('tool_outputs') ? everyCallRecorded(context) : steps.some(returned)) present.add('tool_outputs');
+  } else if (declared.has('tool_calls') && Array.isArray(context.toolCalls)) {
+    /*
+     * The source records every call and sent an empty list: none were made,
+     * so no call's result is missing either. Only an explicit list says so.
+     * Spans with no TOOL span among them do not: a tool span in a vocabulary
+     * Iris does not read is not a TOOL span, and that miss must not become
+     * an observation that no tool was called.
+     */
+    present.add('tool_calls');
+    present.add('tool_outputs');
   }
   if (Array.isArray(context.tools) && context.tools.length > 0) present.add('tools_catalogue');
   // A negative cost is not a cost.
@@ -67,7 +92,9 @@ export function inputsPresent(context: EvalContext): Set<Need> {
   if (context.tokenUsage && (context.tokenUsage.prompt_tokens !== undefined || context.tokenUsage.completion_tokens !== undefined || context.tokenUsage.total_tokens !== undefined)) {
     present.add('tokens');
   }
-  if (context.expectedTrajectory !== undefined) present.add('expected_trajectory');
+  // An expectation a trajectory rule can use: a budget of at least one step, or at least one expected call. `{}` and `{ tool_calls: [] }` are not one.
+  const et = context.expectedTrajectory;
+  if ((typeof et?.step_budget === 'number' && Number.isFinite(et.step_budget) && et.step_budget >= 1) || (et?.tool_calls?.length ?? 0) > 0) present.add('expected_trajectory');
   return present;
 }
 

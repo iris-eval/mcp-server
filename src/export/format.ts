@@ -74,6 +74,8 @@ export const TRACE_COLUMNS: ReadonlyArray<Column<TraceRecord>> = [
   { name: 'agent_name', value: (r) => r.trace.agent_name },
   { name: 'framework', value: (r) => r.trace.framework },
   { name: 'source', value: (r) => r.trace.source },
+  // The capture source that declared itself, as JSON (name, version, what it records in full); empty when none did. The JSON Lines record carries it as an object.
+  { name: 'capture', value: (r) => json(r.trace.capture) },
   { name: 'session_id', value: (r) => r.trace.session_id },
   { name: 'run_id', value: (r) => r.trace.run_id },
   { name: 'case_key', value: (r) => r.trace.case_key },

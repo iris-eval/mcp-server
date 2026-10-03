@@ -11,7 +11,7 @@ export const BASIS_TEXT: Record<VerdictBasis, string> = {
   critical_unknown:
     'A critical rule was asked and could not judge, so the verdict is unknown rather than clean. eval.onCriticalSkipped decides whether unknown reads as a fail.',
   required_evidence_missing:
-    'A rule you require evidence from did not run on this call, so the verdict is unknown rather than clean.',
+    'Evidence that was asked for, or that the capture source promised, is not in the record, so the verdict is unknown rather than clean.',
   risk_over_loss:
     'The rules that fired, at their published accuracy and the prior in force, put the risk of a bad output over your loss threshold.',
   clean:
@@ -35,6 +35,23 @@ export function besideText(reasons: readonly string[] | undefined): string {
     ...(r.includes('eval_type') ? ['it ran one bundle rather than every bundle'] : []),
   ];
   return why.length > 0 ? `${lead}: ${why.join('; ')}.` : `${lead}.`;
+}
+
+/**
+ * Who recorded what this evaluation judged (0.20.0): a capture source that
+ * watched the agent and declared itself, the agent's own report, or nobody
+ * said. Null on an evaluation stored before the record existed.
+ */
+export function evidenceText(evidence: Provenance['evidence']): string | null {
+  if (!evidence) return null;
+  const carried = evidence.carried.join(', ');
+  if (evidence.recordedBy === 'agent') return `The agent's own report, through its Iris tool: nothing outside the agent recorded it. Carried: ${carried}.`;
+  if (evidence.recordedBy === 'not_declared') return `Recorder not declared: the trace said neither who recorded it nor what it holds in full. Carried: ${carried}.`;
+  const c = evidence.capture;
+  const name = c ? (c.version ? `${c.name} ${c.version}` : c.name) : 'a capture source';
+  const whole = c?.complete?.length ? `, which records ${c.complete.join(', ')} in full` : '';
+  const none = evidence.toolCalls === 0 && c?.complete?.includes('tool_calls') ? ' It recorded no tool call: none was made.' : '';
+  return `Recorded by ${name}${whole}, watching the agent. Carried: ${carried}.${none}`;
 }
 
 /** The line under the verdict when a later layer would have decided it too. */

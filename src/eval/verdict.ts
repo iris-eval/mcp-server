@@ -20,7 +20,8 @@
  * it rather than staying in the union as a value nothing can produce.
  */
 import { createHash } from 'node:crypto';
-import type { Coverage, EvalRule, EvalRuleResult, Need, Provenance } from '../types/eval.js';
+import type { Coverage, EvalRule, EvalRuleResult, EvidenceRecord, Need, Provenance } from '../types/eval.js';
+import { brokenOf, captureLabel, observedNoToolCalls } from './evidence.js';
 import type { EffectiveCriticality } from './criticality.js';
 import { RULE_QUESTION_IDS } from './questions.js';
 import { NEEDS } from './failure-classes.js';
@@ -28,11 +29,17 @@ import { publishedProvenance } from './accuracy.js';
 
 /**
  * Which evaluation questions were judged, which were not and why. At write
- * time the engine passes the inputs the call carried; at read time they are
- * reconstructed as the union of what the rules saw (a rule that saw an input
- * proves the call carried it; one that did not cannot prove the reverse).
+ * time the engine passes the inputs the call carried, and a read passes the
+ * same from the stored evidence record. A row stored before that record
+ * existed reconstructs them as the union of what the rules saw (a rule that
+ * saw an input proves the call carried it; one that did not cannot prove
+ * the reverse).
+ *
+ * A question about tool use on a turn whose capture source records every
+ * call and recorded none is not applicable rather than unjudged: there was
+ * no tool use to judge, and the record says so.
  */
-export function deriveCoverage(ruleResults: readonly EvalRuleResult[], present?: ReadonlySet<Need>): Coverage {
+export function deriveCoverage(ruleResults: readonly EvalRuleResult[], present?: ReadonlySet<Need>, evidence?: EvidenceRecord): Coverage {
   const inputs = {} as Record<Need, boolean>;
   const seen = new Set<Need>(present ?? []);
   if (!present) for (const r of ruleResults) for (const n of r.saw ?? []) seen.add(n);
@@ -67,6 +74,20 @@ export function deriveCoverage(ruleResults: readonly EvalRuleResult[], present?:
     }
     if (broken.length > 0) {
       questions.push({ id, status: 'unjudged', why: `config_invalid: ${broken.join(', ')} has a broken definition` });
+      continue;
+    }
+    if (observedNoToolCalls(evidence) && rows.every((r) => r.skipClass === 'not_applicable' && (r.saw ?? []).includes('tool_calls'))) {
+      questions.push({ id, status: 'not_applicable', why: `no tool was called: ${captureLabel(evidence?.capture)} records every tool call and recorded none` });
+      continue;
+    }
+    // What the rules lacked is a field the capture source promised: the record is incomplete, which is not the agent's to send.
+    const hole = brokenOf(evidence).filter((f) => rows.some((r) => (r.lacked ?? []).includes(f)));
+    if (hole.length > 0) {
+      questions.push({
+        id,
+        status: 'unjudged',
+        why: `the record is incomplete: ${captureLabel(evidence?.capture)} declares it records ${hole.join(' and ')} in full, and this trace does not carry ${hole.length === 1 ? 'it' : 'them'}`,
+      });
       continue;
     }
     const missing = new Set<string>();
@@ -188,6 +209,7 @@ export function buildProvenance(input: {
   ruleThresholds?: Record<string, unknown>;
   toolsHash?: string;
   composer?: Provenance['composer'];
+  evidence?: Provenance['evidence'];
   supersedes?: string;
   judgedAt: string;
 }): Provenance {
@@ -198,6 +220,7 @@ export function buildProvenance(input: {
     thresholds: { default: input.threshold, ...(input.ruleThresholds ? { perRule: input.ruleThresholds } : {}) },
     ...(input.toolsHash !== undefined ? { toolsHash: input.toolsHash } : {}),
     ...(input.composer !== undefined ? { composer: input.composer } : {}),
+    ...(input.evidence !== undefined ? { evidence: input.evidence } : {}),
     ...(input.supersedes !== undefined ? { supersedes: input.supersedes } : {}),
     corpusVersion: publishedProvenance().corpusVersion,
     judgedAt: input.judgedAt,

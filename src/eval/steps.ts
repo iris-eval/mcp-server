@@ -266,6 +266,30 @@ export function stepsOf(context: EvalContext): readonly Step[] {
   return context.steps ?? toSteps(context);
 }
 
+/**
+ * Whether every call the record carries has its result: what it returned
+ * (blank included), or the error it failed with. Over ALL of them, not the
+ * first MAX_STEPS_DERIVED the trajectory rules read: a capture source's
+ * promise to keep every result is about the record, and call 550 without
+ * one is as much a hole as call 4. Asked once per rule of an evaluation, so
+ * the answer is kept per list: over 20,000 TOOL spans the check sorts and
+ * reads every span (52 ms), and an evaluation of every bundle asked it some
+ * thirty times.
+ */
+const recordedOf = new WeakMap<readonly unknown[], boolean>();
+export function everyCallRecorded(context: Pick<EvalContext, 'toolCalls' | 'spans'>): boolean {
+  const kept = (s: { output?: unknown; error?: unknown }): boolean => s.output !== undefined || typeof s.error === 'string';
+  const calls = context.toolCalls;
+  if (Array.isArray(calls) && calls.length > 0) return calls.every(kept);
+  const spans = context.spans;
+  if (!Array.isArray(spans) || spans.length === 0) return true;
+  const known = recordedOf.get(spans);
+  if (known !== undefined) return known;
+  const answer = spans.every((span) => span.kind !== 'TOOL' || kept(stepFromSpan(span, 0)));
+  recordedOf.set(spans, answer);
+  return answer;
+}
+
 /** What was derived and from where — the numbers that make under-reporting audible. */
 export function stepStatsOf(context: EvalContext): { source: StepSource | 'none'; available: number; kept: number } {
   const calls = context.toolCalls;

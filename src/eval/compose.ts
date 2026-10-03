@@ -37,13 +37,14 @@
  * with its failure mode stated, not a settled answer. Each surface that
  * shows a default says it is a recommendation.
  */
-import type { EvalResult, EvalRuleResult, Interpretation, Need, Role, Verdict, VerdictLayer, VerdictNode } from '../types/eval.js';
+import type { EvalResult, EvalRuleResult, EvidenceRecord, Interpretation, Need, Role, Verdict, VerdictLayer, VerdictNode } from '../types/eval.js';
 import { riskEstimate, detectorsOf, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
 import { verdictConfidence, MIN_BIN_N, MIN_BIN_PATTERNS, type ConfidenceCall } from './confidence.js';
 import { PUBLISHED_CALIBRATION } from './published-calibration.js';
 import { decides, isCritical } from './gate.js';
 import { RELEVANCE_JUDGE_MODEL_VAR } from './llm-judge/relevance-judge.js';
 import { sameFamilyWarning } from './llm-judge/family.js';
+import { brokenOf, captureLabel } from './evidence.js';
 
 // The gating predicate lives in gate.ts so the harness composer in risk.ts reads the same one; re-exported for the callers that import it from here.
 export { decides };
@@ -182,9 +183,15 @@ function inputsSeen(rows: readonly EvalRuleResult[]): Set<Need> {
  * them: what the later layers would have decided is on the verdict as
  * `also`, so a reader acting on one basis is never told a credential leak
  * did not happen because a cost ceiling was broken first.
+ *
+ * Pass the whole evaluation. `provenance` carries the evidence record (what
+ * the call carried, and the capture source's declaration), and a result
+ * without one is read as a row stored before that record existed: required
+ * evidence met by what an evaluated rule read, and no capture source, so a
+ * hole in a declared record is not seen.
  */
 export function verdictPath(
-  result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated'>,
+  result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated' | 'provenance'>,
   cfg: ComposeConfig,
 ): VerdictNode[] {
   const nodes = walk(result, cfg, false);
@@ -221,14 +228,23 @@ function primaryOf(nodes: VerdictNode[], cfg: ComposeConfig): VerdictNode | unde
  * disagree about what a layer is.
  */
 function walk(
-  result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated'>,
+  result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated' | 'provenance'>,
   cfg: ComposeConfig,
   stopAtDecision: boolean,
 ): VerdictNode[] {
   const rows = result.rule_results;
   const evaluated = result.rules_evaluated ?? rows.filter((r) => !r.skipped).length;
   if (result.insufficient_data || evaluated === 0) {
-    return [{ node: 'nothing_judged', by: [], decided: true }];
+    /*
+     * Nothing judged decides the verdict, and evidence that was asked for or
+     * promised and is not in the record is still said beside it: a capture
+     * source's hole, on a call whose bundle ran nothing, read `no_rules` with
+     * no word about the hole, and a gate on required_evidence_missing passed
+     * it. A row judged under the earlier rules reads back as it was given.
+     */
+    const nothing: VerdictNode = { node: 'nothing_judged', by: [], decided: true };
+    const ev = (cfg.rules ?? COMPOSER_RULES) >= 2 ? evidenceNode(result, cfg) : null;
+    return ev?.decided ? [nothing, ev] : [nothing];
   }
   const path: VerdictNode[] = [];
 
@@ -272,20 +288,24 @@ function walk(
 
   /*
    * 4. Evidence somebody asked for and the call did not carry. `by` is the
-   * missing inputs, not rules. Two sources: the inputs the deployment
-   * insists every evaluation carries (eval.requiredEvidence), and the
-   * inputs of any rule that was asked for and skipped without them — a
-   * policy whose threshold the deployment set, a rule it promoted to
-   * critical or deployed as a gate, an expectation the call itself supplied
-   * (stamp.ts, askedOf). A rule nobody asked for that had nothing to judge
-   * stays out of this: a text-only evaluation is not unknown.
+   * missing inputs, not rules. Three sources: the inputs the deployment
+   * insists every evaluation carries (eval.requiredEvidence); the inputs of
+   * any rule that was asked for and skipped without them — a policy whose
+   * threshold the deployment set, a rule it promoted to critical or
+   * deployed as a gate, an expectation the call itself supplied (stamp.ts,
+   * askedOf); and the fields the trace's capture source declared it records
+   * in full and the trace left out (evidence.ts). A rule nobody asked for
+   * that had nothing to judge stays out of this: a text-only evaluation is
+   * not unknown.
+   *
+   * Required evidence is met by what the call CARRIED, from the evidence
+   * record the engine stamps. A row stored before that record existed is
+   * read as it always was, by what an evaluated rule read: so a cost sent
+   * to a call that ran only the safety bundle read as missing.
    */
-  const seen = cfg.requiredEvidence.length > 0 ? inputsSeen(rows) : null;
-  const required = seen ? cfg.requiredEvidence.filter((n) => !seen.has(n)) : [];
-  const asked = askedAndNotSent(rows, cfg);
-  const missing = [...new Set<string>([...required, ...asked.flatMap((r) => r.lacked!)])];
-  if (cfg.requiredEvidence.length > 0 || asked.length > 0) {
-    path.push({ node: 'evidence', by: missing, decided: missing.length > 0 });
+  const ev = evidenceNode(result, cfg);
+  if (ev !== null) {
+    path.push(ev);
     if (stopAtDecision && path.some((n) => n.decided)) return path;
   }
 
@@ -305,6 +325,19 @@ function walk(
           .map(([cls]) => cls);
   path.push({ node: 'risk', by: risk !== null && risk.pBad > t ? by : [], decided: risk !== null && risk.pBad > t, risk });
   return path;
+}
+
+/** The evidence layer's node, or null when nothing asked for or promised any evidence (walk(), step 4, says what it reads). */
+function evidenceNode(result: Pick<EvalResult, 'rule_results' | 'provenance'>, cfg: ComposeConfig): VerdictNode | null {
+  const rows = result.rule_results;
+  const evidence = result.provenance?.evidence;
+  const seen = cfg.requiredEvidence.length > 0 ? (evidence !== undefined ? new Set<Need>(evidence.carried) : inputsSeen(rows)) : null;
+  const required = seen ? cfg.requiredEvidence.filter((n) => !seen.has(n)) : [];
+  const asked = askedAndNotSent(rows, cfg);
+  const broken = brokenOf(evidence);
+  const missing = [...new Set<string>([...required, ...broken, ...asked.flatMap((r) => r.lacked!)])];
+  if (cfg.requiredEvidence.length === 0 && asked.length === 0 && broken.length === 0) return null;
+  return { node: 'evidence', by: missing, decided: missing.length > 0 };
 }
 
 /**
@@ -340,7 +373,7 @@ function layerText(l: VerdictLayer): string {
     case 'critical_unknown':
       return `a critical check was asked and could not answer (${by})`;
     case 'required_evidence_missing':
-      return `evidence that was asked for was not sent (${by})`;
+      return `evidence that was asked for or promised is not in the record (${by})`;
     default:
       return `the rules that fired put the risk of a bad output over the loss threshold${by ? ` (${by})` : ''}`;
   }
@@ -410,16 +443,20 @@ function unlabelledText(cfg: Pick<ComposeConfig, 'calibration'>): string {
  * verdictPath() reads; this stamps the verdict from the first layer that
  * fails, or when none does from the first that could not check, and lists
  * every other layer that would have decided. Adding a layer means adding a
- * node.
+ * node. As with verdictPath(), a result without `provenance` is read as a
+ * row stored before the evidence record existed.
  */
 export function compose(
-  result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated'>,
+  result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated' | 'provenance'>,
   cfg: ComposeConfig,
 ): Verdict {
   const nodes = walk(result, cfg, false);
   const decided = primaryOf(nodes, cfg);
   const later = nodes.filter((n) => n.decided && n !== decided);
-  if (decided?.node === 'nothing_judged') return { state: 'unknown', passed: false, basis: 'no_rules', by: [], risk: null };
+  if (decided?.node === 'nothing_judged') {
+    const also = later.map((n) => layerOf(n, cfg) as VerdictLayer);
+    return { state: 'unknown', passed: false, basis: 'no_rules', by: [], risk: null, ...(also.length > 0 ? { also } : {}) };
+  }
 
   /*
    * The estimate and its label ride on the verdict only when the risk layer
@@ -459,8 +496,9 @@ const worseOf = (a: Verdict['state'], b: Verdict['state']): Verdict['state'] => 
  * layer made the verdict. The gate, veto and unknown layers name their
  * rules. The risk layer names failure classes, so a bundle holding a fired
  * risk-layer rule answers for it. Evidence the deployment requires on
- * every evaluation, when missing, leaves every bundle unchecked; evidence
- * one rule lacked leaves that rule's bundle unchecked.
+ * every evaluation, or that the capture source declared and the record
+ * left out, when missing, leaves every bundle unchecked; evidence one rule
+ * lacked leaves that rule's bundle unchecked.
  *
  * The composer is not run again over the bundle's rules alone. The risk
  * estimate is a property of the whole evaluation (the prior is spread over
@@ -471,7 +509,13 @@ const worseOf = (a: Verdict['state'], b: Verdict['state']): Verdict['state'] => 
  * evaluation that was checked passes, and whenever the evaluation does not
  * pass, the row whose rules are why does not pass either.
  */
-export function bundleState(rows: readonly EvalRuleResult[], verdict: Verdict, cfg: ComposeConfig, all: readonly EvalRuleResult[] = rows): Verdict['state'] {
+export function bundleState(
+  rows: readonly EvalRuleResult[],
+  verdict: Verdict,
+  cfg: ComposeConfig,
+  all: readonly EvalRuleResult[] = rows,
+  evidence?: EvidenceRecord,
+): Verdict['state'] {
   const ran = rows.some((r) => !r.skipped);
   if (verdict.state === 'pass') return ran ? 'pass' : 'unknown';
   let state: Verdict['state'] = ran ? 'pass' : 'unknown';
@@ -486,7 +530,7 @@ export function bundleState(rows: readonly EvalRuleResult[], verdict: Verdict, c
        * bundle that holds the rule: a cost that was not sent says nothing
        * about whether the safety rules ran.
        */
-      const everywhere = cfg.requiredEvidence.some((n) => layer.by.includes(n));
+      const everywhere = cfg.requiredEvidence.some((n) => layer.by.includes(n)) || brokenOf(evidence).some((n) => layer.by.includes(n));
       const here = askedAndNotSent(rows, cfg).length > 0;
       if (everywhere || here) state = worseOf(state, layer.state);
     } else if (layer.basis === 'risk_over_loss') {
@@ -528,7 +572,7 @@ function layerOf(n: VerdictNode, cfg: ComposeConfig): { basis: (typeof BASIS_OF)
  * and that is the first thing a builder who never opens a config file will
  * meet.
  */
-export function interpretations(result: Pick<EvalResult, 'rule_results' | 'coverage'>, verdict: Verdict, cfg: ComposeConfig): Interpretation[] {
+export function interpretations(result: Pick<EvalResult, 'rule_results' | 'coverage' | 'provenance'>, verdict: Verdict, cfg: ComposeConfig): Interpretation[] {
   const out: Interpretation[] = [];
   /*
    * To the agent, first: a question that was not judged because the call
@@ -598,7 +642,8 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
   const laterRules = new Set((verdict.also ?? []).filter((l) => l.basis !== 'risk_over_loss').flatMap((l) => l.by));
   const vetoed = verdict.basis === 'detector_veto' || (verdict.also ?? []).some((l) => l.basis === 'detector_veto');
   const said = (verdict.also ?? []).filter((l) => !(l.basis === 'risk_over_loss' && vetoed)).map(layerText);
-  if (said.length > 0) {
+  // Nothing judged is not a layer anything could clear; the evidence beside it has its own sentence below.
+  if (said.length > 0 && verdict.basis !== 'no_rules') {
     out.push({
       severity: 'block',
       addressee: 'agent',
@@ -678,18 +723,35 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
     const layer = verdict.basis === 'required_evidence_missing' ? verdict : (verdict.also ?? []).find((l) => l.basis === 'required_evidence_missing')!;
     const asked = askedAndNotSent(result.rule_results, cfg);
     const byRule = asked.map((r) => `${r.ruleName} could not run without ${r.lacked!.join(', ')} (${r.asked === 'config' ? 'this deployment asks for it' : 'this call asks for it'})`);
-    const required = cfg.requiredEvidence.filter((n) => layer.by.includes(n));
-    const parts = [...(required.length > 0 ? [`this deployment requires ${required.join(', ')} on every evaluation`] : []), ...byRule];
-    out.push({
-      severity: 'block',
-      addressee: 'agent',
-      // On a verdict that failed, the missing evidence is a second thing to fix, not the answer.
-      text:
-        verdict.basis === 'required_evidence_missing'
-          ? `Not checked, which is not a pass: ${parts.join('; ')}. Send ${layer.by.join(', ')} and ask again.`
-          : `Also not checked: ${parts.join('; ')}. Send ${layer.by.join(', ')} so it can be.`,
-      ...(required.length > 0 ? { configKey: 'eval.requiredEvidence' } : {}),
-    });
+    /*
+     * A field the capture source promised and the record lacks is the
+     * capture's to fix, not the agent's to send: it gets its own sentence,
+     * to the operator. What is left is the agent's to send.
+     */
+    const evidence = result.provenance?.evidence;
+    const broken = brokenOf(evidence).filter((n) => layer.by.includes(n));
+    const send = layer.by.filter((n) => !(broken as string[]).includes(n));
+    const required = cfg.requiredEvidence.filter((n) => send.includes(n));
+    const source = captureLabel(evidence?.capture);
+    // On a verdict that failed, or that nothing could judge, the missing evidence is a second thing to fix, not the answer.
+    const first = verdict.basis === 'required_evidence_missing';
+    const lead = first ? 'Not checked, which is not a pass' : 'Also not checked';
+    if (send.length > 0) {
+      const parts = [...(required.length > 0 ? [`this deployment requires ${required.join(', ')} on every evaluation`] : []), ...byRule];
+      out.push({
+        severity: 'block',
+        addressee: 'agent',
+        text: `${lead}: ${parts.join('; ') || `${send.join(', ')} was asked for and not sent`}. ${first ? `Send ${send.join(', ')} and ask again.` : `Send ${send.join(', ')} so it can be.`}`,
+        ...(required.length > 0 ? { configKey: 'eval.requiredEvidence' } : {}),
+      });
+    }
+    if (broken.length > 0) {
+      out.push({
+        severity: 'block',
+        addressee: 'operator',
+        text: `${lead}: ${source} declares it records ${broken.join(' and ')} in full, and this trace does not carry ${broken.length === 1 ? 'it' : 'them'} in full. The record is incomplete: check how ${source} records ${broken.join(' and ')}.`,
+      });
+    }
   }
   /*
    * A critical rule that skipped but did NOT make the verdict unknown —
