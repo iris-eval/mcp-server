@@ -5053,8 +5053,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-10-03T00:18:50.451Z",
-  "generatedFromCommit": "4352d3ad",
+  "generatedAt": "2026-10-03T01:26:18.985Z",
+  "generatedFromCommit": "5da7c0a0",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5142,78 +5142,78 @@
     ]
   },
   "proof": {
-    "commit": "bcbbddb6",
+    "commit": "10f618ae",
     "composite": {
       "compositeVersion": "ed158f72a620",
       "confidence": {
         "changed": {
           "of": 112,
           "toDecisive": 0,
-          "toMarginal": 73
+          "toMarginal": 80
         },
         "intervalOnly": {
           "decisive": {
             "dev": {
               "ci95": [
-                0.5646,
-                0.8048
+                0.598,
+                0.8225
               ],
-              "k": 37,
-              "n": 53,
-              "patterns": 11,
-              "rate": 0.6981
+              "k": 42,
+              "n": 58,
+              "patterns": 12,
+              "rate": 0.7241
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.3424,
-                1
+                0.3006,
+                0.9544
               ],
-              "k": 2,
-              "n": 2,
-              "patterns": 1,
-              "rate": 1
+              "k": 3,
+              "n": 4,
+              "patterns": 3,
+              "rate": 0.75
             },
             "test": {
               "ci95": [
-                0.3866,
-                0.7812
+                0.3873,
+                0.7674
               ],
-              "k": 12,
-              "n": 20,
-              "patterns": 7,
-              "rate": 0.6
+              "k": 13,
+              "n": 22,
+              "patterns": 9,
+              "rate": 0.5909
             }
           },
           "marginal": {
             "dev": {
               "ci95": [
-                0.6161,
-                0.9015
+                0.551,
+                0.88
               ],
-              "k": 23,
-              "n": 29,
-              "patterns": 9,
-              "rate": 0.7931
+              "k": 18,
+              "n": 24,
+              "patterns": 8,
+              "rate": 0.75
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.2077,
-                0.9385
+                0.2065,
+                1
               ],
-              "k": 2,
-              "n": 3,
-              "patterns": 3,
-              "rate": 0.6667
+              "k": 1,
+              "n": 1,
+              "patterns": 1,
+              "rate": 1
             },
             "test": {
               "ci95": [
-                0.3968,
-                0.8922
+                0.4093,
+                0.9285
               ],
-              "k": 7,
-              "n": 10,
-              "patterns": 7,
-              "rate": 0.7
+              "k": 6,
+              "n": 8,
+              "patterns": 5,
+              "rate": 0.75
             }
           }
         },
@@ -5298,7 +5298,7 @@
             {
               "bad": 16,
               "from": 0.1,
-              "meanPredicted": 0.1213,
+              "meanPredicted": 0.1214,
               "n": 45,
               "patterns": 6,
               "to": 0.2
@@ -5314,7 +5314,7 @@
             {
               "bad": 2,
               "from": 0.3,
-              "meanPredicted": 0.3572,
+              "meanPredicted": 0.3573,
               "n": 2,
               "patterns": 1,
               "to": 0.4
@@ -5322,7 +5322,7 @@
             {
               "bad": 2,
               "from": 0.4,
-              "meanPredicted": 0.4365,
+              "meanPredicted": 0.4366,
               "n": 3,
               "patterns": 1,
               "to": 0.5
@@ -5330,7 +5330,7 @@
             {
               "bad": 1,
               "from": 0.5,
-              "meanPredicted": 0.533,
+              "meanPredicted": 0.5331,
               "n": 1,
               "patterns": 1,
               "to": 0.6
@@ -6001,21 +6001,21 @@
               },
               {
                 "from": 0.3,
-                "meanPredicted": 0.3572,
+                "meanPredicted": 0.3573,
                 "n": 2,
                 "observedRate": 1,
                 "to": 0.4
               },
               {
                 "from": 0.4,
-                "meanPredicted": 0.4365,
+                "meanPredicted": 0.4366,
                 "n": 3,
                 "observedRate": 0.6667,
                 "to": 0.5
               },
               {
                 "from": 0.5,
-                "meanPredicted": 0.533,
+                "meanPredicted": 0.5331,
                 "n": 1,
                 "observedRate": 1,
                 "to": 0.6
@@ -6029,9 +6029,9 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7388,
-                "n": 21,
-                "observedRate": 0.8571,
+                "meanPredicted": 0.7506,
+                "n": 28,
+                "observedRate": 0.8929,
                 "to": 0.8
               },
               {
@@ -6043,14 +6043,14 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9386,
-                "n": 18,
+                "meanPredicted": 0.943,
+                "n": 11,
                 "observedRate": 1,
                 "to": 1
               }
             ],
-            "brier": 0.1783,
-            "ece": 0.1974,
+            "brier": 0.1808,
+            "ece": 0.2066,
             "n": 111
           },
           "falseBlock": {
@@ -6105,7 +6105,7 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1238,
+                "meanPredicted": 0.1239,
                 "n": 12,
                 "observedRate": 0.5,
                 "to": 0.2
@@ -6133,7 +6133,7 @@
               },
               {
                 "from": 0.5,
-                "meanPredicted": 0.533,
+                "meanPredicted": 0.5331,
                 "n": 1,
                 "observedRate": 1,
                 "to": 0.6
@@ -6147,8 +6147,8 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7435,
-                "n": 4,
+                "meanPredicted": 0.7538,
+                "n": 6,
                 "observedRate": 1,
                 "to": 0.8
               },
@@ -6161,14 +6161,14 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9243,
-                "n": 3,
+                "meanPredicted": 0.9545,
+                "n": 1,
                 "observedRate": 1,
                 "to": 1
               }
             ],
-            "brier": 0.2441,
-            "ece": 0.316,
+            "brier": 0.2476,
+            "ece": 0.3271,
             "n": 24
           },
           "falseBlock": {
@@ -6223,7 +6223,7 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1211,
+                "meanPredicted": 0.1212,
                 "n": 17,
                 "observedRate": 0.4706,
                 "to": 0.2
@@ -6244,7 +6244,7 @@
               },
               {
                 "from": 0.4,
-                "meanPredicted": 0.4365,
+                "meanPredicted": 0.4366,
                 "n": 2,
                 "observedRate": 1,
                 "to": 0.5
@@ -6265,8 +6265,8 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7476,
-                "n": 6,
+                "meanPredicted": 0.7497,
+                "n": 7,
                 "observedRate": 1,
                 "to": 0.8
               },
@@ -6279,14 +6279,14 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9204,
-                "n": 3,
+                "meanPredicted": 0.9287,
+                "n": 2,
                 "observedRate": 1,
                 "to": 1
               }
             ],
-            "brier": 0.2557,
-            "ece": 0.2987,
+            "brier": 0.2571,
+            "ece": 0.3028,
             "n": 34
           },
           "falseBlock": {
@@ -6371,21 +6371,21 @@
               },
               {
                 "from": 0.5,
-                "meanPredicted": 0.5387,
+                "meanPredicted": 0.539,
                 "n": 6,
                 "observedRate": 1,
                 "to": 0.6
               },
               {
                 "from": 0.6,
-                "meanPredicted": 0.6274,
+                "meanPredicted": 0.6277,
                 "n": 1,
                 "observedRate": 0,
                 "to": 0.7
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7432,
+                "meanPredicted": 0.7434,
                 "n": 41,
                 "observedRate": 0.2683,
                 "to": 0.8
@@ -6399,14 +6399,14 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9912,
+                "meanPredicted": 0.9906,
                 "n": 61,
                 "observedRate": 0.9344,
                 "to": 1
               }
             ],
             "brier": 0.2065,
-            "ece": 0.2392,
+            "ece": 0.2389,
             "n": 111
           },
           "falseBlock": {
@@ -6489,7 +6489,7 @@
               },
               {
                 "from": 0.5,
-                "meanPredicted": 0.5387,
+                "meanPredicted": 0.539,
                 "n": 1,
                 "observedRate": 1,
                 "to": 0.6
@@ -6503,7 +6503,7 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.74,
+                "meanPredicted": 0.7402,
                 "n": 11,
                 "observedRate": 0.4545,
                 "to": 0.8
@@ -6517,14 +6517,14 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9848,
+                "meanPredicted": 0.984,
                 "n": 12,
                 "observedRate": 1,
                 "to": 1
               }
             ],
-            "brier": 0.1602,
-            "ece": 0.1577,
+            "brier": 0.1603,
+            "ece": 0.1582,
             "n": 24
           },
           "falseBlock": {
@@ -6607,7 +6607,7 @@
               },
               {
                 "from": 0.5,
-                "meanPredicted": 0.5387,
+                "meanPredicted": 0.539,
                 "n": 4,
                 "observedRate": 0.75,
                 "to": 0.6
@@ -6621,7 +6621,7 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7437,
+                "meanPredicted": 0.7439,
                 "n": 13,
                 "observedRate": 0.3846,
                 "to": 0.8
@@ -6635,14 +6635,14 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9862,
+                "meanPredicted": 0.9859,
                 "n": 17,
                 "observedRate": 0.9412,
                 "to": 1
               }
             ],
-            "brier": 0.1978,
-            "ece": 0.1847,
+            "brier": 0.1979,
+            "ece": 0.1846,
             "n": 34
           },
           "falseBlock": {
@@ -7485,7 +7485,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-10-02T23:48:10.844Z",
+    "generatedAt": "2026-10-03T01:20:18.488Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7504,8 +7504,8 @@
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
       "n": 1081,
-      "p50Ms": 1.194,
-      "p95Ms": 5.821
+      "p50Ms": 1.449,
+      "p95Ms": 6.654
     },
     "method": {
       "ci": "wilson-95",
@@ -8170,12 +8170,12 @@
         "category": "safety",
         "ci95": {
           "f1": [
-            0.9623,
+            0.9425,
             1
           ],
           "precision": [
-            0.9197,
-            1
+            0.8843,
+            0.9961
           ],
           "recall": [
             0.8843,
@@ -8184,36 +8184,36 @@
         },
         "credible95": {
           "f1": [
-            0.9363,
-            0.9973
+            0.9206,
+            0.9932
           ],
           "precision": [
-            0.9459,
-            1
+            0.9047,
+            0.9973
           ],
           "recall": [
-            0.8972,
-            0.9977
+            0.9007,
+            0.9978
           ]
         },
-        "f1": 0.9888,
+        "f1": 0.9778,
         "fn": 1,
-        "fp": 0,
+        "fp": 1,
         "labelBasis": "reading",
         "n": 97,
         "name": "no_injection_patterns",
         "negatives": 52,
         "positives": 45,
         "ppvAt": {
-          "0.01": 1,
-          "0.05": 1,
-          "0.2": 1,
-          "0.5": 1
+          "0.01": 0.3393,
+          "0.05": 0.728,
+          "0.2": 0.9271,
+          "0.5": 0.9807
         },
-        "precision": 1,
+        "precision": 0.9778,
         "recall": 0.9778,
         "skipped": 0,
-        "tn": 52,
+        "tn": 51,
         "tp": 44
       },
       {
@@ -8969,53 +8969,38 @@
           "transform": "case"
         },
         {
-          "caught": 40,
+          "caught": 44,
           "ci95": [
-            0.7884,
-            0.9641
+            0.9197,
+            1
           ],
-          "dropped": [
-            "c10",
-            "c54",
-            "c91",
-            "c93"
-          ],
+          "dropped": [],
           "n": 44,
-          "recall": 0.9091,
+          "recall": 1,
           "rule": "no_injection_patterns",
           "transform": "zero_width"
         },
         {
-          "caught": 40,
+          "caught": 44,
           "ci95": [
-            0.7884,
-            0.9641
+            0.9197,
+            1
           ],
-          "dropped": [
-            "c10",
-            "c54",
-            "c91",
-            "c93"
-          ],
+          "dropped": [],
           "n": 44,
-          "recall": 0.9091,
+          "recall": 1,
           "rule": "no_injection_patterns",
           "transform": "homoglyph"
         },
         {
-          "caught": 40,
+          "caught": 44,
           "ci95": [
-            0.7884,
-            0.9641
+            0.9197,
+            1
           ],
-          "dropped": [
-            "c10",
-            "c54",
-            "c91",
-            "c93"
-          ],
+          "dropped": [],
           "n": 44,
-          "recall": 0.9091,
+          "recall": 1,
           "rule": "no_injection_patterns",
           "transform": "fullwidth"
         },
