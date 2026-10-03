@@ -129,6 +129,20 @@ export const VALUE_MARK = '¶';
 /** Between two values in a view: the mark on a line of its own. */
 const VALUE_BREAK = `\n\n${VALUE_MARK}\n\n`;
 
+/**
+ * Whether the mark at `i` is a value separator: alone on its line, as the
+ * reading writes it and as every fold keeps it. A pilcrow inside a line of
+ * prose ("under ¶ 4 of the agreement") is a character, not a separator.
+ */
+export function isValueBreakAt(text: string, i: number): boolean {
+  if (text[i] !== VALUE_MARK) return false;
+  let a = i - 1;
+  while (a >= 0 && (text[a] === ' ' || text[a] === '\t')) a -= 1;
+  let b = i + 1;
+  while (b < text.length && (text[b] === ' ' || text[b] === '\t')) b += 1;
+  return (a < 0 || text[a] === '\n') && (b >= text.length || text[b] === '\n' || text[b] === '\r');
+}
+
 /** A view's text without the breaks it inserted between values: what the values themselves say, for a rule that measures length. */
 export function withoutValueBreaks(text: string): string {
   return text.split(VALUE_BREAK).join('\n');
@@ -1078,7 +1092,7 @@ export function sentencesOf(text: string): string[] {
     const ch = text[i];
 
     // A blank line ends a sentence whatever came before it, and so does the mark between two values of a structured output.
-    if ((ch === '\n' && blankLineFollows(text, i + 1)) || ch === '¶') {
+    if ((ch === '\n' && blankLineFollows(text, i + 1)) || isValueBreakAt(text, i)) {
       const piece = text.slice(start, i).trim();
       if (saysAWord(piece)) out.push(piece);
       start = i + 1;
@@ -1647,8 +1661,25 @@ export const INJECTION_PATTERNS = [
 
 const PHRASE_PATTERN_COUNT = 13;
 
-/** A field's value in the labelled reading of a structured output (`"name": value`) that opens with an override, within 80 characters. */
-const FIELD_VALUE_OVERRIDE = /"\s*: [^\n¶]{0,80}?\b(?:ignore|disregard)\s+(?:all\s+)?(?:previous|above|prior)\s+(?:instructions|prompts)\b/gi;
+/**
+ * A field's value in the labelled reading of a structured output (`"name":
+ * value`) that carries an override within its first 80 characters, on its
+ * first line. Group 1 is what comes before the phrase in the value; group 2
+ * is the phrase.
+ */
+const FIELD_VALUE_OVERRIDE = /"\s*: ([^\n¶]{0,80}?)\b((?:ignore|disregard)\s+(?:all\s+)?(?:previous|above|prior)\s+(?:instructions|prompts))\b/gi;
+
+/**
+ * Whether a field-value override is the field's payload or a sentence that
+ * quotes one. A value that opens with the override, quoted or not, is the
+ * payload. A value where words come first and a quotation mark then opens
+ * before the phrase ("The email said \"ignore previous instructions\"…") is
+ * a report about a payload, which the quotation rule lets through in prose.
+ */
+function quotesAPayload(before: string): boolean {
+  const q = before.search(/["'`“‘«„]/);
+  return q > 0 && /[\p{L}\p{N}]/u.test(before.slice(0, q));
+}
 
 /*
  * Containment index over [open, close] spans — "is this range inside some
@@ -1725,7 +1756,7 @@ function quotedSpans(text: string): SpanIndex {
      * quoted, and an override phrase there read as discussion. In prose a
      * quotation may run across paragraphs, as a forwarded email does.
      */
-    if (c === VALUE_MARK) {
+    if (isValueBreakAt(text, i)) {
       openDouble = openSingle = openSmart = openLow = openGuillemet = openCorner = -1;
       if (!inFence) openTick = -1;
       continue;
@@ -1955,8 +1986,11 @@ function noInjectionPatterns(ctx: EvalContext): EvalRuleResult {
     else if (spaced && injectionPatternFires(spacedText, spacedSpans, pattern, respectQuotes)) matches++;
     else if (encoded.some((r) => injectionPatternFires(r.text, r.spans, pattern, respectQuotes))) matches++;
   }
-  // An override as the value of a field, read in the labelled reading of a structured output only, as the server does.
-  if (ctx.outputRead === 'labelled') matches += [...raw.matchAll(FIELD_VALUE_OVERRIDE)].length;
+  // An override as the value of a field, read in the labelled reading of a structured output only, in every reading, as the server does.
+  if (ctx.outputRead === 'labelled') {
+    const readings = [raw, ...(normalized !== raw ? [normalized] : []), ...(words ? [wordsText] : []), ...(spaced ? [spacedText] : [])];
+    if (readings.some((text) => [...text.matchAll(FIELD_VALUE_OVERRIDE)].some((m) => !quotesAPayload(m[1])))) matches++;
+  }
   const passed = matches === 0;
   return {
     ruleName: 'no_injection_patterns',

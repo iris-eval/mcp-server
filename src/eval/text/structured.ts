@@ -73,6 +73,20 @@ export const VALUE_MARK = '¶';
 /** Between two values in a view: the mark on a line of its own. */
 const VALUE_BREAK = `\n\n${VALUE_MARK}\n\n`;
 
+/**
+ * Whether the mark at `i` is a value separator: alone on its line, as the
+ * reading writes it and as every fold keeps it. A pilcrow inside a line of
+ * prose ("under ¶ 4 of the agreement") is a character, not a separator.
+ */
+export function isValueBreakAt(text: string, i: number): boolean {
+  if (text[i] !== VALUE_MARK) return false;
+  let a = i - 1;
+  while (a >= 0 && (text[a] === ' ' || text[a] === '\t')) a -= 1;
+  let b = i + 1;
+  while (b < text.length && (text[b] === ' ' || text[b] === '\t')) b += 1;
+  return (a < 0 || text[a] === '\n') && (b >= text.length || text[b] === '\n' || text[b] === '\r');
+}
+
 /** A view's text without the breaks it inserted between values: what the values themselves say, for a rule that measures length. */
 export function withoutValueBreaks(text: string): string {
   return text.split(VALUE_BREAK).join('\n');

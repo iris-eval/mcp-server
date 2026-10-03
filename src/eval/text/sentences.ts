@@ -30,6 +30,8 @@
  * the full stop after them is punctuation and not an end. Lowercase, no
  * trailing stop.
  */
+import { isValueBreakAt } from './structured.js';
+
 const ALWAYS_ABBREVIATION = new Set([
   'dr', 'mr', 'mrs', 'ms', 'prof', 'sr', 'jr', 'st', 'mt',
   'e.g', 'i.e', 'vs', 'al', 'cf', 'approx', 'est',
@@ -114,7 +116,7 @@ export function sentencesOf(text: string): string[] {
     const ch = text[i];
 
     // A blank line ends a sentence whatever came before it, and so does the mark between two values of a structured output.
-    if ((ch === '\n' && blankLineFollows(text, i + 1)) || ch === '¶') {
+    if ((ch === '\n' && blankLineFollows(text, i + 1)) || isValueBreakAt(text, i)) {
       const piece = text.slice(start, i).trim();
       if (saysAWord(piece)) out.push(piece);
       start = i + 1;

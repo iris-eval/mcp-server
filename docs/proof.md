@@ -268,7 +268,9 @@ say the same thing and are held at zero changes, in the verdict and in
 every rule that can decide one: every space doubled, each line wrapped at
 60 columns, and the output sent as one string field of a JSON object (a
 structured output is read by its values; see the API reference, "Structured
-outputs"). The others are measured and published with the reason each is
+outputs"). That zero is measured on the corpus: an answer whose field opens
+with a quoted override phrase is read as the payload it carries, where the
+same words in prose would be read as a quotation. The others are measured and published with the reason each is
 not held: curly quotes and a Markdown quote prefix (each changes one
 structure a rule reads: a JSON key, a diff), two envelopes that put a
 field beside the answer (a chat message's role, a confidence), which is
