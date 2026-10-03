@@ -5,7 +5,7 @@ import type { EvalRule, EvalContext, EvalRuleResult } from '../../types/eval.js'
 import { acknowledgesFailure, failuresIn, isFailedStep, skipWithoutTrajectory, stableStringify, truncate } from './trajectory.js';
 import { looksTruncated } from '../steps.js';
 import { sentencesOf } from '../text/sentences.js';
-import { isValueBreakAt } from '../text/structured.js';
+import { isValueBreakAt, VALUE_MARK } from '../text/structured.js';
 import { contentTerms } from './relevance.js';
 import { ARG_SCAN_CHARS, ACTION_TERM_OVERLAP, ECHO_TERM_OVERLAP, INJECTION_SCAN_CHARS, INJECTION_SCAN_TOTAL_CHARS, INPUT_TERM_SCAN_CHARS, MAX_SCANNED_TOOL_OUTPUTS, findDirectives, foldForDirectives } from '../text/directives.js';
 import { TAIL_PREFIX_MIN, indexGround, insideAny, isGrounded, isUbiquitous, proposalSpans, scanTokens, type Token } from '../text/identifiers.js';
@@ -919,7 +919,7 @@ function quotedSpans(text: string): SpanIndex {
      * quoted, and an override phrase there read as discussion. In prose a
      * quotation may run across paragraphs, as a forwarded email does.
      */
-    if (isValueBreakAt(text, i)) {
+    if (c === VALUE_MARK && isValueBreakAt(text, i)) {
       openDouble = openSingle = openSmart = openLow = openGuillemet = openCorner = -1;
       if (!inFence) openTick = -1;
       continue;

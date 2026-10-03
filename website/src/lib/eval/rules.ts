@@ -1092,7 +1092,7 @@ export function sentencesOf(text: string): string[] {
     const ch = text[i];
 
     // A blank line ends a sentence whatever came before it, and so does the mark between two values of a structured output.
-    if ((ch === '\n' && blankLineFollows(text, i + 1)) || isValueBreakAt(text, i)) {
+    if ((ch === '\n' && blankLineFollows(text, i + 1)) || (ch === VALUE_MARK && isValueBreakAt(text, i))) {
       const piece = text.slice(start, i).trim();
       if (saysAWord(piece)) out.push(piece);
       start = i + 1;
@@ -1756,7 +1756,7 @@ function quotedSpans(text: string): SpanIndex {
      * quoted, and an override phrase there read as discussion. In prose a
      * quotation may run across paragraphs, as a forwarded email does.
      */
-    if (isValueBreakAt(text, i)) {
+    if (c === VALUE_MARK && isValueBreakAt(text, i)) {
       openDouble = openSingle = openSmart = openLow = openGuillemet = openCorner = -1;
       if (!inFence) openTick = -1;
       continue;
