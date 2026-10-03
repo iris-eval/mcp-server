@@ -183,6 +183,12 @@ function inputsSeen(rows: readonly EvalRuleResult[]): Set<Need> {
  * them: what the later layers would have decided is on the verdict as
  * `also`, so a reader acting on one basis is never told a credential leak
  * did not happen because a cost ceiling was broken first.
+ *
+ * Pass the whole evaluation. `provenance` carries the evidence record (what
+ * the call carried, and the capture source's declaration), and a result
+ * without one is read as a row stored before that record existed: required
+ * evidence met by what an evaluated rule read, and no capture source, so a
+ * hole in a declared record is not seen.
  */
 export function verdictPath(
   result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated' | 'provenance'>,
@@ -437,7 +443,8 @@ function unlabelledText(cfg: Pick<ComposeConfig, 'calibration'>): string {
  * verdictPath() reads; this stamps the verdict from the first layer that
  * fails, or when none does from the first that could not check, and lists
  * every other layer that would have decided. Adding a layer means adding a
- * node.
+ * node. As with verdictPath(), a result without `provenance` is read as a
+ * row stored before the evidence record existed.
  */
 export function compose(
   result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated' | 'provenance'>,
@@ -635,7 +642,8 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
   const laterRules = new Set((verdict.also ?? []).filter((l) => l.basis !== 'risk_over_loss').flatMap((l) => l.by));
   const vetoed = verdict.basis === 'detector_veto' || (verdict.also ?? []).some((l) => l.basis === 'detector_veto');
   const said = (verdict.also ?? []).filter((l) => !(l.basis === 'risk_over_loss' && vetoed)).map(layerText);
-  if (said.length > 0) {
+  // Nothing judged is not a layer anything could clear; the evidence beside it has its own sentence below.
+  if (said.length > 0 && verdict.basis !== 'no_rules') {
     out.push({
       severity: 'block',
       addressee: 'agent',

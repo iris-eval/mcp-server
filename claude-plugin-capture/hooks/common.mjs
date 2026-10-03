@@ -94,6 +94,8 @@ function sessionDir(sessionId) {
 const turnFile = (sessionId, key) => join(sessionDir(sessionId), `${key}.turn.json`);
 const callsFile = (sessionId, key) => join(sessionDir(sessionId), `${key}.calls.jsonl`);
 const sentFile = (sessionId, key) => join(sessionDir(sessionId), `${key}.sent.json`);
+// Its own file: a hook that could not write its call to the calls file (read-only, held open by another process) can still say it lost one.
+const lostFile = (sessionId, key) => join(sessionDir(sessionId), `${key}.lost.jsonl`);
 const currentFile = (sessionId) => join(sessionDir(sessionId), 'current');
 
 /**
@@ -183,9 +185,13 @@ export function readTurn(sessionId, key, path = callsFile(sessionId, key)) {
         log(`a recorded call could not be read and is left out: ${line.slice(0, 80)}`);
         continue;
       }
-      if (record && record.lost === true) lost += 1;
-      else calls.push(record);
+      calls.push(record);
     }
+  }
+  try {
+    lost += readFileSync(lostFile(sessionId, key), 'utf8').split('\n').filter((l) => l.trim() !== '').length;
+  } catch {
+    /* no hook of this turn failed */
   }
   let sent = { parts: 0, calls: 0, stopped: false };
   try {
@@ -196,9 +202,15 @@ export function readTurn(sessionId, key, path = callsFile(sessionId, key)) {
   return { header, calls, sent, lost };
 }
 
-/** Marks a call this turn lost: its hook failed before the call was recorded. Read by readTurn, so the turn's list is never declared whole. */
+/**
+ * Marks a call this turn lost: its hook failed before the call was recorded.
+ * Written to the turn's own lost file, not the calls file the failed write
+ * could not reach, and read by readTurn, so the turn's list is never
+ * declared whole. A hook Claude Code did not run at all leaves no mark: no
+ * hook can see it.
+ */
 export function markLost(sessionId, key) {
-  appendFileSync(callsFile(sessionId, key), `\n${JSON.stringify({ lost: true })}\n`, { mode: FILE_MODE });
+  appendFileSync(lostFile(sessionId, key), `${new Date().toISOString()}\n`, { mode: FILE_MODE });
 }
 
 export function markSent(sessionId, key, sent) {
@@ -206,7 +218,7 @@ export function markSent(sessionId, key, sent) {
 }
 
 function removeTurn(sessionId, key) {
-  for (const p of [turnFile(sessionId, key), callsFile(sessionId, key), sentFile(sessionId, key)]) {
+  for (const p of [turnFile(sessionId, key), callsFile(sessionId, key), sentFile(sessionId, key), lostFile(sessionId, key)]) {
     try {
       unlinkSync(p);
     } catch {
@@ -219,7 +231,7 @@ function removeTurn(sessionId, key) {
 function turnKeys(dir) {
   const keys = new Set();
   for (const name of readdirSync(dir)) {
-    const m = /^(.+)\.(?:turn|calls|sent)\.jsonl?$/.exec(name);
+    const m = /^(.+)\.(?:turn|calls|sent|lost)\.jsonl?$/.exec(name);
     if (m) keys.add(m[1]);
   }
   return [...keys];

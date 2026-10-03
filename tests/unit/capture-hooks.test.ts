@@ -12,7 +12,7 @@
  * that keeps the turn going, a turn that ended in an API error.
  */
 import { spawn } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, existsSync, statSync, utimesSync, writeFileSync, appendFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, existsSync, statSync, utimesSync, writeFileSync, appendFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -181,12 +181,19 @@ describe('iris-eval-capture hooks: one turn', () => {
     t = await turn();
     expect(t.tool_calls!.map((c) => c.tool_name)).toEqual(['Read']);
     expect(t.capture?.complete).toEqual(['input']);
-    // A hook that failed and marked its call lost (markLost).
+    // A hook that could not write its call: the calls file is read-only. It marks the call lost in a file of its own.
     fresh();
     await hook('prompt', prompt);
-    appendFileSync(join(data, 'sessions', SID, `${P1}.calls.jsonl`), '\n{"lost":true}\n');
-    t = await turn();
-    expect(t.tool_calls).toBeUndefined();
+    await hook('tool', read);
+    const callsPath = join(data, 'sessions', SID, `${P1}.calls.jsonl`);
+    chmodSync(callsPath, 0o444);
+    try {
+      await hook('tool', { ...read, tool_name: 'Bash', tool_input: { command: 'rm -rf build' }, tool_use_id: 'toolu_rm' });
+      t = await turn();
+    } finally {
+      chmodSync(callsPath, 0o644);
+    }
+    expect(t.tool_calls!.map((c) => c.tool_name)).toEqual(['Read']);
     expect(t.capture?.complete).toEqual(['input']);
   }, 120_000);
 

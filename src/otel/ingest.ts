@@ -494,6 +494,7 @@ function captureOf(resource: Record<string, unknown>, root: Record<string, unkno
    */
   const KEYS = ['iris.capture.name', 'iris.capture.version', 'iris.capture.complete'];
   const from = KEYS.some((k) => resource[k] !== undefined) ? resource : root;
+  if (from === resource && KEYS.some((k) => root[k] !== undefined)) lacked.push('iris.capture.* on the root span (the resource carries a declaration, which is the one read; the root span\'s was ignored)');
   const name = from['iris.capture.name'];
   const version = from['iris.capture.version'];
   const listed = from['iris.capture.complete'];

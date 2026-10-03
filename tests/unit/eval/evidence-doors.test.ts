@@ -256,6 +256,7 @@ describe('OTLP declarations, read', () => {
       ],
     });
     expect(fromOtlp(mixed).traces[0].trace.capture).toEqual({ name: 'sdk-generic' });
+    expect(fromOtlp(mixed).traces[0].lacked).toContain("iris.capture.* on the root span (the resource carries a declaration, which is the one read; the root span's was ignored)");
     const rootOnly = otlpTraceRequestSchema.parse({
       resourceSpans: [{ resource: { attributes: [] }, scopeSpans: [{ spans: [{ traceId: '5b8efff798038103d269b633813fc60c', spanId: 'eee19b7ec3c1b174', name: 'chat', kind: 3, startTimeUnixNano: '1790000000000000000', attributes: [{ key: 'iris.capture.name', value: s('framework-x') }, { key: 'iris.capture.complete', value: s('input') }] }] }] }],
     });

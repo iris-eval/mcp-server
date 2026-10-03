@@ -21,7 +21,7 @@
  */
 import { createHash } from 'node:crypto';
 import type { Coverage, EvalRule, EvalRuleResult, EvidenceRecord, Need, Provenance } from '../types/eval.js';
-import { captureLabel, observedNoToolCalls } from './evidence.js';
+import { brokenOf, captureLabel, observedNoToolCalls } from './evidence.js';
 import type { EffectiveCriticality } from './criticality.js';
 import { RULE_QUESTION_IDS } from './questions.js';
 import { NEEDS } from './failure-classes.js';
@@ -78,6 +78,16 @@ export function deriveCoverage(ruleResults: readonly EvalRuleResult[], present?:
     }
     if (observedNoToolCalls(evidence) && rows.every((r) => r.skipClass === 'not_applicable' && (r.saw ?? []).includes('tool_calls'))) {
       questions.push({ id, status: 'not_applicable', why: `no tool was called: ${captureLabel(evidence?.capture)} records every tool call and recorded none` });
+      continue;
+    }
+    // What the rules lacked is a field the capture source promised: the record is incomplete, which is not the agent's to send.
+    const hole = brokenOf(evidence).filter((f) => rows.some((r) => (r.lacked ?? []).includes(f)));
+    if (hole.length > 0) {
+      questions.push({
+        id,
+        status: 'unjudged',
+        why: `the record is incomplete: ${captureLabel(evidence?.capture)} declares it records ${hole.join(' and ')} in full, and this trace does not carry ${hole.length === 1 ? 'it' : 'them'}`,
+      });
       continue;
     }
     const missing = new Set<string>();

@@ -107,6 +107,12 @@ describe('a field the capture source declared and the trace left out', () => {
     expect(sentences(r)).toContain(
       '[block/operator] Not checked, which is not a pass: iris-eval-capture 0.20.0 declares it records tool_calls in full, and this trace does not carry it in full. The record is incomplete: check how iris-eval-capture 0.20.0 records tool_calls.',
     );
+    // The coverage line says the same, rather than asking the agent to send what the capture source lost.
+    expect(question(r, 'tool_use_correct')).toEqual({
+      id: 'tool_use_correct',
+      status: 'unjudged',
+      why: 'the record is incomplete: iris-eval-capture 0.20.0 declares it records tool_calls in full, and this trace does not carry it',
+    });
   });
 
   it('holds for the input, and for a call whose result the record lost', async () => {
@@ -142,6 +148,11 @@ describe('a field the capture source declared and the trace left out', () => {
     const r = await shipped.evaluate('cost', { output: ASK.output, recordedBy: 'harness', capture: HOOK });
     expect(r.verdict).toMatchObject({ state: 'unknown', basis: 'no_rules', also: [{ basis: 'required_evidence_missing', state: 'unknown', by: ['input', 'tool_calls'] }] });
     expect(sentences(r).some((t) => t.startsWith('[block/operator] Also not checked: iris-eval-capture 0.20.0 declares it records input and tool_calls in full'))).toBe(true);
+    // Nothing judged is not a layer to clear: no sentence names it as one.
+    expect(sentences(r).some((t) => t.includes('no_rules decided this verdict'))).toBe(false);
+    // The same holds for evidence a deployment requires, with no capture source at all.
+    const required = await engine({ requiredEvidence: ['cost'] }).evaluate('cost', { output: ASK.output });
+    expect(required.verdict).toMatchObject({ basis: 'no_rules', also: [{ basis: 'required_evidence_missing', state: 'unknown', by: ['cost'] }] });
     // A row judged under the earlier composer rules reads back as it was given.
     expect(compose(r, { ...DEFAULT_COMPOSE, rules: 1 })).toEqual({ state: 'unknown', passed: false, basis: 'no_rules', by: [], risk: null });
   });
