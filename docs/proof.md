@@ -212,7 +212,7 @@ committed numbers are the code's. Read there:
 | accuracy vs `shouldShip` | per split and composer, with a Wilson interval; the test split is the headline, the real transcripts are the held-out line (staged; see below) |
 | false blocks on clean · missed blocks | the two ways a verdict is wrong, separately, because a gate cares about them differently |
 | difference from legacy | accuracy(risk) − accuracy(legacy) with a Newcombe hybrid-score interval; an interval that straddles zero says the corpus cannot tell them apart |
-| calibration | Brier score and expected calibration error over ten bins, for the legacy score read as P(bad) = 1 − score and for the risk's p_bad |
+| calibration | Brier score and expected calibration error over ten bins, for the legacy score read as P(bad) = 1 − score and for the risk's p_bad; and the AUC, the chance a bad output gets a higher P(bad) than a good one, which does not move when every estimate moves |
 | recall by failure class | class present → some rule mapped to it fired; a class with no shipped detector reads 0 and says so |
 | threshold sweep | on the dev split only; the utility-optimal τ is published as a check on the loss model, never adopted |
 

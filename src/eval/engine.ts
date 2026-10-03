@@ -256,7 +256,7 @@ export class EvalEngine {
       prior: prior.pi,
       priorSource: prior.source,
       priorMode: this.compose.priorMode,
-      calibration: PUBLISHED_CALIBRATION.compositeVersion,
+      calibration: PUBLISHED_CALIBRATION.version,
       ...(this.compose.requiredEvidence.length > 0 ? { requiredEvidence: [...this.compose.requiredEvidence] } : {}),
       rules: COMPOSER_RULES,
     };

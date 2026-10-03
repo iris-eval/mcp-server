@@ -1,6 +1,6 @@
 # The verdict, measured — the composite corpus
 
-Generated 2026-10-03T02:59:19.163Z for v0.19.0 (local generating commit `33a52fb6` — branch commits are squashed on merge, so cite the version).
+Generated 2026-10-03T05:59:34.911Z for v0.19.0 (local generating commit `6318403d` — branch commits are squashed on merge, so cite the version).
 Composite version `ed158f72a620` (sha256 over proof/composite/*.json, the real transcripts and the family corpus `451a94a7bc92`). Reproduce with `npm run proof -- --composite`; CI runs `npm run proof -- --check --composite`.
 
 145 cases: 24 real transcripts (the held-out line: staged, not production traffic) and 121 composed; 100 must not ship, 45 may, 0 unlabelled. Split: 111 dev / 34 test, fnv1a(id + "iris-composite-split-v1") % 100 < 70 → dev, else test; never stored. Headline numbers are the test split. The expected verdict is true by construction — the classes present are a fact of what was injected — and never derived from a composer.
@@ -9,17 +9,19 @@ Composite version `ed158f72a620` (sha256 over proof/composite/*.json, the real t
 
 **legacy** — the pre-0.10.0 arithmetic, computed explicitly by proof/lib/legacy-composer.ts: weighted score ≥ the default threshold and no critical failure. From 0.10.0 the engine composes passed, so this baseline is derived rather than read off the result; from 0.12.0 it is no longer a product behaviour and this file is the only place it survives. **risk** — the product's own composer: compose() in src/eval/compose.ts, the function every verdict the product gives comes from: gates and vetoes first, then a class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired), with 2,000 seeded draws over the Beta posteriors for the interval; measurements and policies never enter the risk; τ = 0.5 (a false pass costs 1× a false block), prior 0.5. Two readings of the prior are measured: *per-output* (π is the prior that the output is bad; spread over the K examined classes as π_c = 1 − (1 − π)^(1/K)) and *per-class* (π is the prior that each examined class is present, as originally specified; with K classes examined the prior that nothing is wrong is (1 − π)^K).
 
-| Split | Composer | Accuracy vs shouldShip (95% CI) | False blocks on clean (95% CI) | Missed blocks (95% CI) | Brier | ECE |
-|---|---|---|---|---|--:|--:|
-| test | legacy | 35.3% [21.5, 52.1] (n=34) | 10.0% [1.8, 40.4] (n=10) | 87.5% [69.0, 95.7] (n=24) | 0.587 | 0.634 |
-| test | risk, per-output prior | 64.7% [47.9, 78.5] (n=34) | 10.0% [1.8, 40.4] (n=10) | 45.8% [27.9, 64.9] (n=24) | 0.257 | 0.303 |
-| test | risk, per-class prior | 70.6% [53.8, 83.2] (n=34) | 100.0% [72.3, 100.0] (n=10) | 0.0% [0.0, 13.8] (n=24) | 0.198 | 0.185 |
-| real transcripts (held out, staged) | legacy | 45.8% [27.9, 64.9] (n=24) | 0.0% [0.0, 39.0] (n=6) | 72.2% [49.1, 87.5] (n=18) | 0.669 | 0.708 |
-| real transcripts (held out, staged) | risk, per-output prior | 70.8% [50.8, 85.1] (n=24) | 0.0% [0.0, 39.0] (n=6) | 38.9% [20.3, 61.4] (n=18) | 0.248 | 0.327 |
-| real transcripts (held out, staged) | risk, per-class prior | 75.0% [55.1, 88.0] (n=24) | 100.0% [61.0, 100.0] (n=6) | 0.0% [0.0, 17.6] (n=18) | 0.160 | 0.158 |
-| dev | legacy | 52.3% [43.0, 61.3] (n=111) | 5.7% [1.6, 18.6] (n=35) | 67.1% [55.9, 76.6] (n=76) | 0.567 | 0.609 |
-| dev | risk, per-output prior | 77.5% [68.9, 84.3] (n=111) | 14.3% [6.3, 29.4] (n=35) | 26.3% [17.7, 37.2] (n=76) | 0.181 | 0.207 |
-| dev | risk, per-class prior | 68.5% [59.3, 76.4] (n=111) | 100.0% [90.1, 100.0] (n=35) | 0.0% [0.0, 4.8] (n=76) | 0.206 | 0.239 |
+AUC is the chance that a bad output gets a higher P(bad) than a good one (ties count half). Brier and ECE move when every estimate moves; AUC does not, so it separates a composer that ranks outputs better from one that only shifts them. On a corpus whose cases are mostly bad by construction (100 of 145 here), a composer that rates every less-checked output higher also ranks better, so read it beside how many classes a case was checked for.
+
+| Split | Composer | Accuracy vs shouldShip (95% CI) | False blocks on clean (95% CI) | Missed blocks (95% CI) | Brier | ECE | AUC |
+|---|---|---|---|---|--:|--:|--:|
+| test | legacy | 35.3% [21.5, 52.1] (n=34) | 10.0% [1.8, 40.4] (n=10) | 87.5% [69.0, 95.7] (n=24) | 0.587 | 0.634 | 0.873 |
+| test | risk, per-output prior | 64.7% [47.9, 78.5] (n=34) | 10.0% [1.8, 40.4] (n=10) | 45.8% [27.9, 64.9] (n=24) | 0.257 | 0.303 | 0.777 |
+| test | risk, per-class prior | 70.6% [53.8, 83.2] (n=34) | 100.0% [72.3, 100.0] (n=10) | 0.0% [0.0, 13.8] (n=24) | 0.198 | 0.185 | 0.698 |
+| real transcripts (held out, staged) | legacy | 45.8% [27.9, 64.9] (n=24) | 0.0% [0.0, 39.0] (n=6) | 72.2% [49.1, 87.5] (n=18) | 0.669 | 0.708 | 0.889 |
+| real transcripts (held out, staged) | risk, per-output prior | 70.8% [50.8, 85.1] (n=24) | 0.0% [0.0, 39.0] (n=6) | 38.9% [20.3, 61.4] (n=18) | 0.248 | 0.327 | 0.810 |
+| real transcripts (held out, staged) | risk, per-class prior | 75.0% [55.1, 88.0] (n=24) | 100.0% [61.0, 100.0] (n=6) | 0.0% [0.0, 17.6] (n=18) | 0.160 | 0.158 | 0.810 |
+| dev | legacy | 52.3% [43.0, 61.3] (n=111) | 5.7% [1.6, 18.6] (n=35) | 67.1% [55.9, 76.6] (n=76) | 0.567 | 0.609 | 0.763 |
+| dev | risk, per-output prior | 77.5% [68.9, 84.3] (n=111) | 14.3% [6.3, 29.4] (n=35) | 26.3% [17.7, 37.2] (n=76) | 0.181 | 0.207 | 0.830 |
+| dev | risk, per-class prior | 68.5% [59.3, 76.4] (n=111) | 100.0% [90.1, 100.0] (n=35) | 0.0% [0.0, 4.8] (n=76) | 0.206 | 0.239 | 0.810 |
 
 ### The three states, counted apart
 

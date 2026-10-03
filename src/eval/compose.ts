@@ -310,10 +310,13 @@ function walk(
 /**
  * Whether a verdict's confidence label can be derived under this
  * configuration: always when judging now, and on a stored row only when it
- * was stamped with the calibration table this build ships.
+ * was stamped with the calibration table this build ships. The stamp is the
+ * table's own version, which changes with its content, not the corpus's:
+ * the table is regenerated whenever a rule moves a verdict, and the corpus
+ * stays the same.
  */
 export function calibrationAvailable(cfg: Pick<ComposeConfig, 'calibration'>): boolean {
-  return cfg.calibration === undefined || cfg.calibration === PUBLISHED_CALIBRATION.compositeVersion;
+  return cfg.calibration === undefined || cfg.calibration === PUBLISHED_CALIBRATION.version;
 }
 
 /** The confidence label and why, for a verdict that came through the risk node. */

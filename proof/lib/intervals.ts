@@ -114,10 +114,28 @@ export interface Calibration {
   n: number;
   brier: number;
   ece: number;
+  /**
+   * Discrimination: the chance that a bad output is given a higher P(bad)
+   * than a good one, a tie counting half (the area under the ROC curve).
+   * Brier and ECE move when every estimate moves; this does not, so it tells
+   * a change that ranks outputs better from one that only shifts them. Null
+   * when the pairs hold only one outcome.
+   */
+  auc: number | null;
   bins: CalibrationBin[];
 }
 
-/** Brier score and expected calibration error over ten equal-width bins; `p` is P(bad), `bad` the outcome. */
+/** The area under the ROC curve: over every (bad, good) pair, how often the bad one has the higher P(bad), ties counting half. */
+export function auc(pairs: ReadonlyArray<{ p: number; bad: boolean }>): number | null {
+  const bad = pairs.filter((x) => x.bad).map((x) => x.p);
+  const good = pairs.filter((x) => !x.bad).map((x) => x.p);
+  if (bad.length === 0 || good.length === 0) return null;
+  let wins = 0;
+  for (const b of bad) for (const g of good) wins += b > g ? 1 : b === g ? 0.5 : 0;
+  return round4(wins / (bad.length * good.length));
+}
+
+/** Brier score, expected calibration error over ten equal-width bins, and the AUC; `p` is P(bad), `bad` the outcome. */
 export function calibration(pairs: ReadonlyArray<{ p: number; bad: boolean }>): Calibration | null {
   if (pairs.length === 0) return null;
   const bins: CalibrationBin[] = Array.from({ length: 10 }, (_, i) => ({ from: i / 10, to: (i + 1) / 10, n: 0, meanPredicted: null, observedRate: null }));
@@ -138,5 +156,5 @@ export function calibration(pairs: ReadonlyArray<{ p: number; bad: boolean }>): 
     b.observedRate = round4(sums[i].bad / b.n);
     ece += (b.n / pairs.length) * Math.abs(b.meanPredicted - b.observedRate);
   });
-  return { n: pairs.length, brier: round4(brier / pairs.length), ece: round4(ece), bins };
+  return { n: pairs.length, brier: round4(brier / pairs.length), ece: round4(ece), auc: auc(pairs), bins };
 }

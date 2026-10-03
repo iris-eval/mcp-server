@@ -24,6 +24,7 @@ const bins = (over: BinOver): CalibrationTable['bins'] =>
   Array.from({ length: 10 }, (_, i) => ({ from: i / 10, to: (i + 1) / 10, n: 0, bad: 0, patterns: 0, meanPredicted: null, ...(over[i] ? { patterns: over[i].n, ...over[i] } : {}) }));
 
 const table = (over: BinOver): CalibrationTable => ({
+  version: 'test',
   compositeVersion: 'test',
   split: 'dev',
   prior: 0.5,
@@ -178,9 +179,11 @@ describe('the shipped calibration', () => {
       created_at: '2026-01-01T00:00:00Z',
     } as unknown as EvalResult;
     const now = compose(result, DEFAULT_COMPOSE);
-    const same = compose(result, { ...DEFAULT_COMPOSE, calibration: PUBLISHED_CALIBRATION.compositeVersion });
+    const same = compose(result, { ...DEFAULT_COMPOSE, calibration: PUBLISHED_CALIBRATION.version });
     expect(same).toEqual(now);
-    for (const calibration of ['000000000000', null]) {
+    // The corpus's version is not the table's: a row stamped with it, as rows were before the table had its own, reads back unlabelled.
+    expect(PUBLISHED_CALIBRATION.version).not.toBe(PUBLISHED_CALIBRATION.compositeVersion);
+    for (const calibration of ['000000000000', PUBLISHED_CALIBRATION.compositeVersion, null]) {
       const cfg = { ...DEFAULT_COMPOSE, calibration };
       const old = compose(result, cfg);
       // The verdict itself is untouched; only the label is withheld.

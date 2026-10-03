@@ -70,7 +70,7 @@ describe('a stored verdict reads back as given', () => {
     const s = await store();
     const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
     const written = await engine.evaluateAll(CLEAN);
-    expect(written.provenance?.composer).toMatchObject({ priorMode: 'per-output', calibration: PUBLISHED_CALIBRATION.compositeVersion });
+    expect(written.provenance?.composer).toMatchObject({ priorMode: 'per-output', calibration: PUBLISHED_CALIBRATION.version });
     expect(written.verdict?.confidence).toBeDefined();
     await s.insertEvalResult(LOCAL_TENANT, written);
     const read = (await s.getEvalById(LOCAL_TENANT, written.id))!;

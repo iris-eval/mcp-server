@@ -85,6 +85,14 @@ export interface CalibrationBin {
 }
 
 export interface CalibrationTable {
+  /**
+   * The table's own version: a hash over everything below. A verdict is
+   * stamped with it, and a stored verdict is labelled again only under the
+   * table with the same version (compose.ts, calibrationAvailable). The
+   * corpus's version is not enough: the table is regenerated whenever a rule
+   * moves a verdict, and the corpus stays the same.
+   */
+  version: string;
   compositeVersion: string;
   split: 'dev';
   prior: number;
