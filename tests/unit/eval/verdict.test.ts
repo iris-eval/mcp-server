@@ -32,7 +32,9 @@ describe('deriveVerdict — the basis of today\'s arithmetic, with passed unchan
   it('a clean output is clean', async () => {
     const r = await engine.evaluate('completeness', { output: 'The retention sweep runs at boot. It deletes traces older than the configured window. Nothing else changes.' });
     expect(r.passed).toBe(true);
-    expect(r.verdict).toMatchObject({ state: 'pass', passed: true, basis: 'clean', by: [], risk: null });
+    expect(r.verdict).toMatchObject({ state: 'pass', passed: true, basis: 'clean', by: [] });
+    // The completeness bundle carries a detection (says_something), so its verdict carries a risk estimate, under the line.
+    expect(r.verdict!.risk!.pBad).toBeLessThan(0.5);
   });
 
   it('a thin output no longer fails on the weighted mean alone, and the yardstick shows the divergence', async () => {
@@ -49,7 +51,8 @@ describe('deriveVerdict — the basis of today\'s arithmetic, with passed unchan
      * Asserting both sides is the point: the divergence is deliberate and
      * published (proof/COMPOSITE.md), not an accident of the removal.
      */
-    const r = await engine.evaluate('completeness', { output: 'ok' });
+    // With the ask's expected answer, so expected_coverage objects too: says_something passes "ok" and lifts the mean on its own.
+    const r = await engine.evaluate('completeness', { output: 'ok', expected: 'The retention sweep deletes traces older than the configured window.' });
     expect(r.score).toBeLessThan(defaultConfig.eval.defaultThreshold);
     expect(legacyWouldShip(r, defaultConfig.eval.defaultThreshold)).toBe(false);
     expect(r.passed).toBe(true);

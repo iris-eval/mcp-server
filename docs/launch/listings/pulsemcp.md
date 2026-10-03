@@ -6,11 +6,11 @@
 
 ## Description field
 
-Stop shipping agents on vibes. Iris is an open-source MCP server that scores every agent run for quality, safety, and cost. 12 tools your MCP client lists on connect — no SDK, no code changes. 25 built-in rules (21 PII patterns, 38 prompt-injection patterns, 25 hallucination signals, cost thresholds, and 9 that read the agent's tool calls) score deterministically and free; a detected PII leak, injection or blocklist hit fails the verdict whatever the score says, and every verdict names the layer that decided it. Optional LLM judge (7 templates, your own key, a hard per-call cost cap) and citation verification for the semantic questions. Nothing leaves your machine unless you turn one of these on: an OpenTelemetry endpoint (IRIS_OTEL_ENDPOINT), which exports traces to the collector you name; the LLM judge with your own key, which sends the text it judges to that provider, and whose citation check fetches the pages an output cites; or a webhook, which posts ids, the verdict and rule names, never the text, to the address you set. MIT-licensed core.
+Stop shipping agents on vibes. Iris is an open-source MCP server that scores every agent run for quality, safety, and cost. 12 tools your MCP client lists on connect — no SDK, no code changes. 26 built-in rules (21 PII patterns, 38 prompt-injection patterns, 25 hallucination signals, cost thresholds, and 10 that read the agent's tool calls) score deterministically and free; a detected PII leak, injection or blocklist hit fails the verdict whatever the score says, and every verdict names the layer that decided it. Optional LLM judge (7 templates, your own key, a hard per-call cost cap) and citation verification for the semantic questions. Nothing leaves your machine unless you turn one of these on: an OpenTelemetry endpoint (IRIS_OTEL_ENDPOINT), which exports traces to the collector you name; the LLM judge with your own key, which sends the text it judges to that provider, and whose citation check fetches the pages an output cites; or a webhook, which posts ids, the verdict and rule names, never the text, to the address you set. MIT-licensed core.
 
 ## One-liner (where the form asks for a short line)
 
-Stop shipping agents on vibes. An MCP server that scores every agent run for quality, safety, and cost — 25 deterministic rules, local SQLite, MIT licensed.
+Stop shipping agents on vibes. An MCP server that scores every agent run for quality, safety, and cost — 26 deterministic rules, local SQLite, MIT licensed.
 
 ## Install snippet
 
@@ -27,7 +27,7 @@ Stop shipping agents on vibes. An MCP server that scores every agent run for qua
 
 ## The check before you save
 
-The listing must say **v0.19.0**, **12 tools**, **25 rules**, and the identifier **`iris-eval`** (the config key, the plugin and the command are all `iris-eval`; `iris` and `iris-mcp` are retired names). If any field on the form still shows an older number or the word "first", replace it — a live listing is not historical content.
+The listing must say **v0.19.0**, **12 tools**, **26 rules**, and the identifier **`iris-eval`** (the config key, the plugin and the command are all `iris-eval`; `iris` and `iris-mcp` are retired names). If any field on the form still shows an older number or the word "first", replace it — a live listing is not historical content.
 
 ## Links
 

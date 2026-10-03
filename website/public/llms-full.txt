@@ -123,17 +123,17 @@ Every snippet here pins the current release, so a config copied today keeps runn
 
 Each summary is the description the server sends on `tools/list`, with the input schema; the long form under it is the `toolGuide` the server serves in `iris://capabilities` and `GET /api/v1/capabilities`, which also carries what every output field means, the rule roster, the judge state and the limits.
 
-## Built-in eval rules (25, across 4 categories)
+## Built-in eval rules (26, across 4 categories)
 
 Categories: completeness, relevance, safety, cost.
 
-Rules: answersTheAsk, askCoverage, costAnomaly, costUnderThreshold, expectedCoverage, groundedInReads, keywordOverlap, maxSteps, minOutputLength, noBlocklistWords, noHallucinationMarkers, noInjectionCompliance, noInjectionPatterns, noPii, noSilentToolFailure, noStubOutput, noToolLoop, nonEmptyOutput, sentenceCount, stepBudget, toolChoice, toolSequence, topicConsistency, validToolArguments, verbosityRatio.
+Rules: answersTheAsk, askCoverage, costAnomaly, costUnderThreshold, expectedCoverage, groundedInReads, keywordOverlap, maxSteps, minOutputLength, noBlocklistWords, noHallucinationMarkers, noInjectionCompliance, noInjectionPatterns, noPii, noSilentToolFailure, noStubOutput, noToolLoop, nonEmptyOutput, saysSomething, sentenceCount, stepBudget, toolChoice, toolSequence, topicConsistency, validToolArguments, verbosityRatio.
 
 Safety depth: 21 PII patterns (SSN, credit card, phone, email, IBAN, passport, DOB, medical record number, IP address, API key, AWS access key, Slack token, SendGrid key, GitHub token, Google API key, npm token, DigitalOcean token, private key block, seed phrase), 38 prompt-injection patterns, 25 hallucination markers (context-grounded fabrication/contradiction signals — pass `input` to enable the grounded checks; refusal boilerplate is no longer treated as hallucination), stub-output detection. Custom rules are added via Zod schemas and the `deploy_rule` tool.
 
 ## Evaluator accuracy
 
-Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for built-in rules — 12 measured for detection against labels a model gave by reading the failure (synthetic, model-labelled corpus; a human blind label is pending), and 13 checked against their own documented formula (a score there shows the code implements the formula, not that it detects the failure) — corpus 451a94a7bc92, generated 2026-10-03 from the source these numbers were measured on; reproduce with `npm run proof`.
+Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for built-in rules — 13 measured for detection against labels a model gave by reading the failure (synthetic, model-labelled corpus; a human blind label is pending), and 13 checked against their own documented formula (a score there shows the code implements the formula, not that it detects the failure) — corpus a1138e84e693, generated 2026-10-03 from the source these numbers were measured on; reproduce with `npm run proof`.
 
 ## Trust signals
 

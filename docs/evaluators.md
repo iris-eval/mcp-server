@@ -33,7 +33,7 @@ Marks: ● measured · ◐ partial · ≡ stated · ○ measurable · — n/a.
 | `valid_tool_arguments` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 | `ask_coverage` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 | `tool_sequence` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
-| `says_something` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ○ | ○ | ○ | 3 |
+| `says_something` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 | `keyword_overlap` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 | `topic_consistency` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
 | `tool_choice` | ● | ◐ | ≡ | ≡ | ○ | — | — | ● | ○ | ● | ● | ○ | ○ | 4 |
@@ -211,7 +211,7 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 
 - **Q1** measured — proof/results.json → rules[says_something] (precision, recall and F1 on 42 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
 - **Q2** partial — proof/RESULTS.md → misses by case id (every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical))
-- **Q3** stated — list_rules → kind: unknown, mechanism: unknown; proof/corpus → definition (a detection or inference: the family measures detection of the named failure classes)
+- **Q3** stated — list_rules → kind: detection, mechanism: pattern; proof/corpus → definition (a detection or inference: the family measures detection of the named failure classes)
 - **Q4** stated — every result since 0.9.0 carries kind and mechanism (the kind label names the claim; what it appears to measure beyond that is not measured)
 - **Q5** measurable — proof/lib/composite-report.ts calibration, per rule score (a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today)
 - **Q6** n/a (deterministic)
@@ -219,7 +219,7 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 - **Q8** measured — npm run proof -- --check regenerates the file byte for byte in CI on every pull request (a pure function of its input; the committed numbers are the code's)
 - **Q9** measurable — proof/lib/transforms.ts extends to any rule that reports a span
 - **Q10** measured — proof/results.json → rules[says_something].ppvAt (what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts)
-- **Q11** measurable — add composite cases for its classes
+- **Q11** measured — proof/composite-results.json → perClass[stub] (recall on composed cases and the 24 real transcripts where the class is present)
 - **Q12** measurable — pair rule fires with the judge's dimensions on one corpus (needs a key)
 - **Q13** measurable — run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)
 

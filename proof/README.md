@@ -239,7 +239,8 @@ by the test suite instead.
 
 The rest are judgement families the sample does not cover yet:
 `answers_the_ask`, `ask_coverage`, `grounded_in_reads`,
-`no_injection_compliance`, `non_empty_output` and `tool_choice`. Their labels
+`no_injection_compliance`, `non_empty_output`, `says_something` and
+`tool_choice`. Their labels
 were made by reading, by the same model family that wrote the cases, and no
 human has checked a sample of them. That is a gap in the evidence, stated
 here so the numbers for those rules are read with it.

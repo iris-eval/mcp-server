@@ -34,6 +34,16 @@
  *   repetition       one sentence repeated five or more times makes up at
  *                    least half of the output (fenced code aside)
  *
+ * Its failure class is `stub`: an answer that says nothing is a
+ * placeholder or a claim in place of the work. Measured, a class of its own
+ * was worse: the risk estimate spreads the prior over the classes it
+ * examines, so one more class lowered every class's prior and a real
+ * deferral transcript (t-20) went from blocked to shipped. In `stub`, the
+ * rule's recall (measured on non-answers) is read as recall over all stubs
+ * when it stays quiet, which understates the risk of an honest answer a
+ * little; how a quiet detector's recall is applied is the risk layer's to
+ * fix, for every rule at once.
+ *
  * What it does not do: judge whether a substantive answer is right, or
  * whether work a short report claims was done (an acknowledgement after
  * tool calls is a terse report, and passes here). A yes/no question

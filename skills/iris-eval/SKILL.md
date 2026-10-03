@@ -19,7 +19,7 @@ metadata:
 # Iris — stop shipping agents on vibes
 
 Iris is an MCP server for agent evaluation: it scores output quality, catches
-safety failures, and enforces cost budgets. 12 MCP tools, 25 built-in
+safety failures, and enforces cost budgets. 12 MCP tools, 26 built-in
 deterministic rules, optional LLM-as-judge (bring your own key). No SDK. No code changes.
 
 Iris runs as an MCP server: add it to your client config (Quick Start below) or start it with `npx -y @iris-eval/mcp-server`.
@@ -142,7 +142,7 @@ Each heuristic rule fires independently with a clear pass/fail result — every
 score is deterministic and reproducible. LLM-judge scores are semantic and
 carry the judge's reasoning.
 
-## The 25 built-in eval rules
+## The 26 built-in eval rules
 
 | Category | Rule | What It Checks |
 |----------|------|---------------|

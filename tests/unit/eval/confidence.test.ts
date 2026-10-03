@@ -113,9 +113,11 @@ describe('the shipped calibration', () => {
   });
 
   it('no longer calls a clean pass decisive where the corpus measured the estimate running low', () => {
-    // The typical clean pass on the composite corpus: p_bad 0.13, interval [0.11, 0.17].
+    // The typical clean pass: p_bad 0.08, interval [0.05, 0.11]. It was 0.13 [0.11, 0.17] until says_something
+    // (0.20.0) examined every answer and stayed quiet on an honest one; the 0.0–0.1 band it moved into is
+    // measured as running low too (CHANGELOG, says_something).
     // If a regeneration flips this, the estimate became calibrated there: say so in the CHANGELOG and update this line.
-    expect(verdictConfidence({ pBad: 0.13, lo: 0.11, hi: 0.17 }, 0.5, setting)).toMatchObject({ confidence: 'marginal', reason: 'region_miscalibrated' });
+    expect(verdictConfidence({ pBad: 0.08, lo: 0.05, hi: 0.11 }, 0.5, setting)).toMatchObject({ confidence: 'marginal', reason: 'region_miscalibrated' });
   });
 
   it('the label compose() stamps is the one verdictConfidence gives, and a marginal one carries its sentence', () => {
@@ -161,7 +163,7 @@ describe('the shipped calibration', () => {
     expect(note.text).toMatch(/^Risk estimate measured as too low at this level on labelled data; see iris-eval\.com\/proof\./);
     expect(note.text).not.toContain('close call');
     expect(note.text).not.toContain('scored');
-    expect(note.text).toMatch(/outputs with a risk estimate of 0\.1–0\.2 were bad \d+% of the time \(\d+ of \d+/);
+    expect(note.text).toMatch(/outputs with a risk estimate of 0\.0–0\.1 were bad \d+% of the time \(\d+ of \d+/);
   });
 
   it('a stored verdict labelled under another calibration table reads back with no label and says why', () => {

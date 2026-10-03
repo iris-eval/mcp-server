@@ -20,6 +20,8 @@ const RULE_FILES = [
   // The expected-trajectory rules and tool_choice live in their own modules and are registered into the bundles above.
   'src/eval/rules/expected-trajectory.ts',
   'src/eval/rules/tool-choice.ts',
+  // says_something lives in its own module and is registered into the completeness bundle.
+  'src/eval/rules/says-something.ts',
 ];
 
 const CATEGORIES = ['completeness', 'relevance', 'safety', 'cost'];
