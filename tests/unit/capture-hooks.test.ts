@@ -282,14 +282,18 @@ describe('iris-eval-capture hooks: what it keeps, and for how long', () => {
     expect(readdirSync(join(home, 'capture', 'sessions', SID)).some((n) => n.endsWith('.turn.json'))).toBe(true);
   }, 30_000);
 
-  it.skipIf(process.platform === 'win32')('makes its directories and files readable by their owner only', async () => {
+  // Runs on every platform so the suite's counts are the same everywhere; Windows has no POSIX modes to check.
+  it('makes its directories and files readable by their owner only, where the system has POSIX permissions', async () => {
     await hook('prompt', prompt);
     await hook('tool', read);
     const mode = (p: string): number => statSync(p).mode & 0o777;
     const dir = join(data, 'sessions', SID);
+    const files = readdirSync(dir);
+    expect(files.some((n) => n.endsWith('.turn.json')) && files.some((n) => n.endsWith('.calls.jsonl'))).toBe(true);
+    if (process.platform === 'win32') return;
     expect(mode(join(data, 'sessions'))).toBe(0o700);
     expect(mode(dir)).toBe(0o700);
-    for (const name of readdirSync(dir)) expect(mode(join(dir, name)), name).toBe(0o600);
+    for (const name of files) expect(mode(join(dir, name)), name).toBe(0o600);
   }, 30_000);
 
   it('closes a session untouched for a day: sends what it did not, then removes its files; a recent one is left alone', async () => {
