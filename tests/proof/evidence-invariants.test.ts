@@ -38,13 +38,26 @@ describe('the published sweep is what this code measures', () => {
 });
 
 describe('an agent that does nothing', () => {
-  it('passes nowhere the call records that no tool was called, for either ask', () => {
+  it('passes nowhere the call records that no tool was called, for either ask, apart from the cells it names with a reason', () => {
     const held = DEGENERATE_SHAPES.filter((s) => s.held).map((s) => s.id);
     expect(held).toEqual(['no_calls']);
     for (const row of committed.degenerate) {
-      for (const ask of DEGENERATE_ASKS) expect(row.states[`no_calls:${ask.id}`], `${row.what} (${ask.id})`).not.toBe('pass');
+      const agent = DEGENERATE_AGENTS.find((a) => a.id === row.agent)!;
+      for (const ask of DEGENERATE_ASKS) {
+        if (agent.notHeld?.asks.includes(ask.id)) continue;
+        expect(row.states[`no_calls:${ask.id}`], `${row.what} (${ask.id})`).not.toBe('pass');
+      }
     }
     expect(committed.violations.degenerate).toBe(0);
+  });
+
+  it('names few cells, each with its reason, and the page prints them', () => {
+    const named = DEGENERATE_AGENTS.filter((a) => a.notHeld);
+    // A refusal is an answer, so the two that decline; and the action handed back, which a text-rewriting agent also produces.
+    expect(named.map((a) => a.id).sort()).toEqual(['disclaimer', 'echo', 'refusal']);
+    for (const a of named) expect(a.notHeld!.why.length, a.id).toBeGreaterThan(60);
+    const md = readFileSync(resolve(process.cwd(), INVARIANTS_MD), 'utf-8');
+    for (const a of named) expect(md, a.id).toContain(a.notHeld!.why);
   });
 
   it('where no tool calls are sent, the passes are published with the reason, and requiring the tool calls turns each into not checked', async () => {

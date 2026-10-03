@@ -1745,7 +1745,7 @@ Used when `eval_type` is `"completeness"`. These rules check whether the output 
 | `non_empty_output` | 2.0 | Output is not empty or whitespace-only | None | `output.trim().length > 0` |
 | `sentence_count` | 0.5 | Number of sentences (split on `.!?`) | `min_sentences` (default: `2`) | `sentences >= min_sentences` |
 | `expected_coverage` | 1.5 | Word overlap between output and expected text | None (50% threshold hardcoded) | `>= 50%` of expected terms found in output |
-| `says_something` | 2.0 | An answer that says nothing (a detection, measured on its own labelled family) | None | Not a placeholder, a bare acknowledgement where more was needed, a bare refusal, the ask handed back, or one sentence on repeat |
+| `says_something` | 2.0 | An answer that says nothing, read against what the ask asked for (a detection, measured on its own labelled family) | None | Not a promise or a bare claim of completion in place of the work, a placeholder, an announcement with nothing after it, the ask handed back, or one passage on a loop |
 
 Both defaults are configurable server-wide via `config.eval.ruleThresholds` (`min_output_length`, `min_sentences`), and per call by passing the same keys in the evaluation's custom config — the call-level value wins.
 
@@ -1753,17 +1753,18 @@ Both defaults are configurable server-wide via `config.eval.ruleThresholds` (`mi
 
 **`expected_coverage` scoring:** Score equals the fraction of expected terms covered. Skipped (returns score 1) when no expected text is provided.
 
-**`says_something`** fails an answer that says nothing, in one of five shapes, and names the shape in its evidence:
+**`says_something`** fails an answer that says nothing, read against what the ask asked for, and names the shape in its evidence. Most shapes need an ask for something written (write, draft, summarise, explain, describe, list, translate …) or, when `tool_calls: []` records that no tool was called, an ask to act (an action verb leads it): a question can be answered by "OK", "null" or "Done.", an ask to confirm by "OK", and an ask to act by a report that it was done.
 
 | Shape | Fails | Passes |
 |---|---|---|
-| `placeholder` | the whole output is punctuation ("…", "-"), a program's empty value ("null", "undefined", "NaN", "[object Object]") or lorem-ipsum filler | "None.", "N/A", "0": English answers |
-| `acknowledgement` | the whole output is "Done.", "OK", "The task has been completed successfully." and the like, when the ask is a question or a request for information (what, how, explain, list); when it asks for something written and the call records no tool call that could have written it elsewhere; or when it is an action and `tool_calls: []` records that no tool was called | a yes/no question answered "Done."; an acknowledgement after tool calls; "Got it." to "remember that …"; an action with no tool calls sent at all, which says nothing about whether the work was done elsewhere |
-| `refusal` | the whole output declines ("I can't help with that.", "As an AI language model, I cannot …"), and the ask names no phrase on the blocklist (`customConfig.blocklist`, or the shipped one) | a decline that goes on to help; "No." to a question; the refusal of an ask the blocklist names |
-| `echo` | the output is the ask's own text, at most a fifth longer | a completion report that restates the ask in the past tense |
-| `repetition` | one sentence (three words or more) repeated at least five times makes up at least half of the output, fenced code aside | a chorus, identical log lines in a code block, a key sentence said twice |
+| `promise` | the whole output promises the work ("Sure!", "Will do!", "Working on it.") — to an ask for something written or a wh-question when no tool call is recorded, or to an ask to act when `tool_calls: []` | "Will do." to an instruction to keep ("keep answers short"); "I will." to "who will …?"; a promise after tool calls |
+| `completion` | the whole output says the work is done ("Done.", "OK", "Fixed.", "The task has been completed successfully.") — to an ask to write or to act, when `tool_calls: []` | any question answered this way; an ask to confirm or acknowledge; an action with no tool calls sent at all, or with tool calls recorded |
+| `lead-in` | the output announces content and stops: it ends on a colon after one sentence of at most 40 words, or the list after its colon is empty; or, to an ask for something written with no tool call recorded, a short "here is …" | "Here is the answer: 42."; "The deploy succeeded at 14:02. Notes:"; a long answer that ends on a colon |
+| `placeholder` | the whole output is a serialisation artefact ("null", "undefined", "NaN", "[object Object]"), a template's slot ("{{answer}}"), no word or number at all, or lorem ipsum — to an ask for something written, or to an ask to act when `tool_calls: []` (lorem ipsum also to a wh-question) | the same values as answers to a question ("NaN" to "what does 0/0 evaluate to?"); filler the ask asked for |
+| `echo` | the output is the ask handed back, framed or with a word dropped — to an ask for something written, or a question (the question itself, in order) | an answer in the ask's own words ("The cache is enabled in production."); an ask to act handed back, which a text-rewriting agent also returns; a repeat the ask asked for |
+| `loop` | one passage repeated ten times or more (three times, for a passage of eight words or more) makes up at least four fifths of the output, code aside | a refrain, quoted log lines, a short line three times, a list of records, a repeat the ask asked for |
 
-It is a detection, not a veto: a fire enters the risk layer with the rule's published precision ([proof/results.json](../proof/results.json), https://iris-eval.com/proof), and at the shipped configuration it fails the verdict of an agent that answers an ask with nothing. A refusal of a harmful ask that the blocklist does not name fires, and the labelled family publishes that as a wrong fail. It skips an empty output, which `non_empty_output` judges.
+A refusal passes: it says the thing will not be done, and whether that was right is a judgement about the ask, which this rule does not make. It is a detection, not a veto: a fire enters the risk layer with the rule's published precision ([proof/results.json](../proof/results.json), https://iris-eval.com/proof). Its family includes cases written from a definition of a non-answer by authors that never saw the rule; on those it fails no correct answer and catches roughly one non-answer in ten, because most are fluent replies that never contain what was asked, which no rule that reads the shape of an output can detect. It skips an empty output, which `non_empty_output` judges.
 
 ---
 
