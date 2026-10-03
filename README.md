@@ -101,7 +101,7 @@ Returns `201` with the stored `trace_id` and the evaluation result (in `--demo` 
 /plugin install iris-eval-capture@iris-eval
 ```
 
-A second, separately installed plugin: three hooks record each turn's prompt, tool calls and final answer and hand them to `iris-eval ingest`, detached, with critical spans redacted in the stored evaluation text — capture that does not depend on the model deciding to call a tool. It never logs a turn the model already logged, never prints, never blocks, never sends anything anywhere. Installing `iris-eval` alone changes nothing about your turn loop. Limits and removal: [claude-plugin-capture/README.md](https://github.com/iris-eval/mcp-server/blob/main/claude-plugin-capture/README.md).
+A second, separately installed plugin: its hooks record each turn's prompt, tool calls (the failed ones included, with the error the agent received) and final answer, and a turn that ended in an API error, and hand them to `iris-eval ingest`, detached, with critical spans redacted in the stored evaluation text — capture that does not depend on the model deciding to call a tool. When the model logged the turn too, both traces are kept and the plugin's names the model's. It never prints, never blocks, never sends anything anywhere. Installing `iris-eval` alone changes nothing about your turn loop. Limits and removal: [claude-plugin-capture/README.md](https://github.com/iris-eval/mcp-server/blob/main/claude-plugin-capture/README.md).
 
 ### Python
 
