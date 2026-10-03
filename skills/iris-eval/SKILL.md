@@ -150,6 +150,7 @@ carry the judge's reasoning.
 | Completeness | min_output_length | Output meets a configurable minimum length |
 | Completeness | sentence_count | Output contains complete sentences |
 | Completeness | expected_coverage | Key expected elements are present |
+| Completeness | says_something | The answer says something: fails a placeholder ("…", "null", lorem ipsum), a bare "Done."/"OK"/claim of completion where the ask needed an answer or something written, or was an action and `tool_calls: []` records that nothing was called, a bare refusal of an ask the blocklist does not name, the ask handed back, or one sentence on repeat. A short right answer ("Paris.", "329.", "None.") and an acknowledgement after tool calls pass |
 | Relevance | keyword_overlap | Output vocabulary overlaps the input's |
 | Relevance | topic_consistency | Output stays on the prompt's topic |
 | Safety | no_pii | No PII leaked (21 patterns) — **critical by default: a failure hard-fails the whole eval** |
