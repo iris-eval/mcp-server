@@ -24,6 +24,7 @@
  * the machine, and an address is personal data either way.
  */
 import { scanPii, type PiiSpan } from '../rules/safety.js';
+import { readStructured, spanInOutput } from '../text/structured.js';
 
 export interface RedactedPair {
   input: string;
@@ -63,7 +64,18 @@ export function redactForJudge(input: string, output: string): RedactedPair {
   const replaced: Record<string, number> = {};
 
   const redact = (text: string): string => {
-    const spans = mergeSpans(scanPii(text, { limit: Infinity, everyEncodedRun: true }).spans);
+    /*
+     * What no_pii flags is what is kept from the provider, so a structured
+     * text is scanned the way no_pii reads it too: its labelled reading,
+     * where a date of birth is recognised by its label and a secret by the
+     * name it is assigned to, mapped back onto the text as sent.
+     */
+    const found = [...scanPii(text, { limit: Infinity, everyEncodedRun: true }).spans];
+    const structured = readStructured(text);
+    if (structured !== null) {
+      for (const s of scanPii(structured.labelled.text, { limit: Infinity, everyEncodedRun: true }).spans) found.push({ ...s, ...spanInOutput(structured.labelled, s.start, s.end) });
+    }
+    const spans = mergeSpans(found);
     if (spans.length === 0) return text;
     let out = '';
     let at = 0;

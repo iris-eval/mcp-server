@@ -95,6 +95,8 @@ export interface EvalRuleResult {
 
 export interface EvalContext {
   output: string;
+  /** Which reading of a structured output `output` holds; set by evaluateOutput, as the server's engine sets it. */
+  outputRead?: 'values' | 'labelled';
   input?: string;
   expected?: string;
   costUsd?: number;
@@ -108,6 +110,295 @@ export interface EvalContext {
    * evaluate a context the server can is drift waiting to happen.
    */
   toolCalls?: Array<{ tool_name: string; input?: unknown; output?: unknown; latency_ms?: number; error?: string }>;
+}
+
+/* ── A structured output, read as the text it carries (vendored from iris/src/eval/text/structured.ts) ── */
+
+/*
+ * The server reads an output written as JSON by its values: each rule that
+ * reads the output declares a reading (values, or values labelled with the
+ * names of their fields), and the engine hands the rule that text. Copied
+ * whole; the parity test pins every block.
+ */
+/** The longest output read as structured. Past it the output is read as written. */
+export const STRUCTURED_OUTPUT_MAX_CHARS = 512_000;
+
+/** The mark between two values in a view. Every fold keeps it; the sentence splitters and the quotation rule stop at it. */
+export const VALUE_MARK = '¶';
+
+/** Between two values in a view: the mark on a line of its own. */
+const VALUE_BREAK = `\n\n${VALUE_MARK}\n\n`;
+
+/**
+ * Whether the mark at `i` is a value separator: alone on its line, as the
+ * reading writes it and as every fold keeps it. A pilcrow inside a line of
+ * prose ("under ¶ 4 of the agreement") is a character, not a separator.
+ */
+export function isValueBreakAt(text: string, i: number): boolean {
+  if (text[i] !== VALUE_MARK) return false;
+  let a = i - 1;
+  while (a >= 0 && (text[a] === ' ' || text[a] === '\t')) a -= 1;
+  let b = i + 1;
+  while (b < text.length && (text[b] === ' ' || text[b] === '\t')) b += 1;
+  return (a < 0 || text[a] === '\n') && (b >= text.length || text[b] === '\n' || text[b] === '\r');
+}
+
+/** A view's text without the breaks it inserted between values: what the values themselves say, for a rule that measures length. */
+export function withoutValueBreaks(text: string): string {
+  return text.split(VALUE_BREAK).join('\n');
+}
+
+/** One reading of a structured output, and where each of its characters came from. */
+export interface OutputView {
+  /** The text the rules read. */
+  text: string;
+  /** For each character of `text`, the offset in the output as sent where its source begins. Never decreases. */
+  from: Int32Array;
+  /** For each character of `text`, the offset in the output as sent where its source ends. */
+  to: Int32Array;
+}
+
+export interface StructuredOutput {
+  values: OutputView;
+  labelled: OutputView;
+}
+
+/**
+ * A run of the output as sent, as the text it decodes to. `start` and `end`
+ * are the raw offsets of the content; a token with no escapes maps one to
+ * one, and only a token with escapes carries a per-character map.
+ */
+interface Token {
+  text: string;
+  start: number;
+  end: number;
+  map: { from: number[]; to: number[] } | null;
+}
+
+/** A JSON string whose opening quote is at `open`, decoded. Returns the token and the index after the closing quote. */
+function readString(raw: string, open: number): { token: Token; next: number } {
+  let i = open + 1;
+  let close = i;
+  let escaped = false;
+  while (close < raw.length && raw.charCodeAt(close) !== 0x22) {
+    if (raw.charCodeAt(close) === 0x5c) {
+      escaped = true;
+      close += 2;
+    } else close += 1;
+  }
+  if (!escaped) return { token: { text: raw.slice(i, close), start: i, end: close, map: null }, next: close + 1 };
+  const from: number[] = [];
+  const to: number[] = [];
+  let text = '';
+  while (i < close) {
+    if (raw.charCodeAt(i) === 0x5c) {
+      const e = raw[i + 1];
+      const width = e === 'u' ? 6 : 2;
+      text += e === 'u' ? String.fromCharCode(parseInt(raw.slice(i + 2, i + 6), 16)) : e === 'n' ? '\n' : e === 't' ? '\t' : e === 'r' ? '\r' : e === 'b' ? '\b' : e === 'f' ? '\f' : e;
+      from.push(i);
+      to.push(i + width);
+      i += width;
+    } else {
+      text += raw[i];
+      from.push(i);
+      to.push(i + 1);
+      i += 1;
+    }
+  }
+  return { token: { text, start: open + 1, end: close, map: { from, to } }, next: close + 1 };
+}
+
+/** A number, true, false or null starting at `start`. Returns the token (null for `null`) and the index after it, always past `start`. */
+function readScalar(raw: string, start: number): { token: Token | null; next: number } {
+  let i = start;
+  while (i < raw.length && !/[\s,\]}:]/.test(raw[i])) i += 1;
+  // Never stand still: whatever the scanner was handed, it moves on.
+  if (i === start) return { token: null, next: start + 1 };
+  const text = raw.slice(start, i);
+  if (text === 'null') return { token: null, next: i };
+  return { token: { text, start, end: i, map: null }, next: i };
+}
+
+/** A field name as the output wrote it, and whether any value was read under it. */
+interface KeyEntry {
+  kind: 'key';
+  key: Token;
+  /** Set once a value is read under this occurrence of the name, which then carries it. */
+  carried: boolean;
+}
+
+interface ValueEntry {
+  kind: 'value';
+  value: Token;
+  /** The name this value is the first of, when it is: written before it in the labelled reading. */
+  key: KeyEntry | null;
+}
+
+interface Frame {
+  kind: 'object' | 'array';
+  /** In an object: whether the next string is a key. */
+  expectKey: boolean;
+  /** The name this frame's next value belongs to: an object's latest key, or the key a list sits under until its first value takes it. */
+  key: KeyEntry | null;
+}
+
+/**
+ * Every field name and every value, in the order written. A value takes the
+ * name it sits under when it is the first value to do so; a name no value
+ * took is read on its own. The input is JSON that JSON.parse accepted.
+ */
+function entriesOf(raw: string): { entries: Array<KeyEntry | ValueEntry>; anyValue: boolean } {
+  const entries: Array<KeyEntry | ValueEntry> = [];
+  const stack: Frame[] = [];
+  let anyValue = false;
+  const take = (top: Frame | undefined): KeyEntry | null => {
+    const key = top?.key ?? null;
+    if (key === null || key.carried) return null;
+    key.carried = true;
+    return key;
+  };
+  let i = 0;
+  while (i < raw.length) {
+    const c = raw[i];
+    const top = stack[stack.length - 1];
+    if (c === '{' || c === '[') {
+      // A list under a name carries the name down until a value takes it.
+      const carried = c === '[' && top !== undefined ? top.key : null;
+      // A list whose item is a container gives its name to nothing later: written on its own, the name stays before what follows it.
+      if (top?.kind === 'array') top.key = null;
+      stack.push({ kind: c === '{' ? 'object' : 'array', expectKey: c === '{', key: carried });
+      i += 1;
+    } else if (c === '}' || c === ']') {
+      stack.pop();
+      i += 1;
+    } else if (c === ',') {
+      if (top?.kind === 'object') {
+        top.expectKey = true;
+        top.key = null;
+      }
+      i += 1;
+    } else if (c === ':') {
+      if (top !== undefined) top.expectKey = false;
+      i += 1;
+    } else if (c === '"') {
+      const { token, next } = readString(raw, i);
+      if (top?.kind === 'object' && top.expectKey) {
+        const entry: KeyEntry = { kind: 'key', key: token, carried: false };
+        entries.push(entry);
+        top.key = entry;
+      } else {
+        anyValue = true;
+        if (token.text.trim() !== '') entries.push({ kind: 'value', value: token, key: take(top) });
+      }
+      i = next;
+    } else if (c === ' ' || c === '\n' || c === '\r' || c === '\t' || (i === 0 && c === '\uFEFF')) {
+      i += 1;
+    } else {
+      const { token, next } = readScalar(raw, i);
+      if (token !== null) {
+        anyValue = true;
+        entries.push({ kind: 'value', value: token, key: take(top) });
+      }
+      i = next;
+    }
+  }
+  return { entries, anyValue };
+}
+
+/** A piece of a reading: text from the output (a token, or a token's quotes) or text the reading inserts at a point. */
+type Piece = { token: Token; quoted: boolean } | { inserted: string; at: number };
+
+function viewOf(pieces: readonly Piece[]): OutputView {
+  let length = 0;
+  for (const p of pieces) length += 'inserted' in p ? p.inserted.length : p.token.text.length + (p.quoted ? 2 : 0);
+  const from = new Int32Array(length);
+  const to = new Int32Array(length);
+  const parts: string[] = [];
+  let n = 0;
+  const put = (a: number, b: number): void => {
+    from[n] = a;
+    to[n] = b;
+    n += 1;
+  };
+  for (const p of pieces) {
+    if ('inserted' in p) {
+      for (let k = 0; k < p.inserted.length; k++) put(p.at, p.at);
+      parts.push(p.inserted);
+      continue;
+    }
+    const t = p.token;
+    if (p.quoted) put(t.start - 1, t.start);
+    if (t.map === null) for (let k = 0; k < t.text.length; k++) put(t.start + k, t.start + k + 1);
+    else for (let k = 0; k < t.text.length; k++) put(t.map.from[k], t.map.to[k]);
+    if (p.quoted) put(t.end, t.end + 1);
+    parts.push(p.quoted ? `"${t.text}"` : t.text);
+  }
+  return { text: parts.join(''), from, to };
+}
+
+/** The output with JSON whitespace (and only that) taken off both ends, and where what is left starts. */
+function jsonTrimmed(output: string): { body: string; offset: number } {
+  let a = output.startsWith('\uFEFF') ? 1 : 0;
+  let b = output.length;
+  const ws = (c: string | undefined): boolean => c === ' ' || c === '\n' || c === '\r' || c === '\t';
+  while (a < b && ws(output[a])) a += 1;
+  while (b > a && ws(output[b - 1])) b -= 1;
+  return { body: output.slice(a, b), offset: a };
+}
+
+/**
+ * The two readings of a structured output, or null when the output is not
+ * one (see the header for what counts). Linear in the output's length.
+ */
+export function readStructured(output: string): StructuredOutput | null {
+  if (output.length > STRUCTURED_OUTPUT_MAX_CHARS) return null;
+  const { body } = jsonTrimmed(output);
+  const first = body[0];
+  const last = body[body.length - 1];
+  if (!((first === '{' && last === '}') || (first === '[' && last === ']'))) return null;
+  try {
+    JSON.parse(body);
+  } catch {
+    return null;
+  }
+  // The scanner reads the output as sent: around the body there is only JSON whitespace, which it skips.
+  const { entries, anyValue } = entriesOf(output);
+  if (!anyValue) return null;
+  const values: Piece[] = [];
+  const labelled: Piece[] = [];
+  let lastValueEnd = -1;
+  let lastLabelledEnd = -1;
+  for (const entry of entries) {
+    if (entry.kind === 'key') {
+      // Written only when no value took it: a name alone, where its value is an object, a list, null or blank.
+      if (entry.carried) continue;
+      if (lastLabelledEnd >= 0) labelled.push({ inserted: VALUE_BREAK, at: lastLabelledEnd });
+      labelled.push({ token: entry.key, quoted: true }, { inserted: ':', at: entry.key.end + 1 });
+      lastLabelledEnd = entry.key.end + 1;
+      continue;
+    }
+    if (lastValueEnd >= 0) values.push({ inserted: VALUE_BREAK, at: lastValueEnd });
+    values.push({ token: entry.value, quoted: false });
+    lastValueEnd = entry.value.end;
+    if (lastLabelledEnd >= 0) labelled.push({ inserted: VALUE_BREAK, at: lastLabelledEnd });
+    if (entry.key !== null) labelled.push({ token: entry.key.key, quoted: true }, { inserted: ': ', at: entry.key.key.end + 1 });
+    labelled.push({ token: entry.value, quoted: false });
+    lastLabelledEnd = entry.value.end;
+  }
+  return { values: viewOf(values), labelled: viewOf(labelled) };
+}
+
+/** A span of a view's text, as a span of the output as sent. */
+export function spanInOutput(view: OutputView, start: number, end: number): { start: number; end: number } {
+  const n = view.text.length;
+  if (n === 0) return { start: 0, end: 0 };
+  let s = Math.min(Math.max(start, 0), n - 1);
+  let e = Math.min(Math.max(end, s), n);
+  // Characters the reading inserted (a value break, ": ") are points; the span is what came from the output.
+  while (s < e && view.from[s] === view.to[s]) s += 1;
+  while (e > s && view.from[e - 1] === view.to[e - 1]) e -= 1;
+  if (e === s) return { start: view.from[Math.min(s, n - 1)], end: view.from[Math.min(s, n - 1)] };
+  return { start: view.from[s], end: view.to[e - 1] };
 }
 
 /* ── Shared text handling (vendored from iris/src/eval/text/) ───── */
@@ -790,16 +1081,20 @@ function precedingToken(text: string, at: number): string {
  * wrapped paragraph is one sentence — but a blank line does, because a new
  * block is a new thought and a bullet list is not one long sentence.
  */
-function sentencesOf(text: string): string[] {
+function saysAWord(piece: string): boolean {
+  return /[\p{L}\p{N}]/u.test(piece);
+}
+
+export function sentencesOf(text: string): string[] {
   const out: string[] = [];
   let start = 0;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
 
-    // A blank line ends a sentence whatever came before it.
-    if (ch === '\n' && blankLineFollows(text, i + 1)) {
+    // A blank line ends a sentence whatever came before it, and so does the mark between two values of a structured output.
+    if ((ch === '\n' && blankLineFollows(text, i + 1)) || (ch === VALUE_MARK && isValueBreakAt(text, i))) {
       const piece = text.slice(start, i).trim();
-      if (piece.length > 0) out.push(piece);
+      if (saysAWord(piece)) out.push(piece);
       start = i + 1;
       continue;
     }
@@ -841,12 +1136,12 @@ function sentencesOf(text: string): string[] {
     }
 
     const piece = text.slice(start, after).trim();
-    if (piece.length > 0) out.push(piece);
+    if (saysAWord(piece)) out.push(piece);
     start = after;
     i = after - 1;
   }
   const tail = text.slice(start).trim();
-  if (tail.length > 0) out.push(tail);
+  if (saysAWord(tail)) out.push(tail);
   return out;
 }
 
@@ -1009,9 +1304,9 @@ export const PII_PATTERNS: PiiPattern[] = [
   // label-anchored pattern used to miss exactly that while catching the
   // slash form (#374). Both alternatives are fixed-width per position, so
   // the scan stays linear.
-  { name: 'DOB', pattern: /\b(?:DOB|D\.O\.B\.|Date of Birth|Born|Birthday)\s{0,8}[:.]?\s{0,8}(?:\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\d{1,2}[\/\-.](?:\d{2}|\d{4}))\b/i },
+  { name: 'DOB', pattern: /\b(?:DOB|D\.O\.B\.|Date of Birth|Born|Birthday)(?:["']\s{0,2}:|\s{0,8}[:.]?)\s{0,8}(?:\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\d{1,2}[\/\-.](?:\d{2}|\d{4}))\b/i },
   // Medical record number — MRN: + alphanumeric (common format)
-  { name: 'Medical Record Number', pattern: /\b(?:MRN|Medical Record (?:Number|No\.?|#))\s{0,8}[:.]?\s{0,8}[A-Z0-9]{6,12}\b/i },
+  { name: 'Medical Record Number', pattern: /\b(?:MRN|Medical Record (?:Number|No\.?|#))(?:["']\s{0,2}:|\s{0,8}[:.]?)\s{0,8}[A-Z0-9]{6,12}\b/i },
   /*
    * IPv4 address. An IP is personal data only when it can identify a
    * person — a public address can; the reserved ranges below never can, and
@@ -1087,7 +1382,10 @@ export const PII_PATTERNS: PiiPattern[] = [
     placeholders: [/[:=]\s*["']?(?:your|my|example|sample|dummy|fake|test|placeholder|changeme|redacted|xxxx|\*{4}|\.{3})/i],
     validate: (match) => {
       const value = match.slice(match.search(/[:=]/) + 1).replace(/^[\s"']+/, '');
-      return value.length >= 12 && /[A-Za-z]/.test(value) && /\d/.test(value) && !/^(?:true|false|null|none|undefined)$/i.test(value);
+      // A masked value (sk-****…3f9a) shows a few characters of a key and cannot be used; a whole
+      // secret with asterisks after it is still the secret.
+      const masked = /\*{4}/.test(value) && value.replace(/[^A-Za-z0-9]/g, '').length <= 8;
+      return value.length >= 12 && /[A-Za-z]/.test(value) && /\d/.test(value) && !/^(?:true|false|null|none|undefined)$/i.test(value) && !masked;
     },
   },
   // PEM-armoured private key material (RSA/EC/OPENSSH/ENCRYPTED/plain PKCS#8).
@@ -1363,6 +1661,26 @@ export const INJECTION_PATTERNS = [
 
 const PHRASE_PATTERN_COUNT = 13;
 
+/**
+ * A field's value in the labelled reading of a structured output (`"name":
+ * value`) that carries an override within its first 80 characters, on its
+ * first line. Group 1 is what comes before the phrase in the value; group 2
+ * is the phrase.
+ */
+const FIELD_VALUE_OVERRIDE = /"\s*: ([^\n¶]{0,80}?)\b((?:ignore|disregard)\s+(?:all\s+)?(?:previous|above|prior)\s+(?:instructions|prompts))\b/gi;
+
+/**
+ * Whether a field-value override is the field's payload or a sentence that
+ * quotes one. A value that opens with the override, quoted or not, is the
+ * payload. A value where words come first and a quotation mark then opens
+ * before the phrase ("The email said \"ignore previous instructions\"…") is
+ * a report about a payload, which the quotation rule lets through in prose.
+ */
+function quotesAPayload(before: string): boolean {
+  const q = before.search(/["'`“‘«„]/);
+  return q > 0 && /[\p{L}\p{N}]/u.test(before.slice(0, q));
+}
+
 /*
  * Containment index over [open, close] spans — "is this range inside some
  * span" in O(log n). Byte-identical to the server's; the server's comment
@@ -1430,6 +1748,19 @@ function quotedSpans(text: string): SpanIndex {
   let inFence = false;
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
+    /*
+     * A quotation does not run from one field of a structured output into
+     * the next: the reading separates two values with a paragraph mark
+     * (text/structured.ts), which every fold keeps. Without this, quote
+     * marks in two neighbouring fields bracketed the field between them as
+     * quoted, and an override phrase there read as discussion. In prose a
+     * quotation may run across paragraphs, as a forwarded email does.
+     */
+    if (c === VALUE_MARK && isValueBreakAt(text, i)) {
+      openDouble = openSingle = openSmart = openLow = openGuillemet = openCorner = -1;
+      if (!inFence) openTick = -1;
+      continue;
+    }
     if (c === '`' && text.startsWith('```', i)) {
       inFence = !inFence;
       openTick = -1;
@@ -1655,6 +1986,11 @@ function noInjectionPatterns(ctx: EvalContext): EvalRuleResult {
     else if (spaced && injectionPatternFires(spacedText, spacedSpans, pattern, respectQuotes)) matches++;
     else if (encoded.some((r) => injectionPatternFires(r.text, r.spans, pattern, respectQuotes))) matches++;
   }
+  // An override as the value of a field, read in the labelled reading of a structured output only, in every reading, as the server does.
+  if (ctx.outputRead === 'labelled') {
+    const readings = [raw, ...(normalized !== raw ? [normalized] : []), ...(words ? [wordsText] : []), ...(spaced ? [spacedText] : [])];
+    if (readings.some((text) => [...text.matchAll(FIELD_VALUE_OVERRIDE)].some((m) => !quotesAPayload(m[1])))) matches++;
+  }
   const passed = matches === 0;
   return {
     ruleName: 'no_injection_patterns',
@@ -1844,9 +2180,22 @@ function isRemovedDiffLine(diffs: SpanIndex, index: number): boolean {
 }
 
 function precededByArticle(output: string, index: number): boolean {
-  return /(?:^|[\s("'])(?:a|an|the|that|this|one|any|no|another|each|every)\s{1,8}$/i.test(
+  // Across one line break (a wrapped sentence) but not a blank line: the word before a blank line is another paragraph's, or another field's.
+  return /(?:^|[\s("'])(?:a|an|the|that|this|one|any|no|another|each|every)(?:[^\S\r\n]{1,8}|[^\S\r\n]{0,7}\r?\n[^\S\r\n]{0,7})$/i.test(
     output.slice(Math.max(0, index - 16), index),
   );
+}
+
+/**
+ * A marker that a removal verb acts on: "Removed the last TODO", "resolved
+ * all remaining FIXME comments", "deleted two TODOs". A completion report
+ * says this about finished work, and the article check above misses it
+ * whenever a word sits between the article and the marker. The verb is
+ * what makes it a report: "the only TODO left is the retry" still fires.
+ */
+const REMOVED_MARKER = /\b(?:removed|resolved|fixed|deleted|cleared|addressed|closed|eliminated|dropped|replaced|cleaned up)[^\S\r\n]{1,8}(?:(?:the|all|both|every|each|its|those|these|that|this|my)[^\S\r\n]{1,8})?(?:(?:last|final|remaining|old|stray|leftover|outstanding|open|pending|existing|two|three|four|five|several|few)[^\S\r\n]{1,8})?$/i;
+function precededByRemoval(output: string, index: number): boolean {
+  return REMOVED_MARKER.test(output.slice(Math.max(0, index - 64), index));
 }
 
 function stubMarkerFires(output: string, upper: string, marker: string, diffs: SpanIndex): boolean {
@@ -1854,7 +2203,7 @@ function stubMarkerFires(output: string, upper: string, marker: string, diffs: S
     const wordPattern = new RegExp(`\\b${marker}\\b`, 'g');
     for (const match of output.matchAll(wordPattern)) {
       if (isRemovedDiffLine(diffs, match.index)) continue;
-      if (precededByArticle(output, match.index)) continue;
+      if (precededByArticle(output, match.index) || precededByRemoval(output, match.index)) continue;
       return true;
     }
     return false;
@@ -1954,7 +2303,7 @@ function deferralFires(raw: string): string | null {
   let cursor = 0;
   for (const raw of output.split(/(?<=[.!?])\s+|\n+/)) {
     const sentence = raw.trim();
-    if (sentence.length === 0) continue;
+    if (!/[\p{L}\p{N}]/u.test(sentence)) continue;
     const start = output.indexOf(sentence, cursor);
     cursor = start + sentence.length;
     sentences.push(sentence);
@@ -2045,7 +2394,8 @@ function isHedged(sentence: string, index: number): boolean {
 }
 
 function splitSentences(text: string): string[] {
-  return text.split(/(?<=[.!?])\s+|\n+/).filter((s) => s.trim().length > 0);
+  // A segment with no word in it (the value separator, a rule, a lone bullet) is not a sentence.
+  return text.split(/(?<=[.!?])\s+|\n+/).filter((s) => /[\p{L}\p{N}]/u.test(s));
 }
 
 const SOURCE_NOUN =
@@ -2948,7 +3298,8 @@ function topicConsistency(ctx: EvalContext): EvalRuleResult {
 
 function minOutputLength(ctx: EvalContext): EvalRuleResult {
   const minLen = VENDORED_THRESHOLDS.min_output_length;
-  const len = ctx.output.length;
+  // In the values reading of a structured output, the breaks the reading put between values are not the answer's length.
+  const len = (ctx.outputRead === 'values' ? withoutValueBreaks(ctx.output) : ctx.output).length;
   const passed = len >= minLen;
   return {
     ruleName: 'min_output_length',
@@ -4483,6 +4834,26 @@ export interface EvalSummary {
   skippedRules: number;
 }
 
+/** How each rule reads an output written as JSON: the server's EvalRule.outputView. A rule absent here reads the output as sent. */
+export const OUTPUT_VIEWS = new Map<(ctx: EvalContext) => EvalRuleResult, 'values' | 'labelled'>([
+  [minOutputLength, 'values'],
+  [nonEmptyOutput, 'values'],
+  [sentenceCount, 'values'],
+  [expectedCoverage, 'values'],
+  [askCoverage, 'values'],
+  [keywordOverlap, 'values'],
+  [topicConsistency, 'values'],
+  [answersTheAsk, 'values'],
+  [noStubOutput, 'values'],
+  [noHallucinationMarkers, 'values'],
+  [noSilentToolFailure, 'values'],
+  [groundedInReads, 'values'],
+  [noInjectionCompliance, 'values'],
+  [noPii, 'labelled'],
+  [noBlocklistWords, 'labelled'],
+  [noInjectionPatterns, 'labelled'],
+]);
+
 export function evaluateOutput(
   ctx: EvalContext,
   category: EvalCategory | 'all' = 'all',
@@ -4491,7 +4862,17 @@ export function evaluateOutput(
     category === 'all'
       ? Object.values(RULES_BY_CATEGORY).flat()
       : RULES_BY_CATEGORY[category];
-  const ruleResults = rules.map((r) => r(ctx));
+  // As the server's engine: a structured output (and a structured expected answer) is read once, and each rule gets the reading it declares.
+  const asSent: EvalContext = { ...ctx };
+  delete asSent.outputRead;
+  const structured = readStructured(ctx.output);
+  const expected = typeof ctx.expected === 'string' ? readStructured(ctx.expected) : null;
+  const ruleResults = rules.map((r) => {
+    const view = structured === null ? undefined : OUTPUT_VIEWS.get(r);
+    if (view === undefined || structured === null) return r(asSent);
+    const expectedText = expected?.[view].text;
+    return r({ ...asSent, output: structured[view].text, outputRead: view, ...(expectedText !== undefined ? { expected: expectedText } : {}) });
+  });
   const judged = ruleResults.filter((r) => !r.skipped);
   const passedRules = judged.filter((r) => r.passed).length;
   const score = judged.length === 0 ? 0 : judged.reduce((sum, r) => sum + r.score, 0) / judged.length;

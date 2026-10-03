@@ -1,6 +1,7 @@
 import type { EvalRule, EvalContext, EvalRuleResult, Evidence } from '../../types/eval.js';
 import { MAX_EVIDENCE_ITEMS } from '../../types/eval.js';
 import { countSentences } from '../text/sentences.js';
+import { withoutValueBreaks } from '../text/structured.js';
 import { thresholdSourceOf } from '../thresholds.js';
 import { MAX_ASK_CHARS, MIN_MEASURABLE_TERMS, answerIndex, coversPart, hitsPart, measurableParts, requiredHits, splitAsk, type AskPart } from '../text/asks.js';
 import { catalogueIndex } from '../catalogue.js';
@@ -24,14 +25,16 @@ export const minOutputLength: EvalRule = {
   kind: 'measurement',
   mechanism: 'formula',
   needs: ['output'],
+  outputView: 'values',
   question: 'complete',
   classes: ['format'],
-  version: 1,
+  version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     const minLen = (context.customConfig?.min_output_length as number)
       ?? (context.customConfig?.min_length as number)
       ?? 50;
-    const len = context.output.length;
+    // In the values reading of a structured output, the breaks the reading put between values are not the answer's length.
+    const len = (context.outputRead === 'values' ? withoutValueBreaks(context.output) : context.output).length;
     const passed = len >= minLen;
     return {
       ruleName: 'min_output_length',
@@ -52,9 +55,10 @@ export const nonEmptyOutput: EvalRule = {
   kind: 'policy',
   mechanism: 'formula',
   needs: ['output'],
+  outputView: 'values',
   question: 'complete',
   classes: ['format'],
-  version: 1,
+  version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     const passed = context.output.trim().length > 0;
     return {
@@ -75,9 +79,10 @@ export const sentenceCount: EvalRule = {
   kind: 'measurement',
   mechanism: 'formula',
   needs: ['output'],
+  outputView: 'values',
   question: 'complete',
   classes: ['format'],
-  version: 1,
+  version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     const minSentences = (context.customConfig?.min_sentences as number) ?? 2;
     // One splitter, shared with topic_consistency (src/eval/text/sentences.ts).
@@ -104,9 +109,10 @@ export const expectedCoverage: EvalRule = {
   kind: 'measurement',
   mechanism: 'formula',
   needs: ['output', 'expected'],
+  outputView: 'values',
   question: 'complete',
   classes: ['incomplete_ask'],
-  version: 1,
+  version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     if (!context.expected) {
       return { ruleName: 'expected_coverage', passed: false, score: 0, message: 'No expected output provided', skipped: true, skipReason: 'context.expected not provided' };
@@ -377,9 +383,10 @@ export const askCoverage: EvalRule = {
   kind: 'inference',
   mechanism: 'heuristic',
   needs: ['output', 'input'],
+  outputView: 'values',
   question: 'task_completed',
   classes: ['incomplete_ask'],
-  version: 2,
+  version: 3,
   /*
    * Not critical. A lexical covering test has an honest false-positive
    * surface — an answer in wholly different words with no ordinal to mirror

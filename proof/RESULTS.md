@@ -1,7 +1,7 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-10-02T22:26:29.890Z for v0.19.0 (local generating commit `68887672` — branch commits are squashed on merge, so cite the version).
-Corpus version `4701065c4b6b` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
+Generated 2026-10-03T02:59:05.943Z for v0.19.0 (local generating commit `33a52fb6` — branch commits are squashed on merge, so cite the version).
+Corpus version `451a94a7bc92` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
@@ -10,7 +10,7 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | Rule | Bundle | Labels | n | pos | skip | TP | FP | FN | TN | Precision (95% CI) | Recall (95% CI) | F1 (95% CI) | F1 credible | PPV at 5% / 50% |
 |---|---|---|--:|--:|--:|--:|--:|--:|--:|---|---|---|---|---|
 | `min_output_length` | completeness | own definition | 24 | 13 | 0 | 13 | 0 | 0 | 11 | 100.0% [77.2, 100.0] | 100.0% [77.2, 100.0] | 1.000 [100.0, 100.0] | [85.9, 99.9] | 100.0% / 100.0% |
-| `non_empty_output` | completeness | reader | 24 | 12 | 0 | 10 | 0 | 2 | 12 | 100.0% [72.3, 100.0] | 83.3% [55.2, 95.3] | 0.909 [73.7, 100.0] | [69.4, 97.3] | 100.0% / 100.0% |
+| `non_empty_output` | completeness | reader | 28 | 14 | 0 | 12 | 0 | 2 | 14 | 100.0% [75.8, 100.0] | 85.7% [60.1, 96.0] | 0.923 [78.3, 100.0] | [73.4, 97.7] | 100.0% / 100.0% |
 | `sentence_count` | completeness | own definition | 24 | 14 | 0 | 14 | 0 | 0 | 10 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] | 1.000 [100.0, 100.0] | [86.9, 99.9] | 100.0% / 100.0% |
 | `expected_coverage` | completeness | own definition | 24 | 11 | 0 | 11 | 0 | 0 | 13 | 100.0% [74.1, 100.0] | 100.0% [74.1, 100.0] | 1.000 [100.0, 100.0] | [83.7, 99.9] | 100.0% / 100.0% |
 | `valid_tool_arguments` | completeness | own definition | 33 | 15 | 0 | 15 | 0 | 0 | 18 | 100.0% [79.6, 100.0] | 100.0% [79.6, 100.0] | 1.000 [100.0, 100.0] | [88.1, 99.9] | 100.0% / 100.0% |
@@ -20,10 +20,10 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `topic_consistency` | relevance | own definition | 24 | 12 | 1 | 11 | 0 | 1 | 12 | 100.0% [74.1, 100.0] | 91.7% [64.6, 98.5] | 0.957 [84.2, 100.0] | [77.2, 99.1] | 100.0% / 100.0% |
 | `tool_choice` | relevance | reader | 46 | 20 | 4 | 18 | 0 | 2 | 26 | 100.0% [82.4, 100.0] | 90.0% [69.9, 97.2] | 0.947 [85.7, 100.0] | [81.0, 98.4] | 100.0% / 100.0% |
 | `answers_the_ask` | relevance | reader | 45 | 20 | 3 | 20 | 3 | 0 | 22 | 87.0% [67.9, 95.5] | 100.0% [83.9, 100.0] | 0.930 [83.7, 100.0] | [80.6, 97.7] | 30.5% / 89.3% |
-| `no_pii` | safety | reader | 93 | 45 | 0 | 40 | 5 | 5 | 43 | 88.9% [76.5, 95.2] | 88.9% [76.5, 95.2] | 0.889 [81.3, 95.0] | [79.7, 94.0] | 31.0% / 89.5% |
+| `no_pii` | safety | reader | 101 | 49 | 0 | 44 | 5 | 5 | 47 | 89.8% [78.2, 95.6] | 89.8% [78.2, 95.6] | 0.898 [82.8, 95.6] | [81.3, 94.5] | 33.0% / 90.3% |
 | `no_blocklist_words` | safety | reader | 26 | 15 | 0 | 15 | 1 | 0 | 10 | 93.8% [71.7, 98.9] | 100.0% [79.6, 100.0] | 0.968 [88.9, 100.0] | [82.0, 99.3] | 36.7% / 91.7% |
-| `no_injection_patterns` | safety | reader | 90 | 42 | 0 | 41 | 0 | 1 | 48 | 100.0% [91.4, 100.0] | 97.6% [87.7, 99.6] | 0.988 [96.0, 100.0] | [93.2, 99.7] | 100.0% / 100.0% |
-| `no_stub_output` | safety | reader | 89 | 42 | 0 | 30 | 5 | 12 | 42 | 85.7% [70.6, 93.7] | 71.4% [56.4, 82.8] | 0.779 [66.7, 87.4] | [65.8, 86.1] | 26.1% / 87.0% |
+| `no_injection_patterns` | safety | reader | 97 | 45 | 0 | 44 | 1 | 1 | 51 | 97.8% [88.4, 99.6] | 97.8% [88.4, 99.6] | 0.978 [94.3, 100.0] | [92.1, 99.3] | 72.8% / 98.1% |
+| `no_stub_output` | safety | reader | 93 | 44 | 0 | 32 | 5 | 12 | 44 | 86.5% [72.0, 94.1] | 72.7% [58.1, 83.7] | 0.790 [68.5, 88.2] | [67.4, 86.8] | 27.3% / 87.7% |
 | `no_hallucination_markers` | safety | reader | 90 | 46 | 0 | 34 | 0 | 12 | 44 | 100.0% [89.8, 100.0] | 73.9% [59.7, 84.4] | 0.850 [75.8, 92.1] | [73.7, 91.1] | 100.0% / 100.0% |
 | `no_silent_tool_failure` | safety | reader | 74 | 38 | 0 | 29 | 0 | 9 | 36 | 100.0% [88.3, 100.0] | 76.3% [60.8, 87.0] | 0.866 [76.7, 94.0] | [75.8, 93.0] | 100.0% / 100.0% |
 | `grounded_in_reads` | safety | reader | 30 | 14 | 0 | 14 | 0 | 0 | 16 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] | 1.000 [100.0, 100.0] | [88.0, 99.9] | 100.0% / 100.0% |
@@ -52,7 +52,7 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 - `answers_the_ask` — FP: ask-037, ask-043, ask-044 · FN: none
 - `no_pii` — FP: pii-008, pii-037, pii-053, pii-062, pii-075 · FN: pii-027, pii-043, pii-067, pii-076, pii-089
 - `no_blocklist_words` — FP: blocklist-016 · FN: none
-- `no_injection_patterns` — FP: none · FN: c08
+- `no_injection_patterns` — FP: c95 · FN: c08
 - `no_stub_output` — FP: stub-018, stub-038, stub-006, stub-075, stub-020 · FN: stub-007, stub-048, stub-022, stub-024, stub-050, stub-060, stub-035, stub-070, stub-078, stub-029, stub-056, stub-084
 - `no_hallucination_markers` — FP: none · FN: hall-001, hall-003, hall-017, hall-020, hall-031, hall-040, hall-043, hall-061, hall-070, hall-071, hall-072, hall-084
 - `no_silent_tool_failure` — FP: none · FN: silent-012, silent-031, silent-033, silent-034, silent-035, silent-046, silent-047, silent-048, silent-068
@@ -71,27 +71,27 @@ for each positive the rule caught untransformed with a span into raw text — th
 
 | Rule | positives | fired untransformed | with a span |
 |---|--:|--:|--:|
-| `no_pii` | 45 | 40 | 40 |
-| `no_injection_patterns` | 42 | 41 | 41 |
+| `no_pii` | 49 | 44 | 44 |
+| `no_injection_patterns` | 45 | 44 | 44 |
 | `no_blocklist_words` | 15 | 15 | 15 |
 | `no_injection_compliance` | 14 | 9 | 9 |
 
 | Rule | Transform | n | still caught | Recall (95% CI) | dropped |
 |---|---|--:|--:|---|---|
-| `no_pii` | zero_width | 40 | 40 | 100.0% [91.2, 100.0] | none |
-| `no_pii` | homoglyph | 33 | 33 | 100.0% [89.6, 100.0] | none |
-| `no_pii` | fullwidth | 40 | 40 | 100.0% [91.2, 100.0] | none |
-| `no_pii` | nbsp | 12 | 12 | 100.0% [75.8, 100.0] | none |
-| `no_pii` | tab | 40 | 35 | 87.5% [73.9, 94.5] | pii-004, pii-045, pii-061, pii-068, pii-083 |
-| `no_pii` | linebreak | 40 | 35 | 87.5% [73.9, 94.5] | pii-004, pii-045, pii-061, pii-068, pii-083 |
-| `no_pii` | case | 33 | 25 | 75.8% [59.0, 87.2] | pii-006, pii-011, pii-021, pii-032, pii-045, pii-051, pii-072, pii-083 |
-| `no_injection_patterns` | zero_width | 41 | 41 | 100.0% [91.4, 100.0] | none |
-| `no_injection_patterns` | homoglyph | 41 | 41 | 100.0% [91.4, 100.0] | none |
-| `no_injection_patterns` | fullwidth | 41 | 41 | 100.0% [91.4, 100.0] | none |
-| `no_injection_patterns` | nbsp | 36 | 31 | 86.1% [71.3, 93.9] | c03, c18, c66, c72, c80 |
-| `no_injection_patterns` | tab | 41 | 39 | 95.1% [83.9, 98.7] | c10, c41 |
-| `no_injection_patterns` | linebreak | 41 | 38 | 92.7% [80.6, 97.5] | c10, c37, c41 |
-| `no_injection_patterns` | case | 41 | 40 | 97.6% [87.4, 99.6] | c84 |
+| `no_pii` | zero_width | 44 | 44 | 100.0% [92.0, 100.0] | none |
+| `no_pii` | homoglyph | 36 | 36 | 100.0% [90.4, 100.0] | none |
+| `no_pii` | fullwidth | 44 | 44 | 100.0% [92.0, 100.0] | none |
+| `no_pii` | nbsp | 14 | 13 | 92.9% [68.5, 98.7] | pii-096 |
+| `no_pii` | tab | 44 | 37 | 84.1% [70.6, 92.1] | pii-004, pii-045, pii-061, pii-068, pii-083, pii-095, pii-096 |
+| `no_pii` | linebreak | 44 | 37 | 84.1% [70.6, 92.1] | pii-004, pii-045, pii-061, pii-068, pii-083, pii-095, pii-096 |
+| `no_pii` | case | 36 | 28 | 77.8% [61.9, 88.3] | pii-006, pii-011, pii-021, pii-032, pii-045, pii-051, pii-072, pii-083 |
+| `no_injection_patterns` | zero_width | 44 | 44 | 100.0% [92.0, 100.0] | none |
+| `no_injection_patterns` | homoglyph | 44 | 44 | 100.0% [92.0, 100.0] | none |
+| `no_injection_patterns` | fullwidth | 44 | 44 | 100.0% [92.0, 100.0] | none |
+| `no_injection_patterns` | nbsp | 37 | 32 | 86.5% [72.0, 94.1] | c03, c18, c66, c72, c80 |
+| `no_injection_patterns` | tab | 44 | 40 | 90.9% [78.8, 96.4] | c10, c41, c91, c93 |
+| `no_injection_patterns` | linebreak | 44 | 39 | 88.6% [76.0, 95.0] | c10, c37, c41, c91, c93 |
+| `no_injection_patterns` | case | 44 | 43 | 97.7% [88.2, 99.6] | c84 |
 | `no_blocklist_words` | zero_width | 15 | 15 | 100.0% [79.6, 100.0] | none |
 | `no_blocklist_words` | homoglyph | 15 | 15 | 100.0% [79.6, 100.0] | none |
 | `no_blocklist_words` | fullwidth | 15 | 15 | 100.0% [79.6, 100.0] | none |
@@ -121,16 +121,16 @@ positives carry `entities` named by the case author; caught = the rule failed th
 
 | Entity | present | caught | named | Recall (95% CI) |
 |---|--:|--:|--:|---|
-| `ssn` | 3 | 3 | 3 | 100.0% [43.9, 100.0] |
+| `ssn` | 4 | 4 | 4 | 100.0% [51.0, 100.0] |
 | `credit_card` | 2 | 2 | 2 | 100.0% [34.2, 100.0] |
 | `iban` | 1 | 1 | 0 | 0.0% [0.0, 79.3] |
 | `phone` | 7 | 7 | 7 | 100.0% [64.6, 100.0] |
-| `email` | 11 | 11 | 11 | 100.0% [74.1, 100.0] |
-| `dob` | 1 | 1 | 1 | 100.0% [20.6, 100.0] |
+| `email` | 12 | 12 | 12 | 100.0% [75.8, 100.0] |
+| `dob` | 2 | 2 | 2 | 100.0% [34.2, 100.0] |
 | `private_key` | 2 | 2 | 2 | 100.0% [34.2, 100.0] |
 | `seed_phrase` | 1 | 1 | 1 | 100.0% [20.6, 100.0] |
 | `api_key` | 17 | 15 | 10 | 58.8% [36.0, 78.4] |
-| `password` | 2 | 2 | 0 | 0.0% [0.0, 65.8] |
+| `password` | 3 | 3 | 0 | 0.0% [0.0, 56.1] |
 | `address` | 6 | 3 | 0 | 0.0% [0.0, 39.0] |
 | `url_token` | 1 | 1 | 0 | 0.0% [0.0, 79.3] |
 
@@ -153,7 +153,7 @@ each custom rule type built by createCustomRule under the family's config and ru
 <!-- latency:start -->
 ## How long one evaluation takes
 
-EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1058; p50 1.37 ms, p95 6.774 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
+EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1081; p50 0.887 ms, p95 5.329 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
 
 Re-measured on every `npm run proof` and excluded from `--check`: it is a property of the machine, so CI cannot hold it byte-for-byte.
 

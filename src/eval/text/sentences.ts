@@ -30,6 +30,8 @@
  * the full stop after them is punctuation and not an end. Lowercase, no
  * trailing stop.
  */
+import { isValueBreakAt, VALUE_MARK } from './structured.js';
+
 const ALWAYS_ABBREVIATION = new Set([
   'dr', 'mr', 'mrs', 'ms', 'prof', 'sr', 'jr', 'st', 'mt',
   'e.g', 'i.e', 'vs', 'al', 'cf', 'approx', 'est',
@@ -98,16 +100,25 @@ function precedingToken(text: string, at: number): string {
  * wrapped paragraph is one sentence — but a blank line does, because a new
  * block is a new thought and a bullet list is not one long sentence.
  */
+/**
+ * A sentence has a word or a number in it. A rule (`---`, `***`), a lone
+ * bullet and the mark between two values of a structured output
+ * (structured.ts) are layout, not sentences.
+ */
+function saysAWord(piece: string): boolean {
+  return /[\p{L}\p{N}]/u.test(piece);
+}
+
 export function sentencesOf(text: string): string[] {
   const out: string[] = [];
   let start = 0;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
 
-    // A blank line ends a sentence whatever came before it.
-    if (ch === '\n' && blankLineFollows(text, i + 1)) {
+    // A blank line ends a sentence whatever came before it, and so does the mark between two values of a structured output.
+    if ((ch === '\n' && blankLineFollows(text, i + 1)) || (ch === VALUE_MARK && isValueBreakAt(text, i))) {
       const piece = text.slice(start, i).trim();
-      if (piece.length > 0) out.push(piece);
+      if (saysAWord(piece)) out.push(piece);
       start = i + 1;
       continue;
     }
@@ -149,12 +160,12 @@ export function sentencesOf(text: string): string[] {
     }
 
     const piece = text.slice(start, after).trim();
-    if (piece.length > 0) out.push(piece);
+    if (saysAWord(piece)) out.push(piece);
     start = after;
     i = after - 1;
   }
   const tail = text.slice(start).trim();
-  if (tail.length > 0) out.push(tail);
+  if (saysAWord(tail)) out.push(tail);
   return out;
 }
 

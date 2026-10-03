@@ -55,6 +55,10 @@ class RuleResult(TypedDict, total=False):
     #: deployment) or ``call`` (the call itself). The verdict is then
     #: ``unknown``, not ``pass``.
     asked: str
+    #: When the output was a JSON object or array: ``values`` (what its fields
+    #: say) or ``labelled`` (the same, each with its field name). Evidence
+    #: offsets still point into the output as sent (server 0.20.0+).
+    read: str
     evidence: list[dict[str, Any]]
     value: dict[str, Any]
 

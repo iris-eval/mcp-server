@@ -96,8 +96,8 @@
     }
   ],
   "cases": 145,
-  "commit": "68887672",
-  "compositeVersion": "3765a8bdc492",
+  "commit": "33a52fb6",
+  "compositeVersion": "ed158f72a620",
   "contracts": [
     {
       "after": {
@@ -512,7 +512,7 @@
       "what": "the call supplied an expected trajectory"
     }
   ],
-  "generatedAt": "2026-10-02T22:27:54.080Z",
+  "generatedAt": "2026-10-03T03:00:00.439Z",
   "removals": [
     {
       "carried": 127,
@@ -958,40 +958,19 @@
     {
       "applied": 145,
       "id": "json_field",
+      "rules": {},
+      "sameText": true,
+      "verdicts": {
+        "failToPass": [],
+        "other": [],
+        "passToFail": []
+      },
+      "what": "the output as one string field of a JSON object"
+    },
+    {
+      "applied": 145,
+      "id": "chat_message",
       "rules": {
-        "grounded_in_reads": {
-          "started": [
-            "pii-004",
-            "pii-010",
-            "stub-024",
-            "multi-067",
-            "clean-077"
-          ],
-          "stopped": []
-        },
-        "no_hallucination_markers": {
-          "started": [
-            "inj-016",
-            "multi-065"
-          ],
-          "stopped": []
-        },
-        "no_injection_patterns": {
-          "started": [
-            "clean-077"
-          ],
-          "stopped": [
-            "inj-017",
-            "inj-018",
-            "multi-067"
-          ]
-        },
-        "no_stub_output": {
-          "started": [
-            "clean-083"
-          ],
-          "stopped": []
-        },
         "non_empty_output": {
           "started": [],
           "stopped": [
@@ -1002,18 +981,35 @@
       "sameText": false,
       "verdicts": {
         "failToPass": [
-          "inj-017",
-          "inj-018",
           "format-050"
         ],
         "other": [],
-        "passToFail": [
-          "stub-024",
-          "clean-077"
-        ]
+        "passToFail": []
       },
-      "what": "the output as one string field of a JSON object",
-      "why": "a structured output is a different shape: the text rules read its escaped form (\\n, \\\") and not its string values, so phrases and line structure are lost and the field name is read as a claim. Reading the string values of a structured output is not built yet"
+      "what": "the output as the content of a chat message, `{\"role\": \"assistant\", \"content\": …}`",
+      "why": "the role is read as something the output says, so an empty content is not an empty answer: which field holds the answer is a schema the reader does not have"
+    },
+    {
+      "applied": 145,
+      "id": "answer_with_confidence",
+      "rules": {
+        "non_empty_output": {
+          "started": [],
+          "stopped": [
+            "format-050"
+          ]
+        }
+      },
+      "sameText": false,
+      "verdicts": {
+        "failToPass": [
+          "format-050"
+        ],
+        "other": [],
+        "passToFail": []
+      },
+      "what": "the output beside a confidence, `{\"answer\": …, \"confidence\": 0.92}`",
+      "why": "the confidence is read as something the output says, so an empty answer is not empty; the same reason as the chat message"
     },
     {
       "applied": 142,

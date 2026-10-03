@@ -14,12 +14,12 @@
  *   by a failure.
  *
  *   WRITING IT ANOTHER WAY. Take a case, write the same output with every
- *   space doubled or its lines wrapped at 60 columns, evaluate again. A
- *   verdict that changes was decided by the typing and not by the text.
- *   Five more rewritings are measured beside those two and are NOT held at
- *   zero, each with the reason: they change what some rule is right to
- *   read (a marker's case, a key's case), or they are a different shape of
- *   output that the text rules do not read yet (JSON).
+ *   space doubled, with its lines wrapped at 60 columns, or as one string
+ *   field of a JSON object, and evaluate again. A verdict that changes was
+ *   decided by the typing or the envelope and not by what was said. Four
+ *   more rewritings are measured beside those three and are NOT held at
+ *   zero, each with the reason: they change what some rule is right to read
+ *   (a marker's case, a key's case, a JSON key's quotes, a diff's prefix).
  *
  * The first cannot hold in general, and this file says so with counts. A
  * call that never mentions a field looks the same as a call from an agent
@@ -184,7 +184,7 @@ export const ADDITIONS: readonly Addition[] = [
 interface Rewriting {
   id: string;
   what: string;
-  /** Held at zero: the verdict and every rule that can decide one must answer as before. */
+  /** Held at zero: the same thing said, so the verdict and every rule that can decide one must answer as before. */
   sameText: boolean;
   /** For a rewriting that is not held at zero: why a change is not, or not yet, a defect. */
   why?: string;
@@ -216,12 +216,25 @@ export const REWRITINGS: readonly Rewriting[] = [
     why: 'an empty output becomes a line holding a quote mark, which is no longer empty; and a diff is no longer a diff, so a TODO on a removed line is read as a TODO',
     apply: (o) => o.split('\n').map((l) => `> ${l}`).join('\n'),
   },
+  /*
+   * The same answer in a structured envelope. Held since the text rules read
+   * a structured output by its values (src/eval/text/structured.ts); before
+   * that they read its escaped form, and five verdicts changed.
+   */
+  { id: 'json_field', what: 'the output as one string field of a JSON object', sameText: true, apply: (o) => JSON.stringify({ answer: o }) },
   {
-    id: 'json_field',
-    what: 'the output as one string field of a JSON object',
+    id: 'chat_message',
+    what: 'the output as the content of a chat message, `{"role": "assistant", "content": …}`',
     sameText: false,
-    why: 'a structured output is a different shape: the text rules read its escaped form (\\n, \\") and not its string values, so phrases and line structure are lost and the field name is read as a claim. Reading the string values of a structured output is not built yet',
-    apply: (o) => JSON.stringify({ answer: o }),
+    why: 'the role is read as something the output says, so an empty content is not an empty answer: which field holds the answer is a schema the reader does not have',
+    apply: (o) => JSON.stringify({ role: 'assistant', content: o }),
+  },
+  {
+    id: 'answer_with_confidence',
+    what: 'the output beside a confidence, `{"answer": …, "confidence": 0.92}`',
+    sameText: false,
+    why: 'the confidence is read as something the output says, so an empty answer is not empty; the same reason as the chat message',
+    apply: (o) => JSON.stringify({ answer: o, confidence: 0.92 }),
   },
   {
     id: 'upper_case',
@@ -542,7 +555,7 @@ export function renderInvariantsMarkdown(r: InvariantResults): string {
   L.push('');
   L.push('Each row rewrites the output of every case one way and evaluates again. It counts the verdicts whose state changed and, per rule that can decide a verdict (a gate, a veto, a detection or an inference), the cases where the rule stopped or started firing.');
   L.push('');
-  L.push('**Spacing and line wrapping are the same text: both rows must be all zeros.** Until 0.20.0 they were not: a phrase typed with two spaces, or cut by a line wrap, was not the phrase the rule knew.');
+  L.push('**Spacing, line wrapping and a JSON envelope say the same thing: these rows must be all zeros.** Until 0.20.0 they were not. A phrase typed with two spaces, or cut by a line wrap, was not the phrase the rule knew; and a structured output was read in its escaped form, so a line break was the two characters `\\n` and the name of a field was a word the answer had said.');
   L.push('');
   L.push('| Rewriting | Cases it changes | Verdicts: fail → pass | pass → fail | Rules whose answer changed |');
   L.push('|---|--:|--:|--:|---|');
@@ -554,7 +567,7 @@ export function renderInvariantsMarkdown(r: InvariantResults): string {
     L.push(`| ${row.what} | ${row.applied} | **${row.verdicts.failToPass.length}** | **${row.verdicts.passToFail.length}** | ${ruleCell(row)} |`);
   }
   L.push('');
-  L.push('**These rewritings are measured and are not held at zero.** Each changes something a rule is right to read, or is a shape of output the text rules do not read yet. The reason is beside each.');
+  L.push('**These rewritings are measured and are not held at zero.** Each changes something a rule is right to read. The reason is beside each.');
   L.push('');
   L.push('| Rewriting | Cases it changes | Verdicts: fail → pass | pass → fail | Rules whose answer changed | Why it is not held at zero |');
   L.push('|---|--:|--:|--:|---|---|');
@@ -562,7 +575,7 @@ export function renderInvariantsMarkdown(r: InvariantResults): string {
     L.push(`| ${row.what} | ${row.applied} | ${row.verdicts.failToPass.length} | ${row.verdicts.passToFail.length} | ${ruleCell(row)} | ${row.why ?? ''} |`);
   }
   L.push('');
-  L.push(`**Violations: ${r.violations.contract} under a contract, ${r.violations.rescued} rescued, ${r.violations.rewritten} changed by spacing or wrapping.**`);
+  L.push(`**Violations: ${r.violations.contract} under a contract, ${r.violations.rescued} rescued, ${r.violations.rewritten} changed by spacing, wrapping or a JSON envelope.**`);
   L.push('');
   L.push('## What this does not cover');
   L.push('');

@@ -74,10 +74,10 @@ describe('under a contract, leaving the field out never yields a pass', () => {
   });
 });
 
-describe('the same output, spaced or wrapped another way, gets the same answer', () => {
-  it('no verdict and no deciding rule changes when every space is doubled or the lines are wrapped', () => {
+describe('the same output, spaced, wrapped or sent as JSON, gets the same answer', () => {
+  it('no verdict and no deciding rule changes when every space is doubled, the lines are wrapped, or the output is one field of a JSON object', () => {
     const held = committed.rewritings.filter((r) => r.sameText);
-    expect(held.map((r) => r.id)).toEqual(['double_spaces', 'wrapped']);
+    expect(held.map((r) => r.id)).toEqual(['double_spaces', 'wrapped', 'json_field']);
     for (const r of held) {
       expect(r.verdicts, r.what).toEqual({ failToPass: [], passToFail: [], other: [] });
       expect(r.rules, r.what).toEqual({});

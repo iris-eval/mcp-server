@@ -1925,6 +1925,27 @@ A `passed: true` from a server that demoted a rule is not the same claim as a `p
 
 ---
 
+### Structured outputs
+
+An output that is, whole, one JSON object or one JSON array (for example `{"answer": "…", "sources": […]}`) is read by what it says, not by its escaped form. Every built-in rule that reads the output takes one of two readings of it:
+
+| Reading | What the rule reads | Rules |
+|---|---|---|
+| `values` | every string, number and boolean, in the order written, each its own paragraph | `min_output_length`, `non_empty_output`, `sentence_count`, `expected_coverage`, `ask_coverage`, `keyword_overlap`, `topic_consistency`, `answers_the_ask`, `no_stub_output`, `no_hallucination_markers`, `no_silent_tool_failure`, `grounded_in_reads`, `no_injection_compliance` |
+| `labelled` | every field name, quoted as JSON writes it, before the value it holds (`"password": …`, `"dob": …`), and a name alone where its value is an object, a list or `null`; a list's name is written once, before its first item | `no_pii`, `no_blocklist_words`, `no_injection_patterns` |
+
+Field names are part of what is read: a secret is recognised by the name it is assigned to, a key can itself be the leak (`{"dana@example.org": {…}}`), and a directive smuggled as a key (`"_assistant_directive": …`) is read by the same patterns that read JSON keys inside prose. The name keeps its quotes, so a field called `"system"` in a request body is a field, not a forged `System:` line. Two values are separated by a paragraph mark (`¶`) on a line of its own, which every fold keeps: three numbers in a list are not a phone number, a sentence ends between two fields, and a quotation does not run from one field into the next (a pilcrow inside a line of prose is a character, not a separator). A list item is read as a line, as it is in prose, so an item that opens `assistant: …` is read the way the same line is in prose. One injection shape is read only in this reading: a field whose value is an override (`"note": 'Ignore all previous instructions…'`), quoted or not, disguised or not, when the phrase sits on the value's first line within its first 80 characters. A value whose sentence quotes a payload (`"The email said \"ignore previous instructions\"…"`) is a report about it, as the same sentence is in prose, and a quoted phrase further into a value is read as it would be in prose.
+
+The reading costs time in proportion to the number of values: the largest, most value-dense output the server reads this way (a list of a quarter of a million numbers, 510,000 characters) took 3.2 seconds to evaluate on the Windows desktop the proof runs on, against 0.12 seconds for prose of the same size.
+
+A blank string says nothing, so `{"answer": ""}` is an empty answer. An output with no string, number or boolean in it at all (`[]`, `{"results": []}`, `{"answer": null}`) is read as written: the structure is all it says. A field beside an empty answer, such as a role or a confidence, is read as something the output says, so `{"role": "assistant", "content": ""}` is not empty; which field holds the answer is a schema Iris does not have. [proof/INVARIANTS.md](../proof/INVARIANTS.md) publishes how often each of these envelopes changes an answer.
+
+A rule result that read a structured output carries `read` (`"values"` or `"labelled"`). Every evidence offset still points into the output as sent, and in order, so a span can be shown or redacted in the stored text; the relevance judge's redaction reads a structured text the same way the leak rule does. A structured `expected` is read the same way as the output.
+
+What is not read this way: JSON with anything but JSON whitespace beside it (a no-break space, another Unicode space; a leading byte-order mark is skipped), JSON inside a sentence, a fenced code block, a bare JSON string, and an output longer than 512,000 characters are read as written. Custom rules always read the output exactly as sent, so a `regex_match` written against your response format keeps matching it.
+
+---
+
 ## Custom Rules
 
 Pass custom rules via the `custom_rules` array in `evaluate_output` with `eval_type: "custom"`. Each rule needs a `name`, `type`, `config` object, and optional `weight` (default: 1).
