@@ -8,6 +8,11 @@
  * conditions "decisive" now needs, each against a table built here so the
  * test does not move when the corpus is regenerated, and then check the
  * shipped table against the case the change was made for.
+ *
+ * 0.20.0 spread the prior over every failure class (risk.ts, arithmetic 2),
+ * and the clean pass moved: about 0.40 for a text-only call, in a region
+ * where the dev split holds too few verdicts to test the estimate. The
+ * shipped-table tests below say that now.
  */
 import { describe, expect, it } from 'vitest';
 import { binOf, verdictConfidence, MIN_BIN_N, MIN_BIN_PATTERNS, type CalibrationTable } from '../../../src/eval/confidence.js';
@@ -24,7 +29,9 @@ const bins = (over: BinOver): CalibrationTable['bins'] =>
   Array.from({ length: 10 }, (_, i) => ({ from: i / 10, to: (i + 1) / 10, n: 0, bad: 0, patterns: 0, meanPredicted: null, ...(over[i] ? { patterns: over[i].n, ...over[i] } : {}) }));
 
 const table = (over: BinOver): CalibrationTable => ({
+  version: 'test',
   compositeVersion: 'test',
+  arithmetic: 2,
   split: 'dev',
   prior: 0.5,
   priorMode: 'per-output',
@@ -111,10 +118,12 @@ describe('the shipped calibration', () => {
     expect(PUBLISHED_CALIBRATION.bins).toHaveLength(10);
   });
 
-  it('no longer calls a clean pass decisive where the corpus measured the estimate running low', () => {
-    // The typical clean pass on the composite corpus: p_bad 0.13, interval [0.11, 0.17].
-    // If a regeneration flips this, the estimate became calibrated there: say so in the CHANGELOG and update this line.
-    expect(verdictConfidence({ pBad: 0.13, lo: 0.11, hi: 0.17 }, 0.5, setting)).toMatchObject({ confidence: 'marginal', reason: 'region_miscalibrated' });
+  it('does not call a typical clean pass decisive: the dev split holds too few verdicts at its estimate to test it', () => {
+    // A text-only clean pass under arithmetic 2: p_bad 0.40, interval [0.40, 0.41].
+    // If a regeneration flips this, the region gained the evidence to test it: say so in the CHANGELOG and update this line.
+    expect(verdictConfidence({ pBad: 0.4022, lo: 0.3953, hi: 0.41 }, 0.5, setting)).toMatchObject({ confidence: 'marginal', reason: 'region_too_few' });
+    // The estimate 0.20.0 replaced, 0.13, now falls where the table holds no verdict at all.
+    expect(verdictConfidence({ pBad: 0.13, lo: 0.11, hi: 0.17 }, 0.5, setting)).toMatchObject({ confidence: 'marginal', reason: 'region_unmeasured' });
   });
 
   it('the label compose() stamps is the one verdictConfidence gives, and a marginal one carries its sentence', () => {
@@ -144,7 +153,7 @@ describe('the shipped calibration', () => {
     }
   });
 
-  it('a clean pass that is marginal at the defaults is said plainly: the corpus measured the estimate as too low there, with the numbers, and it is not called a close call', async () => {
+  it('a clean pass that is marginal at the defaults is said plainly: too few labelled verdicts at its estimate, with the numbers, and it is not called a close call', async () => {
     // The typical clean pass: every shipped detector examines the output and none fires.
     const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
     const result = await engine.evaluateAll({
@@ -157,10 +166,12 @@ describe('the shipped calibration', () => {
     expect(notes).toHaveLength(1);
     const [note] = notes;
     expect(note.severity).toBe('note');
-    expect(note.text).toMatch(/^Risk estimate measured as too low at this level on labelled data; see iris-eval\.com\/proof\./);
+    expect(note.text).toMatch(/^Risk estimate not yet confirmed by labelled data at this level; see iris-eval\.com\/proof\./);
     expect(note.text).not.toContain('close call');
     expect(note.text).not.toContain('scored');
-    expect(note.text).toMatch(/outputs with a risk estimate of 0\.1–0\.2 were bad \d+% of the time \(\d+ of \d+/);
+    expect(note.text).toMatch(/Only \d+ labelled verdicts, from \d+ distinct detector patterns, had a risk estimate of 0\.\d–0\.\d/);
+    // And the estimate says why it is where it is: the classes nothing examined kept their share.
+    expect(v.risk!.assumptions.join(' ')).toMatch(/spread per-output over all 16 failure classes; the \d+ that no rule examined keep their share/);
   });
 
   it('a stored verdict labelled under another calibration table reads back with no label and says why', () => {
@@ -178,9 +189,11 @@ describe('the shipped calibration', () => {
       created_at: '2026-01-01T00:00:00Z',
     } as unknown as EvalResult;
     const now = compose(result, DEFAULT_COMPOSE);
-    const same = compose(result, { ...DEFAULT_COMPOSE, calibration: PUBLISHED_CALIBRATION.compositeVersion });
+    const same = compose(result, { ...DEFAULT_COMPOSE, calibration: PUBLISHED_CALIBRATION.version });
     expect(same).toEqual(now);
-    for (const calibration of ['000000000000', null]) {
+    // The corpus's version is not the table's: rows stamped with it, as rows were before the table had its own, read back unlabelled.
+    expect(PUBLISHED_CALIBRATION.version).not.toBe(PUBLISHED_CALIBRATION.compositeVersion);
+    for (const calibration of ['000000000000', PUBLISHED_CALIBRATION.compositeVersion, null]) {
       const cfg = { ...DEFAULT_COMPOSE, calibration };
       const old = compose(result, cfg);
       // The verdict itself is untouched; only the label is withheld.

@@ -520,8 +520,8 @@ export interface Provenance {
      */
     priorMode?: 'per-output' | 'per-class';
     /**
-     * The composite version of the calibration table the confidence label
-     * was read from (src/eval/published-calibration.ts). A read re-derives
+     * The version of the calibration table the confidence label was read
+     * from (src/eval/published-calibration.ts, `version`). A read re-derives
      * the label only under that same table; a row stamped under another
      * table, or before this field existed, reads back without a label and
      * with a note saying why, rather than silently taking today's.
@@ -541,6 +541,13 @@ export interface Provenance {
      * Absent on rows written before 0.20.0, which read back under rules 1.
      */
     rules?: number;
+    /**
+     * Which arithmetic the risk estimate was computed under (risk.ts,
+     * RISK_ARITHMETIC). A read estimates under the same one, so a change to
+     * how the prior is spread does not rewrite a stored row's risk. Absent
+     * on rows written before 0.20.0, which read back under arithmetic 1.
+     */
+    risk?: number;
   };
   /** The evaluation this one re-scored, when it was produced by a re-evaluation of a stored row. The earlier row is kept: the change is the finding. */
   supersedes?: string;

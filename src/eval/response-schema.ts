@@ -207,9 +207,10 @@ export const provenanceSchema = z.looseObject({
       prior: z.number().optional(),
       priorSource: z.enum(['default', 'config', 'estimated']).optional(),
       priorMode: z.enum(['per-output', 'per-class']).optional().describe('how the prior was spread over the failure classes'),
-      calibration: z.string().optional().describe('the composite version of the calibration table the confidence label was read from'),
+      calibration: z.string().optional().describe('the version of the calibration table the confidence label was read from'),
       requiredEvidence: z.array(z.string()).optional().describe('the inputs the deployment requires on every evaluation, when it requires any'),
       rules: z.number().optional().describe('which composer rules produced the verdict: 2 from 0.20.0 (a failure outranks a layer that could not check); absent on earlier rows, which read back under rules 1'),
+      risk: z.number().optional().describe('which arithmetic the risk estimate was computed under: 2 from 0.20.0 (the prior spread over every failure class, and a class no rule examined keeps its share); absent on earlier rows, which read back under arithmetic 1 (spread over the examined classes only)'),
     })
     .optional(),
   corpusVersion: z.string(),

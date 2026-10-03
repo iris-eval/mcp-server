@@ -21,8 +21,8 @@
       "notPassing": 74,
       "passing": 70,
       "passingAfter": {
-        "fail": 13,
-        "pass": 57,
+        "fail": 14,
+        "pass": 56,
         "unknown": 0
       },
       "rescued": [],
@@ -96,7 +96,7 @@
     }
   ],
   "cases": 145,
-  "commit": "33a52fb6",
+  "commit": "39930fa2",
   "compositeVersion": "ed158f72a620",
   "contracts": [
     {
@@ -512,7 +512,7 @@
       "what": "the call supplied an expected trajectory"
     }
   ],
-  "generatedAt": "2026-10-03T03:00:00.439Z",
+  "generatedAt": "2026-10-03T04:59:14.852Z",
   "removals": [
     {
       "carried": 127,

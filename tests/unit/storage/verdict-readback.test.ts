@@ -19,6 +19,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
 import { PUBLISHED_CALIBRATION } from '../../../src/eval/published-calibration.js';
+import { clearRiskEstimateCache, riskEstimate, RISK_ARITHMETIC } from '../../../src/eval/risk.js';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import type { EvalResult } from '../../../src/types/eval.js';
@@ -70,7 +71,7 @@ describe('a stored verdict reads back as given', () => {
     const s = await store();
     const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
     const written = await engine.evaluateAll(CLEAN);
-    expect(written.provenance?.composer).toMatchObject({ priorMode: 'per-output', calibration: PUBLISHED_CALIBRATION.compositeVersion });
+    expect(written.provenance?.composer).toMatchObject({ priorMode: 'per-output', calibration: PUBLISHED_CALIBRATION.version, risk: RISK_ARITHMETIC });
     expect(written.verdict?.confidence).toBeDefined();
     await s.insertEvalResult(LOCAL_TENANT, written);
     const read = (await s.getEvalById(LOCAL_TENANT, written.id))!;
@@ -105,4 +106,37 @@ describe('a stored verdict reads back as given', () => {
       if (calibration) expect(texts.join(' ')).not.toContain(calibration);
     });
   }
+});
+
+describe("a stored verdict's risk reads back under the arithmetic it was given with", () => {
+  it("a row written now is stamped with this build's arithmetic, and reads back with the same estimate and no note about it", async () => {
+    const s = await store();
+    const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+    const written = await engine.evaluateAll(CLEAN);
+    expect(written.provenance?.composer?.risk).toBe(RISK_ARITHMETIC);
+    await s.insertEvalResult(LOCAL_TENANT, written);
+    clearRiskEstimateCache();
+    const read = (await s.getEvalById(LOCAL_TENANT, written.id))!;
+    expect(read.verdict?.risk).toEqual(written.verdict?.risk);
+    expect((read.interpretations ?? []).some((i) => i.text.includes('before 0.20.0'))).toBe(false);
+  });
+
+  it('a row stamped before the arithmetic was, as every row before 0.20.0, reads back under arithmetic 1 and says so', async () => {
+    const s = await store();
+    const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+    const written = await engine.evaluateAll(CLEAN);
+    const composer = { ...written.provenance!.composer! };
+    delete composer.risk;
+    written.provenance = { ...written.provenance!, composer };
+    await s.insertEvalResult(LOCAL_TENANT, written);
+    clearRiskEstimateCache();
+    const read = (await s.getEvalById(LOCAL_TENANT, written.id))!;
+    const before = riskEstimate(read, 0.5, 'per-output', 1)!;
+    expect(read.verdict?.risk).toEqual(before);
+    // Arithmetic 1 put the whole prior on the classes some rule examined, so this clean pass read lower than it does now.
+    expect(before.pBad).toBeLessThan(riskEstimate(read, 0.5, 'per-output', 2)!.pBad);
+    expect(before.assumptions).toContain('prior 0.5, spread per-output');
+    const texts = (read.interpretations ?? []).map((t) => t.text).join(' ');
+    expect(texts).toContain('risk is estimated as it was when the verdict was given, before 0.20.0');
+  });
 });

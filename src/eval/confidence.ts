@@ -85,7 +85,16 @@ export interface CalibrationBin {
 }
 
 export interface CalibrationTable {
+  /**
+   * The table's own version: a hash over everything below and the risk
+   * arithmetic it was measured under. A verdict is stamped with it, and a
+   * stored verdict is labelled again only under the table with the same
+   * version (compose.ts, calibrationAvailable).
+   */
+  version: string;
   compositeVersion: string;
+  /** The risk arithmetic the table was measured under (risk.ts, RISK_ARITHMETIC). */
+  arithmetic: number;
   split: 'dev';
   prior: number;
   priorMode: 'per-output' | 'per-class';

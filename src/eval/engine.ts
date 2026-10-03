@@ -19,6 +19,7 @@ import { readStructured, spanInOutput, type StructuredOutput } from './text/stru
 import { toolsHash } from './catalogue.js';
 import { buildProvenance, configHash, deriveCoverage, rulesetHash } from './verdict.js';
 import { PUBLISHED_CALIBRATION } from './published-calibration.js';
+import { RISK_ARITHMETIC } from './risk.js';
 import { answersTheAsk } from './rules/relevance.js';
 import { agentModelOf } from './llm-judge/family.js';
 import type { RelevanceJudge } from './llm-judge/relevance-judge.js';
@@ -256,9 +257,10 @@ export class EvalEngine {
       prior: prior.pi,
       priorSource: prior.source,
       priorMode: this.compose.priorMode,
-      calibration: PUBLISHED_CALIBRATION.compositeVersion,
+      calibration: PUBLISHED_CALIBRATION.version,
       ...(this.compose.requiredEvidence.length > 0 ? { requiredEvidence: [...this.compose.requiredEvidence] } : {}),
       rules: COMPOSER_RULES,
+      risk: RISK_ARITHMETIC,
     };
   }
 

@@ -15,6 +15,12 @@
  *     agree to three decimals and differ after);
  *   - the finished estimate, through the cache and around it;
  *   - real engine output for a spread of texts and eval types.
+ *
+ * 0.20.0 also added arithmetic 2 (risk.ts, RISK_ARITHMETIC): the per-output
+ * prior spread over every failure class, a class no detector examined
+ * keeping its share. The same loop with that one change is its reference,
+ * and every comparison runs under both, so arithmetic 1 is still the 0.19.0
+ * loop bit for bit and the stored rows that read under it read as they did.
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -23,7 +29,10 @@ import {
   detectorsOf,
   riskDraws,
   riskEstimate,
+  storedRiskEstimate,
+  RISK_ARITHMETIC,
   RISK_DRAWS,
+  RISK_KEY_VERSION,
   type PriorMode,
   type RiskEstimate,
 } from '../../../src/eval/risk.js';
@@ -34,7 +43,7 @@ import { beta as statsBeta, fnv1a, gamma as statsGamma, mulberry32, normal, sens
 import { EvalEngine } from '../../../src/eval/engine.js';
 import type { EvalResult, EvalRuleResult, EvalType } from '../../../src/types/eval.js';
 
-// ---- The 0.19.0 simulation and its sampler, verbatim apart from returning the draws. ----
+// ---- The 0.19.0 simulation and its sampler, verbatim apart from returning the draws and taking the arithmetic. ----
 
 function gamma(shape: number, rng: () => number): number {
   if (!(shape > 0)) throw new Error(`gamma: shape must be positive, got ${shape}`);
@@ -74,6 +83,7 @@ function pBadFrom(
   detectors: Detector[],
   prior: number,
   mode: PriorMode,
+  arithmetic: number,
   sensOf: (d: Detector) => number,
   specOf: (d: Detector) => number,
   localPpvOf: (d: Detector) => number | null = (d) => (d.local ? localPpv(d.local) : null),
@@ -81,11 +91,14 @@ function pBadFrom(
   const perClass: Record<string, number | null> = {};
   let survive = 1;
   const examinedClasses = FAILURE_CLASS_IDS.filter((cls) => detectors.some((d) => d.classes.includes(cls))).length;
-  const priorC = classPrior(prior, mode, examinedClasses);
+  // Arithmetic 2, per-output: spread over the whole taxonomy, and an unexamined class keeps its share.
+  const taxonomy = arithmetic >= 2 && mode === 'per-output';
+  const priorC = classPrior(prior, mode, taxonomy ? FAILURE_CLASS_IDS.length : examinedClasses);
   for (const cls of FAILURE_CLASS_IDS) {
     const examined = detectors.filter((d) => d.classes.includes(cls));
     if (examined.length === 0) {
       perClass[cls] = null;
+      if (taxonomy) survive *= 1 - priorC;
       continue;
     }
     const fired = examined.filter((d) => d.fired);
@@ -119,7 +132,7 @@ function pBadFrom(
 
 const round4 = (x: number): number => Math.round(x * 10_000) / 10_000;
 
-function referenceDraws(detectors: Detector[], prior: number, mode: PriorMode): number[] {
+function referenceDraws(detectors: Detector[], prior: number, mode: PriorMode, arithmetic: number): number[] {
   const rng = mulberry32(
     fnv1a(
       `risk:${PUBLISHED_ACCURACY_CORPUS_VERSION}:${mode}:${prior.toFixed(3)}:${detectors.map((d) => `${d.name}${d.fired ? '!' : ''}${d.local ? `@${d.local.right}/${d.local.wrong}` : ''}`).join(',')}`,
@@ -135,17 +148,25 @@ function referenceDraws(detectors: Detector[], prior: number, mode: PriorMode): 
       spec.set(d.name, beta(d.counts.tn + 0.5, d.counts.fp + 0.5, rng));
       if (d.local) own.set(d.name, beta(d.local.right + 0.5, d.local.wrong + 0.5, rng));
     }
-    draws.push(pBadFrom(detectors, prior, mode, (d) => sens.get(d.name)!, (d) => spec.get(d.name)!, (d) => own.get(d.name) ?? null).pBad);
+    draws.push(pBadFrom(detectors, prior, mode, arithmetic, (d) => sens.get(d.name)!, (d) => spec.get(d.name)!, (d) => own.get(d.name) ?? null).pBad);
   }
   return draws;
 }
 
-function referenceEstimate(result: EvalResult, prior: number, mode: PriorMode): RiskEstimate | null {
+/** What the assumptions say about the prior: as 0.19.0 said it, or, spread over the taxonomy, how many classes kept their share. */
+function spreadLine(prior: number, mode: PriorMode, arithmetic: number, unexamined: number): string {
+  if (arithmetic < 2 || mode !== 'per-output') return `prior ${prior}, spread ${mode}`;
+  const all = `prior ${prior}, spread per-output over all ${FAILURE_CLASS_IDS.length} failure classes`;
+  if (unexamined === 0) return all;
+  return unexamined === 1 ? `${all}; the 1 that no rule examined keeps its share` : `${all}; the ${unexamined} that no rule examined keep their share`;
+}
+
+function referenceEstimate(result: EvalResult, prior: number, mode: PriorMode, arithmetic: number): RiskEstimate | null {
   const detectors = detectorsOf(result);
   if (detectors.length === 0) return null;
-  const point = pBadFrom(detectors, prior, mode, sensOf, specOf);
+  const point = pBadFrom(detectors, prior, mode, arithmetic, sensOf, specOf);
   const localised = detectors.filter((d) => d.local !== undefined);
-  const draws = referenceDraws(detectors, prior, mode);
+  const draws = referenceDraws(detectors, prior, mode, arithmetic);
   draws.sort((a, b) => a - b);
   const at = (q: number): number => draws[Math.min(draws.length - 1, Math.max(0, Math.ceil(q * draws.length) - 1))];
   return {
@@ -157,7 +178,7 @@ function referenceEstimate(result: EvalResult, prior: number, mode: PriorMode): 
       'detectors independent across classes',
       'published accuracy is in-sample, same-model labelled',
       'sensitivity and specificity carry a half-count prior, so a family with no observed errors does not read as certain',
-      `prior ${prior}, spread ${mode}`,
+      spreadLine(prior, mode, arithmetic, Object.values(point.perClass).filter((v) => v === null).length),
       ...(localised.length > 0
         ? [`local precision from this deployment's labels replaces the published positive predictive value for: ${localised.map((d) => `${d.name} (${d.local!.right + d.local!.wrong} labels)`).join(', ')}`]
         : []),
@@ -170,7 +191,11 @@ function referenceEstimate(result: EvalResult, prior: number, mode: PriorMode): 
 const RULES = publishedRuleNames();
 const PRIORS = [0.5, 0.1, 0.05, 0.01, 0.3, 0.9, 0.999, 0.0005, 0.1234, 0.12345, 0.123449];
 
-function generated(seed: number): { result: EvalResult; prior: number; mode: PriorMode } {
+/*
+ * The arithmetic comes from the seed's parity rather than the stream, so the
+ * 800 inputs are the ones this file generated before arithmetic 2 existed.
+ */
+function generated(seed: number): { result: EvalResult; prior: number; mode: PriorMode; arithmetic: number } {
   const rng = mulberry32(seed);
   const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rng() * xs.length)];
   const n = 1 + Math.floor(rng() * 9);
@@ -197,7 +222,7 @@ function generated(seed: number): { result: EvalResult; prior: number; mode: Pri
   const prior = rng() < 0.7 ? pick(PRIORS) : rng();
   const mode: PriorMode = rng() < 0.5 ? 'per-output' : 'per-class';
   const result = { id: `g${seed}`, eval_type: 'all', output_text: 'x', score: 1, passed: true, rule_results: rows, rules_evaluated: n, rules_skipped: 0, insufficient_data: false } as EvalResult;
-  return { result, prior, mode };
+  return { result, prior, mode, arithmetic: seed % 2 === 0 ? 1 : 2 };
 }
 
 /** Object.is on every draw, reporting the first difference rather than a 2,000-element diff. */
@@ -210,14 +235,16 @@ function firstDifference(a: ArrayLike<number>, b: ArrayLike<number>): string | n
 describe('the compiled risk simulation', () => {
   beforeEach(() => clearRiskEstimateCache());
 
-  it('produces every draw of the 0.19.0 loop, bit for bit, over 800 generated inputs', () => {
-    const covered = { firedClass: 0, silentClass: 0, local: 0, duplicate: 0, perClass: 0, perOutput: 0, noClass: 0 };
+  it('produces every draw of the 0.19.0 loop under arithmetic 1, and of the same loop under arithmetic 2, bit for bit, over 800 generated inputs', () => {
+    const covered = { firedClass: 0, silentClass: 0, local: 0, duplicate: 0, perClass: 0, perOutput: 0, noClass: 0, arithmetic1: 0, arithmetic2PerOutput: 0 };
     for (let seed = 1; seed <= 800; seed++) {
-      const { result, prior, mode } = generated(seed);
+      const { result, prior, mode, arithmetic } = generated(seed);
       const detectors = detectorsOf(result);
       if (detectors.length === 0) continue;
-      const diff = firstDifference(riskDraws(result, prior, mode), referenceDraws(detectors, prior, mode));
+      const diff = firstDifference(riskDraws(result, prior, mode, arithmetic), referenceDraws(detectors, prior, mode, arithmetic));
       expect(diff, `seed ${seed}`).toBeNull();
+      if (arithmetic === 1) covered.arithmetic1++;
+      else if (mode === 'per-output') covered.arithmetic2PerOutput++;
       if (detectors.some((d) => d.fired)) covered.firedClass++;
       if (detectors.some((d) => !d.fired)) covered.silentClass++;
       if (detectors.some((d) => d.local)) covered.local++;
@@ -229,12 +256,12 @@ describe('the compiled risk simulation', () => {
     for (const [branch, n] of Object.entries(covered)) expect(n, branch).toBeGreaterThan(25);
   }, 180_000);
 
-  it('returns the 0.19.0 estimate exactly, on the first call and from the cache', () => {
+  it('returns the reference estimate exactly under either arithmetic, on the first call and from the cache', () => {
     for (let seed = 5001; seed <= 5200; seed++) {
-      const { result, prior, mode } = generated(seed);
-      const expected = referenceEstimate(result, prior, mode);
-      expect(riskEstimate(result, prior, mode), `seed ${seed}, computed`).toStrictEqual(expected);
-      expect(riskEstimate(result, prior, mode), `seed ${seed}, cached`).toStrictEqual(expected);
+      const { result, prior, mode, arithmetic } = generated(seed);
+      const expected = referenceEstimate(result, prior, mode, arithmetic);
+      expect(riskEstimate(result, prior, mode, arithmetic), `seed ${seed}, computed`).toStrictEqual(expected);
+      expect(riskEstimate(result, prior, mode, arithmetic), `seed ${seed}, cached`).toStrictEqual(expected);
     }
   }, 180_000);
 
@@ -257,10 +284,12 @@ describe('the compiled risk simulation', () => {
       for (const ctx of contexts) {
         const result = type === 'all' ? await engine.evaluateAll(ctx) : await engine.evaluate(type as EvalType, ctx);
         for (const [prior, mode] of [[0.5, 'per-output'], [0.05, 'per-class']] as const) {
-          clearRiskEstimateCache();
-          const expected = referenceEstimate(result, prior, mode);
-          if (expected !== null) estimated++;
-          expect(riskEstimate(result, prior, mode)).toStrictEqual(expected);
+          for (const arithmetic of [1, 2]) {
+            clearRiskEstimateCache();
+            const expected = referenceEstimate(result, prior, mode, arithmetic);
+            if (expected !== null) estimated++;
+            expect(riskEstimate(result, prior, mode, arithmetic)).toStrictEqual(expected);
+          }
         }
       }
     }
@@ -301,8 +330,8 @@ describe('the estimate cache', () => {
     // 0.1234 and 0.12345 share a seed; the arithmetic still reads the exact prior.
     const a = riskEstimate(result, 0.1234, 'per-output');
     const b = riskEstimate(result, 0.12345, 'per-output');
-    expect(a).toStrictEqual(referenceEstimate(result, 0.1234, 'per-output'));
-    expect(b).toStrictEqual(referenceEstimate(result, 0.12345, 'per-output'));
+    expect(a).toStrictEqual(referenceEstimate(result, 0.1234, 'per-output', RISK_ARITHMETIC));
+    expect(b).toStrictEqual(referenceEstimate(result, 0.12345, 'per-output', RISK_ARITHMETIC));
   });
 
   it('keys on classes, which the seed does not carry', () => {
@@ -310,9 +339,23 @@ describe('the estimate cache', () => {
       ({ id: 'c', rule_results: [{ ruleName: RULES[0], passed: false, score: 0, message: '', kind: 'detection', classes }, { ruleName: RULES[1], passed: true, score: 1, message: '', kind: 'detection', classes: [FAILURE_CLASS_IDS[1]] }] }) as unknown as EvalResult;
     const same = row([FAILURE_CLASS_IDS[1]]);
     const apart = row([FAILURE_CLASS_IDS[0]]);
-    expect(riskEstimate(same)).toStrictEqual(referenceEstimate(same, 0.5, 'per-output'));
-    expect(riskEstimate(apart)).toStrictEqual(referenceEstimate(apart, 0.5, 'per-output'));
+    expect(riskEstimate(same)).toStrictEqual(referenceEstimate(same, 0.5, 'per-output', RISK_ARITHMETIC));
+    expect(riskEstimate(apart)).toStrictEqual(referenceEstimate(apart, 0.5, 'per-output', RISK_ARITHMETIC));
     expect(riskEstimate(same)).not.toStrictEqual(riskEstimate(apart));
+  });
+
+  it('keys on the arithmetic, and under arithmetic 1 on the key estimates were stored under before the number existed', () => {
+    const { result } = generated(11);
+    const one = storedRiskEstimate(result, 0.5, 'per-output', 1)!;
+    const two = storedRiskEstimate(result, 0.5, 'per-output', 2)!;
+    // Arithmetic 1's key has no arithmetic in it: a row stored before 0.20.0 stamped its estimate under exactly this.
+    expect(one.key.startsWith(`${RISK_KEY_VERSION}|0.5|per-output|`)).toBe(true);
+    expect(one.key).not.toContain('|a1|');
+    expect(two.key.startsWith(`${RISK_KEY_VERSION}|0.5|per-output|a2|`)).toBe(true);
+    // Not one cache entry under two names: each is its own arithmetic's estimate.
+    expect(one.estimate).toStrictEqual(referenceEstimate(result, 0.5, 'per-output', 1));
+    expect(two.estimate).toStrictEqual(referenceEstimate(result, 0.5, 'per-output', 2));
+    expect(Object.values(two.estimate.perClass)).toContain(null);
   });
 
   it('stays correct past its bound, when the oldest shapes have been evicted', () => {

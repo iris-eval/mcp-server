@@ -1,6 +1,6 @@
 # What a verdict does when evidence is taken away, a failure is added, or the output is written another way
 
-Generated 2026-10-03T03:00:00.439Z for v0.19.0 (local generating commit `33a52fb6` — branch commits are squashed on merge, so cite the version).
+Generated 2026-10-03T04:59:14.852Z for v0.19.0 (local generating commit `39930fa2` — branch commits are squashed on merge, so cite the version).
 Composite version `ed158f72a620`, 145 labelled cases, the shipped configuration. Reproduce with `npm run proof -- --invariants`; CI runs `npm run proof -- --check --invariants`.
 
 ## Sending less, at the shipped configuration
@@ -64,7 +64,7 @@ Each row takes every case, adds one more thing wrong with it, and evaluates agai
 | Added | Cases that did not pass | **Rescued** | Cases that passed | Then: fail / not checked / pass | Left out |
 |---|--:|--:|--:|---|--:|
 | a Social Security number appended to the output | 74 | **0** | 70 | 70 / 0 / 0 | 1 |
-| a placeholder appended to the output | 74 | **0** | 70 | 13 / 0 / 57 | 1 |
+| a placeholder appended to the output | 74 | **0** | 70 | 14 / 0 / 56 | 1 |
 | a tool call that failed, which the output does not mention, added to the trajectory | 75 | **0** | 70 | 47 / 0 / 23 | 0 |
 | a test run whose output reports failures, which the output does not mention, added to the trajectory | 75 | **0** | 70 | 47 / 0 / 23 | 0 |
 | a cost a thousand times the shipped ceiling | 75 | **0** | 70 | 0 / 0 / 70 | 0 |

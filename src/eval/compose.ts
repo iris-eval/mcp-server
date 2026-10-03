@@ -38,7 +38,7 @@
  * shows a default says it is a recommendation.
  */
 import type { EvalResult, EvalRuleResult, Interpretation, Need, Role, Verdict, VerdictLayer, VerdictNode } from '../types/eval.js';
-import { riskEstimate, detectorsOf, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
+import { riskEstimate, detectorsOf, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, RISK_ARITHMETIC, type PriorMode } from './risk.js';
 import { verdictConfidence, MIN_BIN_N, MIN_BIN_PATTERNS, type ConfidenceCall } from './confidence.js';
 import { PUBLISHED_CALIBRATION } from './published-calibration.js';
 import { decides, isCritical } from './gate.js';
@@ -89,6 +89,12 @@ export interface ComposeConfig {
    * verdict its caller was given and not as the one this build would give.
    */
   rules?: number;
+  /**
+   * Which arithmetic the risk estimate is computed under (risk.ts,
+   * RISK_ARITHMETIC). Absent when judging now: this build's. A stored row
+   * passes the number it was stamped with, and 1 when it carries none.
+   */
+  risk?: number;
 }
 
 /**
@@ -295,7 +301,7 @@ function walk(
    * verdict that came through a measured risk is a different sentence from
    * one where nothing could be estimated, and both end here.
    */
-  const risk = riskEstimate(result as EvalResult, cfg.prior, cfg.priorMode);
+  const risk = riskEstimate(result as EvalResult, cfg.prior, cfg.priorMode, cfg.risk ?? RISK_ARITHMETIC);
   const t = tau(cfg.falsePassCost);
   const by =
     risk === null
@@ -310,10 +316,13 @@ function walk(
 /**
  * Whether a verdict's confidence label can be derived under this
  * configuration: always when judging now, and on a stored row only when it
- * was stamped with the calibration table this build ships.
+ * was stamped with the calibration table this build ships. The stamp is the
+ * table's own version, which changes with any change to its content, not
+ * the corpus's: the table is regenerated whenever a rule or the arithmetic
+ * moves a verdict, and the corpus stays the same.
  */
 export function calibrationAvailable(cfg: Pick<ComposeConfig, 'calibration'>): boolean {
-  return cfg.calibration === undefined || cfg.calibration === PUBLISHED_CALIBRATION.compositeVersion;
+  return cfg.calibration === undefined || cfg.calibration === PUBLISHED_CALIBRATION.version;
 }
 
 /** The confidence label and why, for a verdict that came through the risk node. */
@@ -717,6 +726,13 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
   }
   if (verdict.risk !== null && !calibrationAvailable(cfg)) {
     out.push({ severity: 'note', addressee: 'operator', text: unlabelledText(cfg) });
+  }
+  if (verdict.risk !== null && (cfg.risk ?? RISK_ARITHMETIC) < RISK_ARITHMETIC) {
+    out.push({
+      severity: 'note',
+      addressee: 'operator',
+      text: 'This stored verdict\'s risk is estimated as it was when the verdict was given, before 0.20.0: the prior spread over only the kinds of failure some rule examined. This release also counts the kinds no rule examined, so the same output judged now carries a higher estimate. Re-evaluate the output to estimate it the current way.',
+    });
   }
   return out;
 }

@@ -16,8 +16,10 @@
  * correlated evidence) and not a logistic model (which cannot be read
  * against the proof page).
  *
- *   for each class c examined by ≥1 evaluated detection/inference with a
- *   published family:
+ *   π_c = 1 − (1 − π)^(1/K), K = every failure class (RISK_ARITHMETIC below)
+ *   for each class c:
+ *     no evaluated detection/inference with a published family examined it
+ *                     → q_c = π_c, its share of the prior
  *     fired non-empty → q_c = max PPV_d(π_c) over the fired detectors
  *     nothing fired   → q_c = π·Π(1−sens_d) / (π·Π(1−sens_d) + (1−π)·Π spec_d)
  *   p_bad = 1 − Π_c (1 − q_c)
@@ -68,6 +70,30 @@ export const DEFAULT_PRIOR = 0.5;
  */
 export type PriorMode = 'per-class' | 'per-output';
 export const DEFAULT_PRIOR_MODE: PriorMode = 'per-output';
+
+/**
+ * How the per-output prior is spread over the failure classes, as a number a
+ * stored row is stamped with (Provenance.composer.risk).
+ *
+ *   1  through 0.19.x: over the classes some detector examined. A class no
+ *      detector examined dropped out of the estimate, so the whole prior sat
+ *      on the classes the rules could see. Adding a detector for one class
+ *      lowered the estimate on every output, and an output read as safer the
+ *      fewer kinds of failure it was checked for.
+ *   2  from 0.20.0: over every class in the taxonomy, and a class no detector
+ *      examined keeps its share. Measured beside 1 on the composite corpus's
+ *      held-out splits before it shipped (proof/COMPOSITE.md carries both):
+ *      it ranks bad outputs above good ones more often, and its estimate is
+ *      nearer the rate at which the outputs it is given for are bad.
+ *
+ * The per-class reading is the same under both: π for each examined class.
+ * Moved only when the same rule results give a different estimate; a stored
+ * row is read under the number it carries, and under 1 when it carries none.
+ */
+export const RISK_ARITHMETIC = 2;
+
+/** Whether a class no detector examined keeps its share of the prior. */
+const keepsShare = (mode: PriorMode, arithmetic: number): boolean => arithmetic >= 2 && mode === 'per-output';
 /** τ = 1 / (1 + c) with c = 1: a false pass costs the same as a false block. */
 export const DEFAULT_FALSE_PASS_COST = 1;
 export const DEFAULT_TAU = 1 / (1 + DEFAULT_FALSE_PASS_COST);
@@ -141,6 +167,7 @@ function pBadFrom(
   detectors: Detector[],
   prior: number,
   mode: PriorMode,
+  arithmetic: number,
   sensOf: (d: Detector) => number,
   specOf: (d: Detector) => number,
   localPpvOf: (d: Detector) => number | null = (d) => (d.local ? localPpv(d.local) : null),
@@ -148,11 +175,14 @@ function pBadFrom(
   const perClass: Record<string, number | null> = {};
   let survive = 1;
   const examinedClasses = FAILURE_CLASS_IDS.filter((cls) => detectors.some((d) => d.classes.includes(cls))).length;
-  const priorC = classPrior(prior, mode, examinedClasses);
+  const keeps = keepsShare(mode, arithmetic);
+  const priorC = classPrior(prior, mode, keeps ? FAILURE_CLASS_IDS.length : examinedClasses);
   for (const cls of FAILURE_CLASS_IDS) {
     const examined = detectors.filter((d) => d.classes.includes(cls));
     if (examined.length === 0) {
+      // No detector examined it: perClass says so with null, and from arithmetic 2 its share still counts toward p_bad.
       perClass[cls] = null;
+      if (keeps) survive *= 1 - priorC;
       continue;
     }
     const fired = examined.filter((d) => d.fired);
@@ -222,7 +252,7 @@ function betaSampler(a: number, b: number): (rng: () => number) => number {
 }
 
 /** The 2,000 p_bad draws, in draw order: pBadFrom's arithmetic over flat arrays. */
-function simulate(detectors: Detector[], prior: number, mode: PriorMode, rng: () => number): Float64Array {
+function simulate(detectors: Detector[], prior: number, mode: PriorMode, arithmetic: number, rng: () => number): Float64Array {
   const n = detectors.length;
   const sensDraw = detectors.map((d) => betaSampler(d.counts.tp + 0.5, d.counts.fn + 0.5));
   const specDraw = detectors.map((d) => betaSampler(d.counts.tn + 0.5, d.counts.fp + 0.5));
@@ -243,16 +273,29 @@ function simulate(detectors: Detector[], prior: number, mode: PriorMode, rng: ()
   const slot = Int32Array.from(detectors, (d) => lastByName.get(d.name)!);
   const ownSlot = Int32Array.from(detectors, (d) => lastLocalByName.get(d.name) ?? -1);
 
-  const classes: { examined: Int32Array; fired: Int32Array }[] = [];
+  /*
+   * Every class in taxonomy order, null where no detector examined it. A
+   * class nothing examined multiplies in its share where it falls in that
+   * order (arithmetic 2), exactly as pBadFrom does, so a draw is the same
+   * product of the same factors; under arithmetic 1 it is skipped, which
+   * leaves the 0.19.0 product untouched.
+   */
+  const classes: ({ examined: Int32Array; fired: Int32Array } | null)[] = [];
+  let examinedClasses = 0;
   for (const cls of FAILURE_CLASS_IDS) {
     const examined: number[] = [];
     detectors.forEach((d, i) => {
       if (d.classes.includes(cls)) examined.push(i);
     });
-    if (examined.length === 0) continue;
+    if (examined.length === 0) {
+      classes.push(null);
+      continue;
+    }
+    examinedClasses += 1;
     classes.push({ examined: Int32Array.from(examined), fired: Int32Array.from(examined.filter((i) => detectors[i].fired)) });
   }
-  const priorC = classPrior(prior, mode, classes.length);
+  const keeps = keepsShare(mode, arithmetic);
+  const priorC = classPrior(prior, mode, keeps ? FAILURE_CLASS_IDS.length : examinedClasses);
 
   const sens = new Float64Array(n);
   const spec = new Float64Array(n);
@@ -266,7 +309,12 @@ function simulate(detectors: Detector[], prior: number, mode: PriorMode, rng: ()
       if (o !== null) own[i] = o(rng);
     }
     let survive = 1;
-    for (const { examined, fired } of classes) {
+    for (const cls of classes) {
+      if (cls === null) {
+        if (keeps) survive *= 1 - priorC;
+        continue;
+      }
+      const { examined, fired } = cls;
       let q: number;
       if (fired.length > 0) {
         q = -Infinity;
@@ -301,19 +349,19 @@ function simulate(detectors: Detector[], prior: number, mode: PriorMode, rng: ()
 }
 
 /** The seeded draws for these detectors, in draw order. The seed names every input except the classes, as it always has. */
-function drawsFor(detectors: Detector[], prior: number, mode: PriorMode): Float64Array {
+function drawsFor(detectors: Detector[], prior: number, mode: PriorMode, arithmetic: number): Float64Array {
   const rng = mulberry32(
     fnv1a(
       `risk:${PUBLISHED_ACCURACY_CORPUS_VERSION}:${mode}:${prior.toFixed(3)}:${detectors.map((d) => `${d.name}${d.fired ? '!' : ''}${d.local ? `@${d.local.right}/${d.local.wrong}` : ''}`).join(',')}`,
     ),
   );
   // Every sens/spec from its Beta(count + ½) posterior, and a local precision from Beta(right + ½, wrong + ½).
-  return simulate(detectors, prior, mode, rng);
+  return simulate(detectors, prior, mode, arithmetic, rng);
 }
 
 /** The unsorted, unrounded draws behind an estimate; exported so a test can compare every draw, not only the rounded quantiles. */
-export function riskDraws(result: EvalResult, prior: number = DEFAULT_PRIOR, mode: PriorMode = DEFAULT_PRIOR_MODE): Float64Array {
-  return drawsFor(detectorsOf(result), prior, mode);
+export function riskDraws(result: EvalResult, prior: number = DEFAULT_PRIOR, mode: PriorMode = DEFAULT_PRIOR_MODE, arithmetic: number = RISK_ARITHMETIC): Float64Array {
+  return drawsFor(detectorsOf(result), prior, mode, arithmetic);
 }
 
 /*
@@ -339,8 +387,13 @@ const copyEstimate = (e: RiskEstimate): RiskEstimate => ({ ...e, perClass: { ...
  */
 export const RISK_KEY_VERSION = `risk-1:${PUBLISHED_ACCURACY_CORPUS_VERSION}:${RISK_DRAWS}`;
 
-function estimateKey(detectors: Detector[], prior: number, mode: PriorMode): string {
-  return `${RISK_KEY_VERSION}|${String(prior)}|${mode}|${detectors
+/*
+ * The arithmetic is in the key from 2 on. Under 1 the key is the one every
+ * estimate was stored under before the number existed, so those estimates
+ * still match the rows they were stored for and nothing is computed again.
+ */
+function estimateKey(detectors: Detector[], prior: number, mode: PriorMode, arithmetic: number): string {
+  return `${RISK_KEY_VERSION}|${String(prior)}|${mode}${arithmetic === 1 ? '' : `|a${arithmetic}`}|${detectors
     .map((d) => `${d.name}:${d.classes.join('+')}:${d.fired ? 1 : 0}:${d.counts.tp},${d.counts.fp},${d.counts.fn},${d.counts.tn}:${d.local ? `${d.local.right}/${d.local.wrong}` : ''}`)
     .join(';')}`;
 }
@@ -351,23 +404,28 @@ function cacheEstimate(key: string, estimate: RiskEstimate): void {
   if (estimateCache.size > ESTIMATE_CACHE_MAX) estimateCache.delete(estimateCache.keys().next().value!);
 }
 
-function estimateFor(detectors: Detector[], prior: number, mode: PriorMode): { key: string; estimate: RiskEstimate } {
-  const key = estimateKey(detectors, prior, mode);
+function estimateFor(detectors: Detector[], prior: number, mode: PriorMode, arithmetic: number): { key: string; estimate: RiskEstimate } {
+  const key = estimateKey(detectors, prior, mode, arithmetic);
   const cached = estimateCache.get(key);
   if (cached !== undefined) {
     cacheEstimate(key, cached);
     return { key, estimate: cached };
   }
-  const estimate = computeRiskEstimate(detectors, prior, mode);
+  const estimate = computeRiskEstimate(detectors, prior, mode, arithmetic);
   cacheEstimate(key, estimate);
   return { key, estimate };
 }
 
 /** p_bad with a 95% credible interval from the Beta posteriors of every detector's sensitivity and specificity. */
-export function riskEstimate(result: EvalResult, prior: number = DEFAULT_PRIOR, mode: PriorMode = DEFAULT_PRIOR_MODE): RiskEstimate | null {
+export function riskEstimate(
+  result: EvalResult,
+  prior: number = DEFAULT_PRIOR,
+  mode: PriorMode = DEFAULT_PRIOR_MODE,
+  arithmetic: number = RISK_ARITHMETIC,
+): RiskEstimate | null {
   const detectors = detectorsOf(result);
   if (detectors.length === 0) return null;
-  return copyEstimate(estimateFor(detectors, prior, mode).estimate);
+  return copyEstimate(estimateFor(detectors, prior, mode, arithmetic).estimate);
 }
 
 /**
@@ -381,10 +439,15 @@ export interface StoredRiskEstimate {
   estimate: RiskEstimate;
 }
 
-export function storedRiskEstimate(result: EvalResult, prior: number = DEFAULT_PRIOR, mode: PriorMode = DEFAULT_PRIOR_MODE): StoredRiskEstimate | null {
+export function storedRiskEstimate(
+  result: EvalResult,
+  prior: number = DEFAULT_PRIOR,
+  mode: PriorMode = DEFAULT_PRIOR_MODE,
+  arithmetic: number = RISK_ARITHMETIC,
+): StoredRiskEstimate | null {
   const detectors = detectorsOf(result);
   if (detectors.length === 0) return null;
-  const { key, estimate } = estimateFor(detectors, prior, mode);
+  const { key, estimate } = estimateFor(detectors, prior, mode, arithmetic);
   return { key, estimate: copyEstimate(estimate) };
 }
 
@@ -421,7 +484,14 @@ export function clearRiskEstimateCache(): void {
   estimateCache.clear();
 }
 
-function computeRiskEstimate(detectors: Detector[], prior: number, mode: PriorMode): RiskEstimate {
+/** The assumption line for a prior spread over the taxonomy, naming how many classes nothing examined. */
+function spreadOverTaxonomy(prior: number, mode: PriorMode, unexamined: number): string {
+  const all = `prior ${prior}, spread ${mode} over all ${FAILURE_CLASS_IDS.length} failure classes`;
+  if (unexamined === 0) return all;
+  return unexamined === 1 ? `${all}; the 1 that no rule examined keeps its share` : `${all}; the ${unexamined} that no rule examined keep their share`;
+}
+
+function computeRiskEstimate(detectors: Detector[], prior: number, mode: PriorMode, arithmetic: number): RiskEstimate {
   /*
    * Jeffreys half-counts in the POINT estimate, not only in the draws.
    *
@@ -436,9 +506,10 @@ function computeRiskEstimate(detectors: Detector[], prior: number, mode: PriorMo
    * something. Found while writing up the composer, not by
    * reading it.
    */
-  const point = pBadFrom(detectors, prior, mode, sensOf, specOf);
+  const point = pBadFrom(detectors, prior, mode, arithmetic, sensOf, specOf);
   const localised = detectors.filter((d) => d.local !== undefined);
-  const draws = drawsFor(detectors, prior, mode).sort();
+  const draws = drawsFor(detectors, prior, mode, arithmetic).sort();
+  const unexamined = Object.values(point.perClass).filter((q) => q === null).length;
   const at = (q: number): number => draws[Math.min(draws.length - 1, Math.max(0, Math.ceil(q * draws.length) - 1))];
   // The point uses the observed rates; a rate at exactly 1 (no false positives
   // in the family) puts the point above every posterior draw, so the interval
@@ -453,7 +524,7 @@ function computeRiskEstimate(detectors: Detector[], prior: number, mode: PriorMo
       'detectors independent across classes',
       'published accuracy is in-sample, same-model labelled',
       'sensitivity and specificity carry a half-count prior, so a family with no observed errors does not read as certain',
-      `prior ${prior}, spread ${mode}`,
+      keepsShare(mode, arithmetic) ? spreadOverTaxonomy(prior, mode, unexamined) : `prior ${prior}, spread ${mode}`,
       ...(localised.length > 0
         ? [`local precision from this deployment's labels replaces the published positive predictive value for: ${localised.map((d) => `${d.name} (${d.local!.right + d.local!.wrong} labels)`).join(', ')}`]
         : []),

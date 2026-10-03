@@ -212,19 +212,33 @@ committed numbers are the code's. Read there:
 | accuracy vs `shouldShip` | per split and composer, with a Wilson interval; the test split is the headline, the real transcripts are the held-out line (staged; see below) |
 | false blocks on clean · missed blocks | the two ways a verdict is wrong, separately, because a gate cares about them differently |
 | difference from legacy | accuracy(risk) − accuracy(legacy) with a Newcombe hybrid-score interval; an interval that straddles zero says the corpus cannot tell them apart |
-| calibration | Brier score and expected calibration error over ten bins, for the legacy score read as P(bad) = 1 − score and for the risk's p_bad |
+| calibration | Brier score and expected calibration error over ten bins, for the legacy score read as P(bad) = 1 − score and for the risk's p_bad; and the AUC, the chance a bad output gets a higher P(bad) than a good one, which does not move when every estimate moves and so separates better ranking from a shift |
 | recall by failure class | class present → some rule mapped to it fired; a class with no shipped detector reads 0 and says so |
 | threshold sweep | on the dev split only; the utility-optimal τ is published as a check on the loss model, never adopted |
 
 **What the two prior readings are.** The risk composer needs a prior that an
-output is bad. Read *per class* — each of the ten examined failure classes
-present with probability one half — the prior that nothing is wrong is one in a
-thousand, and the composer blocks nearly every output; the table shows it. Read
-*per output* — one half that the output is bad at all, spread over the examined
-classes — a single fire of a detector for a rare class does not on its own
-cross the threshold; the table shows that too. Which reading ships, and at
-what default, is a decision the numbers inform; the file states both so it is
-not made by preference.
+output is bad. Read *per class* — each examined failure class present with
+probability one half — the prior that nothing is wrong is one half to the power
+of the number examined, one in a thousand at ten, and the composer blocks
+nearly every output; the table shows it. Read *per output* — one half that the
+output is bad at all, spread over every failure class Iris names, with a class
+no rule examined keeping its share — a single fire of a detector for a rare
+class does not on its own cross the threshold; the table shows that too. Which
+reading ships, and at what default, is a decision the numbers inform; the file
+states both so it is not made by preference.
+
+**What changed in 0.20.0.** Until then the per-output reading spread the half
+over only the classes some rule examined. A class no rule could see dropped
+out of the estimate, so an output read as safer the fewer kinds of failure it
+was checked for, and adding a detector for one class lowered the estimate on
+every output. The table carries that arithmetic beside the shipped one, on the
+same rule results: no verdict differs between them on the corpus, and the
+shipped one has the lower Brier score and calibration error and the higher AUC
+on every split. A clean pass now reads higher, because the classes nothing
+examined keep their share: a text-only answer can be examined for only a few
+of the classes, so most of its estimate is the share of the ones it could not
+be checked for. A stored verdict keeps the arithmetic it was given with
+(`provenance.composer.risk`).
 
 The composed cases are built from the same synthetic, same-model-labelled
 families as the per-rule numbers, so the accuracy here is conditional on that

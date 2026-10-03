@@ -430,8 +430,8 @@ export const SQLITE_DRIVER: DriverName = 'better-sqlite3';
 /** The composer facts a stored evaluation is read back under (rowToEvalResult says why), so the write can store its risk estimate under the same. */
 function composeConfigOf(provenance: Provenance): ComposeConfig {
   const composer = provenance.composer;
-  // `rules`: a row stamped before the field existed was composed under rules 1, and reads back under them.
-  return { ...DEFAULT_COMPOSE, ...(composer ?? {}), calibration: composer?.calibration ?? null, rules: composer?.rules ?? 1 };
+  // `rules` and `risk`: a row stamped before the field existed was composed under 1, and reads back under it.
+  return { ...DEFAULT_COMPOSE, ...(composer ?? {}), calibration: composer?.calibration ?? null, rules: composer?.rules ?? 1, risk: composer?.risk ?? 1 };
 }
 
 /**
@@ -476,7 +476,7 @@ const newestFirst = (a: EvalResult, b: EvalResult): number => {
 function riskColumns(result: EvalResult): [string | null, string | null] {
   if (!result.provenance) return [null, RISK_KEY_VERSION];
   const cfg = composeConfigOf(result.provenance);
-  const stored = storedRiskEstimate(result, cfg.prior, cfg.priorMode);
+  const stored = storedRiskEstimate(result, cfg.prior, cfg.priorMode, cfg.risk);
   return [stored ? JSON.stringify(stored) : null, RISK_KEY_VERSION];
 }
 

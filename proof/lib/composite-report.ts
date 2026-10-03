@@ -33,6 +33,7 @@
  * Writes proof/composite-results.json and proof/COMPOSITE.md; `--check
  * --composite` regenerates both to a temp path and fails on any difference.
  */
+import { createHash } from 'node:crypto';
 import type { EvalResult, FailureClass } from '../../src/types/eval.js';
 import { EvalEngine } from '../../src/eval/engine.js';
 import { defaultConfig } from '../../src/config/defaults.js';
@@ -41,7 +42,7 @@ import { wilson } from '../judge/lib/wilson.js';
 import { calibration, type Calibration } from './intervals.js';
 import { newcombeDifference } from '../../src/eval/stats.js';
 import { compositeContext, loadComposite, splitOf, validateComposite, type CompositeCase, type LoadedComposite, type Split } from './composite.js';
-import { riskEstimate, detectorsOf, DEFAULT_TAU, DEFAULT_PRIOR, DEFAULT_FALSE_PASS_COST, DEFAULT_PRIOR_MODE, type PriorMode, type RiskEstimate } from '../../src/eval/risk.js';
+import { riskEstimate, detectorsOf, DEFAULT_TAU, DEFAULT_PRIOR, DEFAULT_FALSE_PASS_COST, DEFAULT_PRIOR_MODE, RISK_ARITHMETIC, type PriorMode, type RiskEstimate } from '../../src/eval/risk.js';
 import { compose, DEFAULT_COMPOSE } from '../../src/eval/compose.js';
 import type { Verdict } from '../../src/types/eval.js';
 import { legacyWouldShip } from './legacy-composer.js';
@@ -83,14 +84,14 @@ interface MeasuredVerdict {
  * every case. That estimate is the same `riskEstimate` compose() reads.
  * `confidence` is null exactly where the risk layer was not the last word.
  */
-export function productVerdict(result: EvalResult, mode: PriorMode): MeasuredVerdict {
-  const v = compose(result, { ...DEFAULT_COMPOSE, priorMode: mode });
+export function productVerdict(result: EvalResult, mode: PriorMode, arithmetic: number = RISK_ARITHMETIC): MeasuredVerdict {
+  const v = compose(result, { ...DEFAULT_COMPOSE, priorMode: mode, risk: arithmetic });
   const hard = v.basis === 'policy_gate' || v.basis === 'detector_veto';
   return {
     state: v.state,
     basis: v.basis,
     by: v.by,
-    risk: v.risk ?? (hard ? riskEstimate(result, DEFAULT_PRIOR, mode) : null),
+    risk: v.risk ?? (hard ? riskEstimate(result, DEFAULT_PRIOR, mode, arithmetic) : null),
     confidence: v.confidence ?? null,
   };
 }
@@ -106,6 +107,13 @@ export interface CaseRow {
   risk: RiskCell;
   /** The per-class reading of the prior. */
   riskPerClass: RiskCell;
+  /**
+   * The per-output reading as releases before 0.20.0 computed it (risk.ts,
+   * arithmetic 1), beside the shipped one so the change is measured on the
+   * same rule results. It carries no confidence label: the table is
+   * measured under the shipped arithmetic.
+   */
+  riskBefore: RiskCell;
   classesCaught: FailureClass[];
 }
 
@@ -183,6 +191,7 @@ export interface CompositeResults {
     priorMode: PriorMode;
     risk: string;
     priorModes: Record<PriorMode, string>;
+    riskBefore: string;
     legacy: string;
     accuracyCi: 'wilson-95';
     differenceCi: 'newcombe-hybrid-score-95';
@@ -193,6 +202,7 @@ export interface CompositeResults {
   legacy: ComposerSlices;
   risk: ComposerSlices;
   riskPerClass: ComposerSlices;
+  riskBefore: ComposerSlices;
   difference: {
     risk: { test: Difference; realTranscripts: Difference };
     riskPerClass: { test: Difference; realTranscripts: Difference };
@@ -282,13 +292,16 @@ function calibrationTable(rows: CaseRow[], compositeVersion: string, patternOf: 
     b.sum += r.risk.pBad;
     b.patterns.add(patternOf.get(r.id)!);
   }
-  return {
+  const table = {
     compositeVersion,
-    split: 'dev',
+    arithmetic: RISK_ARITHMETIC,
+    split: 'dev' as const,
     prior: DEFAULT_PRIOR,
     priorMode: DEFAULT_PRIOR_MODE,
     bins: bins.map((b) => ({ from: b.from, to: b.to, n: b.n, bad: b.bad, patterns: b.patterns.size, meanPredicted: b.n === 0 ? null : round4(b.sum / b.n) })),
   };
+  // The table's version is its content: a new rule result or a new arithmetic changes it, though the corpus has not changed.
+  return { version: createHash('sha256').update(JSON.stringify(table)).digest('hex').slice(0, 12), ...table };
 }
 
 function labelAccuracy(rows: CaseRow[], label: (r: CaseRow) => Confidence | null, patternOf: ReadonlyMap<string, string>): LabelAccuracy {
@@ -343,6 +356,7 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
       legacy: { passed: legacyShipped, score: round4(result.score), criticalFailures: result.critical_failures ?? [] },
       risk: cellOf(productVerdict(result, 'per-output')),
       riskPerClass: cellOf(productVerdict(result, 'per-class')),
+      riskBefore: { ...cellOf(productVerdict(result, 'per-output', 1)), confidence: null },
       classesCaught: [...caught].filter((cls) => c.expected.classes.includes(cls)).sort(),
     });
   }
@@ -391,6 +405,7 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
   const legacy = slices(rows, legacyShip, legacyProb);
   const risk = slices(rows, riskShipOf((r) => r.risk), riskProbOf((r) => r.risk));
   const riskPerClass = slices(rows, riskShipOf((r) => r.riskPerClass), riskProbOf((r) => r.riskPerClass));
+  const riskBefore = slices(rows, riskShipOf((r) => r.riskBefore), riskProbOf((r) => r.riskBefore));
   /*
    * One implementation of the statistic, shared with the product — the
    * comparison a reader checks on /proof is computed by the same function
@@ -447,9 +462,10 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
       priorMode: DEFAULT_PRIOR_MODE,
       risk: 'compose() in src/eval/compose.ts, the function every verdict the product gives comes from: gates and vetoes first, then a class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired), with 2,000 seeded draws over the Beta posteriors for the interval; measurements and policies never enter the risk',
       priorModes: {
-        'per-output': 'π is the prior that the output is bad; spread over the K examined classes as π_c = 1 − (1 − π)^(1/K)',
+        'per-output': 'π is the prior that the output is bad; spread over all K failure classes as π_c = 1 − (1 − π)^(1/K), and a class no detector examined keeps its share (arithmetic 2, from 0.20.0)',
         'per-class': 'π is the prior that each examined class is present, as originally specified; with K classes examined the prior that nothing is wrong is (1 − π)^K',
       },
+      riskBefore: 'the per-output reading as releases before 0.20.0 computed it (arithmetic 1): the prior spread over only the K classes some detector examined, so a class nothing examined dropped out of the estimate',
       legacy: 'the pre-0.10.0 arithmetic, computed explicitly by proof/lib/legacy-composer.ts: weighted score ≥ the default threshold and no critical failure. From 0.10.0 the engine composes passed, so this baseline is derived rather than read off the result; from 0.12.0 it is no longer a product behaviour and this file is the only place it survives',
       accuracyCi: 'wilson-95',
       differenceCi: 'newcombe-hybrid-score-95',
@@ -470,6 +486,7 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
     legacy,
     risk,
     riskPerClass,
+    riskBefore,
     difference: {
       risk: { test: diff(risk.test, legacy.test), realTranscripts: diff(risk.realTranscripts, legacy.realTranscripts) },
       riskPerClass: { test: diff(riskPerClass.test, legacy.test), realTranscripts: diff(riskPerClass.realTranscripts, legacy.realTranscripts) },
@@ -503,16 +520,19 @@ export function renderCompositeMarkdown(r: CompositeResults): string {
   L.push('');
   L.push(`${r.counts.cases} cases: ${r.counts.realTranscripts} real transcripts (the held-out line: staged, not production traffic) and ${r.counts.composed} composed; ${r.counts.mustNotShip} must not ship, ${r.counts.clean} may, ${r.counts.unlabelled} unlabelled. Split: ${r.counts.dev} dev / ${r.counts.test} test, ${r.method.split}. Headline numbers are the test split. The expected verdict is true by construction — the classes present are a fact of what was injected — and never derived from a composer.`);
   L.push('');
-  L.push('## Three composers on the same rule results');
+  L.push('## The composers on the same rule results');
   L.push('');
-  L.push(`**legacy** — ${r.method.legacy}. **risk** — the product's own composer: ${r.method.risk}; τ = ${r.method.tau} (a false pass costs ${r.method.falsePassCost}× a false block), prior ${r.method.prior}. Two readings of the prior are measured: *per-output* (${r.method.priorModes['per-output']}) and *per-class* (${r.method.priorModes['per-class']}).`);
+  L.push(`**legacy** — ${r.method.legacy}. **risk** — the product's own composer: ${r.method.risk}; τ = ${r.method.tau} (a false pass costs ${r.method.falsePassCost}× a false block), prior ${r.method.prior}. Two readings of the prior are measured: *per-output* (${r.method.priorModes['per-output']}) and *per-class* (${r.method.priorModes['per-class']}). The per-output reading is also measured *before 0.20.0*: ${r.method.riskBefore}.`);
   L.push('');
-  L.push('| Split | Composer | Accuracy vs shouldShip (95% CI) | False blocks on clean (95% CI) | Missed blocks (95% CI) | Brier | ECE |');
-  L.push('|---|---|---|---|---|--:|--:|');
+  L.push('AUC is the chance that a bad output gets a higher P(bad) than a good one (ties count half). Brier and ECE move when every estimate moves; AUC does not, so it separates an arithmetic that ranks outputs better from one that only shifts them.');
+  L.push('');
+  L.push('| Split | Composer | Accuracy vs shouldShip (95% CI) | False blocks on clean (95% CI) | Missed blocks (95% CI) | Brier | ECE | AUC |');
+  L.push('|---|---|---|---|---|--:|--:|--:|');
   for (const [name, split] of [['test', 'test'], ['real transcripts (held out, staged)', 'realTranscripts'], ['dev', 'dev']] as const) {
-    for (const [label, comp] of [['legacy', 'legacy'], ['risk, per-output prior', 'risk'], ['risk, per-class prior', 'riskPerClass']] as const) {
+    for (const [label, comp] of [['legacy', 'legacy'], ['risk, per-output prior', 'risk'], ['risk, per-output prior, before 0.20.0', 'riskBefore'], ['risk, per-class prior', 'riskPerClass']] as const) {
       const s = r[comp][split];
-      L.push(`| ${name} | ${label} | ${pct(s.accuracy.rate)} ${ci(s.accuracy.ci95)} (n=${s.accuracy.n}) | ${pct(s.falseBlock.rate)} ${ci(s.falseBlock.ci95)} (n=${s.falseBlock.n}) | ${pct(s.missedBlock.rate)} ${ci(s.missedBlock.ci95)} (n=${s.missedBlock.n}) | ${s.calibration ? s.calibration.brier.toFixed(3) : '—'} | ${s.calibration ? s.calibration.ece.toFixed(3) : '—'} |`);
+      const cal = s.calibration;
+      L.push(`| ${name} | ${label} | ${pct(s.accuracy.rate)} ${ci(s.accuracy.ci95)} (n=${s.accuracy.n}) | ${pct(s.falseBlock.rate)} ${ci(s.falseBlock.ci95)} (n=${s.falseBlock.n}) | ${pct(s.missedBlock.rate)} ${ci(s.missedBlock.ci95)} (n=${s.missedBlock.n}) | ${cal ? cal.brier.toFixed(3) : '—'} | ${cal ? cal.ece.toFixed(3) : '—'} | ${cal && cal.auc !== null ? cal.auc.toFixed(3) : '—'} |`);
     }
   }
   L.push('');
@@ -634,7 +654,9 @@ export function renderPublishedCalibration(r: CompositeResults): string {
   L.push(' */');
   L.push('');
   L.push('export const PUBLISHED_CALIBRATION = {');
+  L.push(`  version: '${t.version}',`);
   L.push(`  compositeVersion: '${t.compositeVersion}',`);
+  L.push(`  arithmetic: ${t.arithmetic},`);
   L.push(`  split: '${t.split}',`);
   L.push(`  prior: ${t.prior},`);
   L.push(`  priorMode: '${t.priorMode}',`);
