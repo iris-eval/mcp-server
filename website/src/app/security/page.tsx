@@ -122,10 +122,13 @@ export default function Security(): React.ReactElement {
             </p>
             <p className="mt-3">
               <strong className="text-text-primary">
-                Iris is self-hosted.
+                Iris is self-hosted today.
               </strong>{" "}
               Every control on this page describes software that runs on your
-              machine.
+              machine. Every stored record carries a tenant id, and isolation
+              between tenants is enforced at four layers of the storage code, so
+              shared or hosted storage could be added later without retrofitting
+              that boundary.
             </p>
           </section>
 

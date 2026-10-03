@@ -230,7 +230,7 @@ const PATTERNS = [
     onlyPrefixes: ['src/', 'docs/', 'README.md', 'server.json', 'skills/', 'claude-plugin/', '.claude-plugin/', 'packages/', 'website/src/'],
     skipPrefixes: ['docs/blog/', 'docs/launch/', 'website/src/lib/compare/', 'website/src/lib/changelog.generated.json'],
     skipComments: true,
-    fix: 'There is no hosted version of Iris (https://iris-eval.com/pricing). Describe what the local server does; delete the tier.',
+    fix: 'Iris has no hosted tier today (https://iris-eval.com/pricing). Describe what the self-hosted server does; do not name or price a tier that does not exist.',
   },
   /*
    * Era stamps inside the MCP tool descriptions. "v0.4 adds an llm_as_judge

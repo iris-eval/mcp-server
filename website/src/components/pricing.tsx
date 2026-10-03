@@ -5,7 +5,9 @@ import { motion, useReducedMotion, useInView } from "framer-motion";
 import { MCP_TOOL_COUNT, RULE_COUNT_BUILT_IN, SUPPORT_EMAIL } from "@/lib/claims";
 
 /*
- * One edition: the open-source server is all of Iris, so it is the only card.
+ * What exists today: the open-source server, so it is the only card. Hosted
+ * and team features are under consideration, not under construction, and get
+ * a card when they exist.
  */
 const FEATURES = [
   `${MCP_TOOL_COUNT} MCP tools — full lifecycle + LLM judge + semantic citation verify (SSRF-guarded)`,
@@ -36,12 +38,12 @@ export function Pricing(): React.ReactElement {
             Free to self-host.
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-text-secondary md:text-xl">
-            The open-source server is all of Iris: MIT licensed, every feature
-            included, with no limits and no account.
+            The open-source core is MIT licensed, with no usage limits and no
+            account.
           </p>
         </div>
 
-        {/* The one card */}
+        {/* What exists today */}
         <motion.div
           initial={reduce ? {} : { opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
