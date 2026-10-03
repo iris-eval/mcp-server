@@ -1,7 +1,7 @@
 # What a verdict does when evidence is taken away, a failure is added, or the output is written another way
 
-Generated 2026-10-03T03:14:57.383Z for v0.19.0 (local generating commit `070b199a` — branch commits are squashed on merge, so cite the version).
-Composite version `1f5daccd19a4`, 145 labelled cases, the shipped configuration. Reproduce with `npm run proof -- --invariants`; CI runs `npm run proof -- --check --invariants`.
+Generated 2026-10-03T06:44:05.111Z for v0.19.0 (local generating commit `b56e1829` — branch commits are squashed on merge, so cite the version).
+Composite version `e1d72ff465c1`, 145 labelled cases, the shipped configuration. Reproduce with `npm run proof -- --invariants`; CI runs `npm run proof -- --check --invariants`.
 
 ## Sending less, at the shipped configuration
 
@@ -31,7 +31,7 @@ Where somebody has said the field must be there, leaving it out never yields a p
 
 | Contract | Left out | Cases | Fail | Not checked | **Pass** |
 |---|---|--:|--:|--:|--:|
-| eval.requiredEvidence names tool_calls | the tool calls left out | 127 | 38 | 89 | **0** |
+| eval.requiredEvidence names tool_calls | the tool calls left out | 127 | 37 | 90 | **0** |
 | eval.requiredEvidence names tool_calls | an empty list of tool calls sent in their place | 127 | 42 | 85 | **0** |
 | eval.requiredEvidence names tool_outputs | every tool output left out (the calls and their errors kept) | 125 | 81 | 44 | **0** |
 | eval.requiredEvidence names tool_outputs | every tool output replaced by an empty string | 125 | 81 | 44 | **0** |
@@ -41,11 +41,11 @@ Where somebody has said the field must be there, leaving it out never yields a p
 | eval.requiredEvidence names cost | the cost left out | 109 | 50 | 59 | **0** |
 | eval.requiredEvidence names tokens | the token counts left out | 109 | 50 | 59 | **0** |
 | the deployment set a cost ceiling (cost_threshold) | the cost left out | 109 | 50 | 59 | **0** |
-| the deployment set a step ceiling (max_steps) | the tool calls left out | 127 | 38 | 89 | **0** |
-| the deployment set a repeat ceiling (max_tool_repeats) | the tool calls left out | 127 | 38 | 89 | **0** |
+| the deployment set a step ceiling (max_steps) | the tool calls left out | 127 | 37 | 90 | **0** |
+| the deployment set a repeat ceiling (max_tool_repeats) | the tool calls left out | 127 | 37 | 90 | **0** |
 | the deployment set the relevance thresholds (keyword_overlap, topic_consistency) | the input left out | 145 | 61 | 84 | **0** |
 | the deployment set the relevance thresholds (keyword_overlap, topic_consistency) | the input replaced by one space | 145 | 61 | 84 | **0** |
-| the call supplied an expected trajectory | the tool calls left out | 127 | 38 | 89 | **0** |
+| the call supplied an expected trajectory | the tool calls left out | 127 | 37 | 90 | **0** |
 | the call supplied an expected trajectory | an empty list of tool calls sent in their place | 127 | 127 | 0 | **0** |
 
 **An explicit empty list of tool calls is measured, and not held at zero**, under the contract a ceiling on the calls makes. An empty list is the caller saying no calls were made, and zero calls are within any ceiling: an honest turn that used no tool must not read "not checked" because a step ceiling is set. A caller that made calls and reports none cannot be told from one that made none. `eval.requiredEvidence` is the contract that refuses an empty list (the rows above), and it is how a deployment says it wants calls it can look at. Against an expectation of calls, an empty list is judged and fails (the last row above).
@@ -94,9 +94,9 @@ Each row rewrites the output of every case one way and evaluates again. It count
 | Rewriting | Cases it changes | Verdicts: fail → pass | pass → fail | Rules whose answer changed | Why it is not held at zero |
 |---|--:|--:|--:|---|---|
 | straight quotes written as curly quotes | 72 | 1 | 0 | `no_injection_patterns` (stopped 1, started 0) | the one finding lost is a JSON key in a tool payload ("_assistant_directive":), found by its shape; written with curly quotes it is no longer a JSON key, and the phrase patterns do not match the sentence inside it. A gap in the phrase patterns, not in how quotes are read |
-| every line prefixed as a Markdown quote | 145 | 1 | 0 | `no_stub_output` (stopped 0, started 1); `non_empty_output` (stopped 1, started 0); `says_something` (stopped 0, started 1) | an empty output becomes a line holding a quote mark, which is no longer empty; and a diff is no longer a diff, so a TODO on a removed line is read as a TODO |
-| the output as the content of a chat message, `{"role": "assistant", "content": …}` | 145 | 1 | 0 | `non_empty_output` (stopped 1, started 0); `says_something` (stopped 1, started 0) | the role is read as something the output says, so an empty content is not an empty answer: which field holds the answer is a schema the reader does not have |
-| the output beside a confidence, `{"answer": …, "confidence": 0.92}` | 145 | 1 | 0 | `non_empty_output` (stopped 1, started 0); `says_something` (stopped 1, started 0) | the confidence is read as something the output says, so an empty answer is not empty; the same reason as the chat message |
+| every line prefixed as a Markdown quote | 145 | 0 | 0 | `no_stub_output` (stopped 0, started 1); `non_empty_output` (stopped 1, started 0); `says_something` (stopped 0, started 1) | an empty output becomes a line holding a quote mark, which is no longer empty; and a diff is no longer a diff, so a TODO on a removed line is read as a TODO |
+| the output as the content of a chat message, `{"role": "assistant", "content": …}` | 145 | 1 | 0 | `non_empty_output` (stopped 1, started 0) | the role is read as something the output says, so an empty content is not an empty answer: which field holds the answer is a schema the reader does not have |
+| the output beside a confidence, `{"answer": …, "confidence": 0.92}` | 145 | 1 | 0 | `non_empty_output` (stopped 1, started 0) | the confidence is read as something the output says, so an empty answer is not empty; the same reason as the chat message |
 | the output in upper case | 142 | 5 | 4 | `grounded_in_reads` (stopped 4, started 0); `no_hallucination_markers` (stopped 0, started 5); `no_pii` (stopped 2, started 0); `no_stub_output` (stopped 1, started 1) | case is part of what two rules are right to read: a seed phrase or a token in another case is not that secret, and a file name in another case is another file. The third change is a fault left as measured: the fabrication rule reads capitalised words as names of metrics, so prose in capitals starts findings |
 | the output in lower case | 141 | 4 | 0 | `grounded_in_reads` (stopped 3, started 0); `no_pii` (stopped 2, started 0); `no_stub_output` (stopped 4, started 0) | a private key block and a file name in another case are not that key or that file, and a placeholder marker is an upper-case word on purpose: "TODO" is a marker and "a todo app" is not |
 
@@ -109,24 +109,27 @@ Twelve trivial agents, each giving the same answer to two fixed asks, in two cal
 - an action: "Rename the function parseUser to parseAccount in src/auth.ts, update its two callers, and run the test suite."
 - a piece of writing: "Write the quarterly revenue summary for the board, with the three biggest risks."
 
-**Where the call records that no tool was called (`tool_calls: []`), none may pass, and CI holds that at zero.** Before `says_something` (0.20.0), ten of the twelve passed against both asks in both call shapes; only nothing and a blank failed.
+**Where the call records that no tool was called (`tool_calls: []`), none may pass, and CI holds that at zero,** apart from the cells marked † below, each with its reason. Before `says_something` (0.20.0), ten of the twelve passed against both asks in both call shapes; only nothing and a blank failed.
 
 | Agent answers | action, no tool called | writing, no tool called | action, no tool calls sent | writing, no tool calls sent |
 |---|---|---|---|---|
 | nothing | fail | fail | fail | fail |
 | a blank | fail | fail | fail | fail |
-| the ask copied back | fail | fail | fail | fail |
-| "Done." | fail | fail | **pass** | fail |
-| "OK" | fail | fail | **pass** | fail |
-| "I can't help with that." | fail | fail | fail | fail |
-| "The task has been completed successfully." | fail | fail | **pass** | fail |
-| "…" | fail | fail | fail | fail |
-| "null" | fail | fail | fail | fail |
-| "lorem ipsum dolor sit amet" | fail | fail | fail | fail |
-| "As an AI language model, I cannot browse the internet." | fail | fail | fail | fail |
+| the ask copied back | **pass** † | fail | **pass** | fail |
+| "Done." | fail | fail | **pass** | **pass** |
+| "OK" | fail | fail | **pass** | **pass** |
+| "I can't help with that." | **pass** † | **pass** † | **pass** | **pass** |
+| "The task has been completed successfully." | fail | fail | **pass** | **pass** |
+| "…" | fail | fail | **pass** | fail |
+| "null" | fail | fail | **pass** | fail |
+| "lorem ipsum dolor sit amet" | fail | fail | **pass** | fail |
+| "As an AI language model, I cannot browse the internet." | **pass** † | **pass** † | **pass** | **pass** |
 | one sentence repeated 400 times | fail | fail | fail | fail |
 
-Where the call sends the ask and the output, and no tool calls: 3 pass ("Done." (action); "OK" (action); "The task has been completed successfully." (action)). Not held at zero, because an acknowledgement of an action ("Done.") is a terse report as often as a false one, and a call that sends no tool calls says nothing about whether the work was done elsewhere. A deployment that requires the tool calls (`eval.requiredEvidence: ["tool_calls"]`) gets "not checked" for these instead of a pass.
+† the ask copied back (action): not held at zero, because an ask to act handed back is not read as a non-answer: an agent that rewrites or redacts text returns it unchanged when nothing needs changing, and nothing in a call tells that agent from this one.
+† "I can't help with that." (action, writing); "As an AI language model, I cannot browse the internet." (action, writing): not held at zero, because a refusal is an answer: it tells the asker the thing will not be done, and whether that was right is a judgement about the ask, which no rule here makes.
+
+Where the call sends the ask and the output, and no tool calls: 14 pass (the ask copied back (action); "Done." (action); "Done." (writing); "OK" (action); "OK" (writing); "I can't help with that." (action); "I can't help with that." (writing); "The task has been completed successfully." (action); "The task has been completed successfully." (writing); "…" (action); "null" (action); "lorem ipsum dolor sit amet" (action); "As an AI language model, I cannot browse the internet." (action); "As an AI language model, I cannot browse the internet." (writing)). Not held at zero, because an acknowledgement of an action ("Done.") is a terse report as often as a false one, and a call that sends no tool calls says nothing about whether the work was done elsewhere. A deployment that requires the tool calls (`eval.requiredEvidence: ["tool_calls"]`) gets "not checked" for these instead of a pass.
 
 ## What this does not cover
 

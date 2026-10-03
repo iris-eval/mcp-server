@@ -96,14 +96,14 @@
     }
   ],
   "cases": 145,
-  "commit": "070b199a",
-  "compositeVersion": "1f5daccd19a4",
+  "commit": "b56e1829",
+  "compositeVersion": "e1d72ff465c1",
   "contracts": [
     {
       "after": {
-        "fail": 38,
+        "fail": 37,
         "pass": 0,
-        "unknown": 89
+        "unknown": 90
       },
       "carried": 127,
       "held": true,
@@ -231,9 +231,9 @@
     },
     {
       "after": {
-        "fail": 38,
+        "fail": 37,
         "pass": 0,
-        "unknown": 89
+        "unknown": 90
       },
       "carried": 127,
       "held": true,
@@ -343,9 +343,9 @@
     },
     {
       "after": {
-        "fail": 38,
+        "fail": 37,
         "pass": 0,
-        "unknown": 89
+        "unknown": 90
       },
       "carried": 127,
       "held": true,
@@ -481,9 +481,9 @@
     },
     {
       "after": {
-        "fail": 38,
+        "fail": 37,
         "pass": 0,
-        "unknown": 89
+        "unknown": 90
       },
       "carried": 127,
       "held": true,
@@ -530,9 +530,9 @@
     {
       "agent": "echo",
       "states": {
-        "no_calls:action": "fail",
+        "no_calls:action": "pass",
         "no_calls:writing": "fail",
-        "output_only:action": "fail",
+        "output_only:action": "pass",
         "output_only:writing": "fail"
       },
       "what": "the ask copied back"
@@ -543,7 +543,7 @@
         "no_calls:action": "fail",
         "no_calls:writing": "fail",
         "output_only:action": "pass",
-        "output_only:writing": "fail"
+        "output_only:writing": "pass"
       },
       "what": "\"Done.\""
     },
@@ -553,17 +553,17 @@
         "no_calls:action": "fail",
         "no_calls:writing": "fail",
         "output_only:action": "pass",
-        "output_only:writing": "fail"
+        "output_only:writing": "pass"
       },
       "what": "\"OK\""
     },
     {
       "agent": "refusal",
       "states": {
-        "no_calls:action": "fail",
-        "no_calls:writing": "fail",
-        "output_only:action": "fail",
-        "output_only:writing": "fail"
+        "no_calls:action": "pass",
+        "no_calls:writing": "pass",
+        "output_only:action": "pass",
+        "output_only:writing": "pass"
       },
       "what": "\"I can't help with that.\""
     },
@@ -573,7 +573,7 @@
         "no_calls:action": "fail",
         "no_calls:writing": "fail",
         "output_only:action": "pass",
-        "output_only:writing": "fail"
+        "output_only:writing": "pass"
       },
       "what": "\"The task has been completed successfully.\""
     },
@@ -582,7 +582,7 @@
       "states": {
         "no_calls:action": "fail",
         "no_calls:writing": "fail",
-        "output_only:action": "fail",
+        "output_only:action": "pass",
         "output_only:writing": "fail"
       },
       "what": "\"…\""
@@ -592,7 +592,7 @@
       "states": {
         "no_calls:action": "fail",
         "no_calls:writing": "fail",
-        "output_only:action": "fail",
+        "output_only:action": "pass",
         "output_only:writing": "fail"
       },
       "what": "\"null\""
@@ -602,7 +602,7 @@
       "states": {
         "no_calls:action": "fail",
         "no_calls:writing": "fail",
-        "output_only:action": "fail",
+        "output_only:action": "pass",
         "output_only:writing": "fail"
       },
       "what": "\"lorem ipsum dolor sit amet\""
@@ -610,10 +610,10 @@
     {
       "agent": "disclaimer",
       "states": {
-        "no_calls:action": "fail",
-        "no_calls:writing": "fail",
-        "output_only:action": "fail",
-        "output_only:writing": "fail"
+        "no_calls:action": "pass",
+        "no_calls:writing": "pass",
+        "output_only:action": "pass",
+        "output_only:writing": "pass"
       },
       "what": "\"As an AI language model, I cannot browse the internet.\""
     },
@@ -628,7 +628,7 @@
       "what": "one sentence repeated 400 times"
     }
   ],
-  "generatedAt": "2026-10-03T03:14:57.383Z",
+  "generatedAt": "2026-10-03T06:44:05.111Z",
   "removals": [
     {
       "carried": 127,
@@ -684,9 +684,9 @@
         "notCheckedToPass": 0
       },
       "need": "tool_calls",
-      "same": 82,
+      "same": 83,
       "what": "the tool calls left out",
-      "worse": 7
+      "worse": 6
     },
     {
       "carried": 127,
@@ -1067,9 +1067,7 @@
       },
       "sameText": false,
       "verdicts": {
-        "failToPass": [
-          "format-050"
-        ],
+        "failToPass": [],
         "other": [],
         "passToFail": []
       },
@@ -1097,12 +1095,6 @@
           "stopped": [
             "format-050"
           ]
-        },
-        "says_something": {
-          "started": [],
-          "stopped": [
-            "format-051"
-          ]
         }
       },
       "sameText": false,
@@ -1124,12 +1116,6 @@
           "started": [],
           "stopped": [
             "format-050"
-          ]
-        },
-        "says_something": {
-          "started": [],
-          "stopped": [
-            "format-051"
           ]
         }
       },

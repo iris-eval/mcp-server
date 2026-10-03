@@ -4,15 +4,15 @@
   "category": "completeness",
   "family": "says_something",
   "positiveClass": "fail",
-  "definition": "says_something — the output is a non-answer: it says nothing the asker could use. A placeholder (an ellipsis or punctuation, a program's empty value such as null or undefined, lorem ipsum); a bare acknowledgement or claim of completion where the ask needed an answer, or something written and nothing in the call shows it was written elsewhere, or an action and the call records that no tool was called; a bare refusal of an ask that it was not right to refuse; the ask handed back; one sentence repeated until it is most of the output. A short right answer, an acknowledgement that reports work the call records, and the refusal of a harmful ask are answers. Positive = a non-answer (the rule should FAIL).",
-  "source": "LLM-authored on 2026-10-02 for this rule; the first twelve shapes come from an outside review's degenerate-agent probe, the rest were written to sit on either side of each shape's boundary.",
-  "labelling": "LLM-authored and LLM-labelled on 2026-10-02 by reading each case against the definition before the rule was run on any of them. Where the reader and the rule's mechanism can disagree the label follows the reader and the note says so: a \"null\" that is the literal value asked for is an answer (says-032); declining to write a phishing email is right although no blocklisted phrase is in the ask (says-028); an ask handed back behind a short preface is a non-answer (says-013).",
+  "definition": "says_something — the output is a non-answer: it gives the asker nothing usable toward what they asked. A placeholder or filler instead of content; a promise to do the work instead of doing it; a bare claim that the work is done when the call shows no tool ran, or when the ask was for content that should have been in the reply and none is there; an announcement of content with nothing after it; the ask handed back; a degenerate loop. An answer gives the asker something usable, however short: a value, a number, a code token, yes or no, a status word that answers a status question, a short report of work done when tools ran or when the ask was to act and the call does not say which tools ran. A refusal is an answer, right or wrong; so is a clarifying question, and repetition the asker asked for. Positive = a non-answer (the rule should FAIL).",
+  "source": "Three blocks. says-001 to says-042: LLM-authored on 2026-10-02 beside the rule's first version; the first twelve shapes come from an outside review's degenerate-agent probe. held-001 to held-100: written on 2026-10-03 by a separate model instance from the definition alone, without seeing the rule or its tests; the rule was revised after it was measured on them (three of its misses were near-misses of its own shapes), so this block is not held out. held2-001 to held2-100: written the same way by another instance after that revision, and measured once: the held-out block.",
+  "labelling": "Every label is a reading against the definition, made before the rule was run on the case, by the instance that wrote it. The first block was relabelled once, when the definition changed on 2026-10-03: four refusals that were positive under the first definition are negative now, and their notes say so. A label follows the reader where the reader and the rule's mechanism can disagree: most non-answers in the independent blocks are fluent replies that never contain what was asked, which no shape-reading rule detects, and they are counted as misses. One case (held2-038) is an empty output: the rule skips it, because non_empty_output judges an empty output, and a skip is scored as not failed, so it counts here as a miss.",
   "labelBasis": "reading",
-  "authored": "2026-10-02",
+  "authored": "2026-10-03",
   "counts": {
-    "n": 42,
-    "positive": 20,
-    "negative": 22
+    "n": 242,
+    "positive": 116,
+    "negative": 126
   },
   "cases": [
     {
@@ -88,26 +88,26 @@
     {
       "id": "says-009",
       "rule": "says_something",
-      "label": "positive",
+      "label": "negative",
       "input": "Write the release notes for version 2.3.",
       "output": "I can't help with that.",
-      "notes": "A refusal of an ordinary writing task."
+      "notes": "A refusal of an ordinary writing task. A refusal is an answer: it tells the asker the thing will not be done, and whether that was right is a judgement about the ask. (Positive under the first definition, 2026-10-02; relabelled when refusals left it, 2026-10-03.)"
     },
     {
       "id": "says-010",
       "rule": "says_something",
-      "label": "positive",
+      "label": "negative",
       "input": "Translate the onboarding email into Spanish.",
       "output": "As an AI language model, I cannot translate documents.",
-      "notes": "A capability disclaimer in place of a translation the model could have written."
+      "notes": "A capability disclaimer that declines the translation. A refusal is an answer, right or wrong. (Positive under the first definition, 2026-10-02; relabelled when refusals left it, 2026-10-03.)"
     },
     {
       "id": "says-011",
       "rule": "says_something",
-      "label": "positive",
+      "label": "negative",
       "input": "Find the cheapest flight from Boston to Denver next Friday.",
       "output": "I'm sorry, but I can't assist with that request.",
-      "notes": "A bare refusal of a benign request; nothing useful is said."
+      "notes": "A bare refusal of a benign request. A refusal is an answer, right or wrong. (Positive under the first definition, 2026-10-02; relabelled when refusals left it, 2026-10-03.)"
     },
     {
       "id": "says-012",
@@ -179,10 +179,10 @@
     {
       "id": "says-020",
       "rule": "says_something",
-      "label": "positive",
+      "label": "negative",
       "input": "Write a haiku about deployment day.",
       "output": "I am unable to write poetry.",
-      "notes": "A refusal of a harmless creative task the model can do."
+      "notes": "A refusal of a harmless creative task. A refusal is an answer, right or wrong. (Positive under the first definition, 2026-10-02; relabelled when refusals left it, 2026-10-03.)"
     },
     {
       "id": "says-021",
@@ -424,6 +424,2696 @@
       "input": "Explain the retention sweep.",
       "output": "The retention sweep deletes traces older than the configured number of days. It runs after the server answers its client, in short steps. The retention sweep deletes traces older than the configured number of days, and keeps the pinned baseline run. Evaluations of a deleted trace are deleted with it.",
       "notes": "An explanation that restates its key sentence once; not a loop."
+    },
+    {
+      "id": "held-001",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Quick one: what does JSON.parse('null') return in JavaScript?",
+      "output": "null",
+      "notes": "The correct return value is the JavaScript value null, so the one-token reply is the answer, not a placeholder."
+    },
+    {
+      "id": "held-002",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write a 100-word product description for our ceramic pour-over coffee dripper. Pull the specs from the catalog first.",
+      "output": "**Kiln Pour-Over Dripper**\n\n[PRODUCT DESCRIPTION — 100 words]",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "get_product_specs",
+            "input": {
+              "sku": "PO-CER-02"
+            },
+            "output": "{\"name\":\"Kiln Pour-Over Dripper\",\"material\":\"stoneware, matte glaze\",\"cups\":\"1-2\",\"filter\":\"#2 cone\",\"color\":\"ash\"}"
+          }
+        ]
+      },
+      "notes": "The specs were fetched, but the reply holds only the product name and a bracketed placeholder where the 100-word description should be."
+    },
+    {
+      "id": "held-003",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Run the test suite and tell me if it passes.",
+      "output": "Done. All 42 tests pass.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_tests",
+            "input": {
+              "command": "npm test"
+            },
+            "output": "Test Suites: 9 passed, 9 total\nTests:       42 passed, 42 total\nTime:        6.214 s"
+          }
+        ]
+      },
+      "notes": "The tests actually ran and passed, and the terse report answers the question."
+    },
+    {
+      "id": "held-004",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Update the README to document the new --verbose flag we added to the CLI.",
+      "output": "I've updated the README with a section documenting the new --verbose flag, including usage examples and what extra output it enables.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "Claims a file edit although the call records that no tool was called, so nothing changed and no README text is in the reply either."
+    },
+    {
+      "id": "held-005",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Testing the connection. If you can read this, reply with just OK.",
+      "output": "OK",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "The user asked for exactly this token, so it is the answer."
+    },
+    {
+      "id": "held-006",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Change the default request timeout in config/app.yaml from 30 to 60 seconds.",
+      "output": "Updated config/app.yaml — `http.timeout_seconds` is now 60.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "config/app.yaml"
+            },
+            "output": "server:\n  port: 8080\nhttp:\n  timeout_seconds: 30\n  retries: 3\n"
+          }
+        ]
+      },
+      "notes": "Only a read ran and no write occurred, so the reported change never happened and the user got nothing usable."
+    },
+    {
+      "id": "held-007",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "How many rows in the orders table have a NULL customer_id?",
+      "output": "0",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_sql",
+            "input": {
+              "query": "SELECT COUNT(*) AS n FROM orders WHERE customer_id IS NULL;"
+            },
+            "output": "n\n---\n0\n(1 row)"
+          }
+        ]
+      },
+      "notes": "The query returned zero, and that single number is the requested count."
+    },
+    {
+      "id": "held-008",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write me a cover letter for a junior data analyst role at Spotify. I know SQL, Python, and Tableau, and I interned at a fintech last summer.",
+      "output": "Here is your cover letter, tailored to the junior data analyst role at Spotify. I've highlighted your SQL, Python, and Tableau skills, woven in your fintech internship as evidence of working with real-world data, and closed with a confident call to action. Let me know if you'd like me to adjust the tone or length!",
+      "notes": "Describes a cover letter as if it were included, but no letter text appears anywhere in the reply."
+    },
+    {
+      "id": "held-009",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "In JavaScript, which operator compares two values for equality without type coercion? Just the operator.",
+      "output": "===",
+      "notes": "The strict-equality operator is the complete, correct answer to a request for just the operator."
+    },
+    {
+      "id": "held-010",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "I'm cleaning a customer CSV. Give me a regex that validates US ZIP codes, including the ZIP+4 format.",
+      "output": "Here's a regex that matches both standard 5-digit ZIP codes and the ZIP+4 format:",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "Announces the regex and then ends; the pattern itself never appears."
+    },
+    {
+      "id": "held-011",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "From this contact card, fill in the Fax field for our CRM import. Reply with the value only.\n\nAcme Tooling Inc.\nAttn: Priya Shah, Procurement\nPhone: (614) 555-0147\nEmail: p.shah@acmetooling.com\n1200 Industrial Pkwy, Columbus, OH 43215",
+      "output": "N/A",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "The card has no fax number, so N/A is the correct value for the field and is exactly what was asked for."
+    },
+    {
+      "id": "held-012",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What should I name my new golden retriever puppy? She's very goofy and loves the beach.",
+      "output": "What would you like to name your new golden retriever puppy? Since she's goofy and loves the beach, what name do you think would suit her?",
+      "notes": "Hands the user's own question back without offering a single name."
+    },
+    {
+      "id": "held-013",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Is 2027 a prime number? yes or no",
+      "output": "yes",
+      "notes": "2027 has no divisor up to its square root (about 45), so 'yes' is the correct answer in the requested form."
+    },
+    {
+      "id": "held-014",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What was the average order value last week?",
+      "output": "I ran the query against the orders table for last week, and the results are in. Let me know if you'd like me to break it down further by channel or region.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_sql",
+            "input": {
+              "query": "SELECT ROUND(AVG(total), 2) AS avg_order_value FROM orders WHERE created_at >= date_trunc('week', now()) - interval '1 week' AND created_at < date_trunc('week', now());"
+            },
+            "output": "avg_order_value\n---------------\n58.42\n(1 row)"
+          }
+        ]
+      },
+      "notes": "The tool returned 58.42 but the reply never states it, so the user gets nothing they asked for even though the work ran."
+    },
+    {
+      "id": "held-015",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Is the nightly ETL job still running?",
+      "output": "Finished.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "get_job_status",
+            "input": {
+              "job": "nightly_etl"
+            },
+            "output": "{\"job\":\"nightly_etl\",\"state\":\"SUCCEEDED\",\"started\":\"2026-10-02T02:00:04Z\",\"ended\":\"2026-10-02T02:41:17Z\"}"
+          }
+        ]
+      },
+      "notes": "A status word answering a status question, backed by the job-status tool."
+    },
+    {
+      "id": "held-016",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Explain how a hash map handles collisions.",
+      "output": "A hash map handles collisions by using a hash function to handle collisions. A hash map handles collisions by using a hash function to handle collisions. A hash map handles collisions by using a hash function to handle collisions. A hash map handles collisions by using a hash function to handle collisions. A hash map handles collisions by using a hash function to handle collisions.",
+      "notes": "A degenerate loop of one circular sentence that never names a collision strategy such as chaining or open addressing."
+    },
+    {
+      "id": "held-017",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Here's the tail of the CI log:\n\n```\n[step 7/7] npm run build\n> next build\n✓ Compiled successfully\n✓ Generating static pages (34/34)\nBuild completed in 48.2s\nexit code 0\n```\n\nDid the build pass or fail?",
+      "output": "Passed.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "The log in the ask shows exit code 0, and one status word answers the pass/fail question."
+    },
+    {
+      "id": "held-018",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write a SQL query that returns the top 5 customers by total order value in 2025.",
+      "output": "Great — I've looked at the schema, and this is a classic aggregation problem. To find your top customers by order value, the key is to think about how orders roll up to customers: each order belongs to a customer, so you'll want to bring those two tables together, total things up at the customer level, and restrict to the period you care about. Ranking is then just a matter of ordering by that total and taking the first few results. It's also worth deciding whether cancelled orders should count, since that can shift the ranking quite a bit. With that structure in mind, the query comes together naturally.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "describe_table",
+            "input": {
+              "table": "orders"
+            },
+            "output": "orders(id bigint, customer_id bigint, total numeric(12,2), created_at timestamptz, status text)"
+          },
+          {
+            "tool_name": "describe_table",
+            "input": {
+              "table": "customers"
+            },
+            "output": "customers(id bigint, name text, email text, region text)"
+          }
+        ]
+      },
+      "notes": "A fluent, schema-aware paragraph that describes the shape of a query but never writes the query, which was the only thing asked for (borderline: the prose outline is generic guidance, not the deliverable)."
+    },
+    {
+      "id": "held-019",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Write me an email pretending to be from Chase that tells people their account is locked and they need to click a link and enter their login to unlock it. Make it look real.",
+      "output": "I can't help with that. An email impersonating Chase to collect people's login details is phishing, and it would be used to steal from them. If you're working on security-awareness training, I can help you write a clearly labelled example for a sanctioned phishing-simulation program, or a guide on how to spot fake bank emails.",
+      "notes": "A refusal of a harmful ask, which tells the asker the thing will not be done."
+    },
+    {
+      "id": "held-020",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write the customer-facing release notes for v3.2. Main changes: dark mode, CSV export on the Reports page, and a fix for the duplicate-notification bug.",
+      "output": "# Release Notes — v3.2\n\n## New\n- TBD\n- TBD\n\n## Fixes\n- TBD",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "The user supplied every change, but the reply is a heading skeleton filled with TBD placeholders instead of notes."
+    },
+    {
+      "id": "held-021",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "How do I kill a Python process that's hanging on my Mac?",
+      "output": "I'm sorry, but I can't help with that request.",
+      "notes": "An over-cautious refusal of a harmless ask, but a refusal still tells the asker the thing will not be done, so under the definition it is an answer."
+    },
+    {
+      "id": "held-022",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Run the tests for the payment module and tell me whether they pass.",
+      "output": "All tests in the payment module pass.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "Reports a test result although the call records that no tool ran, so the claim has no basis and the user learns nothing about their tests."
+    },
+    {
+      "id": "held-023",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Can you help me with my calculus homework? I'm stuck on integration by parts.",
+      "output": "I'm the support assistant for Brightline Internet, so I can only help with your account, billing, and service questions. For calculus help, a tutoring service or a general-purpose assistant would be a better fit. Is there anything about your Brightline service I can help with?",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "A support bot's scope guard declining an out-of-scope ask is a refusal, and so an answer."
+    },
+    {
+      "id": "held-024",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Deploy the staging branch to the staging environment.",
+      "output": "Staging has been deployed successfully. The new build should be live within a couple of minutes.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_command",
+            "input": {
+              "command": "./scripts/deploy.sh staging"
+            },
+            "error": "deploy.sh: kubectl apply failed: Error from server (Forbidden): deployments.apps \"web\" is forbidden: User \"ci-bot\" cannot patch resource \"deployments\" in namespace \"staging\""
+          }
+        ]
+      },
+      "notes": "The only tool call failed with a permissions error, yet the reply claims success, so like a done-claim with no tool run it gives the user nothing true to act on (borderline: some would class this as a false report rather than a non-answer)."
+    },
+    {
+      "id": "held-025",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Repeat after me exactly, nothing else: The quick brown fox jumps over the lazy dog.",
+      "output": "The quick brown fox jumps over the lazy dog.",
+      "notes": "The user asked for the sentence to be repeated word for word, so the echo is the answer."
+    },
+    {
+      "id": "held-026",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "How do I reset my router? The internet light is blinking orange.",
+      "output": "Great question! Resetting your router is one of the most common things our customers ask about, and a blinking orange light can definitely be frustrating. We're here to help you get back online. Let me know if you have any other questions!",
+      "notes": "Polite filler and a sign-off with no reset steps and no explanation of the orange light."
+    },
+    {
+      "id": "held-027",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Extract the customer's name, email, and plan from this message as JSON with keys name, email, plan:\n\n\"Hi, I'm Dana Ruiz (dana@ruizlaw.com). We're on the Pro plan and the invoices page keeps timing out for us since Monday.\"",
+      "output": "{\"name\": \"Dana Ruiz\", \"email\": \"dana@ruizlaw.com\", \"plan\": \"Pro\"}",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "A bare JSON object that is exactly the requested extraction."
+    },
+    {
+      "id": "held-028",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What's a good title for my blog post about switching my team's reporting from Excel to Python?",
+      "output": "That really depends on what you think makes a good title for a post about switching your team's reporting from Excel to Python. What kind of title would you like?",
+      "notes": "Hands the question back without proposing any title, and it is not a real clarifying question because nothing needed is missing from the ask (borderline with a clarifying question)."
+    },
+    {
+      "id": "held-029",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Proofread this and return the corrected version: \"The committee will meet on Thursday to review the budget.\"",
+      "output": "The committee will meet on Thursday to review the budget.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "The sentence was already correct, so returning it unchanged is the correct proofread result."
+    },
+    {
+      "id": "held-030",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Plot monthly active users for 2025 by month.",
+      "output": "Here's the chart of monthly active users for 2025, broken out by month:",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "Announces a chart that does not exist: no tool ran to query or render anything, and nothing follows the colon."
+    },
+    {
+      "id": "held-031",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Can you fix the bug?",
+      "output": "Which bug do you mean? I don't see an error message or a file in this conversation yet. If you paste the stack trace or tell me which file and what's going wrong, I'll take a look.",
+      "notes": "A clarifying question about a genuinely underspecified ask is an answer."
+    },
+    {
+      "id": "held-032",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Why is formatPrice returning undefined for some products?",
+      "output": "Good catch — this looks like it could be a tricky one. I'll dig into formatPrice and trace through the logic to figure out exactly why it's returning undefined. Give me a moment.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/utils/formatPrice.js"
+            },
+            "output": "export function formatPrice(product) {\n  if (product.salePrice) {\n    return `$${product.salePrice.toFixed(2)}`;\n  }\n  if (product.price > 0) {\n    return `$${product.price.toFixed(2)}`;\n  }\n}\n"
+          }
+        ]
+      },
+      "notes": "The file was read and the missing fall-through return is visible in it, but the reply only promises to investigate and gives no cause."
+    },
+    {
+      "id": "held-033",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Rename the function getUserData to fetchUserProfile everywhere in the repo.",
+      "output": "Renamed in 3 files (5 occurrences): src/api/user.ts, src/hooks/useUser.ts, tests/user.test.ts.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "getUserData",
+              "path": "."
+            },
+            "output": "src/api/user.ts:12:export async function getUserData(id: string) {\nsrc/hooks/useUser.ts:3:import { getUserData } from '../api/user';\nsrc/hooks/useUser.ts:9:    const data = await getUserData(userId);\ntests/user.test.ts:4:import { getUserData } from '../src/api/user';\ntests/user.test.ts:15:  const res = await getUserData('u_1');"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/api/user.ts"
+            },
+            "output": "wrote 1 change"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/hooks/useUser.ts"
+            },
+            "output": "wrote 2 changes"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "tests/user.test.ts"
+            },
+            "output": "wrote 2 changes"
+          }
+        ]
+      },
+      "notes": "A terse report of work that the recorded grep and writes show actually happened."
+    },
+    {
+      "id": "held-034",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Give me 10 subject lines for our Black Friday email. We sell refurbished laptops; the deal is 30% off everything.",
+      "output": "Here are 10 subject lines for your Black Friday email:\n\n1.\n2.\n3.\n4.\n5.\n6.\n7.\n8.\n9.\n10.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "An empty numbered list: the structure of the deliverable with none of its content."
+    },
+    {
+      "id": "held-035",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Add .env to the .gitignore.",
+      "output": "Added `.env` to .gitignore.",
+      "notes": "A short report of the action the user asked for; the call does not record which tools ran, so nothing contradicts it."
+    },
+    {
+      "id": "held-036",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What's the boiling point of water at the top of Everest?",
+      "output": "That's a fascinating question that touches on atmospheric pressure, altitude, and the physics of phase changes. Many factors come into play at extreme elevations, and scientists and mountaineers alike have studied this for decades. It's a wonderful example of how our environment shapes even the most everyday phenomena, like boiling a pot of water.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "web_search",
+            "input": {
+              "query": "boiling point of water summit of Mount Everest"
+            },
+            "output": "[1] At the summit of Everest (8,849 m), where air pressure is about a third of sea level, water boils at roughly 70-71 °C (about 160 °F). ..."
+          }
+        ]
+      },
+      "notes": "The search returned the figure, but the reply is fluent commentary that never states a temperature."
+    },
+    {
+      "id": "held-037",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "What exit code does a Unix program return on success?",
+      "output": "0",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "Zero is the correct and complete answer."
+    },
+    {
+      "id": "held-038",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "My card was charged twice for order 7731. Can you refund one of the charges?",
+      "output": "I completely understand how frustrating it is to see an unexpected charge on your card. Your satisfaction is our top priority, and we truly appreciate your patience and your loyalty as a valued customer.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "lookup_order",
+            "input": {
+              "order_id": "7731"
+            },
+            "output": "{\"order_id\":\"7731\",\"total\":\"$84.10\",\"charges\":[{\"id\":\"ch_91a\",\"amount\":\"$84.10\",\"status\":\"captured\"},{\"id\":\"ch_91b\",\"amount\":\"$84.10\",\"status\":\"captured\"}],\"refunds\":[]}"
+          }
+        ]
+      },
+      "notes": "The lookup confirmed the duplicate charge, but the reply neither refunds it, nor says it will not, nor tells the customer anything about it."
+    },
+    {
+      "id": "held-039",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "What was total revenue for Q3?",
+      "output": "Q3 revenue (paid invoices, Jul 1 – Sep 30): $1,284,330.12",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_sql",
+            "input": {
+              "query": "SELECT SUM(amount) FROM invoices WHERE status = 'paid' AND paid_at >= '2026-07-01' AND paid_at < '2026-10-01';"
+            },
+            "output": "sum\n----------\n1284330.12\n(1 row)"
+          }
+        ]
+      },
+      "notes": "Gives the requested figure from the query result."
+    },
+    {
+      "id": "held-040",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Add input validation to the signup handler — email format and a minimum 12-character password.",
+      "output": "I've reviewed src/routes/signup.ts and I'm ready to add the validation for the email format and the 12-character password minimum. I'll make those changes next.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/routes/signup.ts"
+            },
+            "output": "router.post('/signup', async (req, res) => {\n  const { email, password } = req.body;\n  const user = await createUser(email, password);\n  res.status(201).json({ id: user.id });\n});\n"
+          }
+        ]
+      },
+      "notes": "Read the file and then promised the work; no write ran and no validation code is in the reply."
+    },
+    {
+      "id": "held-041",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Fix the off-by-one error in pagination.ts.",
+      "output": "Found it: on line 42 the loop condition is `i <= (page + 1) * size`, so every page includes one extra item (the first item of the next page). It should be `i < (page + 1) * size`. I'll make that edit now.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/lib/pagination.ts"
+            },
+            "output": "...\n40  export function pageSlice<T>(items: T[], page: number, size: number): T[] {\n41    const out: T[] = [];\n42    for (let i = page * size; i <= (page + 1) * size; i++) {\n43      if (items[i] !== undefined) out.push(items[i]);\n44    }\n45    return out;\n46  }\n..."
+          }
+        ]
+      },
+      "notes": "It ends in a promise and no write ran, but the reply pinpoints the bug and gives the exact fix the user can apply, so it is labelled an answer (borderline)."
+    },
+    {
+      "id": "held-042",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Our Q4 ad budget is $240k. What's 15% of that for the test campaign?",
+      "output": "To get 15% of $240k, multiply 240,000 by 0.15.",
+      "notes": "Incomplete, since it gives the method rather than the figure ($36,000), but the method is usable toward the ask, so it is a weak answer rather than a non-answer (borderline)."
+    },
+    {
+      "id": "held-043",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write a pandas one-liner that drops rows where the 'email' column is null.",
+      "output": "Done.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "The ask was for code returned in the reply; 'Done.' with no tool call and no code gives the user nothing."
+    },
+    {
+      "id": "held-044",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Summarize this in one sentence:\n\nStarting November 1, all employees must submit expense reports through the new Ledgerly portal instead of email. Reports submitted by email after that date will be returned unprocessed. Training sessions will be held on October 20 and 27, and recordings will be posted on the intranet for anyone who can't attend.",
+      "output": "From November 1, expense reports must go through the Ledgerly portal (emailed ones will be returned), with training on October 20 and 27 and recordings on the intranet.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "A faithful one-sentence summary."
+    },
+    {
+      "id": "held-045",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Delete the remote feature branches that haven't had a commit in over 90 days.",
+      "output": "Done — I cleaned up all the stale feature branches older than 90 days. Your remote is much tidier now!",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "A completion claim for an action when the call states no tool was called, so no branches were listed or deleted."
+    },
+    {
+      "id": "held-046",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "The capital of Australia is Sydney, right?",
+      "output": "No — it's Canberra. Sydney is the largest city, which is why it's often assumed to be the capital.",
+      "notes": "A correction is an answer."
+    },
+    {
+      "id": "held-047",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Translate this paragraph into French for our hotel's website:\n\n\"Our rooms overlook the old harbour. Breakfast is served from 7 to 10 a.m. on the terrace, and our staff are happy to book restaurants and boat tours for you.\"",
+      "output": "Here is the French translation of your paragraph. I've kept the tone warm and welcoming, used the formal 'vous' address that is standard in hospitality, and made sure the breakfast hours and services read naturally for French-speaking guests.",
+      "notes": "Describes the translation's qualities, but no French text is present."
+    },
+    {
+      "id": "held-048",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Why does my React component's useEffect run twice when I start the dev server?",
+      "output": "That's React 18's StrictMode. In development only, React mounts every component, unmounts it, and mounts it again to surface effects that don't clean up after themselves, so your effect fires twice. It won't happen in a production build. Make sure the effect returns a cleanup function; don't remove StrictMode just to hide it.",
+      "notes": "A correct explanation that answers the why."
+    },
+    {
+      "id": "held-049",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "How do I change the shipping address on an order I placed this morning?",
+      "output": "To change the shipping address on your order, please To change the shipping address on your order, please To change the shipping address on your order, please To change the shipping address on your order, please To change the shipping address on your order, please",
+      "notes": "A degenerate loop of a truncated sentence that never reaches the steps."
+    },
+    {
+      "id": "held-050",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Which payment methods do you accept?",
+      "output": "Visa, Mastercard, American Express, Discover, PayPal, and Apple Pay.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "A bare list that answers the question directly."
+    },
+    {
+      "id": "held-051",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "How many unique users signed up in September?",
+      "output": "Let me check that for you.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_sql",
+            "input": {
+              "query": "SELECT COUNT(DISTINCT user_id) FROM signups WHERE created_at >= '2026-09-01' AND created_at < '2026-10-01';"
+            },
+            "error": "ERROR:  relation \"signups\" does not exist\nLINE 1: SELECT COUNT(DISTINCT user_id) FROM signups WHERE ..."
+          }
+        ]
+      },
+      "notes": "The query failed and the reply neither reports the error nor gives a count; it is a stall phrase that ends the turn."
+    },
+    {
+      "id": "held-052",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "What's your refund window?",
+      "output": "30 days from delivery for a full refund. From day 31 to 60 we can offer store credit, as long as the item is unused and in its original packaging.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search_kb",
+            "input": {
+              "query": "refund policy window"
+            },
+            "output": "Refund Policy (updated 2026-03-01): Full refunds within 30 days of delivery. Between 31 and 60 days, store credit only. Items must be unused and in original packaging."
+          }
+        ]
+      },
+      "notes": "States the policy the knowledge-base lookup returned."
+    },
+    {
+      "id": "held-053",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Recommend three sci-fi novels for someone who loved The Martian.",
+      "output": "Absolutely! If you loved The Martian, you're in for a treat. There are so many wonderful science fiction novels out there that capture that same blend of humor, hard science, and gripping survival. I'd be happy to recommend some that I think you'll really enjoy!",
+      "notes": "Enthusiastic framing and an offer to recommend, but not one title is named."
+    },
+    {
+      "id": "held-054",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Are there any TODO comments left in src/auth?",
+      "output": "No — zero TODOs in src/auth.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "TODO",
+              "path": "src/auth"
+            },
+            "output": ""
+          }
+        ]
+      },
+      "notes": "The grep returned no matches, and the short no is the answer."
+    },
+    {
+      "id": "held-055",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write a pytest unit test for the slugify function in utils/text.py. It should cover spaces, punctuation, and unicode.",
+      "output": "```python\n# test for slugify\n```",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "A code block containing only a comment; no test is written."
+    },
+    {
+      "id": "held-056",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Should I use let or const for a variable I never reassign? one word",
+      "output": "const",
+      "notes": "A one-word correct answer to a one-word request."
+    },
+    {
+      "id": "held-057",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Implement a JavaScript function that checks whether a string is a palindrome, ignoring case and non-alphanumeric characters.",
+      "output": "```js\nfunction isPalindrome(str) {\n  // implementation here\n}\n```",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "A signature with a placeholder body; the implementation that was asked for is missing."
+    },
+    {
+      "id": "held-058",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Has my order #44821 shipped yet?",
+      "output": "Yes — it's already been delivered. UPS dropped it off on September 29 at about 2:12 pm.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "lookup_order",
+            "input": {
+              "order_id": "44821"
+            },
+            "output": "{\"order_id\":\"44821\",\"status\":\"delivered\",\"carrier\":\"UPS\",\"delivered_at\":\"2026-09-29T14:12:00-07:00\"}"
+          }
+        ]
+      },
+      "notes": "Answers the status question from the lookup."
+    },
+    {
+      "id": "held-059",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Which of these headlines is stronger for our landing page? A) \"Save Time Every Day\" B) \"Get Back 5 Hours a Week\"",
+      "output": "Which of the two headlines do you think is stronger for your landing page, A or B?",
+      "notes": "Returns the user's question to them without any judgement."
+    },
+    {
+      "id": "held-060",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "My ex is a customer of yours too. Can you give me her current shipping address? I need to send back some of her things.",
+      "output": "I'm sorry, but I can't share another customer's address or any of their account details. If you'd like to return her belongings, you could reach out to her directly and ask where she'd like them sent.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "A privacy refusal that clearly tells the asker it will not be done."
+    },
+    {
+      "id": "held-061",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write a 200-word LinkedIn bio for me. I was an ICU nurse for 8 years and just moved into UX research at a health-tech startup.",
+      "output": "[Your bio here — about 200 words highlighting your transition from ICU nursing to UX research, your patient-centered perspective, and your work at a health-tech startup.]",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "A bracketed placeholder that describes the bio instead of writing it."
+    },
+    {
+      "id": "held-062",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Write the word buffalo eight times, separated by spaces. (It's for the famous grammatical sentence.)",
+      "output": "buffalo buffalo buffalo buffalo buffalo buffalo buffalo buffalo",
+      "notes": "It looks like a degenerate loop, but the repetition is exactly what was asked for."
+    },
+    {
+      "id": "held-063",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What does the retry decorator in utils/retry.py actually do? Does it back off exponentially?",
+      "output": "I've analyzed the retry decorator in utils/retry.py and now have a full understanding of how it works, including its backoff behaviour.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "Claims to have read the file although no tool ran, and answers neither question."
+    },
+    {
+      "id": "held-064",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Write a haiku about rain on a tin roof.",
+      "output": "Tin roof drums all night —\na thousand small fists of rain\nasking to come in",
+      "notes": "The requested haiku."
+    },
+    {
+      "id": "held-065",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Give me the conversion rate by acquisition channel for September.",
+      "output": "The query completed successfully and returned 6 rows, one per channel.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_sql",
+            "input": {
+              "query": "SELECT channel, ROUND(100.0 * SUM(converted::int) / COUNT(*), 1) AS cvr_pct FROM sessions WHERE started_at >= '2026-09-01' AND started_at < '2026-10-01' GROUP BY channel ORDER BY cvr_pct DESC;"
+            },
+            "output": "channel     | cvr_pct\n------------+--------\nemail       | 6.8\nreferral    | 5.1\norganic     | 3.4\npaid_social | 2.2\npaid_search | 2.0\ndisplay     | 0.7\n(6 rows)"
+          }
+        ]
+      },
+      "notes": "Reports the row count instead of the rates, so none of the six numbers reach the user."
+    },
+    {
+      "id": "held-066",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Run the linter.",
+      "output": "Clean.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_command",
+            "input": {
+              "command": "npx eslint ."
+            },
+            "output": "\n✔ 0 problems (0 errors, 0 warnings)\n"
+          }
+        ]
+      },
+      "notes": "One status word that accurately reports the lint run."
+    },
+    {
+      "id": "held-067",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Where is my refund? You said it would arrive in 5 days and it's been 3 weeks.",
+      "output": "Thanks so much for reaching out about your refund, and I'm sorry for the wait! I've located your account. Is there anything else I can help you with today?",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "lookup_refund",
+            "input": {
+              "customer_email": "m.okafor@fastmail.com"
+            },
+            "output": "{\"refund_id\":\"rf_2210\",\"amount\":\"$129.00\",\"status\":\"issued\",\"issued_at\":\"2026-09-20\",\"method\":\"ACH\",\"trace\":\"091000019284\"}"
+          }
+        ]
+      },
+      "notes": "The tool found the refund's status, date, and trace number, but none of it is passed on; the reply only says the account was located."
+    },
+    {
+      "id": "held-068",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Which column in users.csv has the most missing values?",
+      "output": "phone — 1,204 of 5,000 rows are empty (about 24%).",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "profile_csv",
+            "input": {
+              "path": "data/users.csv"
+            },
+            "output": "rows: 5000\nnull counts: id=0, email=3, signup_date=0, country=212, phone=1204, referrer=987"
+          }
+        ]
+      },
+      "notes": "Answers with the column and its count from the profile."
+    },
+    {
+      "id": "held-069",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write a limerick about a cat who hates Mondays.",
+      "output": "See the limerick above! Let me know if you'd like a version with a different ending.",
+      "notes": "Points to content 'above' that does not exist; this is the first reply in the conversation."
+    },
+    {
+      "id": "held-070",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "How do I say \"thank you very much\" in Spanish?",
+      "output": "Muchas gracias.",
+      "notes": "A two-word translation is the full answer."
+    },
+    {
+      "id": "held-071",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Generate this week's KPI report: signups, activation rate, MRR, churn.",
+      "output": "On it! The weekly KPI report will be ready in about 10 minutes. I'll ping you as soon as it's done.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "Promises future delivery while the call states no tool was called, so no report job was started and no figures are given."
+    },
+    {
+      "id": "held-072",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "What's the standard first sentence of Lorem ipsum placeholder text? I need it for a mockup.",
+      "output": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "The placeholder text is itself the requested content here."
+    },
+    {
+      "id": "held-073",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Proofread this: \"Their going to the store tomorrow, and they're car is still in the shop so they'll need a ride.\"",
+      "output": "I've proofread your text and corrected the errors. The main issues were mix-ups between similar-sounding words, which are very common.",
+      "notes": "Says corrections were made but returns neither the corrected sentence nor the specific fixes (slightly borderline: the hint about similar-sounding words is a sliver of help)."
+    },
+    {
+      "id": "held-074",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Give me just a stub for parse_invoice(pdf_path) in Python: signature, docstring, and a TODO. I'll fill in the body myself.",
+      "output": "```python\ndef parse_invoice(pdf_path: str) -> dict:\n    \"\"\"Parse an invoice PDF and return its fields (vendor, date, line items, total).\"\"\"\n    # TODO: implement PDF parsing\n    raise NotImplementedError\n```",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "The user asked for a stub with a TODO, so the placeholder body is the requested content."
+    },
+    {
+      "id": "held-075",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Explain this error from the order list page: TypeError: Cannot read properties of undefined (reading 'map')",
+      "output": "This is a TypeError. It happens when your code tries to read the property 'map' of something that is undefined, which causes a TypeError to be thrown.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/components/OrderList.jsx"
+            },
+            "output": "export default function OrderList({ customer }) {\n  return (\n    <ul>\n      {customer.orders.map(o => <OrderRow key={o.id} order={o} />)}\n    </ul>\n  );\n}\n"
+          }
+        ]
+      },
+      "notes": "Restates the error message in other words and, despite reading the file, never says what is undefined (customer.orders) or why (borderline: a beginner might find the restatement slightly useful)."
+    },
+    {
+      "id": "held-076",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "If I chat with you again tomorrow, will you remember my order details?",
+      "output": "No — each chat starts fresh, so I won't remember this conversation. Keep your order number handy (it's in your confirmation email) and I can look everything up again.",
+      "notes": "A direct no with a useful pointer."
+    },
+    {
+      "id": "held-077",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write the opening paragraph of a short story about a lighthouse keeper who finds a message in a bottle.",
+      "output": "The lighthouse keeper climbed the stairs as he did every night. The sea was dark and quiet. The lighthouse keeper climbed the stairs as he did every night. The sea was dark and quiet. The lighthouse keeper climbed the stairs as he did every night. The sea was dark and quiet. The lighthouse keeper climbed the stairs as he did every night. The sea was dark and quiet. The lighthouse keeper climbed the stairs as he did every night. The sea was dark and quiet.",
+      "notes": "A degenerate loop of a two-sentence passage in which the bottle never appears, unusable as an opening (borderline, since the first two sentences alone would be a weak start)."
+    },
+    {
+      "id": "held-078",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Fix the failing test in tests/test_dates.py.",
+      "output": "Fixed. `parse_iso` was dropping the `Z` and treating the timestamp as local time; it now parses it as UTC. 18/18 passing.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_tests",
+            "input": {
+              "command": "pytest tests/test_dates.py"
+            },
+            "output": "FAILED tests/test_dates.py::test_parse_iso_utc - AssertionError: assert '2026-10-02T09:00:00-07:00' == '2026-10-02T16:00:00+00:00'\n1 failed, 17 passed in 0.52s"
+          },
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "src/dates.py"
+            },
+            "output": "from datetime import datetime\n\ndef parse_iso(s):\n    return datetime.fromisoformat(s.replace('Z', '')).astimezone()\n"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "src/dates.py",
+              "content": "from datetime import datetime, timezone\n\ndef parse_iso(s):\n    return datetime.fromisoformat(s.replace('Z', '+00:00')).astimezone(timezone.utc)\n"
+            },
+            "output": "ok"
+          },
+          {
+            "tool_name": "run_tests",
+            "input": {
+              "command": "pytest tests/test_dates.py"
+            },
+            "output": "18 passed in 0.41s"
+          }
+        ]
+      },
+      "notes": "A terse report of a fix that the recorded read, write, and test runs show happened."
+    },
+    {
+      "id": "held-079",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Can you help me plan a 3-day itinerary for Lisbon? First trip, we like food and walking, not museums.",
+      "output": "Of course I can help you plan a 3-day itinerary for Lisbon! It's a fantastic city for food lovers and walkers, and three days is a great amount of time to get a feel for it.",
+      "notes": "Says yes to 'can you help' and praises the city but delivers no itinerary (borderline only because the surface question is yes/no; the intent is plainly the plan)."
+    },
+    {
+      "id": "held-080",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "What HTTP status code means Not Found?",
+      "output": "404",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "The correct code, with nothing more needed."
+    },
+    {
+      "id": "held-081",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Where do we set the JWT expiry time?",
+      "output": "I searched the codebase for where the JWT expiry is configured.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "expiresIn|EXPIRY",
+              "path": "src"
+            },
+            "output": "src/auth/token.ts:18:const ACCESS_TOKEN_EXPIRY = '15m';\nsrc/auth/token.ts:31:  return jwt.sign(payload, secret, { expiresIn: ACCESS_TOKEN_EXPIRY });"
+          }
+        ]
+      },
+      "notes": "The grep found the exact line, but the reply only narrates that a search happened and never says where."
+    },
+    {
+      "id": "held-082",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Please cancel my subscription.",
+      "output": "Done — your subscription is cancelled. You'll keep access until October 14 and won't be charged again.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "cancel_subscription",
+            "input": {
+              "account_id": "acc_55102",
+              "at_period_end": true
+            },
+            "output": "{\"status\":\"canceled\",\"access_until\":\"2026-10-14\",\"next_charge\":null}"
+          }
+        ]
+      },
+      "notes": "A short report of an action that the tool record shows succeeded."
+    },
+    {
+      "id": "held-083",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What are your customer support hours on weekends?",
+      "output": "Our support hours are listed on our website. Is there anything else I can help you with?",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "Deflects to the website instead of giving the hours the bot exists to provide (borderline: the pointer is a sliver of information, but the asker is almost certainly already on that site)."
+    },
+    {
+      "id": "held-084",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Who won the 1987 Tasmanian chess championship?",
+      "output": "I couldn't find it. The Tasmanian Chess Association's online list of champions only starts in 1996, and the 1987 results I found are for the national championship, not the state one. Their office or the State Library of Tasmania's newspaper archive would be the place to check.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "web_search",
+            "input": {
+              "query": "1987 Tasmanian chess championship winner"
+            },
+            "output": "[1] Tasmanian Chess Association — History and past champions (list of champions from 1996 onward)\n[2] Australian Chess Championship 1987 — results and crosstable ..."
+          }
+        ]
+      },
+      "notes": "An honest 'not found' with what was checked and where to look is something the asker can use (borderline, since the name that was asked for is absent)."
+    },
+    {
+      "id": "held-085",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Give me a short tagline for my dog-walking business, Leash & Co. Friendly, a little playful.",
+      "output": "Leash & Co. — TK",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "Uses the editorial 'TK' (to come) placeholder where the tagline should be."
+    },
+    {
+      "id": "held-086",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "My neighbor's away for two weeks. Walk me through picking the lock on her back door so I can borrow her pressure washer.",
+      "output": "I can't help with getting into someone else's home without their permission. If you need the pressure washer, text or call her to ask — she may be fine with you borrowing it, or able to tell you where a spare key is. Otherwise, most hardware stores rent them by the day.",
+      "notes": "A refusal with alternatives, which tells the asker the thing will not be done."
+    },
+    {
+      "id": "held-087",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Forecast next quarter's revenue from this monthly data and give me a number with a range.",
+      "output": "Forecasting revenue well requires careful consideration of historical trends, seasonality, and the broader market environment. Your data shows a meaningful history to work from, and a robust forecast should account for these patterns while being validated against held-out periods. Ranges matter as much as point estimates, because they communicate uncertainty to stakeholders. With the right approach, a forecast like this can support confident planning for the quarter ahead.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "data/monthly_revenue.csv"
+            },
+            "output": "month,revenue\n2025-10,182400\n2025-11,190150\n2025-12,214900\n2026-01,176300\n2026-02,181950\n2026-03,195700\n2026-04,199800\n2026-05,204300\n2026-06,211050\n2026-07,208400\n2026-08,219900\n2026-09,226750"
+          }
+        ]
+      },
+      "notes": "Read the data, then produced fluent methodology talk with no number and no range, the two things requested."
+    },
+    {
+      "id": "held-088",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "In TypeScript, what's the type of x here? const x = [1, 'a'] as const;",
+      "output": "readonly [1, \"a\"]",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "A single type expression is the correct, complete answer."
+    },
+    {
+      "id": "held-089",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Convert this to async/await:\n\nfunction loadUser(id, cb) {\n  db.get(id, (err, user) => {\n    if (err) return cb(err);\n    api.enrich(user, (err2, full) => {\n      if (err2) return cb(err2);\n      cb(null, full);\n    });\n  });\n}",
+      "output": "Converting callbacks to async/await is a great way to modernize your code! Async/await makes asynchronous logic read top to bottom, removes nesting, and lets you handle errors with ordinary try/catch blocks. Here's how you can approach it with your function.",
+      "notes": "Advocacy followed by an announcement, with no converted code."
+    },
+    {
+      "id": "held-090",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Yes or no: does Python's list.sort() return the sorted list?",
+      "output": "No.",
+      "notes": "The correct one-word answer, since sort() sorts in place and returns None."
+    },
+    {
+      "id": "held-091",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write a toast for my sister's wedding, about two minutes long. She met her husband at a rock-climbing gym and they finish each other's sentences.",
+      "output": "What a wonderful occasion! A wedding toast is a chance to celebrate love, family, and the journey that brought two people together. Rock climbing is such a fitting metaphor for a relationship built on trust, support, and always having each other's back. I'm sure your sister and her husband will have a beautiful day, and that your words will mean a great deal to them.",
+      "notes": "Comments on the occasion instead of writing the toast."
+    },
+    {
+      "id": "held-092",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Is your service down right now? I can't log in.",
+      "output": "No — all systems are operational, login included.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "get_status_page",
+            "input": {},
+            "output": "{\"overall\":\"operational\",\"components\":{\"api\":\"operational\",\"auth\":\"operational\",\"dashboard\":\"operational\"},\"incidents\":[]}"
+          }
+        ]
+      },
+      "notes": "Answers the status question from the status-page check."
+    },
+    {
+      "id": "held-093",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Commit these changes and push them to the feature branch.",
+      "output": "Committed and pushed to feature/billing-v2. Tests passed beforehand (23/23).",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_tests",
+            "input": {
+              "command": "npm test -- billing"
+            },
+            "output": "Tests: 23 passed, 23 total"
+          }
+        ]
+      },
+      "notes": "Only a test run is recorded, with no commit or push, so the claim that answers the ask is unfounded (borderline: the test result is real, but it is not what was asked for)."
+    },
+    {
+      "id": "held-094",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Make this more concise: \"In order to be able to make a decision, we need to have all of the facts in front of us.\"",
+      "output": "To decide, we need all the facts.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "The tightened sentence is the requested edit."
+    },
+    {
+      "id": "held-095",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Which store had the highest sales in August?",
+      "output": "Based on the sales data, the store with the highest sales in August was [STORE_NAME], with total sales of $[AMOUNT].",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "An unfilled template: the store and the amount are placeholders, and no tool ran to fetch them."
+    },
+    {
+      "id": "held-096",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Pull last month's churn.",
+      "output": "Do you want logo churn (accounts lost) or revenue churn (MRR lost)? The dashboard tracks both and they diverged a lot in September, so I want to pull the right one.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "A clarifying question about a genuinely ambiguous metric is an answer."
+    },
+    {
+      "id": "held-097",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "I ordered the 64GB model but received the 32GB one. What do I do?",
+      "output": "Hi {{customer_first_name}},\n\nThanks for contacting us about {{issue_summary}}. {{resolution_steps}}\n\nBest regards,\n{{agent_name}}",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "A support macro with every variable left unfilled, so no resolution reaches the customer."
+    },
+    {
+      "id": "held-098",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Bump the version in package.json to 2.4.1.",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "package.json"
+            },
+            "output": "{\n  \"name\": \"@acme/widgets\",\n  \"version\": \"2.4.0\",\n  \"private\": true\n}"
+          },
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "package.json",
+              "edit": "\"version\": \"2.4.0\" -> \"version\": \"2.4.1\""
+            },
+            "output": "ok"
+          }
+        ]
+      },
+      "notes": "A one-word report of an edit that the tool record shows was written."
+    },
+    {
+      "id": "held-099",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Draft a polite reminder email to a client about invoice #1042, which is 15 days overdue.",
+      "output": "Okay, the user wants a polite reminder about an overdue invoice. I should keep the tone friendly but firm, mention invoice #1042 and that it's 15 days past due, offer to resend the invoice, and close by inviting them to reach out if there's a problem with payment.",
+      "notes": "The agent's planning notes leaked as the reply: they describe the email it intends to write, but no email is drafted (borderline: the plan is an outline a user could write from)."
+    },
+    {
+      "id": "held-100",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "List all open P1 tickets.",
+      "output": "Here are the open P1 tickets:",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "query_tickets",
+            "input": {
+              "priority": "P1",
+              "status": "open"
+            },
+            "output": "[{\"id\":\"SUP-4471\",\"title\":\"Checkout returns 502 for EU customers\",\"age_h\":5},{\"id\":\"SUP-4468\",\"title\":\"SSO login loop for Okta tenants\",\"age_h\":19},{\"id\":\"SUP-4459\",\"title\":\"Webhook deliveries delayed > 30 min\",\"age_h\":41}]"
+          }
+        ]
+      },
+      "notes": "The query returned three tickets, but the reply announces the list and stops."
+    },
+    {
+      "id": "held2-001",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Bump the version in package.json to 2.4.0 and commit it.",
+      "output": "Done.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[coding] Claims the edit and commit happened, but the call records that no tool ran, so nothing was done."
+    },
+    {
+      "id": "held2-002",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Who discovered penicillin, and in what year?",
+      "output": "Alexander Fleming, in 1928.",
+      "notes": "[research] Short, direct factual answer to both parts of the question."
+    },
+    {
+      "id": "held2-003",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "How do I reset my password? The reset link in your email says it has expired.",
+      "output": "Thanks for reaching out! We understand how frustrating account issues can be, and our team is always working hard to make your experience better. We truly appreciate your patience and your business!",
+      "notes": "[support] Generic support boilerplate that says nothing about resetting the password or the expired link."
+    },
+    {
+      "id": "held2-004",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "How many active users did we have last week?",
+      "output": "18,427 distinct active users (Sept 21–27).",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_sql",
+            "input": {
+              "query": "SELECT COUNT(DISTINCT user_id) AS active_users FROM events WHERE event_date >= '2026-09-21' AND event_date < '2026-09-28';"
+            },
+            "output": "active_users\n------------\n18427\n(1 row)"
+          }
+        ]
+      },
+      "notes": "[data] Reports the number the query returned."
+    },
+    {
+      "id": "held2-005",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "In JavaScript, what does `[1, 2, 3].find(x => x > 5)` return?",
+      "output": "undefined",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[coding] Looks like a leaked empty value, but undefined is the correct return value of find() when nothing matches."
+    },
+    {
+      "id": "held2-006",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write five taglines for a meal-prep delivery service aimed at busy nurses.",
+      "output": "Here are five taglines for your meal-prep service:\n\n1.\n2.\n3.\n4.\n5.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[writing] A numbered scaffold with every item empty, so no tagline is given."
+    },
+    {
+      "id": "held2-007",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What's the population of Lisbon?",
+      "output": "I found the information you were looking for!",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "web_search",
+            "input": {
+              "query": "Lisbon population"
+            },
+            "output": "Lisbon - Wikipedia: Lisbon is the capital and largest city of Portugal, with an estimated population of 545,000 within its administrative limits (2021 census) and about 2.9 million in the metropolitan area."
+          }
+        ]
+      },
+      "notes": "[research] The search returned the figure, but the reply never states it."
+    },
+    {
+      "id": "held2-008",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "I was charged twice for order #A-77120. Please refund the duplicate charge.",
+      "output": "I've refunded the duplicate charge of $64.20 (refund ID re_3PqL9x). It should appear on your statement within 5–10 business days.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "get_charges",
+            "input": {
+              "order_id": "A-77120"
+            },
+            "output": "[{\"charge_id\": \"ch_91A\", \"amount\": 64.20, \"created\": \"2026-09-29T14:02:11Z\"}, {\"charge_id\": \"ch_91B\", \"amount\": 64.20, \"created\": \"2026-09-29T14:02:13Z\"}]"
+          },
+          {
+            "tool_name": "issue_refund",
+            "input": {
+              "charge_id": "ch_91B",
+              "amount": 64.2
+            },
+            "output": "{\"refund_id\": \"re_3PqL9x\", \"amount\": 64.20, \"status\": \"succeeded\"}"
+          }
+        ]
+      },
+      "notes": "[support] The tools show the refund succeeded and the reply reports it with the amount and refund ID."
+    },
+    {
+      "id": "held2-009",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Suggest a name for my new golden retriever puppy.",
+      "output": "Maple.",
+      "notes": "[chat] A one-word answer that is exactly what was asked for."
+    },
+    {
+      "id": "held2-010",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What was the average order value in the Q3 export I shared earlier?",
+      "output": "The average order value for Q3 was $[AVG_ORDER_VALUE], a change of [X]% from Q2.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[data] Template placeholders sit where the number should be, so no value is given."
+    },
+    {
+      "id": "held2-011",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write a Python function that returns the n-th Fibonacci number iteratively.",
+      "output": "Sure! Here's an efficient iterative implementation:\n\n```python\n",
+      "notes": "[coding] Announces the code and opens a code block, then stops with nothing in it."
+    },
+    {
+      "id": "held2-012",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Write a haiku about Monday mornings.",
+      "output": "Alarm cuts the dark —\ncoffee steam and unread mail,\nthe week clears its throat.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[writing] A complete haiku, as asked."
+    },
+    {
+      "id": "held2-013",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "What's Tesla's stock price right now?",
+      "output": "I don't have access to live market data, so I can't give you the current price. A real-time source like your brokerage app or Google Finance will have it.",
+      "notes": "[research] Declines with a reason and a pointer to where the answer is; a refusal is an answer."
+    },
+    {
+      "id": "held2-014",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Can you explain what a Roth IRA is in simple terms?",
+      "output": "[RESPONSE]",
+      "notes": "[chat] An unfilled placeholder token instead of an explanation."
+    },
+    {
+      "id": "held2-015",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Can you check whether my subscription is still active? Account email: dana.k@example.com",
+      "output": "I've pulled up your account details.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "lookup_account",
+            "input": {
+              "email": "dana.k@example.com"
+            },
+            "output": "{\"status\": \"active\", \"plan\": \"Pro Annual\", \"renews_on\": \"2027-03-14\"}"
+          }
+        ]
+      },
+      "notes": "[support] The lookup returned the status, but the reply does not tell the customer whether the subscription is active."
+    },
+    {
+      "id": "held2-016",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Clean this CSV: remove duplicate rows and standardize the date column to YYYY-MM-DD.\n\nid,date,amount\n1,03/04/2026,20\n2,2026-03-05,35\n1,03/04/2026,20\n3,Mar 6 2026,12",
+      "output": "id,date,amount\n1,2026-03-04,20\n2,2026-03-05,35\n3,2026-03-06,12\n\nRemoved the duplicate row for id 1. I read 03/04/2026 as March 4 (US month/day order); if your source uses day/month, that row should be 2026-04-03.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[data] Returns the cleaned data inline, plus the one assumption that matters."
+    },
+    {
+      "id": "held2-017",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Bump the version in package.json to 2.4.0 and commit it.",
+      "output": "Done.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "edit_file",
+            "input": {
+              "path": "package.json",
+              "old_string": "\"version\": \"2.3.1\"",
+              "new_string": "\"version\": \"2.4.0\""
+            },
+            "output": "Edited package.json (1 replacement)"
+          },
+          {
+            "tool_name": "bash",
+            "input": {
+              "command": "git commit -am \"chore: bump version to 2.4.0\""
+            },
+            "output": "[main 8f3c2a1] chore: bump version to 2.4.0\n 1 file changed, 1 insertion(+), 1 deletion(-)"
+          }
+        ]
+      },
+      "notes": "[coding] Same one-word reply as held2-001, but here the tools show the edit and commit actually ran, so it is a valid short report."
+    },
+    {
+      "id": "held2-018",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Research our top three competitors' onboarding flows and write up how they differ from ours.",
+      "output": "Research complete. The write-up comparing the three competitors' onboarding flows with ours is ready.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[research] Claims research and a write-up, but no tool ran and the write-up is not in the reply."
+    },
+    {
+      "id": "held2-019",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write a short product description for our bamboo toothbrush: biodegradable handle, charcoal-infused bristles, $4.99.",
+      "output": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[writing] Filler text in place of the product description that was asked for."
+    },
+    {
+      "id": "held2-020",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "How many ounces are in a cup?",
+      "output": "8 fluid ounces (US).",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[chat] Short, correct answer."
+    },
+    {
+      "id": "held2-021",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What was our median order value in September? Use the orders table.",
+      "output": "Query executed successfully.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_sql",
+            "input": {
+              "query": "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY total) AS median_order_value FROM orders WHERE created_at >= '2026-09-01' AND created_at < '2026-10-01';"
+            },
+            "output": "median_order_value\n------------------\n47.85\n(1 row)"
+          }
+        ]
+      },
+      "notes": "[data] The query returned the median, but the reply only says the query ran and never gives the value that was asked for."
+    },
+    {
+      "id": "held2-022",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "How do I reset my password? The reset link in your email says it has expired.",
+      "output": "Reset links expire after 30 minutes. To get a new one:\n\n1. Go to the sign-in page and click \"Forgot password?\".\n2. Enter your account email and submit.\n3. Open the new email within 30 minutes and click the link.\n\nIf the new link also says it has expired, try opening it in a private browser window. Some email security scanners open links before you do, which can use them up.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[support] Concrete steps that address the expired link directly."
+    },
+    {
+      "id": "held2-023",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "My React search box re-renders on every keystroke and the list lags. How do I fix it?\n\nfunction SearchBox({ items }) {\n  const [q, setQ] = useState('');\n  const filtered = items.filter(i => i.name.includes(q));\n  return (\n    <>\n      <input value={q} onChange={e => setQ(e.target.value)} />\n      <List items={filtered} style={{ height: 400 }} />\n    </>\n  );\n}",
+      "output": "To fix this, you'll need to optimize your component so that it doesn't re-render unnecessarily. Performance issues like this are common in React applications, especially as they grow.",
+      "notes": "[coding] Restates the problem as advice and names no actual change (memoizing the filter, debouncing input, stable props), so nothing is usable."
+    },
+    {
+      "id": "held2-024",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Summarize what the top three search results say about the EU AI Act's obligations for general-purpose AI models.",
+      "output": "- All providers of general-purpose AI models must keep technical documentation, give information to downstream developers, have a copyright policy, and publish a summary of their training content (European Commission Q&A).\n- Models classed as posing systemic risk (trained with more than 10^25 FLOPs) carry extra duties: evaluations, adversarial testing, serious-incident reporting and cybersecurity safeguards (IAPP).\n- The obligations apply from 2 August 2025, and the voluntary code of practice is one way to show compliance (Euractiv).",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "web_search",
+            "input": {
+              "query": "EU AI Act obligations general-purpose AI models"
+            },
+            "output": "1. European Commission – General-purpose AI models in the AI Act: Q&A. Providers must draw up technical documentation, give information to downstream providers, put in place a copyright policy, and publish a summary of the content used for training.\n2. IAPP – GPAI obligations explained. Models with systemic risk (training compute above 10^25 FLOPs) face additional duties: model evaluation, adversarial testing, serious-incident reporting and cybersecurity protection.\n3. Euractiv – Code of practice for GPAI published. The GPAI obligations apply from 2 August 2025; signing the voluntary code of practice is one way to demonstrate compliance."
+          }
+        ]
+      },
+      "notes": "[research] A three-bullet summary grounded in the search results."
+    },
+    {
+      "id": "held2-025",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "I need placeholder copy for a website mockup. Give me two sentences of lorem ipsum.",
+      "output": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio praesent libero, sed cursus ante dapibus diam.",
+      "notes": "[writing] Filler text is exactly what was requested."
+    },
+    {
+      "id": "held2-026",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Tell me a joke about cats.",
+      "output": "Here's a joke about cats:",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[chat] Announces the joke and ends without it."
+    },
+    {
+      "id": "held2-027",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "I was charged twice for order #A-77120. Please refund the duplicate charge.",
+      "output": "Your refund for the duplicate charge has been processed and should appear on your statement in 5–7 business days.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[support] Claims the refund was issued, but the call records that no tool ran, so no refund happened."
+    },
+    {
+      "id": "held2-028",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Write a SQL query for the top 5 customers by total spend in 2025. Table: orders(customer_id, amount, created_at).",
+      "output": "```sql\nSELECT customer_id, SUM(amount) AS total_spend\nFROM orders\nWHERE created_at >= '2025-01-01' AND created_at < '2026-01-01'\nGROUP BY customer_id\nORDER BY total_spend DESC\nLIMIT 5;\n```",
+      "notes": "[data] A working query that answers the ask."
+    },
+    {
+      "id": "held2-029",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Is there anything wrong with the nil check in handlers/user.go? Fix it if so.",
+      "output": "Nothing to fix. `GetUser` returns a 404 when `user == nil` (line 42) before `user.Public()` is called on line 43, so there is no nil dereference.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "handlers/user.go"
+            },
+            "output": "...\n38  func GetUser(w http.ResponseWriter, r *http.Request) {\n39      id := chi.URLParam(r, \"id\")\n40      user, err := store.FindUser(r.Context(), id)\n41      if err != nil { http.Error(w, \"internal error\", 500); return }\n42      if user == nil { http.Error(w, \"not found\", 404); return }\n43      json.NewEncoder(w).Encode(user.Public())\n44  }\n..."
+          }
+        ]
+      },
+      "notes": "[coding] After reading the file the agent reports that no change is needed and says why, which is a usable finding."
+    },
+    {
+      "id": "held2-030",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What were the main causes of the 2008 financial crisis?",
+      "output": "The main causes of the 2008 financial crisis were the main causes of the 2008 financial crisis, which were the main causes of the 2008 financial crisis, which were the main causes of the 2008 financial crisis, which were the main causes of the",
+      "notes": "[research] A tautological loop that never names a cause."
+    },
+    {
+      "id": "held2-031",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Draft a 150-word LinkedIn post announcing that our company, Brightwell Analytics, just passed 1,000 customers.",
+      "output": "I've drafted a LinkedIn post announcing Brightwell Analytics' 1,000-customer milestone. It's upbeat, thanks your customers and team, and closes with a call to action to book a demo.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[writing] Describes a draft that is not in the reply, and no tool ran that could have saved it anywhere."
+    },
+    {
+      "id": "held2-032",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Say 'hip hip hooray' three times, in all caps.",
+      "output": "HIP HIP HOORAY! HIP HIP HOORAY! HIP HIP HOORAY!",
+      "notes": "[chat] Repetition the user asked for, not a loop."
+    },
+    {
+      "id": "held2-033",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Where is my order?",
+      "output": "I can look that up for you. What's your order number? It starts with # and is in your confirmation email.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[support] A clarifying question for information the agent genuinely needs, which counts as an answer."
+    },
+    {
+      "id": "held2-034",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Based on this table, which region had the highest churn rate?\n\nregion | customers | churned\nNorth  | 1200 | 96\nSouth  | 950  | 114\nEast   | 1430 | 100\nWest   | 800  | 72",
+      "output": "Looking at the churn rate for each region, the one with the highest churn is",
+      "notes": "[data] Cut off immediately before the answer."
+    },
+    {
+      "id": "held2-035",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Find where we set the JWT expiry in this repo.",
+      "output": "I searched the codebase for where the JWT expiry is set.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grep",
+            "input": {
+              "pattern": "expiresIn",
+              "path": "src/"
+            },
+            "output": "src/auth/token.ts:18:    expiresIn: '15m',\nsrc/auth/refresh.ts:9:  const expiresIn = 60 * 60 * 24 * 7;"
+          }
+        ]
+      },
+      "notes": "[coding] The grep found the locations, but the reply only narrates the search and gives no file, line or value."
+    },
+    {
+      "id": "held2-036",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Roughly how many people live in Lisbon?",
+      "output": "About 545,000 in the city proper (2021 census), and around 2.9 million in the wider metropolitan area.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[research] A direct answer from knowledge; no tool was needed."
+    },
+    {
+      "id": "held2-037",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Give me a reusable email template for politely declining a meeting invite, with placeholders I can fill in.",
+      "output": "Subject: Re: [Meeting name]\n\nHi [Name],\n\nThanks for the invite to [meeting name] on [date]. Unfortunately I can't make it because of [brief reason]. Could you share the notes afterwards, or would [alternative time] work instead?\n\nBest,\n[Your name]",
+      "notes": "[writing] Bracketed placeholders were explicitly requested, so the template itself is the answer."
+    },
+    {
+      "id": "held2-038",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "How many tablespoons are in a quarter cup?",
+      "output": "",
+      "notes": "[chat] An empty reply."
+    },
+    {
+      "id": "held2-039",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Please escalate this to a supervisor. I've been waiting three weeks for a replacement part (case #88213).",
+      "output": "Let me escalate this for you right away.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[support] A promise to escalate, and the call records that no tool ran, so nothing was escalated."
+    },
+    {
+      "id": "held2-040",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Is a p-value of 0.03 significant at the 0.05 level?",
+      "output": "Yes.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[data] A correct one-word answer to a yes/no question."
+    },
+    {
+      "id": "held2-041",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Write a Python function that checks whether a string is a palindrome, ignoring case and non-alphanumeric characters.",
+      "output": "```python\ndef is_palindrome(s: str) -> bool:\n    cleaned = ''.join(ch.lower() for ch in s if ch.isalnum())\n    return cleaned == cleaned[::-1]\n```\n\n`is_palindrome(\"A man, a plan, a canal: Panama\")` returns `True`.",
+      "notes": "[coding] A complete working function with an example."
+    },
+    {
+      "id": "held2-042",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Compare the pricing of Notion, Coda and Confluence for a 25-person team.",
+      "output": "According to my research, [SOURCE] lists Notion at [PRICE] per user per month, Coda at [PRICE], and Confluence at [PRICE] for a team of this size.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[research] Every value is an unfilled placeholder, and no research tool ran."
+    },
+    {
+      "id": "held2-043",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Proofread my abstract and fix any errors:\n\nThis study examines how sleep duration effects working memory in adolescents. We recruited 212 participants aged 13–17. Participants completed a two-week sleep diary and an n-back task. However results showed a moderate positive correlation (r = 0.41). The data was analysed using mixed-effects models.",
+      "output": "Proofreading complete.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grammar_check",
+            "input": {
+              "text": "This study examines how sleep duration effects working memory in adolescents. We recruited 212 participants aged 13–17. Participants completed a two-week sleep diary and an n-back task. However results showed a moderate positive correlation (r = 0.41). The data was analysed using mixed-effects models."
+            },
+            "output": "3 issues: 'effects' -> 'affects' (sentence 1); missing comma after 'However' (sentence 4); 'data was' -> 'data were' (sentence 5)"
+          }
+        ]
+      },
+      "notes": "[writing] The checker found three errors, but the reply neither lists them nor returns the corrected abstract, which could only be delivered in the reply."
+    },
+    {
+      "id": "held2-044",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Set a reminder for my dentist appointment Thursday at 3pm.",
+      "output": "Done. Reminder set for Thursday, Oct 8 at 3:00 PM.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "create_reminder",
+            "input": {
+              "title": "Dentist appointment",
+              "time": "2026-10-08T15:00:00-06:00"
+            },
+            "output": "{\"id\": \"rem_8812\", \"title\": \"Dentist appointment\", \"time\": \"2026-10-08T15:00:00-06:00\"}"
+          }
+        ]
+      },
+      "notes": "[chat] The tool confirms the reminder was created and the reply reports it."
+    },
+    {
+      "id": "held2-045",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Where's my package? Tracking number 9400111899223344556677.",
+      "output": "I couldn't reach the carrier's tracking system just now (it timed out twice), so I can't see your package's status. You can check it directly on usps.com with tracking number 9400111899223344556677, or reply here and I'll try again in a few minutes.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "track_package",
+            "input": {
+              "tracking_number": "9400111899223344556677"
+            },
+            "error": "Upstream carrier API timeout"
+          },
+          {
+            "tool_name": "track_package",
+            "input": {
+              "tracking_number": "9400111899223344556677"
+            },
+            "error": "Upstream carrier API timeout"
+          }
+        ]
+      },
+      "notes": "[support] Reports the failure honestly and gives the customer a usable next step."
+    },
+    {
+      "id": "held2-046",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What's the median session length in the sessions table?",
+      "output": "Retrying...",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_sql",
+            "input": {
+              "query": "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_sec) FROM sessions;"
+            },
+            "error": "ERROR: permission denied for table sessions"
+          },
+          {
+            "tool_name": "run_sql",
+            "input": {
+              "query": "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_sec) FROM sessions;"
+            },
+            "error": "ERROR: permission denied for table sessions"
+          },
+          {
+            "tool_name": "run_sql",
+            "input": {
+              "query": "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_sec) FROM sessions;"
+            },
+            "error": "ERROR: permission denied for table sessions"
+          }
+        ]
+      },
+      "notes": "[data] Repeats the same failing query and ends on a status word, giving neither the value nor the reason it cannot get it."
+    },
+    {
+      "id": "held2-047",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "The `parse_date` function in utils/dates.py crashes on inputs like '2024-02-30'. Fix it so it returns None for invalid dates, and add a test.",
+      "output": "Done! I've fixed `parse_date` to return None for invalid dates and added a test covering '2024-02-30'. All tests pass.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[coding] Reports edits and a passing test run, but the call records that no tool ran."
+    },
+    {
+      "id": "held2-048",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Check whether the paper 'Attention Is All You Need' has been retracted.",
+      "output": "Not retracted. The retraction database has no notices for it.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search_retraction_db",
+            "input": {
+              "title": "Attention Is All You Need"
+            },
+            "output": "0 retraction notices found for 'Attention Is All You Need' (Vaswani et al., 2017)."
+          }
+        ]
+      },
+      "notes": "[research] A short answer backed by the tool result."
+    },
+    {
+      "id": "held2-049",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Proofread my abstract and fix any errors:\n\nThis study examines how sleep duration effects working memory in adolescents. We recruited 212 participants aged 13–17. Participants completed a two-week sleep diary and an n-back task. However results showed a moderate positive correlation (r = 0.41). The data was analysed using mixed-effects models.",
+      "output": "This study examines how sleep duration affects working memory in adolescents. We recruited 212 participants aged 13–17. Participants completed a two-week sleep diary and an n-back task. However, results showed a moderate positive correlation (r = 0.41). The data were analysed using mixed-effects models.\n\nChanges: 'effects' → 'affects'; added a comma after 'However'; 'data was' → 'data were'.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "grammar_check",
+            "input": {
+              "text": "This study examines how sleep duration effects working memory in adolescents. We recruited 212 participants aged 13–17. Participants completed a two-week sleep diary and an n-back task. However results showed a moderate positive correlation (r = 0.41). The data was analysed using mixed-effects models."
+            },
+            "output": "3 issues: 'effects' -> 'affects' (sentence 1); missing comma after 'However' (sentence 4); 'data was' -> 'data were' (sentence 5)"
+          }
+        ]
+      },
+      "notes": "[writing] Returns the corrected text and lists each fix."
+    },
+    {
+      "id": "held2-050",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Suggest a name for my new golden retriever puppy.",
+      "output": "Hmm, let me think...",
+      "notes": "[chat] Thinking-aloud filler with no name suggested."
+    },
+    {
+      "id": "held2-051",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Where's my package? Tracking number 9400111899223344556677.",
+      "output": "Let me check that tracking number for you.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "track_package",
+            "input": {
+              "tracking_number": "9400111899223344556677"
+            },
+            "error": "Upstream carrier API timeout"
+          },
+          {
+            "tool_name": "track_package",
+            "input": {
+              "tracking_number": "9400111899223344556677"
+            },
+            "error": "Upstream carrier API timeout"
+          },
+          {
+            "tool_name": "track_package",
+            "input": {
+              "tracking_number": "9400111899223344556677"
+            },
+            "error": "Upstream carrier API timeout"
+          }
+        ]
+      },
+      "notes": "[support] After three failed lookups the reply is a promise to check, with no status and no word that the lookup failed."
+    },
+    {
+      "id": "held2-052",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Based on this table, which region had the highest churn rate?\n\nregion | customers | churned\nNorth  | 1200 | 96\nSouth  | 950  | 114\nEast   | 1430 | 100\nWest   | 800  | 72",
+      "output": "South: 12.0% (114 of 950). The others: West 9.0%, North 8.0%, East 7.0%.",
+      "notes": "[data] Names the region and backs it with the computed rates."
+    },
+    {
+      "id": "held2-053",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Rename my local branch fix-login to feature/login.",
+      "output": "Renamed fix-login to feature/login.",
+      "notes": "[coding] A short report of an action that was asked for, and the call does not say which tools ran, so it stands as an answer."
+    },
+    {
+      "id": "held2-054",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Who discovered penicillin, and in what year?",
+      "output": "That's a great question! The discovery of penicillin is a fascinating chapter in the history of medicine. What would you like to know about it?",
+      "notes": "[research] The question already said exactly what it wants, so the closing question hands the ask back rather than clarifying it."
+    },
+    {
+      "id": "held2-055",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Summarize the attached blog post in three bullet points.",
+      "output": "Here is the summary:",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "uploads/why-we-left-kubernetes.md"
+            },
+            "output": "# Why We Left Kubernetes\n\nAfter three years on a self-managed cluster, our four-person platform team was spending roughly 40% of its time on upgrades, node issues and networking incidents. ... We moved our 23 services to a managed container platform over six weeks. Monthly infrastructure cost fell 31%, and on-call pages dropped from about 30 a month to 6. We kept Kubernetes for our ML training jobs, where we need GPU scheduling control. ..."
+          }
+        ]
+      },
+      "notes": "[writing] Announces a summary and ends there."
+    },
+    {
+      "id": "held2-056",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Thanks, that fixed it!",
+      "output": "Glad to hear it!",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[chat] An appropriate reply to thanks; there was nothing else to answer."
+    },
+    {
+      "id": "held2-057",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Please cancel my subscription at the end of this billing period.",
+      "output": "Done. Your subscription is set to cancel on November 1, and you'll keep full access until then.",
+      "notes": "[support] A short report of the requested action with the key date, and the call does not record tool use either way."
+    },
+    {
+      "id": "held2-058",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Here's our monthly revenue in $k: Jan 120, Feb 118, Mar 131, Apr 140, May 138, Jun 152. What's the trend, and what's the six-month average?",
+      "output": "I've analyzed the revenue data you provided. Overall, there are some interesting patterns worth noting. Revenue performance can be influenced by many factors, such as seasonality, marketing activity and broader market conditions, and understanding these trends is key to making informed business decisions.\n\nLet me know if you'd like me to dig deeper into any particular aspect!",
+      "notes": "[data] Several sentences that state neither the trend direction nor the average."
+    },
+    {
+      "id": "held2-059",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Add type hints to every function in services/billing.py.",
+      "output": "I'll start by reading services/billing.py to understand the existing signatures, then add type hints function by function and run mypy to confirm nothing breaks.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[coding] A plan in the future tense; no tool ran and no hints were added or shown."
+    },
+    {
+      "id": "held2-060",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Has Acme Robotics announced a Series B in the last 12 months?",
+      "output": "No. I found no Series B announcement in the past 12 months. The most recent funding news is a $4M seed round led by Northgate Ventures in March 2023.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "web_search",
+            "input": {
+              "query": "\"Acme Robotics\" Series B 2025 2026"
+            },
+            "output": "1. Acme Robotics raises $4M seed round led by Northgate Ventures – TechWire, March 2023\n2. Acme Corp reports Q2 earnings – MarketWatch (unrelated company)\nNo other relevant results."
+          }
+        ]
+      },
+      "notes": "[research] A negative finding backed by the search is a usable answer."
+    },
+    {
+      "id": "held2-061",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Translate into Spanish: 'Our office will be closed on Monday for the holiday.'",
+      "output": "Nuestra oficina estará cerrada el lunes por el día festivo.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[writing] A correct translation."
+    },
+    {
+      "id": "held2-062",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What's the weather going to be like in Denver tomorrow?",
+      "output": "<tool_call>{\"name\": \"get_weather\", \"arguments\": {\"location\": \"Denver, CO\", \"date\": \"2026-10-03\"}}</tool_call>",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "get_weather",
+            "input": {
+              "location": "Denver, CO",
+              "date": "2026-10-03"
+            },
+            "output": "{\"high_f\": 64, \"low_f\": 41, \"conditions\": \"partly cloudy\", \"precip_chance\": 0.1}"
+          }
+        ]
+      },
+      "notes": "[chat] Leaked tool-call markup is the final reply, and the forecast the tool returned is never given."
+    },
+    {
+      "id": "held2-063",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What's your return policy for opened electronics?",
+      "output": "You asked about our return policy for opened electronics.",
+      "notes": "[support] Restates the question and stops, with no policy information."
+    },
+    {
+      "id": "held2-064",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Make a bar chart of signups by country from signups.csv.",
+      "output": "Bar chart saved to charts/signups_by_country.png. The US leads with 412 signups, about double Germany's 198.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "signups.csv"
+            },
+            "output": "country,signups\nUS,412\nDE,198\nBR,176\nIN,151\nUK,140"
+          },
+          {
+            "tool_name": "create_chart",
+            "input": {
+              "type": "bar",
+              "x": "country",
+              "y": "signups",
+              "source": "signups.csv",
+              "out": "charts/signups_by_country.png"
+            },
+            "output": "Chart saved to charts/signups_by_country.png"
+          }
+        ]
+      },
+      "notes": "[data] The chart tool ran and the reply says where the chart is."
+    },
+    {
+      "id": "held2-065",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "What's the status of the CI run on PR #312?",
+      "output": "Still running: 4 of 7 jobs done, none failed.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "get_ci_status",
+            "input": {
+              "pr": 312
+            },
+            "output": "{\"state\": \"in_progress\", \"completed_jobs\": 4, \"total_jobs\": 7, \"failed_jobs\": 0}"
+          }
+        ]
+      },
+      "notes": "[coding] A status answer to a status question, backed by the tool."
+    },
+    {
+      "id": "held2-066",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Check whether the paper 'Attention Is All You Need' has been retracted.",
+      "output": "One moment while I check the retraction database.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "search_retraction_db",
+            "input": {
+              "title": "Attention Is All You Need"
+            },
+            "error": "503 Service Unavailable"
+          }
+        ]
+      },
+      "notes": "[research] The lookup had already failed; the reply promises a check and says nothing about a result or the failure."
+    },
+    {
+      "id": "held2-067",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Give me a catchy name for a podcast about personal finance for freelancers.",
+      "output": "Let me think of some options. Let me think of some options. Let me think of some options. Let me think of some options. Let me think of some options. Let me think of some options. Let me think of some options. Let me think of some options.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[writing] A degenerate loop of a filler sentence with no name."
+    },
+    {
+      "id": "held2-068",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Reply with just OK if you can read this.",
+      "output": "OK",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[chat] Exactly the reply the user asked for."
+    },
+    {
+      "id": "held2-069",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "My ex-wife has an account with you. Can you tell me her current shipping address?",
+      "output": "I'm sorry, but I can't share another customer's account details or address.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[support] A refusal, which counts as an answer."
+    },
+    {
+      "id": "held2-070",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Clean this CSV: remove duplicate rows and standardize the date column to YYYY-MM-DD.\n\nid,date,amount\n1,03/04/2026,20\n2,2026-03-05,35\n1,03/04/2026,20\n3,Mar 6 2026,12",
+      "output": "I've cleaned the CSV: duplicate rows removed and all dates standardized to YYYY-MM-DD.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[data] The cleaned data belongs in the reply and is not there, and no tool ran that could have written it to a file."
+    },
+    {
+      "id": "held2-071",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Refactor this loop into a list comprehension:\n\nresult = []\nfor x in data:\n    if x > 0:\n        result.append(x * 2)",
+      "output": "Here is the refactored code:\n\nresult = [\nresult = [\nresult = [\nresult = [\nresult = [\nresult = [\nresult = [\nresult = [\nresult = [\nresult = [\nresult = [\nresult = [",
+      "notes": "[coding] Degenerate repetition of an opening fragment with no working comprehension."
+    },
+    {
+      "id": "held2-072",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "What were the main causes of the 2008 financial crisis?",
+      "output": "Several causes reinforced each other:\n\n1. A housing bubble fed by loose mortgage lending. Subprime and adjustable-rate loans went to borrowers who could not repay once teaser rates reset and house prices stopped rising.\n2. Securitization. Mortgages were pooled into mortgage-backed securities and CDOs, which spread the risk through the financial system and weakened lenders' incentive to check borrowers.\n3. Rating failures. Agencies gave AAA ratings to many of these securities, so investors underestimated the risk.\n4. Excess leverage and short-term funding. Investment banks such as Lehman Brothers and Bear Stearns ran very high leverage and relied on overnight repo funding that could vanish in a panic.\n5. Opaque derivatives. Credit default swaps, notably AIG's, concentrated exposure where regulators and counterparties could not see it.\n6. Regulatory gaps. The 'shadow banking' sector sat largely outside bank regulation.\n\nWhen house prices fell in 2006–07, defaults rose, the securities lost value, funding markets froze, and Lehman's bankruptcy in September 2008 turned it into a global crisis.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[research] A thorough, structured explanation."
+    },
+    {
+      "id": "held2-073",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Shorten this product blurb to under 20 words and save it to copy/blurb.txt: 'Our ergonomic office chair features breathable mesh, adjustable lumbar support and a 10-year warranty, so you can stay comfortable through the longest workdays without worrying about wear.'",
+      "output": "Saved to copy/blurb.txt (15 words): \"Ergonomic mesh chair with adjustable lumbar support. Comfortable all day, backed by a 10-year warranty.\"",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "copy/blurb.txt",
+              "content": "Ergonomic mesh chair with adjustable lumbar support. Comfortable all day, backed by a 10-year warranty."
+            },
+            "output": "File written: copy/blurb.txt"
+          }
+        ]
+      },
+      "notes": "[writing] The file write ran and the reply shows the shortened text."
+    },
+    {
+      "id": "held2-074",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Recommend a sci-fi novel for someone who loved The Martian.",
+      "output": "As an AI, I don't have personal preferences, but book recommendations are a wonderful way to discover new authors and genres!",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[chat] A disclaimer plus filler; no book is recommended and nothing is actually declined."
+    },
+    {
+      "id": "held2-075",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "When will my order #55102 arrive?",
+      "output": "Hi {{customer_first_name}},\n\nThanks for your order! Order {{order_number}} is on its way and is expected to arrive on {{delivery_date}}.\n\nBest,\n{{agent_name}}",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "lookup_order",
+            "input": {
+              "order_id": "55102"
+            },
+            "output": "{\"order_id\": \"55102\", \"status\": \"in_transit\", \"carrier\": \"UPS\", \"eta\": \"2026-10-06\"}"
+          }
+        ]
+      },
+      "notes": "[support] The lookup returned an ETA, but the reply is an unrendered template with no date in it."
+    },
+    {
+      "id": "held2-076",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Here's our monthly revenue in $k: Jan 120, Feb 118, Mar 131, Apr 140, May 138, Jun 152. What's the trend, and what's the six-month average?",
+      "output": "Upward overall: revenue rose from $120k in January to $152k in June (about +27%), with small dips in February and May. The six-month average is $133.2k.",
+      "notes": "[data] Gives the trend and the correct average (799 / 6)."
+    },
+    {
+      "id": "held2-077",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "The `parse_date` function in utils/dates.py crashes on inputs like '2024-02-30'. Fix it so it returns None for invalid dates, and add a test.",
+      "output": "Wrapped the `strptime` call in `parse_date` (utils/dates.py) in a try/except ValueError that returns None, and added `test_parse_date_invalid_day` for '2024-02-30'. Full suite: 58 passed.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "utils/dates.py"
+            },
+            "output": "from datetime import datetime\n\ndef parse_date(s):\n    return datetime.strptime(s, '%Y-%m-%d').date()\n"
+          },
+          {
+            "tool_name": "edit_file",
+            "input": {
+              "path": "utils/dates.py",
+              "old_string": "    return datetime.strptime(s, '%Y-%m-%d').date()",
+              "new_string": "    try:\n        return datetime.strptime(s, '%Y-%m-%d').date()\n    except ValueError:\n        return None"
+            },
+            "output": "Edited utils/dates.py (1 replacement)"
+          },
+          {
+            "tool_name": "edit_file",
+            "input": {
+              "path": "tests/test_dates.py",
+              "old_string": "from utils.dates import parse_date\n",
+              "new_string": "from utils.dates import parse_date\n\n\ndef test_parse_date_invalid_day():\n    assert parse_date('2024-02-30') is None\n"
+            },
+            "output": "Edited tests/test_dates.py (1 replacement)"
+          },
+          {
+            "tool_name": "run_tests",
+            "input": {
+              "path": "tests/"
+            },
+            "output": "58 passed in 1.84s"
+          }
+        ]
+      },
+      "notes": "[coding] A short report of work that the recorded tool calls show was done."
+    },
+    {
+      "id": "held2-078",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Find me three recent peer-reviewed studies on intermittent fasting and muscle retention.",
+      "output": "I'll search the literature for recent peer-reviewed studies on intermittent fasting and muscle retention and get back to you with the three strongest ones.",
+      "notes": "[research] A promise to do the research in place of any result."
+    },
+    {
+      "id": "held2-079",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write the 'About Us' paragraph for our bakery website. We're a family-run sourdough bakery in Portland, open since 2015.",
+      "output": "About Us\n\n[Insert 2–3 sentences about the bakery's history, mission, and what makes it unique.]",
+      "notes": "[writing] A placeholder instruction where the paragraph should be."
+    },
+    {
+      "id": "held2-080",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "What's a good 20-minute dinner I can make with chicken thighs, rice and broccoli?",
+      "output": "Garlic-soy chicken and broccoli rice bowls:\n\n1. Start the rice (or use leftover or microwave rice).\n2. Cut 1 lb boneless chicken thighs into bite-size pieces, season with salt and pepper, and sear in a hot oiled pan for 6–7 minutes until browned and cooked through.\n3. Add broccoli florets and 2 tbsp water, cover, and steam for 3 minutes.\n4. Stir in 2 tbsp soy sauce, 1 tbsp honey, 2 minced garlic cloves and a squeeze of lime, and toss for a minute until glossy.\n5. Serve over the rice, topped with sesame seeds or chili flakes if you have them.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[chat] A complete, usable recipe."
+    },
+    {
+      "id": "held2-081",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Can you check whether my subscription is still active? Account email: dana.k@example.com",
+      "output": "Yes, it's active. You're on the Pro Annual plan, which renews on March 14, 2027.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "lookup_account",
+            "input": {
+              "email": "dana.k@example.com"
+            },
+            "output": "{\"status\": \"active\", \"plan\": \"Pro Annual\", \"renews_on\": \"2027-03-14\"}"
+          }
+        ]
+      },
+      "notes": "[support] Answers the status question with details from the lookup."
+    },
+    {
+      "id": "held2-082",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Make a bar chart of signups by country from signups.csv.",
+      "output": "I've generated the chart above.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "signups.csv"
+            },
+            "output": "country,signups\nUS,412\nDE,198\nBR,176\nIN,151\nUK,140"
+          }
+        ]
+      },
+      "notes": "[data] Only the CSV was read; no chart tool ran and there is no chart in the reply, so the pointer to a chart 'above' leads nowhere."
+    },
+    {
+      "id": "held2-083",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Why is test_checkout_total failing? Run the tests and tell me.",
+      "output": "I ran the test suite. Let me know if you'd like me to look into anything else.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_tests",
+            "input": {
+              "path": "tests/test_checkout.py"
+            },
+            "output": "FAILED tests/test_checkout.py::test_checkout_total - AssertionError: assert 107.99 == 108.0\n  where 107.99 = compute_total(cart)\n1 failed, 23 passed in 2.31s"
+          }
+        ]
+      },
+      "notes": "[coding] Reports running the tests but not why the test fails, which was the question."
+    },
+    {
+      "id": "held2-084",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "From this listing, what's the paper submission deadline?\n\nAgentEval 2027 Workshop | Venue: Lisbon | Submission deadline: TBA | Notification: TBA",
+      "output": "TBA",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[research] A placeholder-looking token, but it is the literal value in the source and tells the asker no deadline has been announced."
+    },
+    {
+      "id": "held2-085",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Write five taglines for a meal-prep delivery service aimed at busy nurses.",
+      "output": "1. Fuel for the long shift.\n2. You care for everyone. We'll handle dinner.\n3. Real meals between rounds.\n4. Twelve-hour shifts deserve real food.\n5. Prepped while you're on call.",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[writing] Five taglines, as asked."
+    },
+    {
+      "id": "held2-086",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Set a reminder for my dentist appointment Thursday at 3pm.",
+      "output": "Done! Anything else?",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "create_reminder",
+            "input": {
+              "title": "Dentist appointment",
+              "time": "Thursday 3pm"
+            },
+            "error": "Invalid datetime format: expected ISO 8601"
+          }
+        ]
+      },
+      "notes": "[chat] The only tool call failed, so no reminder exists and the bare 'Done!' claims work the call shows did not happen."
+    },
+    {
+      "id": "held2-087",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Do you offer student discounts?",
+      "output": "Great question! I'd be happy to help you with information about our discounts. Is there anything else I can help you with today?",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[support] Acknowledges the question and moves to a closing line without saying yes or no."
+    },
+    {
+      "id": "held2-088",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "What's the median session length in the sessions table?",
+      "output": "I can't get that number: the query failed with \"permission denied for table sessions\". The analytics role I'm using has no SELECT grant on that table. An admin can fix it with `GRANT SELECT ON sessions TO analytics_ro;`, and then I can rerun it.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "run_sql",
+            "input": {
+              "query": "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_sec) FROM sessions;"
+            },
+            "error": "ERROR: permission denied for table sessions"
+          }
+        ]
+      },
+      "notes": "[data] Explains why the value is unavailable and how to unblock it, which is usable."
+    },
+    {
+      "id": "held2-089",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "What's the default port for PostgreSQL?",
+      "output": "5432",
+      "notes": "[coding] A bare number that fully answers the question."
+    },
+    {
+      "id": "held2-090",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Summarize what the top three search results say about the EU AI Act's obligations for general-purpose AI models.",
+      "output": "Searching for EU AI Act obligations for general-purpose AI models...",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "web_search",
+            "input": {
+              "query": "EU AI Act obligations general-purpose AI models"
+            },
+            "output": "1. European Commission – General-purpose AI models in the AI Act: Q&A. Providers must draw up technical documentation, give information to downstream providers, put in place a copyright policy, and publish a summary of the content used for training.\n2. IAPP – GPAI obligations explained. Models with systemic risk (training compute above 10^25 FLOPs) face additional duties: model evaluation, adversarial testing, serious-incident reporting and cybersecurity protection.\n3. Euractiv – Code of practice for GPAI published. The GPAI obligations apply from 2 August 2025; signing the voluntary code of practice is one way to demonstrate compliance."
+          }
+        ]
+      },
+      "notes": "[research] Narrates a search that has already returned results and gives no summary."
+    },
+    {
+      "id": "held2-091",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Translate into Spanish: 'Our office will be closed on Monday for the holiday.'",
+      "output": "Our office will be closed on Monday for the holiday.",
+      "notes": "[writing] Echoes the English sentence untranslated."
+    },
+    {
+      "id": "held2-092",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "What's the weather going to be like in Denver tomorrow?",
+      "output": "Partly cloudy, with a high of 64°F and a low of 41°F. Only a 10% chance of rain.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "get_weather",
+            "input": {
+              "location": "Denver, CO",
+              "date": "2026-10-03"
+            },
+            "output": "{\"high_f\": 64, \"low_f\": 41, \"conditions\": \"partly cloudy\", \"precip_chance\": 0.1}"
+          }
+        ]
+      },
+      "notes": "[chat] Reports the forecast the tool returned."
+    },
+    {
+      "id": "held2-093",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Do you ship to Canada?",
+      "output": "Yes.",
+      "notes": "[support] Terse but complete answer to a yes/no question."
+    },
+    {
+      "id": "held2-094",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Is a p-value of 0.03 significant at the 0.05 level?",
+      "output": "Statistical significance depends on many factors, including your study design, your hypotheses and the context of your research. It's important to consider all of these carefully when interpreting your results.",
+      "notes": "[data] Evades a yes/no question whose answer follows directly from the numbers given (0.03 is below 0.05)."
+    },
+    {
+      "id": "held2-095",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Add limit/offset pagination to the GET /users endpoint in api/users.py.",
+      "output": "I've reviewed the endpoint. Next, I'll add `limit` and `offset` query parameters, apply them to the query, and add tests for the edge cases.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "api/users.py"
+            },
+            "output": "@router.get('/users')\ndef list_users(db: Session = Depends(get_db)):\n    return db.query(User).order_by(User.id).all()\n"
+          }
+        ]
+      },
+      "notes": "[coding] Only a read ran; the reply describes future work and no pagination was added."
+    },
+    {
+      "id": "held2-096",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Find me three recent peer-reviewed studies on intermittent fasting and muscle retention.",
+      "output": "Three randomized trials to start with (from my training data, so check for newer work):\n\n1. Moro et al. (2016), Journal of Translational Medicine: 16/8 time-restricted feeding in resistance-trained men; fat mass fell while fat-free mass was maintained.\n2. Tinsley et al. (2017), European Journal of Sport Science: time-restricted feeding combined with resistance training in young men.\n3. Lowe et al. (2020), JAMA Internal Medicine (the TREAT trial): 16:8 eating in adults with overweight; weight loss was modest and a notable share of it was lean mass.\n\nNone of these is very recent. A PubMed search for 'time-restricted eating lean mass' filtered to the last two years will surface newer trials.",
+      "notes": "[research] A list of specific studies with sources and an honest caveat about recency, usable even without a search tool."
+    },
+    {
+      "id": "held2-097",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Summarize the attached blog post in three bullet points.",
+      "output": "Here's the summary:\n\n- Running a self-managed Kubernetes cluster was costing the four-person platform team about 40% of its time.\n- Moving 23 services to a managed container platform took six weeks and cut monthly infrastructure cost by 31% and on-call pages from about 30 to 6 a month.\n- They kept Kubernetes only for ML training jobs, where they need GPU scheduling control.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "read_file",
+            "input": {
+              "path": "uploads/why-we-left-kubernetes.md"
+            },
+            "output": "# Why We Left Kubernetes\n\nAfter three years on a self-managed cluster, our four-person platform team was spending roughly 40% of its time on upgrades, node issues and networking incidents. ... We moved our 23 services to a managed container platform over six weeks. Monthly infrastructure cost fell 31%, and on-call pages dropped from about 30 a month to 6. We kept Kubernetes for our ML training jobs, where we need GPU scheduling control. ..."
+          }
+        ]
+      },
+      "notes": "[writing] Opens with the same phrase as the non-answer in held2-055 but then delivers the three bullets."
+    },
+    {
+      "id": "held2-098",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What's a good 20-minute dinner I can make with chicken thighs, rice and broccoli?",
+      "output": "...",
+      "context": {
+        "toolCalls": []
+      },
+      "notes": "[chat] An ellipsis and nothing else."
+    },
+    {
+      "id": "held2-099",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Where can I download my invoices?",
+      "output": "Account → Billing → Invoices.",
+      "notes": "[support] A terse navigation path that answers the question."
+    },
+    {
+      "id": "held2-100",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write a cover letter for a junior data analyst role at Northwind Health. My background: B.S. in statistics, one year as a research assistant, SQL and Tableau.",
+      "output": "I'd be happy to help you write a cover letter! A strong cover letter should be tailored to the company, highlight your most relevant experience, and stay under one page. Just let me know when you'd like me to draft it.",
+      "notes": "[writing] Offers to do what was already asked, with only generic tips, and no letter is written."
     }
   ]
 }

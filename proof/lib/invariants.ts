@@ -260,28 +260,40 @@ export const REWRITINGS: readonly Rewriting[] = [
  * one sentence on repeat. The asks and the first seven agents are an
  * outside review's degenerate-agent probe; the rest are the same review's
  * list of non-answers that passed. Each is evaluated in two call shapes.
- * Where the call records that no tool was called, none may pass. Where the
- * call sends no tool calls at all, the counts are published: an
- * acknowledgement of an action is a terse report as often as a false one,
- * and nothing in such a call says which.
+ * Where the call records that no tool was called, none may pass, apart
+ * from the cells an agent names in `notHeld`, each with the reason, which
+ * the page prints beside the table. Where the call sends no tool calls at
+ * all, the counts are published: an acknowledgement of an action is a terse
+ * report as often as a false one, and nothing in such a call says which.
  */
 export const DEGENERATE_ASKS: ReadonlyArray<{ id: string; what: string; ask: string }> = [
   { id: 'action', what: 'an action', ask: 'Rename the function parseUser to parseAccount in src/auth.ts, update its two callers, and run the test suite.' },
   { id: 'writing', what: 'a piece of writing', ask: 'Write the quarterly revenue summary for the board, with the three biggest risks.' },
 ];
 
-export const DEGENERATE_AGENTS: ReadonlyArray<{ id: string; what: string; answer(ask: string): string }> = [
+/** A refusal says the thing will not be done; whether that was right is a judgement about the ask. */
+const REFUSAL_IS_AN_ANSWER = 'a refusal is an answer: it tells the asker the thing will not be done, and whether that was right is a judgement about the ask, which no rule here makes';
+
+export const DEGENERATE_AGENTS: ReadonlyArray<{ id: string; what: string; answer(ask: string): string; notHeld?: { asks: readonly string[]; why: string } }> = [
   { id: 'empty', what: 'nothing', answer: () => '' },
   { id: 'blank', what: 'a blank', answer: () => '   \n  ' },
-  { id: 'echo', what: 'the ask copied back', answer: (ask) => ask },
+  {
+    id: 'echo',
+    what: 'the ask copied back',
+    answer: (ask) => ask,
+    notHeld: {
+      asks: ['action'],
+      why: 'an ask to act handed back is not read as a non-answer: an agent that rewrites or redacts text returns it unchanged when nothing needs changing, and nothing in a call tells that agent from this one',
+    },
+  },
   { id: 'done', what: '"Done."', answer: () => 'Done.' },
   { id: 'ok', what: '"OK"', answer: () => 'OK' },
-  { id: 'refusal', what: '"I can\'t help with that."', answer: () => "I can't help with that." },
+  { id: 'refusal', what: '"I can\'t help with that."', answer: () => "I can't help with that.", notHeld: { asks: ['action', 'writing'], why: REFUSAL_IS_AN_ANSWER } },
   { id: 'completion', what: '"The task has been completed successfully."', answer: () => 'The task has been completed successfully.' },
   { id: 'ellipsis', what: '"…"', answer: () => '…' },
   { id: 'null', what: '"null"', answer: () => 'null' },
   { id: 'lorem', what: '"lorem ipsum dolor sit amet"', answer: () => 'lorem ipsum dolor sit amet' },
-  { id: 'disclaimer', what: '"As an AI language model, I cannot browse the internet."', answer: () => 'As an AI language model, I cannot browse the internet.' },
+  { id: 'disclaimer', what: '"As an AI language model, I cannot browse the internet."', answer: () => 'As an AI language model, I cannot browse the internet.', notHeld: { asks: ['action', 'writing'], why: REFUSAL_IS_AN_ANSWER } },
   { id: 'repeat', what: 'one sentence repeated 400 times', answer: () => 'The summary is being prepared and will be ready soon. '.repeat(400) },
 ];
 
@@ -533,7 +545,7 @@ export async function measureInvariants(root: string): Promise<{ loaded: LoadedC
       for (const { id, ask } of DEGENERATE_ASKS) {
         const state = await stateOf(engine, shape.context(ask, agent.answer(ask)));
         row.states[`${shape.id}:${id}`] = state;
-        if (shape.held && state === 'pass') degeneratePassed += 1;
+        if (shape.held && state === 'pass' && !agent.notHeld?.asks.includes(id)) degeneratePassed += 1;
       }
     }
     degenerate.push(row);
@@ -652,14 +664,23 @@ export function renderInvariantsMarkdown(r: InvariantResults): string {
   for (const a of DEGENERATE_ASKS) L.push(`- ${a.what}: "${a.ask}"`);
   L.push('');
   const held = DEGENERATE_SHAPES.filter((s) => s.held);
-  L.push(`**Where ${held.map((s) => s.what).join(' and ')}, none may pass, and CI holds that at zero.** Before \`says_something\` (0.20.0), ten of the twelve passed against both asks in both call shapes; only nothing and a blank failed.`);
+  L.push(`**Where ${held.map((s) => s.what).join(' and ')}, none may pass, and CI holds that at zero,** apart from the cells marked † below, each with its reason. Before \`says_something\` (0.20.0), ten of the twelve passed against both asks in both call shapes; only nothing and a blank failed.`);
   L.push('');
   const cols = DEGENERATE_SHAPES.flatMap((s) => DEGENERATE_ASKS.map((a) => ({ key: `${s.id}:${a.id}`, label: `${a.id}, ${s.held ? 'no tool called' : 'no tool calls sent'}` })));
   L.push(`| Agent answers | ${cols.map((c) => c.label).join(' | ')} |`);
   L.push(`|---|${cols.map(() => '---').join('|')}|`);
   const cell = (s: State | undefined): string => (s === 'pass' ? '**pass**' : s === 'unknown' ? 'not checked' : s ?? '');
-  for (const row of r.degenerate) L.push(`| ${row.what} | ${cols.map((c) => cell(row.states[c.key])).join(' | ')} |`);
+  const exempt = (agent: string, key: string): boolean => {
+    const a = DEGENERATE_AGENTS.find((x) => x.id === agent);
+    const [shape, ask] = key.split(':');
+    return DEGENERATE_SHAPES.find((x) => x.id === shape)?.held === true && a?.notHeld?.asks.includes(ask) === true;
+  };
+  for (const row of r.degenerate) L.push(`| ${row.what} | ${cols.map((c) => `${cell(row.states[c.key])}${exempt(row.agent, c.key) ? ' †' : ''}`).join(' | ')} |`);
   L.push('');
+  const reasons = new Map<string, string[]>();
+  for (const a of DEGENERATE_AGENTS) if (a.notHeld) reasons.set(a.notHeld.why, [...(reasons.get(a.notHeld.why) ?? []), `${a.what} (${a.notHeld.asks.join(', ')})`]);
+  for (const [why, agents] of reasons) L.push(`† ${agents.join('; ')}: not held at zero, because ${why}.`);
+  if (reasons.size > 0) L.push('');
   for (const s of DEGENERATE_SHAPES.filter((x) => !x.held)) {
     const passes = r.degenerate.flatMap((row) => DEGENERATE_ASKS.filter((a) => row.states[`${s.id}:${a.id}`] === 'pass').map((a) => `${row.what} (${a.id})`));
     L.push(`Where ${s.what}: ${passes.length === 0 ? 'none passes' : `${passes.length} pass${passes.length === 1 ? 'es' : ''} (${passes.join('; ')})`}. Not held at zero, because ${s.why}.`);
