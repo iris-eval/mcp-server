@@ -56,9 +56,9 @@ const shape = (r: EvalResult) => ({
 describe('a stored verdict reads back as given', () => {
   it('under eval.priorMode "per-class": the fail the caller was handed is the fail the row reads back', async () => {
     const s = await store();
-    const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, { ...defaultConfig.eval, priorMode: 'per-class', falsePassCost: 3 });
+    const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, { ...defaultConfig.eval, priorMode: 'per-class' });
     const written = await engine.evaluateAll(CLEAN);
-    // Read per class, with a false pass costing three false blocks, the prior blocks this clean answer: the verdict the deployment chose.
+    // Read per class, the prior blocks nearly everything: this is the verdict the deployment chose.
     expect(written.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss' });
     expect(written.provenance?.composer).toMatchObject({ priorMode: 'per-class' });
     await s.insertEvalResult(LOCAL_TENANT, written);

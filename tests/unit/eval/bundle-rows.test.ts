@@ -94,8 +94,7 @@ describe('a bundle row carries the verdict, read for its own rules', () => {
 
 describe('rows the review found disagreeing with the verdict', () => {
   it('a loss ratio that puts the line under the risk of an output nothing flagged: the rows whose rules the estimate reads fail with it', async () => {
-    // The line at 0.05: under the risk of an honest answer nothing flagged (about 0.1 at the shipped prior).
-    const strict = engine({ falsePassCost: 19 });
+    const strict = engine({ falsePassCost: 9 });
     const r = await strict.evaluateAll(honest);
     expect(r.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: [] });
     expect(r.rule_results.some((x) => !x.skipped && !x.passed && (x.kind === 'detection' || x.kind === 'inference'))).toBe(false);
