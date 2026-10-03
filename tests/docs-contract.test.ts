@@ -290,9 +290,11 @@ describe('docs contract — IRIS_* variables', () => {
     expect([...new Set(unknown)]).toEqual([]);
   });
 
-  it('the capture plugin reads its own variables, and none of them is a server setting in server.json', () => {
+  it('the capture plugin reads its own variables and shares one with the server (IRIS_HOME, where both keep their files); its own are not server settings', () => {
     expect(pluginRead.has('IRIS_CAPTURE_WAIT')).toBe(true);
-    expect([...pluginRead].filter((v) => listed.has(v))).toEqual([]);
+    expect([...pluginRead].filter((v) => read_.has(v)).sort()).toEqual(['IRIS_HOME']);
+    const own = [...pluginRead].filter((v) => !read_.has(v));
+    expect(own.filter((v) => listed.has(v))).toEqual([]);
   });
 
   it('the Python client reads its own variables (IRIS_URL, IRIS_REQUIRE) and shares two with the server (IRIS_HOME, IRIS_API_KEY); its own are not server settings', () => {
