@@ -35,6 +35,32 @@ describe('hostile input: every shape that was super-linear now evaluates in line
   }
 });
 
+/*
+ * The sentence splitter (src/eval/text/sentences.ts), 2026-10-02. A run of
+ * terminators inside a word was read again from each terminator in it, and
+ * the token before a full stop was read back to the last space: 20,000 full
+ * stops between two letters took 1.6 seconds, `a.B` repeated over 20,000
+ * characters 1.3, and each doubled length took four times as long. The
+ * trailing lowercase letter is what keeps every terminator in the run from
+ * ending a sentence, so the shapes must keep it.
+ */
+const SPLITTER_SHAPES: Array<[string, string]> = [
+  ['full stops inside a word', 'a' + '.'.repeat(SIZE) + 'b'],
+  ['question marks inside a word', 'a' + '?'.repeat(SIZE) + 'b'],
+  ['exclamation marks inside a word', 'a' + '!'.repeat(SIZE) + 'b'],
+  ['full stops, then closing quotes, inside a word', 'a' + '.'.repeat(SIZE / 2) + '"'.repeat(SIZE / 2) + 'b'],
+  ['"a.B" with no space', 'a.B'.repeat(Math.ceil(SIZE / 3))],
+];
+
+describe('hostile input: the sentence splitter reads a long run once', () => {
+  for (const [name, text] of SPLITTER_SHAPES) {
+    it(`${name}, ${text.length.toLocaleString('en-US')} characters, in the output and the ask`, async () => {
+      const cpu = await cpuMsAsync(() => engine.evaluateAll({ output: text, input: `Summarise this: ${text}` }));
+      expect(cpu).toBeLessThan(CEILING_MS);
+    }, 30_000);
+  }
+});
+
 describe('hostile input: nothing an output says can crash the evaluation', () => {
   it('a 100,000-digit dotted "number" yields a verdict, not an exception', async () => {
     const result = await engine.evaluateAll({ output: '1.'.repeat(50_000) + ' seconds', input: 'The job took 1.1 seconds.' });
