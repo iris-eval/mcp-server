@@ -37,6 +37,13 @@
  *   evaluate     `iris.evaluate` (true) and `iris.eval_type` on the resource
  *                or the root: the sender asks for this trace to be scored,
  *                as `evaluate: true` does on POST /api/v1/traces
+ *   capture      `iris.capture.name`, `iris.capture.version` and
+ *                `iris.capture.complete` (a list, or one comma-separated
+ *                string, of input, tool_calls, tool_outputs) on the resource
+ *                or the root: the instrumentation declares itself and what
+ *                it records in full (src/eval/evidence.ts). With
+ *                tool_calls declared, a trace with no TOOL span says no tool
+ *                was called
  *   spans        every span: kind from `iris.span_kind`, else TOOL when it
  *                carries a tool attribute or `gen_ai.operation.name` is
  *                execute_tool, else INTERNAL for an agent operation
@@ -50,8 +57,9 @@
  * metadata; Iris mints its own id, as every other door does.
  */
 import { z } from 'zod';
-import type { Span, SpanKind, SpanStatus, Trace, ToolDescriptor } from '../types/trace.js';
+import { CAPTURE_FIELDS, type CaptureField, type Span, type SpanKind, type SpanStatus, type Trace, type ToolDescriptor, type TraceCapture } from '../types/trace.js';
 import { generateTraceId, generateSpanId } from '../utils/ids.js';
+import { canonicalCapture } from '../eval/evidence.js';
 import { AGGREGATED_INPUT_KEYS, AGGREGATED_OUTPUT_KEYS, CACHE_READ_KEYS, CACHE_WRITE_1H_KEYS, CACHE_WRITE_KEYS, INPUT_TOKEN_KEYS, OUTPUT_TOKEN_KEYS } from './usage-keys.js';
 import { resolveTraceCost } from '../cost/trace-cost.js';
 
@@ -472,6 +480,34 @@ function firstNumber(attrs: Record<string, unknown>, keys: readonly string[]): n
 }
 
 /**
+ * The capture source's declaration from `iris.capture.*` (src/eval/evidence.ts).
+ * `complete` is a list, or one comma-separated string for an exporter that
+ * writes only strings. A value Iris does not know is left out and named in
+ * `lacked`; so is a declaration without a name, since a reader must be able
+ * to say who made the promise.
+ */
+function captureOf(read: (key: string) => unknown, lacked: string[]): TraceCapture | undefined {
+  const name = read('iris.capture.name');
+  const version = read('iris.capture.version');
+  const listed = read('iris.capture.complete');
+  const named = (Array.isArray(listed) ? listed : typeof listed === 'string' ? listed.split(',') : [])
+    .map((v) => (typeof v === 'string' ? v.trim() : ''))
+    .filter((v) => v.length > 0);
+  if (typeof name !== 'string' || name.trim().length === 0) {
+    if (named.length > 0 || version !== undefined) lacked.push('iris.capture.name (a declaration says who makes it, so iris.capture.complete and iris.capture.version were ignored)');
+    return undefined;
+  }
+  const isField = (v: string): v is CaptureField => (CAPTURE_FIELDS as readonly string[]).includes(v);
+  const unknown = named.filter((v) => !isField(v));
+  if (unknown.length > 0) lacked.push(`iris.capture.complete values from ${CAPTURE_FIELDS.join(', ')} (${unknown.join(', ')} ${unknown.length === 1 ? 'is' : 'are'} not one, and was ignored)`);
+  return canonicalCapture({
+    name: name.trim().slice(0, 200),
+    ...(typeof version === 'string' && version.trim().length > 0 ? { version: version.trim().slice(0, 100) } : {}),
+    complete: named.filter(isField),
+  });
+}
+
+/**
  * Token usage over the LEAF carriers only. Microsoft's Agent
  * Framework puts the run's totals on `invoke_agent` beside `chat` children
  * that carry their own; summing every span counted each call twice. A
@@ -724,6 +760,7 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
     const framework = group.resource['iris.framework'] ?? root.attrs['iris.framework'];
     const evaluateFlag = group.resource['iris.evaluate'] ?? root.attrs['iris.evaluate'];
     const evalType = group.resource['iris.eval_type'] ?? root.attrs['iris.eval_type'];
+    const capture = captureOf((key) => group.resource[key] ?? root.attrs[key], lacked);
 
     const irisTraceId = mint();
     const spanIds = new Map<string, string>();
@@ -762,6 +799,7 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
       ...(typeof runId === 'string' && runId.length > 0 ? { run_id: runId } : {}),
       ...(typeof caseKey === 'string' && caseKey.length > 0 ? { case_key: caseKey } : {}),
       source: 'otel',
+      ...(capture !== undefined ? { capture } : {}),
     };
     traces.push({
       // Priced here, so the route stores and scores the trace with its cost settled (src/cost/trace-cost.ts).

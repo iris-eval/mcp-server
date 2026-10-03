@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { logTraceInputShape } from '../tools/log-trace.js';
 import { isoTimestamp, addTraceRangeIssues, traceSearchText } from '../tools/get-traces.js';
 import { EXPORT_FORMATS } from '../export/format.js';
+import { CAPTURE_FIELDS } from '../types/trace.js';
 
 /*
  * Strict request-body schema for the dashboard's MUTATING routes.
@@ -75,12 +76,30 @@ export function strictQuery<T extends z.ZodRawShape>(shape: T) {
  * strict, and a client-supplied trace_id is REJECTED with a message that
  * says the server owns it, rather than silently replaced.
  */
+/*
+ * The capture source's declaration (src/eval/evidence.ts). Accepted on the
+ * doors software uses (this route and `iris-eval ingest`), never on the
+ * log_trace tool: the agent calls that one, and a record cannot vouch for
+ * itself. Strict, so a misspelled field name is refused rather than read
+ * as "complete: nothing".
+ */
+export const traceCaptureSchema = z.strictObject({
+  name: z.string().trim().min(1).max(200).describe('The capturing software, e.g. "iris-eval-capture"'),
+  version: z.string().trim().min(1).max(100).optional().describe('Its version'),
+  complete: z
+    .array(z.enum(CAPTURE_FIELDS))
+    .max(16)
+    .optional()
+    .describe('What it records in full on every trace: an empty list of tool calls then says none were made, and a trace that leaves a named field out reads as not checked'),
+});
+
 export const ingestTraceSchema = strictBody(
   {
     ...logTraceInputShape,
     // evaluate and eval_type live in logTraceInputShape since 0.13.0 — the
     // MCP tool carries them too, so the two doors cannot disagree about
     // what "evaluate on write" means.
+    capture: traceCaptureSchema.optional().describe('The software that recorded this trace by watching the agent, and what it records in full'),
   },
   {
     reserved: {

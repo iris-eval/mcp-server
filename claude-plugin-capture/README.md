@@ -19,7 +19,7 @@ A turn is one prompt and what followed it, kept under the prompt's id (`prompt_i
 | `Stop` | the final answer, and hands the turn to Iris |
 | `StopFailure` | a turn that ended in an API error (a rate limit, an overloaded model, a failed credential) |
 
-A turn is handed to `iris-eval ingest --evaluate --redact critical_spans --source hook` as `{ input, output, tool_calls, run: <session id> }`, detached, so your turn never waits on the evaluation. The trace lands in your Iris home (`~/.iris/iris.db`) with its verdict; open the dashboard to read it. Each trace's `metadata.turn` names the prompt it belongs to, which part of the turn it is, and how that part ended.
+A turn is handed to `iris-eval ingest --evaluate --redact critical_spans --source hook` as `{ input, output, tool_calls, run: <session id>, capture }`, detached, so your turn never waits on the evaluation. The trace lands in your Iris home (`~/.iris/iris.db`) with its verdict; open the dashboard to read it. Each trace's `metadata.turn` names the prompt it belongs to, which part of the turn it is, and how that part ended.
 
 ### Turns that do not end cleanly
 
@@ -33,9 +33,17 @@ Nothing a turn records is deleted before it is sent.
 | The turn ended in an API error | A part that ended `failed`, with its calls and the error under `metadata.stop_failure`, and no answer: stored, not judged, so a rate limit is not scored as an answer |
 | A session you closed and never came back to | Sent, the same way, when a later session starts a turn a day or more after it was last touched |
 
-### When `tool_calls` is empty
+### What it declares, and when `tool_calls` is empty
 
-An empty list says no call was made, and Iris's rules read it so. It is sent only when the record is known whole: the turn's prompt was seen, the turn ended with `Stop` the first time, and Claude Code reported nothing still running in the background. Otherwise a turn with no recorded call sends no list, which says nothing either way.
+Every trace it sends names it as the recorder: `capture: { name: "iris-eval-capture", version, complete }`, where `complete` lists what that part of the turn holds in full. Iris reads the verdict's evidence as recorded by software that watched the agent, not as the agent's own report ([the evidence contract](../docs/api-reference.md#the-evidence-contract-who-recorded-the-trace)).
+
+| Declared | When |
+|---|---|
+| `input` | the turn's prompt was seen and has text |
+| `tool_calls` | the record is known whole: the turn's prompt was seen, the turn ended with `Stop` the first time, and Claude Code reported nothing still running in the background |
+| `tool_outputs` | every recorded call carries what it returned, or the error it failed with |
+
+With `tool_calls` declared, an empty list says no call was made, and Iris reads it as an observation, not a claim: it meets a deployment's `eval.requiredEvidence: ["tool_calls"]`, and the verdict says "no tool was called". Iris's own tools are left out of the list (below). When the record is not known whole, a turn with no recorded call sends no list, which says nothing either way. A field is declared only when this part of the turn holds it, so the declaration is never false.
 
 ## What it deliberately does not do
 

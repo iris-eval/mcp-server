@@ -26,6 +26,7 @@ import {
   STATE_TEXT,
   composerFacts,
   confidenceChip,
+  evidenceText,
   fmtRisk,
 } from './verdictText';
 
@@ -263,6 +264,14 @@ export function VerdictPanel({
               <dd style={{ margin: 0, ...styles.muted, ...styles.mono }}>
                 iris {provenance.irisVersion} · rules {provenance.rulesetHash.slice(0, 12)} · config {provenance.configHash.slice(0, 12)} · corpus{' '}
                 {provenance.corpusVersion}
+              </dd>
+            </>
+          )}
+          {evidenceText(provenance?.evidence) && (
+            <>
+              <dt style={{ ...styles.muted, ...styles.mono }}>evidence</dt>
+              <dd style={{ margin: 0, ...styles.muted }} data-recorded-by={provenance?.evidence?.recordedBy}>
+                {evidenceText(provenance?.evidence)}
               </dd>
             </>
           )}

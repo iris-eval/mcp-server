@@ -254,4 +254,39 @@ export interface Trace {
    * 0.13.0.
    */
   source?: 'tool' | 'http' | 'cli' | 'hook' | 'otel';
+  /**
+   * The software that wrote this record by watching the agent, and what it
+   * records in full (src/eval/evidence.ts). Absent when no capture source
+   * declared itself, and always on a trace the agent logged itself.
+   */
+  capture?: TraceCapture;
+}
+
+/**
+ * What a capture source can declare it records in full on every trace.
+ *
+ * `tool_calls`: every tool call the agent made is in the record, so an
+ * empty list says none were made. `tool_outputs`: every recorded call
+ * carries what it returned or the error it failed with. `input`: the
+ * record carries what the agent was asked.
+ */
+export const CAPTURE_FIELDS = ['input', 'tool_calls', 'tool_outputs'] as const;
+export type CaptureField = (typeof CAPTURE_FIELDS)[number];
+
+/**
+ * A capture source's declaration: the software that wrote the record, and
+ * the evidence it records in full.
+ *
+ * An agent's own report of what it did can be wrong without anything in
+ * the record showing it: "I called no tool" reads the same whether it is
+ * true or not. A host hook, an exporter or a framework callback watches
+ * the agent instead, and knows which of its fields are whole. A field
+ * declared here is a promise the record keeps: a trace that leaves out a
+ * field its source declared is read as incomplete, never as clean.
+ */
+export interface TraceCapture {
+  /** The capturing software, e.g. `iris-eval-capture` or `@iris-eval/langchain`. */
+  name: string;
+  version?: string;
+  complete?: CaptureField[];
 }

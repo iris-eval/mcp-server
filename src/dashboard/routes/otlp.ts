@@ -142,6 +142,8 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
         spans: trace.spans?.length ?? 0,
         steps: toSteps({ spans: trace.spans }).length,
         ...costFieldsOf(trace),
+        // The capture source's declaration as read, so an exporter's author sees whether iris.capture.* landed.
+        ...(trace.capture ? { capture: trace.capture } : {}),
         lacked,
       };
       const wanted = options.evaluateOnIngest || requested;

@@ -33,6 +33,7 @@ import { COMMAND } from '../identity.js';
 import { resolveCaseKey } from '../eval/case-key.js';
 import { registerPlugins } from '../eval/plugins.js';
 import { costFieldsOf, resolveTraceCost } from '../cost/trace-cost.js';
+import { canonicalCapture } from '../eval/evidence.js';
 
 export const FAIL_ON = ['policy_gate', 'detector_veto', 'critical_unknown', 'required_evidence_missing', 'risk_over_loss', 'fail', 'unknown', 'any'] as const;
 export type FailOn = (typeof FAIL_ON)[number];
@@ -230,6 +231,7 @@ export async function runIngest(o: IngestOptions): Promise<number> {
         run_id: body.run,
         case_key: body.case_key,
         source: o.source,
+        ...(body.capture ? { capture: canonicalCapture(body.capture) } : {}),
         spans: body.spans?.map((s) => ({ ...s, span_id: s.span_id ?? generateSpanId(), trace_id: traceId })),
       });
       const wantEvaluate = o.evaluate || body.evaluate === true;

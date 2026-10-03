@@ -15,6 +15,7 @@
  * and the test states the promise.
  */
 import { z } from 'zod';
+import { CAPTURE_FIELDS } from '../types/trace.js';
 
 export const intervalSchema = z.looseObject({ point: z.number(), lo: z.number(), hi: z.number() });
 
@@ -212,6 +213,20 @@ export const provenanceSchema = z.looseObject({
       rules: z.number().optional().describe('which composer rules produced the verdict: 2 from 0.20.0 (a failure outranks a layer that could not check); absent on earlier rows, which read back under rules 1'),
     })
     .optional(),
+  evidence: z
+    .looseObject({
+      recordedBy: z
+        .enum(['harness', 'agent', 'not_declared'])
+        .describe('who wrote what was judged: harness (software that watched the agent and declared itself as capture), agent (its own report, through log_trace or evaluate_output), not_declared'),
+      capture: z
+        .looseObject({ name: z.string(), version: z.string().optional(), complete: z.array(z.enum(CAPTURE_FIELDS)).optional() })
+        .optional()
+        .describe('the capture source and what it records in full; an empty list of tool calls from it says none were made, and a field it names that the trace left out makes the verdict not checked'),
+      carried: z.array(z.string()).describe('the inputs the call carried; the deployment\'s required evidence is met from this'),
+      toolCalls: z.number().int().nonnegative().optional().describe('how many tool calls the record carried, when it carried them'),
+    })
+    .optional()
+    .describe('what the call carried and who recorded it; absent on evaluations stored before 0.20.0'),
   corpusVersion: z.string(),
   judgedAt: z.string(),
 });

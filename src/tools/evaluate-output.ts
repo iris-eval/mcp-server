@@ -20,6 +20,7 @@ import { advertisedOutput, NESTED_SHAPES_NOTE } from './advertise.js';
 import { evaluationLinks, guarded, respond } from './respond.js';
 import { storedTraceContext, traceContextOfCall } from '../otel/trace-context.js';
 import { costContextOf } from '../eval/cost-basis.js';
+import { recordOfTrace } from '../eval/evidence.js';
 
 /** The most inline custom rules one call may carry (see the argument description). */
 export const MAX_INLINE_CUSTOM_RULES = 10;
@@ -223,6 +224,13 @@ export function registerEvaluateOutputTool(
         toolCalls,
         spans,
         tools,
+        /*
+         * Who recorded the evidence (src/eval/evidence.ts). Scoring the stored
+         * record as stored, whoever recorded the trace. Anything else is the
+         * caller's evidence, passed through the agent's own tool, and the
+         * trace's capture source vouched for none of it.
+         */
+        ...(ofRecord ? recordOfTrace(trace) : { recordedBy: 'agent' as const }),
         // The agent's model, when the trace recorded it: the relevance judge's same-family note reads it.
         ...(trace?.metadata ? { metadata: trace.metadata } : {}),
       };

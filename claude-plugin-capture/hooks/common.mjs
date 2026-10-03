@@ -37,6 +37,8 @@ export const STALE_SESSION_HOURS = 24;
 export const LOG_MAX_BYTES = 1_048_576;
 /** A tool call's output or error longer than this is kept as its head and its tail, marked truncated: a hook must finish well inside its timeout. */
 export const FIELD_MAX_CHARS = 262_144;
+/** How this plugin names itself on the traces it records (the trace's `capture.name`). */
+export const CAPTURE_NAME = 'iris-eval-capture';
 /** A turn that failed to ingest is retried when it is at least this old, so a retry never races the first attempt. */
 export const RETRY_AFTER_MS = 10 * 60_000;
 /** At most this many failed turns are retried by one Stop. */
@@ -252,6 +254,21 @@ export function assemble({ sessionId, key, header, calls, sent, how, output, inp
    */
   const whole = how === 'answered' && header !== null && sent.parts === 0 && Array.isArray(input.background_tasks) && input.background_tasks.length === 0;
   const part = sent.parts + 1;
+  /*
+   * What this record holds in full, declared to Iris (its trace `capture`):
+   * the prompt when it was seen and has text, every tool call when the record
+   * is whole (Iris's own tools are left out of the list, as above), and every
+   * call's output or error when each recorded call has one. Iris then reads
+   * the empty list as "no tool was called", and a field declared here that
+   * the trace lacks as a hole in the record. Only what this part holds is
+   * declared, so the declaration is never false.
+   */
+  const complete = [
+    ...(typeof header?.prompt === 'string' && header.prompt.trim() !== '' ? ['input'] : []),
+    ...(whole ? ['tool_calls'] : []),
+    ...(tool_calls.every((c) => c.output !== undefined || c.error !== undefined) ? ['tool_outputs'] : []),
+  ];
+  const version = pinnedVersion();
   return {
     evaluate: answered,
     trace: {
@@ -261,10 +278,10 @@ export function assemble({ sessionId, key, header, calls, sent, how, output, inp
       ...(answered ? { output } : { output: '' }),
       ...(tool_calls.length > 0 || whole ? { tool_calls } : {}),
       run: String(sessionId ?? 'unknown'),
+      capture: { name: CAPTURE_NAME, ...(version ? { version } : {}), ...(complete.length > 0 ? { complete } : {}) },
       metadata: {
         session_id: sessionId,
         cwd: input.cwd ?? header?.cwd,
-        captured_by: 'iris-eval-capture',
         turn: { ...(header?.prompt_id ? { prompt_id: header.prompt_id } : { key }), part, ended: how },
         ...(subagent.length > 0 ? { subagent_calls: subagent } : {}),
         ...(own.length > 0 ? { model_logged: { calls: logged.length, trace_ids: ids, ...(own.length > logged.length ? { failed: own.length - logged.length } : {}) } } : {}),

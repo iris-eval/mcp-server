@@ -17,6 +17,7 @@
  * values nothing produced).
  */
 import type { EvalContext, EvalRule, EvalRuleResult, Need, RuleState, SkipClass, Uncertainty } from '../types/eval.js';
+import type { CaptureField } from '../types/trace.js';
 import type { EffectiveCriticality } from './criticality.js';
 import { stepsOf } from './steps.js';
 import { DEFAULT_PREVALENCE, missRateInterval, ppvInterval, publishedAccuracyFor, publishedProvenance } from './accuracy.js';
@@ -41,9 +42,16 @@ export interface StampOptions {
 
 const DEFAULT_PRIOR_IN_FORCE: PriorInForce = { pi: DEFAULT_PREVALENCE, source: 'default' };
 
+/** The fields a context's capture source declared complete (src/eval/evidence.ts); none unless a capture source recorded it. */
+export function declaredComplete(context: Pick<EvalContext, 'recordedBy' | 'capture'>): ReadonlySet<CaptureField> {
+  if (context.recordedBy !== 'harness') return new Set();
+  return new Set(context.capture?.complete ?? []);
+}
+
 /** Which needs the call actually carried. `tools_catalogue` and `citations` arrive with later releases. */
 export function inputsPresent(context: EvalContext): Set<Need> {
   const present = new Set<Need>(['output']);
+  const declared = declaredComplete(context);
   // A blank input is no input: one space satisfied "the call carried an input" until 0.20.0.
   if (typeof context.input === 'string' && context.input.trim().length > 0) present.add('input');
   if (typeof context.expected === 'string' && context.expected.length > 0) present.add('expected');
@@ -59,7 +67,18 @@ export function inputsPresent(context: EvalContext): Set<Need> {
     // What a call returned: its output, or the error it failed with. An output that is absent, null or blank is not one: every output replaced by "" read as "outputs were sent".
     const returned = (s: (typeof steps)[number]): boolean =>
       (s.output !== undefined && s.output !== null && !(typeof s.output === 'string' && s.output.trim() === '')) || (typeof s.error === 'string' && s.error.trim() !== '');
-    if (steps.some(returned)) present.add('tool_outputs');
+    /*
+     * A capture source that records every call's result promised one on each:
+     * a blank one is what the tool returned, and a call with none at all is a
+     * hole in the record. Without that promise, one call that returned
+     * something is enough.
+     */
+    const recorded = (s: (typeof steps)[number]): boolean => s.output !== undefined || typeof s.error === 'string';
+    if (declared.has('tool_outputs') ? steps.every(recorded) : steps.some(returned)) present.add('tool_outputs');
+  } else if (declared.has('tool_calls') && (Array.isArray(context.toolCalls) || (Array.isArray(context.spans) && context.spans.length > 0))) {
+    // The source records every call and recorded none: that none were made is evidence, and so is that every call's result was kept.
+    present.add('tool_calls');
+    if (declared.has('tool_outputs')) present.add('tool_outputs');
   }
   if (Array.isArray(context.tools) && context.tools.length > 0) present.add('tools_catalogue');
   // A negative cost is not a cost.

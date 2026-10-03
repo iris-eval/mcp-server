@@ -312,6 +312,66 @@
           ],
           "additionalProperties": {}
         },
+        "evidence": {
+          "description": "what the call carried and who recorded it; absent on evaluations stored before 0.20.0",
+          "type": "object",
+          "properties": {
+            "recordedBy": {
+              "type": "string",
+              "enum": [
+                "harness",
+                "agent",
+                "not_declared"
+              ],
+              "description": "who wrote what was judged: harness (software that watched the agent and declared itself as capture), agent (its own report, through log_trace or evaluate_output), not_declared"
+            },
+            "capture": {
+              "description": "the capture source and what it records in full; an empty list of tool calls from it says none were made, and a field it names that the trace left out makes the verdict not checked",
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                },
+                "complete": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "input",
+                      "tool_calls",
+                      "tool_outputs"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": {}
+            },
+            "carried": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "the inputs the call carried; the deployment's required evidence is met from this"
+            },
+            "toolCalls": {
+              "description": "how many tool calls the record carried, when it carried them",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "recordedBy",
+            "carried"
+          ],
+          "additionalProperties": {}
+        },
         "corpusVersion": {
           "type": "string"
         },

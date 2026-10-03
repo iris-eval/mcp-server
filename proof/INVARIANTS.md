@@ -1,6 +1,6 @@
 # What a verdict does when evidence is taken away, a failure is added, or the output is written another way
 
-Generated 2026-10-03T06:52:51.340Z for v0.19.0 (local generating commit `f47533d6` — branch commits are squashed on merge, so cite the version).
+Generated 2026-10-03T09:49:22.349Z for v0.19.0 (local generating commit `07527e98` — branch commits are squashed on merge, so cite the version).
 Composite version `e1d72ff465c1`, 145 labelled cases, the shipped configuration. Reproduce with `npm run proof -- --invariants`; CI runs `npm run proof -- --check --invariants`.
 
 ## Sending less, at the shipped configuration
@@ -23,11 +23,11 @@ A call that leaves a field out looks the same as a call from an agent that has n
 | the cost left out | 109 | 50 | **0** | 0 | 0 | yes: `cost` |
 | the token counts left out | 109 | 50 | **0** | 0 | 0 | yes: `tokens` |
 
-The two rows a deployment cannot require are an agent editing its own record: dropping the error from a call that failed, or dropping a call. No rule over a self-reported trace can see either. The evidence has to come from something other than the agent (a hook, a proxy, an OpenTelemetry exporter) for those rows to close.
+The two rows a deployment cannot require are an agent editing its own record: dropping the error from a call that failed, or dropping a call. No rule over a self-reported trace can see either. The evidence has to come from something other than the agent (a hook, a proxy, an OpenTelemetry exporter) for those rows to close, and every verdict says which it came from (`provenance.evidence.recordedBy`: a capture source that declared itself, the agent, or not declared).
 
 ## Sending less, with a contract in force
 
-Where somebody has said the field must be there, leaving it out never yields a pass. Three kinds of contract: the deployment requires the input on every evaluation (`eval.requiredEvidence`), the deployment set the threshold of a rule that reads it, or the call itself supplied what the input is compared against. **Every count in the last column must be zero**, and `tests/proof/evidence-invariants.test.ts` fails when one is not.
+Where somebody has said the field must be there, leaving it out never yields a pass. Four kinds of contract: the deployment requires the input on every evaluation (`eval.requiredEvidence`), the deployment set the threshold of a rule that reads it, the call itself supplied what the input is compared against, or the trace's capture source declared that it records the field in full (`capture.complete`). **Every count in the last column must be zero**, and `tests/proof/evidence-invariants.test.ts` fails when one is not.
 
 | Contract | Left out | Cases | Fail | Not checked | **Pass** |
 |---|---|--:|--:|--:|--:|
@@ -47,13 +47,19 @@ Where somebody has said the field must be there, leaving it out never yields a p
 | the deployment set the relevance thresholds (keyword_overlap, topic_consistency) | the input replaced by one space | 145 | 61 | 84 | **0** |
 | the call supplied an expected trajectory | the tool calls left out | 127 | 37 | 90 | **0** |
 | the call supplied an expected trajectory | an empty list of tool calls sent in their place | 127 | 127 | 0 | **0** |
+| the trace's capture source declares it records tool_calls in full | the tool calls left out | 127 | 37 | 90 | **0** |
+| the trace's capture source declares it records tool_outputs in full | every tool output left out (the calls and their errors kept) | 125 | 81 | 44 | **0** |
+| the trace's capture source declares it records input in full | the input left out | 145 | 61 | 84 | **0** |
+| the trace's capture source declares it records input in full | the input replaced by one space | 145 | 61 | 84 | **0** |
 
-**An explicit empty list of tool calls is measured, and not held at zero**, under the contract a ceiling on the calls makes. An empty list is the caller saying no calls were made, and zero calls are within any ceiling: an honest turn that used no tool must not read "not checked" because a step ceiling is set. A caller that made calls and reports none cannot be told from one that made none. `eval.requiredEvidence` is the contract that refuses an empty list (the rows above), and it is how a deployment says it wants calls it can look at. Against an expectation of calls, an empty list is judged and fails (the last row above).
+**An explicit empty list of tool calls is measured, and not held at zero**, under the contract a ceiling on the calls makes. An empty list is the caller saying no calls were made, and zero calls are within any ceiling: an honest turn that used no tool must not read "not checked" because a step ceiling is set. A caller that made calls and reports none cannot be told from one that made none. `eval.requiredEvidence` is the contract that refuses an empty list (the rows above), and it is how a deployment says it wants calls it can look at. Against an expectation of calls, an empty list is judged and fails (the expected-trajectory rows above). Under a capture source's declaration, its empty list and its blank outputs are measured and not held either: they are what it observed (no call was made, the tool returned nothing), and an honest turn must read on what happened.
 
 | Contract | Left out | Cases | Fail | Not checked | Pass |
 |---|---|--:|--:|--:|--:|
 | the deployment set a step ceiling (max_steps) | an empty list of tool calls sent in their place | 127 | 42 | 0 | 85 |
 | the deployment set a repeat ceiling (max_tool_repeats) | an empty list of tool calls sent in their place | 127 | 42 | 0 | 85 |
+| the trace's capture source declares it records tool_calls in full | an empty list of tool calls sent in their place | 127 | 42 | 0 | 85 |
+| the trace's capture source declares it records tool_outputs in full | every tool output replaced by an empty string | 125 | 81 | 0 | 44 |
 
 What a contract does not reach: a rule that still runs on less. With the tool outputs left out, the rule that checks an answer against failed calls runs on the calls and their error fields and finds no failure in an output it was not sent. Requiring `tool_outputs` covers that (above); promoting the rule does not.
 

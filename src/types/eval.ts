@@ -1,4 +1,4 @@
-import type { CostEstimate, Span, Step, ToolCallRecord, ToolDescriptor } from './trace.js';
+import type { CostEstimate, Span, Step, ToolCallRecord, ToolDescriptor, TraceCapture } from './trace.js';
 import type { TenantId } from './tenant.js';
 import type { JudgeRequest } from '../eval/llm-judge/budget.js';
 
@@ -26,6 +26,29 @@ export type ClaimKind = 'measurement' | 'detection' | 'inference' | 'judgment' |
 export type Mechanism = 'formula' | 'pattern' | 'heuristic' | 'model' | 'external';
 /** An input a rule reads. A rule skips — never passes — when a declared need is absent. */
 export type Need = 'output' | 'input' | 'expected' | 'expected_trajectory' | 'tool_calls' | 'tool_outputs' | 'tools_catalogue' | 'cost' | 'tokens' | 'citations';
+
+/**
+ * Who wrote the evidence an evaluation judged (src/eval/evidence.ts):
+ * `harness`, software that watched the agent and declared itself
+ * (Trace.capture); `agent`, the agent's own report, through the log_trace
+ * or evaluate_output tool; `not_declared`, a trace that said neither.
+ */
+export type RecordedBy = 'harness' | 'agent' | 'not_declared';
+
+/**
+ * What an evaluation's evidence was and who recorded it, stamped once by
+ * the engine and stored with the evaluation, so a read composes the
+ * verdict from the same facts the call was judged on.
+ */
+export interface EvidenceRecord {
+  recordedBy: RecordedBy;
+  /** The capture source's declaration, when one recorded the trace. */
+  capture?: TraceCapture;
+  /** The inputs the call carried (stamp.ts, inputsPresent), sorted. */
+  carried: Need[];
+  /** How many tool calls the record carried, when it carried its tool calls: 0 is a capture source's "none were made". */
+  toolCalls?: number;
+}
 /** The evaluation question a rule answers; the registry is src/eval/questions.ts. */
 export type QuestionId = 'safe_output' | 'grounded' | 'complete' | 'relevant' | 'task_completed' | 'tool_use_correct' | 'within_budget';
 /** What went wrong, in the reader's words, independent of which rule caught it; the registry is src/eval/failure-classes.ts. */
@@ -232,6 +255,14 @@ export interface EvalContext {
    * evaluate_output call, where the rule reports insufficient_history.
    */
   costHistory?: readonly number[];
+  /**
+   * Who recorded this evidence, and the capture source's declaration when
+   * one recorded it (src/eval/evidence.ts, recordOfTrace). A field the
+   * source declares complete is evidence even when it is empty: its empty
+   * list of tool calls says none were made. Absent: nobody declared.
+   */
+  recordedBy?: RecordedBy;
+  capture?: TraceCapture;
   metadata?: Record<string, unknown>;
   customConfig?: Record<string, unknown>;
   /**
@@ -563,6 +594,15 @@ export interface Provenance {
    * same configuration must produce the same hash.
    */
   toolsHash?: string;
+  /**
+   * What the call carried and who recorded it (src/eval/evidence.ts). The
+   * composer reads it: a deployment's required evidence is met by what the
+   * call carried, and a field the capture source declared complete and the
+   * trace left out makes the verdict not checked. Absent on rows written
+   * before 0.20.0, which read back as they always did: required evidence
+   * met by what an evaluated rule read, and no capture source.
+   */
+  evidence?: EvidenceRecord;
   judgedAt: string;
 }
 

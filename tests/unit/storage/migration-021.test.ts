@@ -5,7 +5,7 @@
  * column drew a verdict that was not checked as a failure. What this file
  * holds to:
  *
- *   - the column and its index exist, and this is the last migration;
+ *   - the column and its index exist, and this migration follows 020;
  *   - a written evaluation stores the state its caller was given, and the
  *     state never contradicts `passed`;
  *   - a run's rows, a run's summary, a case's attempts, the headline
@@ -72,9 +72,9 @@ async function seed(store: SqliteAdapter): Promise<Record<string, EvalResult>> {
 const raw = (store: SqliteAdapter) => (store as unknown as { db: { prepare(sql: string): { all(...p: unknown[]): Array<Record<string, unknown>>; get(...p: unknown[]): Record<string, unknown> } } }).db;
 
 describe('migration 021 — the state of a stored verdict', () => {
-  it('is the last known migration, after 020', () => {
-    expect(KNOWN_MIGRATION_IDS[KNOWN_MIGRATION_IDS.length - 1]).toBe('021-eval-verdict-state');
-    expect(KNOWN_MIGRATION_IDS[KNOWN_MIGRATION_IDS.length - 2]).toBe('020-eval-reference-trace');
+  it('follows 020', () => {
+    expect(KNOWN_MIGRATION_IDS[20]).toBe('021-eval-verdict-state');
+    expect(KNOWN_MIGRATION_IDS[19]).toBe('020-eval-reference-trace');
   });
 
   it('adds the column and an index that holds only the rows that were not checked', async () => {

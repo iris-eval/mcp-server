@@ -22,6 +22,7 @@ import type { Trace } from '../types/trace.js';
 import type { EvalResult, EvalType } from '../types/eval.js';
 import type { TenantId } from '../types/tenant.js';
 import { costContextOf } from './cost-basis.js';
+import { recordOfTrace } from './evidence.js';
 import type { JudgeRequest } from './llm-judge/budget.js';
 
 export type IngestEvalType = EvalType | 'all';
@@ -96,6 +97,8 @@ export async function evaluateStoredTrace(
     toolCalls: trace.tool_calls,
     spans: trace.spans,
     tools: trace.tools,
+    // Who recorded it, and what its capture source records in full (src/eval/evidence.ts).
+    ...recordOfTrace(trace),
     ...(trace.metadata ? { metadata: trace.metadata } : {}),
     // The relevance judge charges the tenant that stored the trace, and counts this request's calls.
     tenantId,

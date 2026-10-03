@@ -59,6 +59,7 @@ interface Built {
     output: string;
     run: string;
     tool_calls?: Array<{ tool_name: string; call_id?: string; output?: unknown; error?: string; latency_ms?: number; truncated?: boolean }>;
+    capture?: { name: string; version?: string; complete?: string[] };
     metadata: {
       turn: { prompt_id?: string; part: number; ended: string };
       model_logged?: { calls: number; trace_ids: string[]; failed?: number };
@@ -130,6 +131,36 @@ describe('iris-eval-capture hooks: one turn', () => {
     expect(resumed.trace.input).toBeUndefined();
     expect(resumed.trace.tool_calls).toBeUndefined();
   }, 60_000);
+
+  it('declares itself on every part, and declares complete only what that part holds', async () => {
+    const version = (JSON.parse(readFileSync(resolve(root, 'claude-plugin-capture', '.claude-plugin', 'plugin.json'), 'utf8')) as { version: string }).version;
+    const declared = async (over: Record<string, unknown> = {}) => built((await hook('stop', { ...stop, ...over }, DRY)).stdout).trace.capture;
+    const fresh = () => rmSync(join(data, 'sessions'), { recursive: true, force: true });
+    // A whole turn with calls, and one with none: the prompt, every call, every call's result.
+    await hook('prompt', prompt);
+    await hook('tool', read);
+    expect(await declared()).toEqual({ name: 'iris-eval-capture', version, complete: ['input', 'tool_calls', 'tool_outputs'] });
+    fresh();
+    await hook('prompt', prompt);
+    expect(await declared()).toEqual({ name: 'iris-eval-capture', version, complete: ['input', 'tool_calls', 'tool_outputs'] });
+    // A failed call's result is its error.
+    fresh();
+    await hook('prompt', prompt);
+    await hook('tool', failedTest);
+    expect((await declared())?.complete).toEqual(['input', 'tool_calls', 'tool_outputs']);
+    // Something still running in the background: the calls may not all be in.
+    fresh();
+    await hook('prompt', prompt);
+    expect((await declared({ background_tasks: [{ id: 't1', type: 'subagent', status: 'running' }] }))?.complete).toEqual(['input', 'tool_outputs']);
+    // A call whose result the host did not send.
+    fresh();
+    await hook('prompt', prompt);
+    await hook('tool', { ...read, tool_response: undefined });
+    expect((await declared())?.complete).toEqual(['input', 'tool_calls']);
+    // No prompt seen (a resumed session): neither the prompt nor the calls.
+    fresh();
+    expect(await declared()).toEqual({ name: 'iris-eval-capture', version, complete: ['tool_outputs'] });
+  }, 120_000);
 
   it('loses no call when the host runs several at once', async () => {
     await hook('prompt', prompt);
@@ -396,6 +427,9 @@ describe('iris-eval-capture ingest runner', () => {
     expect(evals).toHaveLength(1);
     expect(evals[0].verdict?.basis).toBe('detector_veto');
     expect(evals[0].output_text).not.toContain('123-45-6789');
+    // Recorded by the plugin, which said so, and the verdict names it.
+    expect(answered.capture?.name).toBe('iris-eval-capture');
+    expect(evals[0].provenance?.evidence).toMatchObject({ recordedBy: 'harness', capture: { name: 'iris-eval-capture' }, toolCalls: 1 });
     // The API-error turn: stored with its failed call, and no verdict about an answer it never gave.
     const failedTurn = traces.find((t) => t.run_id === SID && t.output === '')!;
     expect(failedTurn.tool_calls?.map((c) => c.error)).toEqual([failedTest.error]);

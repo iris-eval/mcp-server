@@ -92,8 +92,12 @@ describe('under a contract, leaving the field out never yields a pass', () => {
       expect(committed.contracts.some((c) => c.kind === 'required' && c.held && c.removal === r.id), r.id).toBe(true);
     }
     expect(committed.removals.map((r) => r.id)).toEqual(expect.arrayContaining(['input_blank', 'tool_outputs_blank', 'tool_calls_empty']));
-    // The three kinds are each measured.
-    expect(new Set(committed.contracts.map((c) => c.kind))).toEqual(new Set(['required', 'policy', 'call']));
+    // The four kinds are each measured.
+    expect(new Set(committed.contracts.map((c) => c.kind))).toEqual(new Set(['required', 'policy', 'call', 'capture']));
+    // Every field a capture source can declare has a held row: leaving it out, or a blank input, never passes.
+    for (const removal of ['tool_calls', 'tool_outputs', 'input', 'input_blank']) {
+      expect(committed.contracts.some((c) => c.kind === 'capture' && c.held && c.removal === removal), removal).toBe(true);
+    }
   });
 
   it('the check bites: with the contract taken away, the same removal passes', async () => {
@@ -109,6 +113,10 @@ describe('under a contract, leaving the field out never yields a pass', () => {
     expect((await shipped.evaluateAll({ input: ask, output })).verdict!.state).toBe('pass');
     expect((await requiring.evaluateAll({ input: ask, output })).verdict).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['tool_calls'] });
     expect((await requiring.evaluateAll({ input: ask, output, toolCalls: [] })).verdict!.state).toBe('unknown');
+    // A capture source that records every call: its empty list meets the requirement, and the same source sending none is a hole.
+    const hook = { recordedBy: 'harness' as const, capture: { name: 'a capture source', complete: ['tool_calls' as const] } };
+    expect((await requiring.evaluateAll({ input: ask, output: 'Paris.', toolCalls: [], ...hook })).verdict!.state).toBe('pass');
+    expect((await shipped.evaluateAll({ input: ask, output, ...hook })).verdict).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['tool_calls'] });
   });
 });
 
