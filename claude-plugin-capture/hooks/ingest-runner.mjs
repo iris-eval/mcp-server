@@ -18,12 +18,52 @@
 // not be ingested goes back under its own name, to be retried by a later Stop
 // until it is older than the pending limit. A part whose name ends
 // `.noeval.json` is stored without being judged.
+//
+// Before a part is ingested it is fitted to the release that will read it
+// (fitToServer): a field that release does not know would make its strict
+// ingest schema refuse the whole part, so the field is left out instead.
 import { spawnSync } from 'node:child_process';
-import { existsSync, renameSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { log, pinnedVersion } from './common.mjs';
 
-const INGEST_ARGS = ['ingest', '--redact', 'critical_spans', '--source', 'hook'];
+/**
+ * The first release whose ingest reads a trace's `capture` (the declaration of
+ * who recorded the turn and what it holds in full). An earlier release refuses
+ * any key it does not know, so a part sent to one leaves `capture` out: the
+ * turn is stored and judged, without the declaration.
+ */
+export const CAPTURE_SINCE = '0.20.0';
+
+/** Whether `version` (a pinned release, a pre-release included) reads `capture`. An unknown pin is treated as one that does not. */
+export function readsCapture(version) {
+  const parse = (v) => /^(\d+)\.(\d+)\.(\d+)/.exec(v ?? '')?.slice(1, 4).map(Number);
+  const have = parse(version);
+  const since = parse(CAPTURE_SINCE);
+  if (!have) return false;
+  for (let i = 0; i < 3; i += 1) if (have[i] !== since[i]) return have[i] > since[i];
+  return true;
+}
+
+/**
+ * Fit a part to the release that will ingest it. Parts written before this
+ * runner knew to fit them, and kept for retry, are fitted the same way when
+ * they are retried. The repository's own entry point (IRIS_CAPTURE_INGEST_ARGV,
+ * in tests) reads every field this plugin writes, so its parts are sent whole.
+ */
+export function fitToServer(file, version = pinnedVersion()) {
+  if (process.env.IRIS_CAPTURE_INGEST_ARGV || readsCapture(version)) return;
+  try {
+    const trace = JSON.parse(readFileSync(file, 'utf8'));
+    if (trace === null || typeof trace !== 'object' || !('capture' in trace)) return;
+    delete trace.capture;
+    writeFileSync(file, JSON.stringify(trace));
+  } catch {
+    /* an unreadable part fails at ingest and is kept for retry, as before */
+  }
+}
+
+export const INGEST_ARGS = ['ingest', '--redact', 'critical_spans', '--source', 'hook'];
 
 /** The commands to try, in order; the first to exit 0 wins. */
 export function candidates(file, evaluate = true) {
@@ -87,6 +127,7 @@ if (invokedDirectly) {
       failed += 1;
       continue;
     }
+    fitToServer(taken);
     const result = ingestFile(taken, !file.endsWith('.noeval.json'));
     if (result?.ok) {
       try {
