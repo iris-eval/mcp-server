@@ -4,14 +4,15 @@
  *
  * DRY_RUN prints what the Stop hook would send and sends nothing; the last
  * case runs the real ingest against the repo's own entry point into a scratch
- * IRIS_HOME and reads the trace back. The double-log rule is the one this
- * plugin cannot ship without: with the iris-eval plugin installed the model
- * may log the same turn, and one turn must become one trace.
+ * IRIS_HOME and reads the trace back. When the model logs the same turn
+ * itself, the hook keeps its own record and names the model's trace: the
+ * model's account of a turn can leave out the call that failed.
  */
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, existsSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
@@ -82,13 +83,94 @@ describe('iris-eval-capture hooks', () => {
   it.each([
     ['a user-configured server', 'mcp__iris-eval__log_trace'],
     ['the plugin-bundled server', 'mcp__plugin_iris-eval_iris-eval__log_trace'],
-  ])('skips a turn the model logged itself through %s', async (_label, toolName) => {
+  ])('keeps its own record of a turn the model also logged through %s, and names the model\'s trace', async (_label, toolName) => {
     await hook('prompt', prompt);
     await hook('tool', read);
-    await hook('tool', { ...read, tool_name: toolName, tool_input: { agent_name: 'x', output: 'y' }, tool_use_id: 'toolu_3' });
-    const built = JSON.parse((await hook('stop', stop, DRY)).stdout) as { skipped?: string };
-    expect(built.skipped).toContain('the model logged this turn');
+    const traceId = 'a'.repeat(32);
+    await hook('tool', { ...read, tool_name: toolName, tool_input: { agent_name: 'x', output: 'y' }, tool_response: JSON.stringify({ trace_id: traceId, evaluation: { passed: true } }), tool_use_id: 'toolu_3' });
+    const built = JSON.parse((await hook('stop', stop, DRY)).stdout) as { trace: { tool_calls: Array<{ tool_name: string }>; metadata: { model_logged?: { calls: number; trace_ids: string[] } } } };
+    expect(built.trace.tool_calls.map((c) => c.tool_name)).toEqual(['Read']);
+    expect(built.trace.metadata.model_logged).toEqual({ calls: 1, trace_ids: [traceId] });
   }, 30_000);
+
+  it('records a call that failed, with the error the agent received, and an aborted one as interrupted', async () => {
+    await hook('prompt', prompt);
+    await hook('tool', { session_id: SID, hook_event_name: 'PostToolUseFailure', tool_name: 'Bash', tool_input: { command: 'npm test' }, tool_use_id: 'toolu_9', error: 'Exit code 1\n 3 failed | 12 passed', is_interrupt: false, duration_ms: 4187 });
+    await hook('tool', { session_id: SID, hook_event_name: 'PostToolUseFailure', tool_name: 'WebFetch', tool_input: { url: 'https://example.com' }, tool_use_id: 'toolu_10', error: 'request aborted', is_interrupt: true });
+    const built = JSON.parse((await hook('stop', { ...stop, last_assistant_message: 'All tests pass.' }, DRY)).stdout) as { trace: { tool_calls: Array<{ tool_name: string; error?: string; latency_ms?: number; call_id?: string; output?: unknown }> } };
+    const [bash, fetch] = built.trace.tool_calls;
+    expect(bash).toMatchObject({ tool_name: 'Bash', call_id: 'toolu_9', latency_ms: 4187, error: 'Exit code 1\n 3 failed | 12 passed' });
+    expect(bash.output).toBeUndefined();
+    expect(fetch.error).toBe('interrupted: request aborted');
+  }, 30_000);
+
+  it('records a turn that ended in an API error, with the error', async () => {
+    await hook('prompt', prompt);
+    await hook('tool', read);
+    const built = JSON.parse((await hook('stop', { session_id: SID, cwd: '/w', hook_event_name: 'StopFailure', error: 'rate_limit', last_assistant_message: 'API Error: Rate limit reached' }, DRY)).stdout) as { trace: { output: string; tool_calls: unknown[]; metadata: { stop_failure?: { error: string } } } };
+    expect(built.trace.output).toBe('API Error: Rate limit reached');
+    expect(built.trace.metadata.stop_failure).toEqual({ error: 'rate_limit' });
+    expect(built.trace.tool_calls).toHaveLength(1);
+  }, 30_000);
+
+  it('always sends the tool calls, so a turn with none says none were made', async () => {
+    await hook('prompt', prompt);
+    const built = JSON.parse((await hook('stop', stop, DRY)).stdout) as { trace: { tool_calls?: unknown[] } };
+    expect(built.trace.tool_calls).toEqual([]);
+  }, 30_000);
+
+  it('loses no call when the host runs several at once', async () => {
+    await hook('prompt', prompt);
+    const ids = Array.from({ length: 8 }, (_, i) => `toolu_p${i}`);
+    await Promise.all(ids.map((id, i) => hook('tool', { ...read, tool_input: { file_path: `f${i}.ts` }, tool_use_id: id })));
+    const built = JSON.parse((await hook('stop', stop, DRY)).stdout) as { trace: { tool_calls: Array<{ call_id: string }> } };
+    expect(built.trace.tool_calls.map((c) => c.call_id).sort()).toEqual([...ids].sort());
+    expect(existsSync(join(data, 'sessions', `${SID}.calls.jsonl`)), 'the calls file is cleared after Stop').toBe(false);
+  }, 60_000);
+
+  it('without a host data directory, keeps its files in the Iris home, not a shared temporary directory', async () => {
+    await hook('prompt', prompt, { CLAUDE_PLUGIN_DATA: '' });
+    expect(existsSync(join(home, 'capture', 'sessions', `${SID}.json`))).toBe(true);
+  }, 30_000);
+
+  it.skipIf(process.platform === 'win32')('makes its directories and files readable by their owner only', async () => {
+    await hook('prompt', prompt);
+    await hook('tool', read);
+    const mode = (p: string): number => statSync(p).mode & 0o777;
+    expect(mode(data)).toBe(0o700);
+    expect(mode(join(data, 'sessions'))).toBe(0o700);
+    expect(mode(join(data, 'sessions', `${SID}.json`))).toBe(0o600);
+    expect(mode(join(data, 'sessions', `${SID}.calls.jsonl`))).toBe(0o600);
+  }, 30_000);
+
+  it('removes a turn that could not be ingested once it is older than the pending limit, and keeps a recent one', async () => {
+    const pending = join(data, 'pending');
+    mkdirSync(pending, { recursive: true });
+    const old = join(pending, 'old.json');
+    const recent = join(pending, 'recent.json');
+    writeFileSync(old, '{}');
+    writeFileSync(recent, '{}');
+    const eightDaysAgo = (Date.now() - 8 * 86_400_000) / 1000;
+    utimesSync(old, eightDaysAgo, eightDaysAgo);
+    expect((await hook('stop', { session_id: 'nothing', hook_event_name: 'Stop' })).code).toBe(0);
+    expect(existsSync(old)).toBe(false);
+    expect(existsSync(recent)).toBe(true);
+  }, 30_000);
+
+  it('runs the version it pins, from the cache first and then by installing it', async () => {
+    const { candidates } = (await import(pathToFileURL(join(hooks, 'ingest-runner.mjs')).href)) as { candidates: (file: string) => Array<{ cmd: string; args: string[] }> };
+    const manifest = JSON.parse(readFileSync(resolve(root, 'claude-plugin-capture', '.claude-plugin', 'plugin.json'), 'utf8')) as { version: string };
+    const saved = process.env.IRIS_CAPTURE_INGEST_ARGV;
+    delete process.env.IRIS_CAPTURE_INGEST_ARGV;
+    try {
+      const list = candidates('payload.json');
+      expect(list).toHaveLength(2);
+      for (const c of list) expect(c.args).toContain(`@iris-eval/mcp-server@${manifest.version}`);
+      expect(list[0].args[0]).toBe('--no-install');
+    } finally {
+      if (saved !== undefined) process.env.IRIS_CAPTURE_INGEST_ARGV = saved;
+    }
+  });
 
   it('filters Iris\'s own other tools out of the trajectory and keeps the rest', async () => {
     await hook('prompt', prompt);

@@ -36,9 +36,14 @@ export function candidates(file) {
   // literal or the pinned version.
   const shell = process.platform === 'win32';
   const quoted = shell ? `"${file}"` : file;
+  // Both candidates name the pinned version: the first takes it from npx's
+  // cache without installing, the second installs it. An unpinned first
+  // candidate ran whatever version happened to be cached, older or newer
+  // than the plugin that recorded the turn.
+  const pkg = version ? `@iris-eval/mcp-server@${version}` : '@iris-eval/mcp-server';
   return [
-    { cmd: 'npx', args: ['--no-install', '@iris-eval/mcp-server', ...INGEST_ARGS, '--file', quoted], shell },
-    { cmd: 'npx', args: ['-y', version ? `@iris-eval/mcp-server@${version}` : '@iris-eval/mcp-server', ...INGEST_ARGS, '--file', quoted], shell },
+    { cmd: 'npx', args: ['--no-install', pkg, ...INGEST_ARGS, '--file', quoted], shell },
+    { cmd: 'npx', args: ['-y', pkg, ...INGEST_ARGS, '--file', quoted], shell },
   ];
 }
 

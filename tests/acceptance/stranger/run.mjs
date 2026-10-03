@@ -104,8 +104,9 @@ const ENV_NOTE_MCP2 = `${ENV_NOTE_COMMON} Iris is connected to this session as a
  * Iris, in a session where the iris-eval-capture plugin is loaded from the
  * repository (`--plugin-dir`). V1: no MCP server attached — the only way a
  * trace can exist afterwards is the hook. V2: iris-eval attached as well,
- * under the when-clause — the model may log the turn itself, and then the
- * hook must stand down: exactly one trace for the turn, either way.
+ * under the when-clause — the model may log the turn itself. The hook keeps
+ * its own record either way (the model's account can leave out the call that
+ * failed) and names the model's trace when there is one.
  */
 const CAPTURE_PROMPT = 'Read ./outputs/output-1.json and tell me in two sentences what the agent was asked and what it answered.';
 const ENV_NOTE_CAPTURE = `${ENV_NOTE_COMMON} No MCP servers are attached to this session.`;
@@ -521,16 +522,23 @@ function grade({ mcp1, mcp2, a8, a9, a10, http, capture, captureBoth, gate }) {
   }
   if (captureBoth) {
     /*
-     * V2 (F15): the hook and the model must not both log one turn. With
-     * iris-eval attached and the when-clause in force the model may call
-     * log_trace itself; the hook then stands down. Exactly one trace for
-     * the turn, its source stated, and no Iris call inside its trajectory.
+     * V2 (F15, revised): with iris-eval attached and the when-clause in
+     * force the model may call log_trace itself. The hook keeps its own
+     * record of the turn anyway, since the model's account can leave out the
+     * call that failed: exactly one hook trace, evaluated, with no Iris call
+     * inside its trajectory. When the model logged too, its trace is the only
+     * other one and the hook's trace names it.
      */
     const t = captureBoth.traces;
-    const one = t[0];
+    const hooked = t.filter((x) => x.source === 'hook');
+    const others = t.filter((x) => x.source !== 'hook');
+    const one = hooked[0];
     const irisInside = one ? one.tool_calls.some((c) => /iris-eval|iris_eval/.test(String(c.tool_name ?? c.name ?? ''))) : false;
-    const ok = t.length === 1 && Boolean(one.source) && one.evaluations > 0 && !irisInside;
-    row('V2', ok, one ? `${t.length} trace(s); source=${one.source} evaluations=${one.evaluations} tool_calls=${one.tool_calls.length} iris-call-inside=${irisInside}; model logged itself: ${captureBoth.d.calls.some((c) => irisName(c.name) === 'log_trace')}` : `${t.length} trace(s) in the home`, captureBoth.log ? `capture.log: ${captureBoth.log.slice(-400)}` : undefined);
+    const modelLogged = captureBoth.d.calls.some((c) => irisName(c.name) === 'log_trace');
+    const named = one?.metadata?.model_logged?.trace_ids ?? [];
+    const linked = modelLogged ? others.length === 1 && named.includes(others[0].trace_id) : others.length === 0;
+    const ok = hooked.length === 1 && one.evaluations > 0 && !irisInside && linked;
+    row('V2', ok, one ? `${hooked.length} hook trace(s), ${others.length} other; evaluations=${one.evaluations} tool_calls=${one.tool_calls.length} iris-call-inside=${irisInside}; model logged itself: ${modelLogged}; hook names the model's trace: ${modelLogged ? named.includes(others[0]?.trace_id) : 'n/a'}` : `${t.length} trace(s) in the home, none from the hook`, captureBoth.log ? `capture.log: ${captureBoth.log.slice(-400)}` : undefined);
   }
   if (http) {
     const d = http.d;
@@ -738,7 +746,7 @@ function readTraces(home) {
   if (!existsSync(file)) return [];
   const db = new Database(file, { readonly: true, fileMustExist: true });
   try {
-    const rows = db.prepare('SELECT trace_id, source, input, output, tool_calls FROM traces ORDER BY created_at').all();
+    const rows = db.prepare('SELECT trace_id, source, input, output, tool_calls, metadata FROM traces ORDER BY created_at').all();
     const count = db.prepare('SELECT count(*) AS n FROM eval_results WHERE trace_id = ?');
     return rows.map((t) => ({
       trace_id: t.trace_id,
@@ -746,6 +754,7 @@ function readTraces(home) {
       input: t.input ?? '',
       output: t.output ?? '',
       tool_calls: t.tool_calls ? JSON.parse(t.tool_calls) : [],
+      metadata: t.metadata ? JSON.parse(t.metadata) : {},
       evaluations: count.get(t.trace_id).n,
     }));
   } finally {
@@ -769,12 +778,12 @@ async function waitForTraces(home, ms) {
   return traces;
 }
 
-/** Whatever the capture plugin logged: under CLAUDE_PLUGIN_DATA if the host set it, else its tmpdir fallback. */
+/** Whatever the capture plugin logged: under CLAUDE_PLUGIN_DATA if the host set it, else its fallback in the Iris home (a tmpdir before 0.20.0). */
 function captureLog(pluginData) {
   // Claude Code sets CLAUDE_PLUGIN_DATA itself (…/.claude/plugins/data/<plugin>-inline for --plugin-dir);
   // the harness's own dir and the plugin's tmpdir fallback are read as well.
   const home = process.env.USERPROFILE || process.env.HOME || '';
-  for (const dir of [join(home, '.claude', 'plugins', 'data', 'iris-eval-capture-inline'), join(home, '.claude', 'plugins', 'data', 'iris-eval-capture'), pluginData, join(tmpdir(), 'iris-eval-capture')]) {
+  for (const dir of [join(home, '.claude', 'plugins', 'data', 'iris-eval-capture-inline'), join(home, '.claude', 'plugins', 'data', 'iris-eval-capture'), pluginData, join(home, '.iris', 'capture'), join(tmpdir(), 'iris-eval-capture')]) {
     const f = join(dir, 'capture.log');
     if (existsSync(f)) return readFileSync(f, 'utf8').split('\n').slice(-12).join('\n');
   }
