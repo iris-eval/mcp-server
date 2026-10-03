@@ -4932,8 +4932,8 @@ function trimChars(text: string, strip: string): string {
 }
 
 /** The ask's first word that is not a politeness: the verb of an imperative, or the wh-word of a question. */
-function askHead(ask: string): string {
-  for (const word of wordsOf(ask)) {
+function askHead(askWords: readonly string[]): string {
+  for (const word of askWords) {
     if (!ASK_PREFIX.has(word)) return word.replace(/'(?:s|re|ll|d|ve|m)$/, '');
   }
   return '';
@@ -4951,8 +4951,8 @@ interface AskKind {
   question: boolean;
 }
 
-function askKindOf(ask: string): AskKind {
-  const head = askHead(ask);
+function askKindOf(ask: string, askWords: readonly string[]): AskKind {
+  const head = askHead(askWords);
   // "Can you write the summary?" asks for something written, question mark or not.
   const write = WRITE_VERBS.has(head);
   const question = !write && (ask.includes('?') || WH_WORDS.has(head) || AUX_WORDS.has(head));
@@ -4967,12 +4967,12 @@ function madeOf(words: readonly string[], vocabulary: ReadonlySet<string>, marks
 }
 
 /** The ask names every word the output is made of: it asked for this answer ("Write 'done' when you have read it"). */
-function askNamesAll(ask: string, words: readonly string[]): boolean {
-  const asked = new Set(wordsOf(ask));
+function askNamesAll(askWords: readonly string[], words: readonly string[]): boolean {
+  const asked = new Set(askWords);
   return words.every((w) => asked.has(w) || !COMPLETION_MARKS.concat(PROMISE_MARKS).includes(w));
 }
 
-function placeholderOf(output: string, ask: string, kind: AskKind, noToolCalls: boolean): string | null {
+function placeholderOf(output: string, words: readonly string[], ask: string, kind: AskKind, noToolCalls: boolean): string | null {
   const bare = trimChars(output, '"\'`()[]{}<>.!?;,').toLowerCase();
   // To an ask for something written; to an ask to act, when the call says no tool was called: nothing was done, and nothing was said.
   if (kind.write || (kind.act && noToolCalls)) {
@@ -4983,7 +4983,6 @@ function placeholderOf(output: string, ask: string, kind: AskKind, noToolCalls: 
     if (slot.length <= 48 && TEMPLATE_SLOT.test(slot)) return `"${slot}", a template's slot left unfilled`;
   }
   if (kind.write || kind.wh || (kind.act && noToolCalls)) {
-    const words = wordsOf(output);
     const askLower = plainQuotes(ask).toLowerCase();
     if (words.includes('lorem') && words.includes('ipsum') && !FILLER_ASK.some((w) => askLower.includes(w))) {
       const filler = words.filter((w) => LOREM_WORDS.has(w)).length;
@@ -5009,7 +5008,7 @@ function isBareMarker(word: string): boolean {
  * 1. 2. 3."), and what comes before the colon is short; or, to an ask for
  * something written with no tool call recorded, it is a short "here is …".
  */
-function leadInOf(output: string, kind: AskKind, workRecorded: boolean): string | null {
+function leadInOf(output: string, words: readonly string[], kind: AskKind, workRecorded: boolean): string | null {
   const text = output.trim();
   const colon = text.lastIndexOf(':');
   if (colon > 0) {
@@ -5023,7 +5022,6 @@ function leadInOf(output: string, kind: AskKind, workRecorded: boolean): string 
       return text.endsWith(':') ? 'it ends on a colon, and nothing follows' : 'the list after its colon is empty';
     }
   }
-  const words = wordsOf(text);
   if (words.length === 0 || words.length > BARE_ANSWER_MAX_WORDS || text.includes('\n')) return null;
   // "Here is the answer: 42." gives its answer after the colon.
   if (!kind.write || workRecorded || text.includes(':')) return null;
@@ -5042,14 +5040,12 @@ function leadInOf(output: string, kind: AskKind, workRecorded: boolean): string 
  * in order: "The cache is enabled in production." restates "Is the cache
  * enabled in production?" in the ask's own words, and answers it.
  */
-function isAskHandedBack(output: string, ask: string, kind: AskKind): boolean {
+function isAskHandedBack(said: readonly string[], ask: string, askWords: readonly string[], kind: AskKind): boolean {
   if (!(kind.write || kind.question)) return false;
   const askLower = plainQuotes(ask).toLowerCase();
   if (ECHO_ASK.some((w) => askLower.includes(w))) return false;
-  const askWords = wordsOf(ask);
   if (askWords.length < ECHO_MIN_ASK_WORDS) return false;
   const asked = new Set(askWords);
-  const said = wordsOf(output);
   // A hand-back is the ask and a few framing words, no longer.
   if (said.length === 0 || said.length > askWords.length * 2 + 8) return false;
   if (!said.every((w) => asked.has(w) || ECHO_FRAME.has(w))) return false;
@@ -5086,19 +5082,9 @@ function codeFree(text: string): string {
   return out.join('\n');
 }
 
+/** Lower case, each run of the spaces isSpace names as one space, none at either end. */
 function collapsed(text: string): string {
-  let out = '';
-  let space = false;
-  for (const c of text.toLowerCase()) {
-    if (isSpace(c)) {
-      space = out.length > 0;
-      continue;
-    }
-    if (space) out += ' ';
-    space = false;
-    out += c;
-  }
-  return out;
+  return text.toLowerCase().replace(/[ \t\n\r\f\v\u00a0]+/g, ' ').trim();
 }
 
 /** The shortest p such that the text is a prefix of its first p characters repeated, by the prefix function. */
@@ -5112,6 +5098,9 @@ function shortestPeriod(text: string): number {
   }
   return text.length - (text.length > 0 ? pi[text.length - 1] : 0);
 }
+
+/** The fewest words a loop can have: three copies of a long passage, or ten of a short one. */
+const LOOP_MIN_WORDS = Math.min(LONG_LOOP_MIN_COUNT * LONG_PASSAGE_WORDS, LOOP_MIN_COUNT * 2);
 
 function loopOf(output: string, ask: string): { count: number; share: number } | null {
   const text = collapsed(codeFree(output.slice(0, LOOP_SCAN_CHARS)));
@@ -5136,7 +5125,7 @@ function loopOf(output: string, ask: string): { count: number; share: number } |
   const flush = (end: number): void => {
     const unit = text.slice(start, end).trim();
     start = end;
-    if (!passage(unit)) return;
+    if (unit.length === 0) return;
     const entry = counts.get(unit) ?? { n: 0, chars: 0 };
     entry.n += 1;
     entry.chars += unit.length;
@@ -5153,8 +5142,9 @@ function loopOf(output: string, ask: string): { count: number; share: number } |
     }
   }
   flush(text.length);
-  let best: [string, { n: number; chars: number }] | null = null;
-  for (const entry of counts) if (best === null || entry[1].chars > best[1].chars) best = entry;
+  // The passage that covers the most, first in the text on a tie: units are counted whole, and only the leaders are split into words.
+  const ranked = [...counts].sort((a, b) => b[1].chars - a[1].chars);
+  const best = ranked.find(([unit]) => passage(unit)) ?? null;
   if (best === null || best[1].n < enough(best[0]) || asked(best[0])) return null;
   const share = best[1].chars / text.length;
   return share >= LOOP_MIN_SHARE ? { count: best[1].n, share } : null;
@@ -5176,31 +5166,32 @@ export interface NonAnswer {
  */
 export function nonAnswerOf(output: string, ask: string, toolCalls: readonly unknown[] | undefined, structured = false): NonAnswer | null {
   const hasAsk = ask.trim().length > 0 && new Set(contentTerms(ask)).size >= MIN_ASK_TERMS_TO_JUDGE;
-  const kind: AskKind = hasAsk ? askKindOf(ask) : { write: false, act: false, wh: false, question: false };
+  const askWords = hasAsk ? wordsOf(ask) : [];
+  const kind: AskKind = hasAsk ? askKindOf(ask, askWords) : { write: false, act: false, wh: false, question: false };
   const noToolCalls = Array.isArray(toolCalls) && toolCalls.length === 0;
   const workRecorded = Array.isArray(toolCalls) && toolCalls.length > 0;
   const said = trimChars(output, '').slice(0, 60);
   const words = wordsOf(output);
 
-  const lead = leadInOf(output, kind, workRecorded);
+  const lead = leadInOf(output, words, kind, workRecorded);
   if (lead !== null) return { shape: 'lead-in', message: `The output announces an answer and gives none: ${lead}`, whole: true };
 
   if (hasAsk) {
-    const placeholder = placeholderOf(output, ask, kind, noToolCalls);
+    const placeholder = placeholderOf(output, words, ask, kind, noToolCalls);
     if (placeholder !== null) return { shape: 'placeholder', message: `The output says nothing: it is ${placeholder}`, whole: true };
 
-    if ((kind.write || kind.wh || (kind.act && noToolCalls)) && !workRecorded && madeOf(words, PROMISE_WORDS, PROMISE_MARKS) && !askNamesAll(ask, words)) {
+    if ((kind.write || kind.wh || (kind.act && noToolCalls)) && !workRecorded && madeOf(words, PROMISE_WORDS, PROMISE_MARKS) && !askNamesAll(askWords, words)) {
       return { shape: 'promise', message: `The output promises the work ("${said}") and does not do it, and the call records no tool call that did it elsewhere`, whole: true };
     }
     // A claim of completion, when the call says no tool was called: an ask for something written got nothing, and an ask to act was not acted on.
-    if ((kind.write || kind.act) && noToolCalls && madeOf(words, COMPLETION_WORDS, COMPLETION_MARKS) && !askNamesAll(ask, words)) {
+    if ((kind.write || kind.act) && noToolCalls && madeOf(words, COMPLETION_WORDS, COMPLETION_MARKS) && !askNamesAll(askWords, words)) {
       const what = kind.write ? 'the ask asked for something written, and none was written' : 'the ask asked for something to be done, and nothing could have done it';
       return { shape: 'completion', message: `The output only says the work is done ("${said}"); the call says no tool was called, so ${what}`, whole: true };
     }
-    if (isAskHandedBack(output, ask, kind)) return { shape: 'echo', message: 'The output hands the ask back instead of answering it', whole: true };
+    if (isAskHandedBack(words, ask, askWords, kind)) return { shape: 'echo', message: 'The output hands the ask back instead of answering it', whole: true };
   }
 
-  if (!structured) {
+  if (!structured && words.length >= LOOP_MIN_WORDS) {
     const loop = loopOf(output, ask);
     if (loop !== null) return { shape: 'loop', message: `One passage repeated ${loop.count} times makes up ${Math.round(loop.share * 100)}% of the output`, whole: false };
   }

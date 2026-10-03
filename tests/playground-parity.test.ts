@@ -94,7 +94,7 @@ const SERVER_TEXT_FILES: Array<[string, string[]]> = [
    * says_something, copied whole so the playground fails the same
    * non-answers the server does.
    */
-  ['src/eval/rules/says-something.ts', ['BARE_ANSWER_MAX_WORDS', 'LOOP_MIN_COUNT', 'LONG_PASSAGE_WORDS', 'LONG_LOOP_MIN_COUNT', 'LEAD_IN_MAX_WORDS', 'LOOP_MIN_SHARE', 'LOOP_SCAN_CHARS', 'ECHO_MIN_ASK_WORDS', 'WRITE_VERBS', 'ASK_PREFIX', 'WH_WORDS', 'ACKNOWLEDGE_VERBS', 'AUX_WORDS', 'PROMISE_WORDS', 'PROMISE_MARKS', 'COMPLETION_WORDS', 'COMPLETION_MARKS', 'ARTEFACTS', 'TEMPLATE_SLOT', 'LOREM_WORDS', 'FILLER_ASK', 'ECHO_FRAME', 'ECHO_ASK', 'plainQuotes', 'wordsOf', 'isSpace', 'trimChars', 'askHead', 'askKindOf', 'madeOf', 'askNamesAll', 'placeholderOf', 'isBareMarker', 'leadInOf', 'isAskHandedBack', 'codeFree', 'collapsed', 'shortestPeriod', 'loopOf', 'nonAnswerOf', 'SAYS_SOMETHING_PASS']],
+  ['src/eval/rules/says-something.ts', ['BARE_ANSWER_MAX_WORDS', 'LOOP_MIN_COUNT', 'LONG_PASSAGE_WORDS', 'LONG_LOOP_MIN_COUNT', 'LEAD_IN_MAX_WORDS', 'LOOP_MIN_SHARE', 'LOOP_SCAN_CHARS', 'ECHO_MIN_ASK_WORDS', 'WRITE_VERBS', 'ASK_PREFIX', 'WH_WORDS', 'ACKNOWLEDGE_VERBS', 'AUX_WORDS', 'PROMISE_WORDS', 'PROMISE_MARKS', 'COMPLETION_WORDS', 'COMPLETION_MARKS', 'ARTEFACTS', 'TEMPLATE_SLOT', 'LOREM_WORDS', 'FILLER_ASK', 'ECHO_FRAME', 'ECHO_ASK', 'plainQuotes', 'wordsOf', 'isSpace', 'trimChars', 'askHead', 'askKindOf', 'madeOf', 'askNamesAll', 'placeholderOf', 'isBareMarker', 'leadInOf', 'isAskHandedBack', 'codeFree', 'collapsed', 'shortestPeriod', 'LOOP_MIN_WORDS', 'loopOf', 'nonAnswerOf', 'SAYS_SOMETHING_PASS']],
   /*
    * ask_coverage is the one act-layer rule that RUNS in the playground —
    * it reads only the input and the output — so its whole module is
