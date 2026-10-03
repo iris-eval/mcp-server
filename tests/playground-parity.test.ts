@@ -90,6 +90,12 @@ const SERVER_TEXT_FILES: Array<[string, string[]]> = [
   ['src/eval/text/structured.ts', ['STRUCTURED_OUTPUT_MAX_CHARS', 'VALUE_MARK', 'VALUE_BREAK', 'isValueBreakAt', 'withoutValueBreaks', 'readString', 'readScalar', 'entriesOf', 'viewOf', 'jsonTrimmed', 'readStructured', 'spanInOutput']],
   ['src/eval/text/sentences.ts', ['ALWAYS_ABBREVIATION', 'ABBREVIATION_BEFORE_NUMBER', 'TERMINATORS', 'blankLineFollows', 'opensSentence', 'isDigit', 'TOKEN_LOOKBACK', 'precedingToken', 'saysAWord', 'sentencesOf', 'countSentences']],
   /*
+   * An answer that says nothing (0.20.0): the shapes and the decision of
+   * says_something, copied whole so the playground fails the same
+   * non-answers the server does.
+   */
+  ['src/eval/rules/says-something.ts', ['BARE_ANSWER_MAX_WORDS', 'REPEAT_MIN_COUNT', 'REPEAT_MIN_SHARE', 'REPEAT_SCAN_CHARS', 'ARTEFACT', 'LOREM', 'LOREM_WORDS', 'ACK_WORDS', 'INFORMATION_ASK', 'YES_NO_QUESTION', 'AI_DISCLAIMER', 'CAPABILITY_REFUSAL', 'wordsOf', 'placeholderOf', 'isBareAcknowledgement', 'isBareRefusal', 'plain', 'isAskHandedBack', 'askNamesBlocklisted', 'repetitionOf', 'nonAnswerOf', 'SAYS_SOMETHING_PASS']],
+  /*
    * ask_coverage is the one act-layer rule that RUNS in the playground —
    * it reads only the input and the output — so its whole module is
    * vendored and pinned rather than stubbed. A splitter that drifted would
@@ -333,6 +339,25 @@ const FIXED_CASES: Array<{ name: string; ctx: EvalContext; expect: Record<string
     name: 'a structured answer whose fields say nothing is empty',
     ctx: { output: '{"answer": "", "sources": []}' },
     expect: { non_empty_output: 'fail' },
+  },
+  /*
+   * An answer that says nothing (0.20.0): both libraries fail it, and both
+   * leave a short right answer alone.
+   */
+  {
+    name: 'an acknowledgement in place of the list that was asked for says nothing',
+    ctx: { output: 'Done.', input: 'List the three biggest risks in the Q3 plan.' },
+    expect: { says_something: 'fail' },
+  },
+  {
+    name: 'a refusal of an ordinary writing task says nothing',
+    ctx: { output: "I can't help with that.", input: 'Write the release notes for version 2.3.' },
+    expect: { says_something: 'fail' },
+  },
+  {
+    name: 'a one-word right answer says something',
+    ctx: { output: 'Paris.', input: 'What is the capital of France?' },
+    expect: { says_something: 'pass' },
   },
   {
     name: 'a structured answer: an override inside a field value is an injection',

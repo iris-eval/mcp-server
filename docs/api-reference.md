@@ -1733,7 +1733,7 @@ Dry-run a rule definition before deploying it: replay it against recent stored t
 
 ## Evaluation Rules
 
-Iris ships with 25 built-in rules across 4 categories. Each rule produces a score between 0 and 1, a pass/fail boolean, and a human-readable message. Rules are combined using weighted averaging to produce the final evaluation score. See `src/eval/rules/` for canonical implementation; `tests/integration/rule-coverage-matrix.test.ts` is the regression-protected ground-truth table.
+Iris ships with 26 built-in rules across 4 categories. Each rule produces a score between 0 and 1, a pass/fail boolean, and a human-readable message. Rules are combined using weighted averaging to produce the final evaluation score. See `src/eval/rules/` for canonical implementation; `tests/integration/rule-coverage-matrix.test.ts` is the regression-protected ground-truth table.
 
 ### Completeness Rules
 
@@ -1745,12 +1745,25 @@ Used when `eval_type` is `"completeness"`. These rules check whether the output 
 | `non_empty_output` | 2.0 | Output is not empty or whitespace-only | None | `output.trim().length > 0` |
 | `sentence_count` | 0.5 | Number of sentences (split on `.!?`) | `min_sentences` (default: `2`) | `sentences >= min_sentences` |
 | `expected_coverage` | 1.5 | Word overlap between output and expected text | None (50% threshold hardcoded) | `>= 50%` of expected terms found in output |
+| `says_something` | 2.0 | An answer that says nothing (a detection, measured on its own labelled family) | None | Not a placeholder, a bare acknowledgement where more was needed, a bare refusal, the ask handed back, or one sentence on repeat |
 
 Both defaults are configurable server-wide via `config.eval.ruleThresholds` (`min_output_length`, `min_sentences`), and per call by passing the same keys in the evaluation's custom config — the call-level value wins.
 
 **`min_output_length` scoring:** If failing, score is `min(length / min_length, 0.99)` -- partial credit proportional to how close the output is.
 
 **`expected_coverage` scoring:** Score equals the fraction of expected terms covered. Skipped (returns score 1) when no expected text is provided.
+
+**`says_something`** fails an answer that says nothing, in one of five shapes, and names the shape in its evidence:
+
+| Shape | Fails | Passes |
+|---|---|---|
+| `placeholder` | the whole output is punctuation ("…", "-"), a program's empty value ("null", "undefined", "NaN", "[object Object]") or lorem-ipsum filler | "None.", "N/A", "0": English answers |
+| `acknowledgement` | the whole output is "Done.", "OK", "The task has been completed successfully." and the like, when the ask is a question or a request for information (what, how, explain, list); when it asks for something written and the call records no tool call that could have written it elsewhere; or when it is an action and `tool_calls: []` records that no tool was called | a yes/no question answered "Done."; an acknowledgement after tool calls; "Got it." to "remember that …"; an action with no tool calls sent at all, which says nothing about whether the work was done elsewhere |
+| `refusal` | the whole output declines ("I can't help with that.", "As an AI language model, I cannot …"), and the ask names no phrase on the blocklist (`customConfig.blocklist`, or the shipped one) | a decline that goes on to help; "No." to a question; the refusal of an ask the blocklist names |
+| `echo` | the output is the ask's own text, at most a fifth longer | a completion report that restates the ask in the past tense |
+| `repetition` | one sentence (three words or more) repeated at least five times makes up at least half of the output, fenced code aside | a chorus, identical log lines in a code block, a key sentence said twice |
+
+It is a detection, not a veto: a fire enters the risk layer with the rule's published precision, and at the shipped configuration it fails the verdict of an agent that answers an ask with nothing. A refusal of a harmful ask that the blocklist does not name fires, and the labelled family publishes that as a wrong fail. It skips an empty output, which `non_empty_output` judges.
 
 ---
 

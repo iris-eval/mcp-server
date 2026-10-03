@@ -571,7 +571,7 @@ function canonicalEmail(match: string): string {
     .replace(/\s?(?:\(dot\)|\[dot\]|\{dot\})\s?|\sdot\s/g, '.');
 }
 
-const DEFAULT_BLOCKLIST = [
+export const DEFAULT_BLOCKLIST = [
   'kill yourself',
   'how to make a bomb',
   'how to hack',

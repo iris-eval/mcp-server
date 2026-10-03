@@ -4836,10 +4836,184 @@ function answersTheAsk(ctx: EvalContext): EvalRuleResult {
   };
 }
 
+/* ── An answer that says nothing (vendored from iris/src/eval/rules/says-something.ts) ── */
+
+/*
+ * The shapes and the decision are copied whole and pinned by the parity
+ * test; only the rule's wrapper differs, because the playground's rules
+ * return no evidence and have no deployment blocklist.
+ */
+/** The longest output read as a bare acknowledgement or a bare refusal, in words. */
+export const BARE_ANSWER_MAX_WORDS = 12;
+/** How many times one sentence must recur, and how much of the output its copies must cover, to be a loop rather than a refrain. */
+export const REPEAT_MIN_COUNT = 5;
+export const REPEAT_MIN_SHARE = 0.5;
+/** The longest output read for repetition. Past it the first part is read. */
+export const REPEAT_SCAN_CHARS = 2_000_000;
+
+/** Serialisation artefacts: what a program prints when it has nothing to print. English words ("None.", "N/A") are answers and are not here. */
+const ARTEFACT = /^(?:null|undefined|nil|nan|\[object object\]|<empty>|<none>|\(empty\)|\(none\))$/i;
+const LOREM = /\blorem\s+ipsum\b/i;
+const LOREM_WORDS = new Set(['lorem', 'ipsum', 'dolor', 'sit', 'amet', 'consectetur', 'consectetuer', 'adipiscing', 'elit', 'sed', 'do', 'eiusmod', 'tempor', 'incididunt', 'ut', 'labore', 'et', 'dolore', 'magna', 'aliqua', 'enim', 'ad', 'minim', 'veniam', 'quis', 'nostrud', 'exercitation', 'ullamco', 'laboris', 'nisi', 'aliquip', 'ex', 'ea', 'commodo', 'consequat', 'duis', 'aute', 'irure', 'in', 'reprehenderit', 'voluptate', 'velit', 'esse', 'cillum', 'eu', 'fugiat', 'nulla', 'pariatur', 'excepteur', 'sint', 'occaecat', 'cupidatat', 'non', 'proident', 'sunt', 'culpa', 'qui', 'officia', 'deserunt', 'mollit', 'anim', 'id', 'est', 'laborum']);
+
+/** The words an acknowledgement or a claim of completion is made of. An output made only of these says the work happened and nothing about it. */
+const ACK_WORDS = new Set([
+  'done', 'ok', 'okay', 'k', 'sure', 'alright', 'right', 'all', 'set', 'good', 'great', 'perfect', 'fine',
+  'complete', 'completed', 'finished', 'finish', 'success', 'successful', 'successfully', 'succeeded',
+  'task', 'tasks', 'request', 'job', 'work', 'everything', 'it', 'this', 'that', 'the', 'your', 'my', 'as', 'requested', 'asked',
+  'has', 'have', 'had', 'been', 'is', 'was', 'are', 'i', "i've", 'ive', 'we', "we've", 'now', 'just', 'fully',
+  'got', 'noted', 'understood', 'will', 'do', 'roger', 'ready', 'thanks', 'thank', 'you', 'here', 'there', 'go', 'and', 'with', 'of',
+]);
+
+/** A wh-question or a request for information: the answer is the content, so an acknowledgement is not one. */
+const INFORMATION_ASK = /^\s*(?:(?:please|can you|could you|would you)\s+)?(?:what|which|who|whom|whose|when|where|why|how|explain|describe|list|tell|give|show|provide|suggest|recommend|compare|define|name|summarise|summarize|outline)\b/i;
+/** A yes/no question: an acknowledgement can answer it. */
+const YES_NO_QUESTION = /^\s*(?:is|are|was|were|do|does|did|can|could|will|would|should|shall|has|have|had|may|might)\b[^?]*\?\s*$/i;
+/** "As an AI language model," and its kin, before the refusal it introduces. */
+const AI_DISCLAIMER = /^\s*as an ai(?:\s+(?:language\s+)?(?:model|assistant))?\s*,?\s*/i;
+/** A refusal that names what it cannot do: "I cannot browse the internet", "I'm unable to access files". */
+const CAPABILITY_REFUSAL = /^\s*i\s+(?:can(?:no|['’])t|am\s+(?:unable|not\s+able)\s+to|don['’]?t\s+have\s+(?:access|the\s+ability))\b/i;
+
+/** The words of a text, lower case, punctuation aside. */
+function wordsOf(text: string): string[] {
+  return text.toLowerCase().split(/[^a-z0-9'’]+/).filter((w) => w.length > 0);
+}
+
+function placeholderOf(output: string): string | null {
+  const bare = output.trim().replace(/^[\s"'`([{<]+|[\s"'`)\]}>]+$/g, '');
+  if (!/[\p{L}\p{N}]/u.test(output)) return 'only punctuation';
+  const artefact = [output.trim(), bare].find((form) => ARTEFACT.test(form));
+  if (artefact !== undefined) return `"${artefact}", a value a program prints when it has nothing to print`;
+  if (LOREM.test(output)) {
+    const words = wordsOf(output);
+    const filler = words.filter((w) => LOREM_WORDS.has(w)).length;
+    if (filler / words.length >= 0.5) return 'lorem-ipsum filler';
+  }
+  return null;
+}
+
+function isBareAcknowledgement(output: string): boolean {
+  const words = wordsOf(output);
+  return words.length > 0 && words.length <= BARE_ANSWER_MAX_WORDS && words.every((w) => ACK_WORDS.has(w.replace(/[’]/g, "'")));
+}
+
+function isBareRefusal(output: string): boolean {
+  const stripped = output.replace(AI_DISCLAIMER, '');
+  const words = wordsOf(stripped).length;
+  // "No." answers a yes/no question; it declines nothing.
+  if (/^\s*(?:no|nope)[.!]?\s*$/i.test(stripped)) return false;
+  return words > 0 && words <= BARE_ANSWER_MAX_WORDS * 2 && (isRefusal(stripped) || CAPABILITY_REFUSAL.test(stripped));
+}
+
+/** Lower case, one space, no surrounding quotes or closing punctuation: the form two copies of one text share. */
+function plain(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, ' ').trim().replace(/^["'`“‘]+|["'`”’.!?]+$/g, '').trim();
+}
+
+/**
+ * The ask's own text handed back: the output contains the whole ask and is
+ * at most a fifth longer. A completion report that restates the ask in the
+ * past tense ("Renamed parseUser to parseAccount and updated its callers")
+ * is not this, and passes.
+ */
+function isAskHandedBack(output: string, ask: string): boolean {
+  const a = plain(ask);
+  const o = plain(output);
+  return a.length > 0 && o.includes(a) && o.length <= a.length * 1.2;
+}
+
+/** The ask names a phrase on the blocklist: declining it is the answer. */
+export function askNamesBlocklisted(ask: string, blocklist: readonly string[]): boolean {
+  const folded = normalise(ask, { dropInsertedBreaks: true }).text.toLowerCase();
+  return blocklist.some((phrase) => folded.includes(normalise(phrase).text.toLowerCase()));
+}
+
+/** One sentence that makes up most of the output by repeating, or null. */
+function repetitionOf(output: string): { count: number; share: number } | null {
+  const text = output.slice(0, REPEAT_SCAN_CHARS).replace(FENCED_CODE, '\n');
+  if (text.length === 0) return null;
+  const counts = new Map<string, { n: number; chars: number }>();
+  for (const sentence of sentencesOf(text)) {
+    const key = sentence.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (key.split(' ').length < 3) continue;
+    const entry = counts.get(key) ?? { n: 0, chars: 0 };
+    entry.n += 1;
+    entry.chars += sentence.replace(/\s+/g, '').length;
+    counts.set(key, entry);
+  }
+  let best: { n: number; chars: number } | null = null;
+  for (const entry of counts.values()) if (best === null || entry.chars > best.chars) best = entry;
+  if (best === null || best.n < REPEAT_MIN_COUNT) return null;
+  // Shares are of the characters that are not whitespace, so a loop with nothing else in it is 100%.
+  const share = best.chars / text.replace(/\s+/g, '').length;
+  return share >= REPEAT_MIN_SHARE ? { count: best.n, share } : null;
+}
+
+/** What makes an output a non-answer: the shape, the sentence that says so, and whether the finding is the whole output. */
+export interface NonAnswer {
+  shape: 'placeholder' | 'acknowledgement' | 'refusal' | 'echo' | 'repetition';
+  message: string;
+  whole: boolean;
+}
+
+/**
+ * The decision, as one function of what the call carried: the output (not
+ * empty), the ask (or ''), the tool calls as sent (undefined when none were
+ * sent), and whether the ask names a blocklisted phrase.
+ */
+export function nonAnswerOf(output: string, ask: string, toolCalls: readonly unknown[] | undefined, askBlocklisted: boolean): NonAnswer | null {
+  const askTerms = new Set(contentTerms(ask)).size;
+  const hasAsk = ask.trim().length > 0 && askTerms >= MIN_ASK_TERMS_TO_JUDGE;
+  const noToolCalls = Array.isArray(toolCalls) && toolCalls.length === 0;
+  const workRecorded = Array.isArray(toolCalls) && toolCalls.length > 0;
+  const said = output.trim().slice(0, 60);
+
+  const placeholder = placeholderOf(output);
+  if (placeholder !== null) return { shape: 'placeholder', message: `The output says nothing: it is ${placeholder}`, whole: true };
+
+  if (hasAsk && !YES_NO_QUESTION.test(ask) && isBareAcknowledgement(output)) {
+    if (INFORMATION_ASK.test(ask)) {
+      return { shape: 'acknowledgement', message: `The output only acknowledges ("${said}"); the ask asked for an answer, and none was given`, whole: true };
+    }
+    if (isProduceAsk(ask) && !workRecorded) {
+      return { shape: 'acknowledgement', message: `The output only acknowledges ("${said}"); the ask asked for something written, and the call records no tool call that could have written it elsewhere`, whole: true };
+    }
+    if (noToolCalls) {
+      return { shape: 'acknowledgement', message: `The output only says the work is done ("${said}"), and the call records no tool call that could have done it`, whole: true };
+    }
+  }
+
+  if (hasAsk && isBareRefusal(output) && !askBlocklisted) {
+    return { shape: 'refusal', message: `The output declines ("${said}") instead of answering, and the ask is not one the blocklist flags`, whole: true };
+  }
+
+  if (hasAsk && isAskHandedBack(output, ask)) return { shape: 'echo', message: 'The output hands the ask back instead of answering it', whole: true };
+
+  const repeated = repetitionOf(output);
+  if (repeated !== null) {
+    return { shape: 'repetition', message: `One sentence repeated ${repeated.count} times makes up ${Math.round(repeated.share * 100)}% of the output`, whole: false };
+  }
+  return null;
+}
+
+/** The sentence for an output that is none of the shapes. */
+export const SAYS_SOMETHING_PASS = 'The output says something: it is not a placeholder, a bare acknowledgement, a bare refusal, the ask handed back, or one sentence on repeat';
+
+function saysSomething(ctx: EvalContext): EvalRuleResult {
+  if (ctx.output.trim().length === 0) {
+    return { ruleName: 'says_something', category: 'completeness', passed: false, score: 0, message: 'Not judged: the output is empty', skipped: true, skipReason: 'the output is empty; non_empty_output judges that' };
+  }
+  const ask = ctx.input ?? '';
+  const found = nonAnswerOf(ctx.output, ask, ctx.toolCalls, askNamesBlocklisted(ask, DEFAULT_BLOCKLIST));
+  return found === null
+    ? { ruleName: 'says_something', category: 'completeness', passed: true, score: 1, message: SAYS_SOMETHING_PASS }
+    : { ruleName: 'says_something', category: 'completeness', passed: false, score: 0, message: found.message };
+}
+
 const RULES_BY_CATEGORY: Record<EvalCategory, Array<(ctx: EvalContext) => EvalRuleResult>> = {
   safety: [noPii, noBlocklistWords, noInjectionPatterns, noStubOutput, noHallucinationMarkers, noSilentToolFailure, groundedInReads, noInjectionCompliance],
   relevance: [keywordOverlap, topicConsistency, toolChoice, answersTheAsk],
-  completeness: [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments, askCoverage, toolSequence],
+  completeness: [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments, askCoverage, toolSequence, saysSomething],
   cost: [costUnderThreshold, verbosityRatio, noToolLoop, maxSteps, costAnomaly, stepBudget],
 };
 
@@ -4870,6 +5044,7 @@ export const OUTPUT_VIEWS = new Map<(ctx: EvalContext) => EvalRuleResult, 'value
   [noSilentToolFailure, 'values'],
   [groundedInReads, 'values'],
   [noInjectionCompliance, 'values'],
+  [saysSomething, 'values'],
   [noPii, 'labelled'],
   [noBlocklistWords, 'labelled'],
   [noInjectionPatterns, 'labelled'],

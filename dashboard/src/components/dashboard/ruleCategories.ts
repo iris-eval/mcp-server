@@ -87,11 +87,11 @@ export const CATEGORY_ORDER: RuleCategory[] = [
 ];
 
 /**
- * Built-in rule → category map.
- * Total: 25 rules (8 safety + 1 cost-bundle step budget + 4 relevance + 7 completeness + 5 cost) — pinned to the engine by the sync test.
+ * Built-in rule → category map, pinned to the engine's registry by the sync
+ * test (the count lives there, not here).
  */
 export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
-  // safety (7)
+  // safety
   no_pii: 'safety',
   no_blocklist_words: 'safety',
   no_injection_patterns: 'safety',
@@ -101,12 +101,12 @@ export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
   grounded_in_reads: 'safety',
   no_injection_compliance: 'safety',
   max_steps: 'cost',
-  // relevance (2)
+  // relevance
   keyword_overlap: 'relevance',
   topic_consistency: 'relevance',
   tool_choice: 'relevance',
   answers_the_ask: 'relevance',
-  // completeness (6)
+  // completeness
   min_output_length: 'completeness',
   non_empty_output: 'completeness',
   sentence_count: 'completeness',
@@ -114,7 +114,8 @@ export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
   valid_tool_arguments: 'completeness',
   ask_coverage: 'completeness',
   tool_sequence: 'completeness',
-  // cost (4; max_steps is listed above with the safety block for historical order)
+  says_something: 'completeness',
+  // cost (max_steps is listed above with the safety block for historical order)
   cost_under_threshold: 'cost',
   verbosity_ratio: 'cost',
   no_tool_loop: 'cost',
@@ -144,6 +145,7 @@ export const BUILT_IN_RULES: ReadonlyArray<{ name: string; category: RuleCategor
   { name: 'valid_tool_arguments', category: 'completeness' },
   { name: 'ask_coverage', category: 'completeness' },
   { name: 'tool_sequence', category: 'completeness' },
+  { name: 'says_something', category: 'completeness' },
   { name: 'cost_under_threshold', category: 'cost' },
   { name: 'verbosity_ratio', category: 'cost' },
   { name: 'no_tool_loop', category: 'cost' },

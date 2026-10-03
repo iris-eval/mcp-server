@@ -13,7 +13,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ADDITIONS, CONTRACTS, INVARIANT_RESULTS_JSON, INVARIANTS_MD, REMOVALS, REWRITINGS, measureInvariants, renderInvariantsMarkdown, type InvariantResults } from '../../proof/lib/invariants.js';
+import { ADDITIONS, CONTRACTS, DEGENERATE_AGENTS, DEGENERATE_ASKS, DEGENERATE_SHAPES, INVARIANT_RESULTS_JSON, INVARIANTS_MD, REMOVALS, REWRITINGS, measureInvariants, renderInvariantsMarkdown, type InvariantResults } from '../../proof/lib/invariants.js';
 import { EvalEngine } from '../../src/eval/engine.js';
 import { defaultConfig } from '../../src/config/defaults.js';
 
@@ -25,6 +25,7 @@ describe('the published sweep is what this code measures', () => {
     expect(results.removals.map((r) => r.id)).toEqual(REMOVALS.map((r) => r.id));
     expect(results.additions.map((a) => a.id)).toEqual(ADDITIONS.map((a) => a.id));
     expect(results.rewritings.map((r) => r.id)).toEqual(REWRITINGS.map((r) => r.id));
+    expect(results.degenerate.map((r) => r.agent)).toEqual(DEGENERATE_AGENTS.map((a) => a.id));
     expect(results.contracts).toHaveLength(CONTRACTS.reduce((n, c) => n + c.covers.length + (c.measures?.length ?? 0), 0));
     // The committed file, without the three stamps of when and where it was generated.
     const rest: Partial<InvariantResults> = { ...committed };
@@ -34,6 +35,30 @@ describe('the published sweep is what this code measures', () => {
     const md = readFileSync(resolve(process.cwd(), INVARIANTS_MD), 'utf-8').replace(/\r\n/g, '\n');
     expect(md).toBe(renderInvariantsMarkdown(committed));
   }, 600_000);
+});
+
+describe('an agent that does nothing', () => {
+  it('passes nowhere the call records that no tool was called, for either ask', () => {
+    const held = DEGENERATE_SHAPES.filter((s) => s.held).map((s) => s.id);
+    expect(held).toEqual(['no_calls']);
+    for (const row of committed.degenerate) {
+      for (const ask of DEGENERATE_ASKS) expect(row.states[`no_calls:${ask.id}`], `${row.what} (${ask.id})`).not.toBe('pass');
+    }
+    expect(committed.violations.degenerate).toBe(0);
+  });
+
+  it('where no tool calls are sent, the passes are published with the reason, and requiring the tool calls turns each into not checked', async () => {
+    const measured = DEGENERATE_SHAPES.find((s) => s.id === 'output_only')!;
+    expect(measured.held).toBe(false);
+    expect(measured.why).toMatch(/requiredEvidence/);
+    const passes = committed.degenerate.flatMap((row) => DEGENERATE_ASKS.filter((a) => row.states[`output_only:${a.id}`] === 'pass').map((a) => ({ agent: DEGENERATE_AGENTS.find((x) => x.id === row.agent)!, ask: a.ask })));
+    expect(passes.length).toBeGreaterThan(0);
+    const requiring = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, { ...defaultConfig.eval, requiredEvidence: ['tool_calls'] } as never);
+    for (const { agent, ask } of passes) {
+      const r = await requiring.evaluateAll(measured.context(ask, agent.answer(ask)));
+      expect(r.verdict!.state, agent.what).toBe('unknown');
+    }
+  });
 });
 
 describe('under a contract, leaving the field out never yields a pass', () => {

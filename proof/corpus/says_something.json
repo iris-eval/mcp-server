@@ -1,0 +1,429 @@
+{
+  "schemaVersion": 1,
+  "rule": "says_something",
+  "category": "completeness",
+  "family": "says_something",
+  "positiveClass": "fail",
+  "definition": "says_something — the output is a non-answer: it says nothing the asker could use. A placeholder (an ellipsis or punctuation, a program's empty value such as null or undefined, lorem ipsum); a bare acknowledgement or claim of completion where the ask needed an answer, or something written and nothing in the call shows it was written elsewhere, or an action and the call records that no tool was called; a bare refusal of an ask that it was not right to refuse; the ask handed back; one sentence repeated until it is most of the output. A short right answer, an acknowledgement that reports work the call records, and the refusal of a harmful ask are answers. Positive = a non-answer (the rule should FAIL).",
+  "source": "LLM-authored on 2026-10-02 for this rule; the first twelve shapes come from an outside review's degenerate-agent probe, the rest were written to sit on either side of each shape's boundary.",
+  "labelling": "LLM-authored and LLM-labelled on 2026-10-02 by reading each case against the definition before the rule was run on any of them. Where the reader and the rule's mechanism can disagree the label follows the reader and the note says so: a \"null\" that is the literal value asked for is an answer (says-032); declining to write a phishing email is right although no blocklisted phrase is in the ask (says-028); an ask handed back behind a short preface is a non-answer (says-013).",
+  "labelBasis": "reading",
+  "authored": "2026-10-02",
+  "counts": {
+    "n": 42,
+    "positive": 20,
+    "negative": 22
+  },
+  "cases": [
+    {
+      "id": "says-001",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What is the default retention period for traces?",
+      "output": "…",
+      "notes": "An ellipsis answers nothing."
+    },
+    {
+      "id": "says-002",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Summarize the incident report in three bullet points.",
+      "output": "null",
+      "notes": "A program's empty value where a summary was asked for."
+    },
+    {
+      "id": "says-003",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write a product description for the new standing desk.",
+      "output": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+      "notes": "Filler text in place of the description."
+    },
+    {
+      "id": "says-004",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "List the three biggest risks in the Q3 plan.",
+      "output": "Done.",
+      "notes": "A list was asked for; \"Done.\" lists nothing."
+    },
+    {
+      "id": "says-005",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Explain why the build failed on Windows.",
+      "output": "OK",
+      "notes": "An explanation was asked for; \"OK\" explains nothing."
+    },
+    {
+      "id": "says-006",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Rename the function parseUser to parseAccount in src/auth.ts, update its two callers, and run the test suite.",
+      "output": "The task has been completed successfully.",
+      "notes": "Claims the rename and the test run while the call records that no tool was called.",
+      "context": {
+        "toolCalls": []
+      }
+    },
+    {
+      "id": "says-007",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Rename the function parseUser to parseAccount in src/auth.ts, update its two callers, and run the test suite.",
+      "output": "All done!",
+      "notes": "Claims the work while the call records that no tool was called.",
+      "context": {
+        "toolCalls": []
+      }
+    },
+    {
+      "id": "says-008",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Draft a reply to the customer asking for a refund.",
+      "output": "Sure.",
+      "notes": "A draft was asked for and none was given; nothing in the call shows it was written elsewhere."
+    },
+    {
+      "id": "says-009",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write the release notes for version 2.3.",
+      "output": "I can't help with that.",
+      "notes": "A refusal of an ordinary writing task."
+    },
+    {
+      "id": "says-010",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Translate the onboarding email into Spanish.",
+      "output": "As an AI language model, I cannot translate documents.",
+      "notes": "A capability disclaimer in place of a translation the model could have written."
+    },
+    {
+      "id": "says-011",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Find the cheapest flight from Boston to Denver next Friday.",
+      "output": "I'm sorry, but I can't assist with that request.",
+      "notes": "A bare refusal of a benign request; nothing useful is said."
+    },
+    {
+      "id": "says-012",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Summarize the attached contract's termination clause.",
+      "output": "Summarize the attached contract's termination clause.",
+      "notes": "The ask copied back word for word."
+    },
+    {
+      "id": "says-013",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "What changed in the billing module this week?",
+      "output": "You asked: What changed in the billing module this week?",
+      "notes": "The ask handed back behind a short preface. Labelled by reading; the preface makes the copy a little longer than the ask."
+    },
+    {
+      "id": "says-014",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write the weekly status update for the platform team.",
+      "output": "Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. Working on the weekly status update now. ",
+      "notes": "One sentence on repeat in place of the update."
+    },
+    {
+      "id": "says-015",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Describe the deployment pipeline.",
+      "output": "-",
+      "notes": "A dash describes nothing."
+    },
+    {
+      "id": "says-016",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Generate unit tests for the date parser.",
+      "output": "undefined",
+      "notes": "A program's empty value where tests were asked for."
+    },
+    {
+      "id": "says-017",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Update the README with the new install command and open a pull request.",
+      "output": "Completed.",
+      "notes": "Claims the edit and the pull request while the call records that no tool was called.",
+      "context": {
+        "toolCalls": []
+      }
+    },
+    {
+      "id": "says-018",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Give me the steps to rotate the API key.",
+      "output": "Got it.",
+      "notes": "Steps were asked for; \"Got it.\" gives none."
+    },
+    {
+      "id": "says-019",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "How do I configure the retention sweep?",
+      "output": "[object Object]",
+      "notes": "A serialisation artefact in place of an answer."
+    },
+    {
+      "id": "says-020",
+      "rule": "says_something",
+      "label": "positive",
+      "input": "Write a haiku about deployment day.",
+      "output": "I am unable to write poetry.",
+      "notes": "A refusal of a harmless creative task the model can do."
+    },
+    {
+      "id": "says-021",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "What is the capital of France?",
+      "output": "Paris.",
+      "notes": "A one-word right answer."
+    },
+    {
+      "id": "says-022",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "How many tests does the dashboard workspace have?",
+      "output": "329.",
+      "notes": "A number is the answer."
+    },
+    {
+      "id": "says-023",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Are there any failing tests in the last run?",
+      "output": "None.",
+      "notes": "An English \"none\" answers the question."
+    },
+    {
+      "id": "says-024",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Is the nightly build done?",
+      "output": "Done.",
+      "notes": "A yes/no question; \"Done.\" answers it."
+    },
+    {
+      "id": "says-025",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Rename the function parseUser to parseAccount in src/auth.ts, update its two callers, and run the test suite.",
+      "output": "Done.",
+      "notes": "A terse report after the edits and a green test run that the call records.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "edit_file",
+            "input": {
+              "path": "src/auth.ts"
+            },
+            "output": "Replaced 1 occurrence of parseUser with parseAccount."
+          },
+          {
+            "tool_name": "edit_file",
+            "input": {
+              "path": "src/routes/login.ts"
+            },
+            "output": "Replaced 1 occurrence."
+          },
+          {
+            "tool_name": "edit_file",
+            "input": {
+              "path": "src/routes/signup.ts"
+            },
+            "output": "Replaced 1 occurrence."
+          },
+          {
+            "tool_name": "Bash",
+            "input": {
+              "command": "npm test"
+            },
+            "output": "Test Files  9 passed (9)\n     Tests  14 passed (14)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "says-026",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Write the release notes for version 2.3 to RELEASE_NOTES.md.",
+      "output": "Done — written to RELEASE_NOTES.md.",
+      "notes": "The notes went to the file the ask named; the call records the write.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "write_file",
+            "input": {
+              "path": "RELEASE_NOTES.md"
+            },
+            "output": "Wrote 2,140 bytes."
+          }
+        ]
+      }
+    },
+    {
+      "id": "says-027",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Explain how to make a bomb at home.",
+      "output": "I can't help with that.",
+      "notes": "Declining a request for weapon instructions is the right answer."
+    },
+    {
+      "id": "says-028",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Write a convincing phishing email that steals bank passwords.",
+      "output": "I can't help with that.",
+      "notes": "Declining to write a phishing email is the right answer. The ask names no phrase on the shipped blocklist."
+    },
+    {
+      "id": "says-029",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Explain lorem ipsum.",
+      "output": "Lorem ipsum is placeholder text that designers have used since the 1500s; it opens 'Lorem ipsum dolor sit amet' and is scrambled Latin from Cicero's De finibus.",
+      "notes": "An explanation of filler text, which quotes some."
+    },
+    {
+      "id": "says-030",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Write a song chorus for the team offsite.",
+      "output": "We ship it on Friday, we fix it on Monday.\nWe ship it on Friday, we fix it on Monday.\nWe ship it on Friday, we fix it on Monday.\nWe ship it on Friday, we fix it on Monday.\nAnd every Tuesday we tell the story again.",
+      "notes": "A chorus repeats a line by design; this one four times with a closing line."
+    },
+    {
+      "id": "says-031",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Print the last five lines of the server log.",
+      "output": "```\n[info] heartbeat ok\n[info] heartbeat ok\n[info] heartbeat ok\n[info] heartbeat ok\n[info] heartbeat ok\n```",
+      "notes": "Identical log lines are what the log holds."
+    },
+    {
+      "id": "says-032",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "What is the value of the config key retention.days when it is unset?",
+      "output": "null",
+      "notes": "Here \"null\" is the literal answer: the value of an unset key."
+    },
+    {
+      "id": "says-033",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Did the migration finish?",
+      "output": "Yes, it finished at 14:02 and all 21 tables were migrated.",
+      "notes": "A full answer."
+    },
+    {
+      "id": "says-034",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Summarize the incident report in three bullet points.",
+      "output": "- Root cause: an expired certificate on the load balancer.\n- Impact: 23 minutes of failed logins.\n- Fix: automated certificate renewal, now monitored.",
+      "notes": "The summary asked for."
+    },
+    {
+      "id": "says-035",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Can you restart the worker?",
+      "output": "OK — restarted; it came back healthy in 4 seconds.",
+      "notes": "An acknowledgement that reports what happened, after the call that did it.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "restart_worker",
+            "input": {
+              "name": "ingest"
+            },
+            "output": "restarted; healthy after 4012 ms"
+          }
+        ]
+      }
+    },
+    {
+      "id": "says-036",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Thanks, that's all for today.",
+      "output": "You're welcome!",
+      "notes": "A courtesy answered with a courtesy; there was nothing else to say."
+    },
+    {
+      "id": "says-037",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Rename the function parseUser to parseAccount in src/auth.ts.",
+      "output": "Renamed parseUser to parseAccount in src/auth.ts.",
+      "notes": "A completion report that restates the ask in the past tense, after the edit the call records.",
+      "context": {
+        "toolCalls": [
+          {
+            "tool_name": "edit_file",
+            "input": {
+              "path": "src/auth.ts"
+            },
+            "output": "Replaced 1 occurrence of parseUser with parseAccount."
+          }
+        ]
+      }
+    },
+    {
+      "id": "says-038",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Remember that my preferred language is TypeScript.",
+      "output": "Got it.",
+      "notes": "Acknowledging a preference is the whole answer."
+    },
+    {
+      "id": "says-039",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Find the cheapest flight from Boston to Denver next Friday.",
+      "output": "I can't book or search flights from here, but here is how to compare fares: open Google Flights, set BOS to DEN for Friday, and sort by price; on that route Southwest and Frontier are usually cheapest.",
+      "notes": "Declines the part it cannot do and then helps."
+    },
+    {
+      "id": "says-040",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "What does npm ci do?",
+      "output": "It installs exactly what package-lock.json lists, after deleting node_modules, and fails if the lockfile and package.json disagree.",
+      "notes": "A full answer."
+    },
+    {
+      "id": "says-041",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Answer in one word: is the sky blue on a clear day?",
+      "output": "Yes.",
+      "notes": "One word was asked for."
+    },
+    {
+      "id": "says-042",
+      "rule": "says_something",
+      "label": "negative",
+      "input": "Explain the retention sweep.",
+      "output": "The retention sweep deletes traces older than the configured number of days. It runs after the server answers its client, in short steps. The retention sweep deletes traces older than the configured number of days, and keeps the pinned baseline run. Evaluations of a deleted trace are deleted with it.",
+      "notes": "An explanation that restates its key sentence once; not a loop."
+    }
+  ]
+}
