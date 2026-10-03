@@ -25,6 +25,19 @@ CI runs `scripts/security/check-exposure-coverage.mjs` on every PR. If a new ≥
 
 ## Currently open advisories
 
+### [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) — braces stack-exhaustion denial of service through deeply nested patterns
+
+- **Severity:** high
+- **Package:** `braces`
+- **Vulnerable:** `≤ 3.0.3` — **first patched:** none published at assessment. The installed version is 3.0.3.
+- **Load path:** the website's lint tooling only: `eslint-config-next@16.3.6` → `@next/eslint-plugin-next` → `fast-glob` → `micromatch` → `braces`, marked `dev: true` in `website/package-lock.json`. Neither the server's lockfile nor the dashboard's contains `braces`. `npm audit`'s only offered fix is a semver-major move of `eslint-config-next` to 14.2.35, a downgrade of the website's lint configuration.
+- **Load-graph reachable:** Not from iris's server process or the dashboard. In the website, only when ESLint resolves its file globs (`npm run lint`, and the lint step `next build` runs).
+- **Code-path reachable:** `braces` expands the glob patterns ESLint and `fast-glob` are given: the checked-in `eslint.config.*` file patterns. No website route, page or API handler calls it; the playground's evaluation library does not import it.
+- **Untrusted input reachable:** **No.** A deeply nested pattern would have to be written into a checked-in lint configuration or a CI workflow, which takes commit access through the CODEOWNERS-protected pull-request gate. Visitors to iris-eval.com send text to the playground's evaluation, which never reaches a glob.
+- **Downstream guards:** the PR review gate on `main`; CI job timeouts, so a pathological expansion would show as a failed lint job rather than as anything a user sees.
+- **Decision:** **Track**, with the code path assessed as `tolerable_risk` until then: dev tooling behind commit access. Take the patched `braces` (or an `eslint-config-next` that no longer reaches it) by a Linux-regenerated lockfile bump when one is published, and retire this row.
+- **Assessed:** 2026-10-02 against iris commit `8488a9fe` (PR #792), the day the advisory appeared and began failing this gate on every branch.
+
 ### [GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv) — node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements
 
 - **Severity:** high
