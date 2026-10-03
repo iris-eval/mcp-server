@@ -20,15 +20,22 @@
 //     SDK range excludes the SDK that ships beside it.
 //
 // Usage: node scripts/check-npm-packages.mjs            → problems, exit 1 on any
-//        node scripts/check-npm-packages.mjs --order    → the directories, in publish order
+//        node scripts/check-npm-packages.mjs --order    → the directories this release publishes, in order
+//
+// --order prints only the packages RELEASED_WITH_SERVER marks as ones
+// release.yml can publish, and may print nothing. build-packages,
+// publish-packages and verify-release all read it, so the three agree on
+// what a release publishes; the check above still covers every package.
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { LAUNCHER_DIR, LAUNCHER_VERSION, NPM_PACKAGE_DIRS, ROOT } from './claims/packages.mjs';
+import { LAUNCHER_DIR, LAUNCHER_VERSION, NPM_PACKAGE_DIRS, RELEASED_WITH_SERVER, ROOT } from './claims/packages.mjs';
 
-/** Every directory release.yml publishes to npm besides the server, in publish order. */
+/** Every npm library and the launcher, in the order they are published: each after what it depends on. */
 export const PUBLISH_ORDER = [...NPM_PACKAGE_DIRS, LAUNCHER_DIR];
+/** The ones release.yml publishes with the server, in that order. */
+export const RELEASE_ORDER = PUBLISH_ORDER.filter((dir) => RELEASED_WITH_SERVER[dir] === true);
 
 const DEPENDENCY_FIELDS = ['dependencies', 'peerDependencies', 'optionalDependencies'];
 const VERSION = /^(\d+)\.(\d+)\.(\d+)$/;
@@ -98,7 +105,7 @@ export function packageProblems(manifests = readManifests()) {
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   if (process.argv.includes('--order')) {
-    process.stdout.write(PUBLISH_ORDER.join('\n') + '\n');
+    if (RELEASE_ORDER.length > 0) process.stdout.write(RELEASE_ORDER.join('\n') + '\n');
   } else {
     const manifests = readManifests();
     const problems = packageProblems(manifests);

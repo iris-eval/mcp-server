@@ -109,6 +109,13 @@ jobs:
       - name: Verify CHANGELOG.md carries a section for this version
         if: ${{ !contains(github.ref_name, '-') }}
         run: node scripts/changelog-section.mjs "${GITHUB_REF_NAME#v}" > /dev/null
+      # The release page's form of that section must fit, with room left for
+      # the supply-chain block and GitHub's list of merged pull requests:
+      # GitHub keeps a body to 125,000 characters and the release action cuts
+      # the rest without saying so. Refused here, before anything publishes.
+      - name: Verify the release page's notes fit
+        if: ${{ !contains(github.ref_name, '-') }}
+        run: node scripts/changelog-section.mjs "${GITHUB_REF_NAME#v}" --fit 90000 > /dev/null
 
   # The build runs every dependency's code (npm ci twice, tsc, Vite and its
   # plugins, better-sqlite3's and esbuild's install scripts): about 860
@@ -336,10 +343,13 @@ jobs:
   # The npm libraries (@iris-eval/sdk, @iris-eval/langchain) and the
   # `iris-eval` launcher ship from the same release as the server, with the
   # same guarantees: built and packed here with no identity, published by a
-  # job that runs nothing but npm, with provenance. A package is published
-  # when its version is not on npm yet and skipped when it is, so a release
-  # carries a library only when the library's own version moved, and the
-  # packages it publishes are the ones this tag's commit describes.
+  # job that runs nothing but npm, with provenance. Only the packages
+  # RELEASED_WITH_SERVER (scripts/claims/packages.mjs) marks as ones this
+  # workflow can publish are packed, published and verified; the list may be
+  # empty, and then the release publishes the server alone instead of
+  # failing after it is public. A listed package is published when its
+  # version is not on npm yet and skipped when it is, so a release carries a
+  # library only when the library's own version moved.
   # scripts/check-npm-packages.mjs refuses a set of packages that disagree
   # (a handler whose SDK range excludes the SDK beside it) before anything is
   # packed. Production tags only, like the registry: a release candidate
@@ -667,7 +677,7 @@ jobs:
           PRERELEASE: ${{ steps.release-type.outputs.prerelease }}
         run: |
           VERSION="${TAG#v}"
-          if node scripts/changelog-section.mjs "$VERSION" > notes.md; then
+          if node scripts/changelog-section.mjs "$VERSION" --fit 90000 > notes.md; then
             echo "Using CHANGELOG.md section for ${VERSION}"
           elif [ "$PRERELEASE" = "true" ]; then
             printf '## %s\n\nPre-release build. What is queued for the next version is listed under [Unreleased] in CHANGELOG.md.\n' "$TAG" > notes.md
@@ -689,7 +699,7 @@ jobs:
               --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
               iris-npm-sbom.spdx.json
             ```
-          - **npm provenance**: published with `--provenance` (verifiable via `npm audit signatures` or on the package page). The same holds for `@iris-eval/sdk`, `@iris-eval/langchain` and the `iris-eval` launcher, which this workflow publishes whenever their version is new.
+          - **npm provenance**: published with `--provenance` (verifiable via `npm audit signatures` or on the package page). Any npm library or launcher version this workflow publishes beside the server carries provenance too.
           - **Docker signature**: image signed with cosign keyless (Sigstore). Verify with:
             ```
             cosign verify ghcr.io/__REPO__:__TAG__ \
@@ -932,7 +942,7 @@ jobs:
       # on npm with an SLSA provenance statement: new versions were published
       # by publish-packages, and a version skipped there as already published
       # must carry provenance too, or it went out some other way.
-      - name: npm — the SDK, the LangChain.js handler and the launcher, at this commit's versions, with provenance
+      - name: npm — each library and launcher this release publishes, at this commit's versions, with provenance
         if: steps.rt.outputs.prerelease == 'false'
         run: |
           for dir in $(node scripts/check-npm-packages.mjs --order); do
@@ -995,6 +1005,11 @@ jobs:
           if [ "$PRERELEASE" = "false" ]; then
             jq -e --arg v "$VERSION" '.body | contains("[" + $v + "]")' release.json > /dev/null \
               || { echo "✗ release body does not carry the CHANGELOG section for $VERSION" && exit 1; }
+            # The two blocks that come after the notes: a page cut short loses them first.
+            jq -e '.body | contains("## Supply-chain transparency")' release.json > /dev/null \
+              || { echo "✗ release body has no supply-chain block: it was cut short" && exit 1; }
+            jq -e '.body | contains("**Full Changelog**")' release.json > /dev/null \
+              || { echo "✗ release body ends before GitHub's list of merged pull requests: it was cut short" && exit 1; }
           fi
           echo "✓ GitHub release $GITHUB_REF_NAME: published, assets + notes present"
 

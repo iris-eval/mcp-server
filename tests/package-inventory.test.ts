@@ -19,9 +19,9 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 // @ts-ignore — plain .mjs module
-import { LAUNCHER_DIR, LAUNCHER_SERVER_RANGE, LAUNCHER_VERSION, NPM_PACKAGE_DIRS, PYPI_DIR, findManifests, inventory } from '../scripts/claims/packages.mjs';
+import { LAUNCHER_DIR, LAUNCHER_SERVER_RANGE, LAUNCHER_VERSION, NPM_PACKAGE_DIRS, PYPI_DIR, RELEASED_WITH_SERVER, findManifests, inventory } from '../scripts/claims/packages.mjs';
 // @ts-ignore — plain .mjs module
-import { PUBLISH_ORDER, packageProblems } from '../scripts/check-npm-packages.mjs';
+import { PUBLISH_ORDER, RELEASE_ORDER, packageProblems } from '../scripts/check-npm-packages.mjs';
 
 const ROOT = resolve(__dirname, '..');
 const read = (rel: string): string => readFileSync(join(ROOT, rel), 'utf8').replace(/\r\n/g, '\n');
@@ -74,6 +74,16 @@ describe('the package inventory', () => {
   it('the npm libraries and the launcher can be published as they stand, in an order where each comes after what it depends on', () => {
     expect(PUBLISH_ORDER).toEqual([...NPM_PACKAGE_DIRS, LAUNCHER_DIR]);
     expect(packageProblems()).toEqual([]);
+  });
+
+  it('a release publishes only the packages it can, and says which: the recorded list, in publish order, possibly empty', () => {
+    // Every library and the launcher has a recorded answer, and nothing else does.
+    expect(Object.keys(RELEASED_WITH_SERVER).sort()).toEqual([...PUBLISH_ORDER].sort());
+    for (const v of Object.values(RELEASED_WITH_SERVER)) expect(typeof v).toBe('boolean');
+    const released = RELEASED_WITH_SERVER as Record<string, boolean>;
+    expect(RELEASE_ORDER).toEqual(PUBLISH_ORDER.filter((d: string) => released[d] === true));
+    const printed = execFileSync(process.execPath, [join(ROOT, 'scripts', 'check-npm-packages.mjs'), '--order'], { encoding: 'utf8' });
+    expect(printed.split('\n').filter((l) => l !== '')).toEqual(RELEASE_ORDER);
   });
 
   it('the launcher depends on the server alone, at the open-ended range, and has the frozen version', () => {
