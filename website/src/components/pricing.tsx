@@ -5,11 +5,7 @@ import { motion, useReducedMotion, useInView } from "framer-motion";
 import { MCP_TOOL_COUNT, RULE_COUNT_BUILT_IN, SUPPORT_EMAIL } from "@/lib/claims";
 
 /*
- * One edition. This section used to show four cards: the open-source server
- * and three planned hosted tiers, with a waitlist form under them. None of
- * the three was being built, their feature lists named things the free
- * server already does, and the wording about them differed across six
- * places on the site. What exists is the first card, so it is the only one.
+ * One edition: the open-source server is all of Iris, so it is the only card.
  */
 const FEATURES = [
   `${MCP_TOOL_COUNT} MCP tools — full lifecycle + LLM judge + semantic citation verify (SSRF-guarded)`,
@@ -40,8 +36,8 @@ export function Pricing(): React.ReactElement {
             Free to self-host.
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-text-secondary md:text-xl">
-            The open-source server is MIT licensed with no limits and no account.
-            There is no hosted version and nothing to buy.
+            The open-source server is all of Iris: MIT licensed, every feature
+            included, with no limits and no account.
           </p>
         </div>
 

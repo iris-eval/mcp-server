@@ -7,7 +7,7 @@ import { Footer } from "@/components/footer";
 export const metadata: Metadata = {
   title: "Pricing — Iris",
   description:
-    "Iris is open source and free — no evaluation limit, no account. There is no hosted version and nothing to buy.",
+    "Iris is open source and free, with every feature included — no evaluation limit, no account.",
   alternates: { canonical: "https://iris-eval.com/pricing" },
   openGraph: {
     title: "Pricing — Iris",
@@ -27,10 +27,7 @@ export const metadata: Metadata = {
 };
 
 /*
- * One edition. The page showed two more cards, "Team" and "Enterprise",
- * both planned and neither being built, with a waitlist behind them; their
- * lists named things the open-source server already does. What exists is
- * this card.
+ * One edition: the open-source server is all of Iris, so it is the only card.
  */
 const edition = {
   name: "Open Source",
@@ -66,11 +63,11 @@ const faq: FaqItem[] = [
   },
   {
     q: "Can I self-host?",
-    a: "Self-hosting is the only way to run Iris — @iris-eval/mcp-server on npm or Docker, with the dashboard and playground in-process. There is no hosted version.",
+    a: "Yes — that is how Iris runs: @iris-eval/mcp-server on npm or Docker, with the dashboard and playground in-process, on your machine or your own infrastructure.",
   },
   {
     q: "Is there a hosted or paid version?",
-    a: "No. There is no hosted version and no paid plan, and none is being built. No feature that is free today will move behind a paywall.",
+    a: "No. Iris is the open-source server you run yourself, with every feature in it. No feature that is free today will move behind a paywall.",
   },
   {
     q: "Do you have SOC 2 or other compliance certifications?",
@@ -87,10 +84,10 @@ export default function PricingPage(): React.ReactElement {
       <section className="mx-auto max-w-3xl text-center">
         <p className="text-sm font-medium uppercase tracking-wider text-text-accent">Pricing</p>
         <h1 className="mt-3 font-display text-4xl font-bold tracking-tight text-text-primary sm:text-5xl lg:text-6xl">
-          Free to run. Nothing to buy.
+          Free to run. Every feature included.
         </h1>
         <p className="mt-6 text-lg text-text-secondary sm:text-xl">
-          Iris scores agent output for quality, safety, and cost, and it runs entirely on your machine — MIT licensed, no evaluation limit, no account. There is no hosted version and no paid plan.
+          Iris scores agent output for quality, safety, and cost, and it runs entirely on your machine — MIT licensed, no evaluation limit, no account.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <a

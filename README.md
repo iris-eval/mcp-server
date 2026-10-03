@@ -407,9 +407,9 @@ From the very next `evaluate_output` with `eval_type: "safety"`, an output that 
 
 Full tool schemas and configuration: [iris-eval.com](https://iris-eval.com)
 
-## Hosted version
+## Self-hosted, every feature included
 
-There is none. Iris runs entirely on your machine, and everything it does is free and MIT licensed with no limits and no account. There is no hosted version, no paid plan and nothing to buy.
+Iris runs on your machine or your own infrastructure, and the open-source server is all of it: every feature, free and MIT licensed, with no limits and no account. There is no separate hosted or paid edition.
 
 Two commitments hold: **nothing that is free today will move behind a paywall**, and **no compliance certification will be claimed before it is held**.
 
