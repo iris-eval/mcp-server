@@ -1,4 +1,4 @@
-// The ingest runner — what the Stop hook detaches in its place.
+// The ingest runner — what the hooks detach in their place.
 //
 // 0.13.0's Stop hook spawned `npx … ingest` itself, detached, with the trace
 // on a stdin pipe and stderr on another pipe, and exited a millisecond later.
@@ -7,28 +7,33 @@
 // same command with the hook waiting (IRIS_CAPTURE_WAIT=1) stored and
 // evaluated the turn. A detached child must own nothing of its parent's.
 //
-// So the hook writes the trace to a file and detaches THIS script with every
-// stdio ignored (a shape measured to survive the host's hook exit). This
-// script then runs each ingest candidate synchronously with `--file`, treats
-// exit 0 alone as success (ingest exits 0 when stored, 2 on usage or nothing
-// stored; 1 is reserved for --fail-on, which the hook never passes), logs
-// the outcome to capture.log, and removes the file on success. A payload
-// that could not be ingested stays under pending/ as the evidence.
+// So a hook writes each part to a file and detaches THIS script with every
+// stdio ignored (a shape measured to survive the host's hook exit), naming
+// the new file and any older ones whose ingest failed, to retry. For each
+// file this script takes it (renames it, so two runners never ingest one part
+// twice), runs each ingest candidate synchronously with `--file`, treats exit
+// 0 alone as success (ingest exits 0 when stored, 2 on usage or nothing
+// stored; 1 is reserved for --fail-on, which is never passed), logs the
+// outcome to capture.log, and removes the file on success. A part that could
+// not be ingested goes back under its own name, to be retried by a later Stop
+// until it is older than the pending limit. A part whose name ends
+// `.noeval.json` is stored without being judged.
 import { spawnSync } from 'node:child_process';
-import { existsSync, unlinkSync } from 'node:fs';
+import { existsSync, renameSync, unlinkSync } from 'node:fs';
 import { basename } from 'node:path';
 import { log, pinnedVersion } from './common.mjs';
 
-const INGEST_ARGS = ['ingest', '--evaluate', '--redact', 'critical_spans', '--source', 'hook'];
+const INGEST_ARGS = ['ingest', '--redact', 'critical_spans', '--source', 'hook'];
 
 /** The commands to try, in order; the first to exit 0 wins. */
-export function candidates(file) {
+export function candidates(file, evaluate = true) {
+  const args = [...INGEST_ARGS, ...(evaluate ? ['--evaluate'] : [])];
   // Tests point this at the repo's own entry point (a JSON argv, so a path
   // with a space survives); users get the published package.
   const override = process.env.IRIS_CAPTURE_INGEST_ARGV;
   if (override) {
     const parts = JSON.parse(override);
-    return [{ cmd: parts[0], args: [...parts.slice(1), ...INGEST_ARGS, '--file', file], shell: false }];
+    return [{ cmd: parts[0], args: [...parts.slice(1), ...args, '--file', file], shell: false }];
   }
   const version = pinnedVersion();
   // On Windows npx is a .cmd shim, which Node refuses to spawn without a
@@ -42,14 +47,14 @@ export function candidates(file) {
   // than the plugin that recorded the turn.
   const pkg = version ? `@iris-eval/mcp-server@${version}` : '@iris-eval/mcp-server';
   return [
-    { cmd: 'npx', args: ['--no-install', pkg, ...INGEST_ARGS, '--file', quoted], shell },
-    { cmd: 'npx', args: ['-y', pkg, ...INGEST_ARGS, '--file', quoted], shell },
+    { cmd: 'npx', args: ['--no-install', pkg, ...args, '--file', quoted], shell },
+    { cmd: 'npx', args: ['-y', pkg, ...args, '--file', quoted], shell },
   ];
 }
 
-export function ingestFile(file) {
+export function ingestFile(file, evaluate = true) {
   let last = null;
-  for (const c of candidates(file)) {
+  for (const c of candidates(file, evaluate)) {
     const r = spawnSync(c.cmd, c.args, {
       stdio: ['ignore', 'ignore', 'pipe'],
       windowsHide: true,
@@ -65,21 +70,40 @@ export function ingestFile(file) {
 
 const invokedDirectly = process.argv[1] && new URL(import.meta.url).pathname.endsWith(basename(process.argv[1]));
 if (invokedDirectly) {
-  const file = process.argv[2];
-  if (!file || !existsSync(file)) {
-    log(`ingest runner: no payload at ${file ?? '(none)'}`);
+  const files = process.argv.slice(2);
+  if (files.length === 0) {
+    log('ingest runner: no payload named');
     process.exit(2);
   }
-  const result = ingestFile(file);
-  if (result?.ok) {
+  let failed = 0;
+  for (const file of files) {
+    const taken = `${file}.${process.pid}.taking`;
     try {
-      unlinkSync(file);
+      renameSync(file, taken);
     } catch {
-      /* the evidence of a stored turn is the trace itself */
+      // Another runner has it, or it is gone: not this runner's to ingest.
+      if (!existsSync(file)) continue;
+      log(`ingest runner: could not take ${basename(file)}`);
+      failed += 1;
+      continue;
     }
-    log(`ingest: stored ${basename(file)} via ${result.cmd}`);
-    process.exit(0);
+    const result = ingestFile(taken, !file.endsWith('.noeval.json'));
+    if (result?.ok) {
+      try {
+        unlinkSync(taken);
+      } catch {
+        /* the evidence of a stored part is the trace itself */
+      }
+      log(`ingest: stored ${basename(file)} via ${result.cmd}`);
+      continue;
+    }
+    failed += 1;
+    try {
+      renameSync(taken, file);
+    } catch {
+      /* left under its taken name; the pending limit removes it */
+    }
+    log(`ingest failed — ${result?.cmd ?? 'no candidate'} exit ${result?.status ?? '?'}: ${result?.why ?? 'unknown'}; payload kept at ${file}`);
   }
-  log(`ingest failed — ${result?.cmd ?? 'no candidate'} exit ${result?.status ?? '?'}: ${result?.why ?? 'unknown'}; payload kept at ${file}`);
-  process.exit(1);
+  process.exit(failed === 0 ? 0 : 1);
 }
