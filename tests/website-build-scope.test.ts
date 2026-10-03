@@ -97,8 +97,14 @@ describe('the website build scope', () => {
  * and `node` on PATH, which every CI runner and a Windows checkout with Git
  * have.
  */
-// Each case spawns git, sh and node a dozen times; on a loaded Windows runner that takes seconds.
-describe('website/scripts/ignore-build.sh', { timeout: 60_000 }, () => {
+/*
+ * Each case spawns git, sh and node a dozen times and clones twice. On a
+ * Windows desktop that is about 10 s a case alone, and over 60 s while the
+ * rest of the suite runs beside it (three runs of the whole suite in a row
+ * timed out at 60 s on cases that pass alone in 10). Three minutes leaves
+ * room for the load without hiding a hang.
+ */
+describe('website/scripts/ignore-build.sh', { timeout: 180_000 }, () => {
   const scratch = mkdtempSync(join(tmpdir(), 'iris-ignore-build-'));
   const origin = join(scratch, 'origin');
   const originUrl = pathToFileURL(origin).href;
