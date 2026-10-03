@@ -5053,8 +5053,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-10-03T04:38:15.056Z",
-  "generatedFromCommit": "57e8b816",
+  "generatedAt": "2026-10-03T05:41:17.318Z",
+  "generatedFromCommit": "08f20469",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5149,71 +5149,71 @@
         "changed": {
           "of": 112,
           "toDecisive": 0,
-          "toMarginal": 80
+          "toMarginal": 73
         },
         "intervalOnly": {
           "decisive": {
             "dev": {
               "ci95": [
-                0.598,
-                0.8225
+                0.604,
+                0.8256
               ],
-              "k": 42,
-              "n": 58,
-              "patterns": 12,
-              "rate": 0.7241
+              "k": 43,
+              "n": 59,
+              "patterns": 13,
+              "rate": 0.7288
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.3006,
-                0.9544
+                0.4385,
+                1
               ],
               "k": 3,
-              "n": 4,
-              "patterns": 3,
-              "rate": 0.75
+              "n": 3,
+              "patterns": 2,
+              "rate": 1
             },
             "test": {
               "ci95": [
-                0.3873,
-                0.7674
+                0.4295,
+                0.8027
               ],
-              "k": 13,
+              "k": 14,
               "n": 22,
               "patterns": 9,
-              "rate": 0.5909
+              "rate": 0.6364
             }
           },
           "marginal": {
             "dev": {
               "ci95": [
-                0.551,
-                0.88
+                0.5353,
+                0.8745
               ],
-              "k": 18,
-              "n": 24,
-              "patterns": 8,
-              "rate": 0.75
+              "k": 17,
+              "n": 23,
+              "patterns": 7,
+              "rate": 0.7391
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.2065,
-                1
+                0.0945,
+                0.9055
               ],
               "k": 1,
-              "n": 1,
-              "patterns": 1,
-              "rate": 1
+              "n": 2,
+              "patterns": 2,
+              "rate": 0.5
             },
             "test": {
               "ci95": [
-                0.4093,
-                0.9285
+                0.3057,
+                0.8632
               ],
-              "k": 6,
+              "k": 5,
               "n": 8,
               "patterns": 5,
-              "rate": 0.75
+              "rate": 0.625
             }
           }
         },
@@ -5231,61 +5231,71 @@
         "shipped": {
           "decisive": {
             "dev": {
-              "ci95": null,
-              "k": 0,
-              "n": 0,
-              "patterns": 0,
-              "rate": null
+              "ci95": [
+                0.6097,
+                1
+              ],
+              "k": 6,
+              "n": 6,
+              "patterns": 2,
+              "rate": 1
             },
             "realTranscriptsTest": {
-              "ci95": null,
-              "k": 0,
-              "n": 0,
-              "patterns": 0,
-              "rate": null
+              "ci95": [
+                0.2065,
+                1
+              ],
+              "k": 1,
+              "n": 1,
+              "patterns": 1,
+              "rate": 1
             },
             "test": {
-              "ci95": null,
-              "k": 0,
-              "n": 0,
-              "patterns": 0,
-              "rate": null
+              "ci95": [
+                0.3424,
+                1
+              ],
+              "k": 2,
+              "n": 2,
+              "patterns": 2,
+              "rate": 1
             }
           },
           "marginal": {
             "dev": {
               "ci95": [
-                0.627,
-                0.8156
+                0.6004,
+                0.8004
               ],
-              "k": 60,
-              "n": 82,
-              "patterns": 20,
-              "rate": 0.7317
+              "k": 54,
+              "n": 76,
+              "patterns": 18,
+              "rate": 0.7105
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.3755,
-                0.9638
+                0.3006,
+                0.9544
               ],
-              "k": 4,
-              "n": 5,
-              "patterns": 4,
-              "rate": 0.8
+              "k": 3,
+              "n": 4,
+              "patterns": 3,
+              "rate": 0.75
             },
             "test": {
               "ci95": [
-                0.4551,
-                0.7813
+                0.4241,
+                0.7643
               ],
-              "k": 19,
-              "n": 30,
-              "patterns": 14,
-              "rate": 0.6333
+              "k": 17,
+              "n": 28,
+              "patterns": 12,
+              "rate": 0.6071
             }
           }
         },
         "table": {
+          "arithmetic": 2,
           "bins": [
             {
               "bad": 0,
@@ -5296,41 +5306,41 @@
               "to": 0.1
             },
             {
-              "bad": 16,
+              "bad": 0,
               "from": 0.1,
-              "meanPredicted": 0.1214,
-              "n": 45,
-              "patterns": 6,
+              "meanPredicted": null,
+              "n": 0,
+              "patterns": 0,
               "to": 0.2
             },
             {
               "bad": 0,
               "from": 0.2,
-              "meanPredicted": null,
-              "n": 0,
-              "patterns": 0,
+              "meanPredicted": 0.2667,
+              "n": 4,
+              "patterns": 2,
               "to": 0.3
             },
             {
-              "bad": 2,
+              "bad": 10,
               "from": 0.3,
-              "meanPredicted": 0.3573,
-              "n": 2,
-              "patterns": 1,
+              "meanPredicted": 0.3332,
+              "n": 35,
+              "patterns": 3,
               "to": 0.4
             },
             {
-              "bad": 2,
+              "bad": 10,
               "from": 0.4,
-              "meanPredicted": 0.4366,
-              "n": 3,
-              "patterns": 1,
+              "meanPredicted": 0.4331,
+              "n": 11,
+              "patterns": 3,
               "to": 0.5
             },
             {
               "bad": 1,
               "from": 0.5,
-              "meanPredicted": 0.5331,
+              "meanPredicted": 0.5304,
               "n": 1,
               "patterns": 1,
               "to": 0.6
@@ -5338,40 +5348,41 @@
             {
               "bad": 8,
               "from": 0.6,
-              "meanPredicted": 0.6774,
+              "meanPredicted": 0.651,
               "n": 8,
               "patterns": 1,
               "to": 0.7
             },
             {
-              "bad": 7,
+              "bad": 13,
               "from": 0.7,
-              "meanPredicted": 0.768,
-              "n": 9,
-              "patterns": 3,
+              "meanPredicted": 0.7563,
+              "n": 15,
+              "patterns": 5,
               "to": 0.8
             },
             {
-              "bad": 7,
+              "bad": 4,
               "from": 0.8,
-              "meanPredicted": 0.8331,
-              "n": 7,
-              "patterns": 3,
+              "meanPredicted": 0.8356,
+              "n": 4,
+              "patterns": 2,
               "to": 0.9
             },
             {
-              "bad": 7,
+              "bad": 4,
               "from": 0.9,
-              "meanPredicted": 0.9408,
-              "n": 7,
-              "patterns": 4,
+              "meanPredicted": 0.9316,
+              "n": 4,
+              "patterns": 3,
               "to": 1
             }
           ],
           "compositeVersion": "ed158f72a620",
           "prior": 0.5,
           "priorMode": "per-output",
-          "split": "dev"
+          "split": "dev",
+          "version": "7fa91ece220d"
         }
       },
       "corpusVersion": "451a94a7bc92",
@@ -5442,6 +5453,7 @@
             "rate": 0.5225
           },
           "calibration": {
+            "auc": 0.7628,
             "bins": [
               {
                 "from": 0,
@@ -5560,6 +5572,7 @@
             "rate": 0.4583
           },
           "calibration": {
+            "auc": 0.8889,
             "bins": [
               {
                 "from": 0,
@@ -5678,6 +5691,7 @@
             "rate": 0.3529
           },
           "calibration": {
+            "auc": 0.8729,
             "bins": [
               {
                 "from": 0,
@@ -5796,9 +5810,10 @@
         "priorMode": "per-output",
         "priorModes": {
           "per-class": "π is the prior that each examined class is present, as originally specified; with K classes examined the prior that nothing is wrong is (1 − π)^K",
-          "per-output": "π is the prior that the output is bad; spread over the K examined classes as π_c = 1 − (1 − π)^(1/K)"
+          "per-output": "π is the prior that the output is bad; spread over all K failure classes as π_c = 1 − (1 − π)^(1/K), and a class no detector examined keeps its share (arithmetic 2, from 0.20.0)"
         },
         "risk": "compose() in src/eval/compose.ts, the function every verdict the product gives comes from: gates and vetoes first, then a class-grouped noisy-OR over the published positive predictive values at the stated prior (max within a class; residual miss rate when nothing fired), with 2,000 seeded draws over the Beta posteriors for the interval; measurements and policies never enter the risk",
+        "riskBefore": "the per-output reading as releases before 0.20.0 computed it (arithmetic 1): the prior spread over only the K classes some detector examined, so a class nothing examined dropped out of the estimate",
         "shouldShip": "by construction (any tier-A class present → false) unless a human label overrides; cases with shouldShip null are excluded from accuracy",
         "split": "fnv1a(id + \"iris-composite-split-v1\") % 100 < 70 → dev, else test; never stored",
         "tau": 0.5
@@ -5977,6 +5992,366 @@
             "rate": 0.7748
           },
           "calibration": {
+            "auc": 0.8797,
+            "bins": [
+              {
+                "from": 0,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.1
+              },
+              {
+                "from": 0.1,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.2
+              },
+              {
+                "from": 0.2,
+                "meanPredicted": 0.2667,
+                "n": 4,
+                "observedRate": 0,
+                "to": 0.3
+              },
+              {
+                "from": 0.3,
+                "meanPredicted": 0.3329,
+                "n": 38,
+                "observedRate": 0.2895,
+                "to": 0.4
+              },
+              {
+                "from": 0.4,
+                "meanPredicted": 0.4331,
+                "n": 11,
+                "observedRate": 0.9091,
+                "to": 0.5
+              },
+              {
+                "from": 0.5,
+                "meanPredicted": 0.5304,
+                "n": 1,
+                "observedRate": 1,
+                "to": 0.6
+              },
+              {
+                "from": 0.6,
+                "meanPredicted": 0.6475,
+                "n": 23,
+                "observedRate": 0.9565,
+                "to": 0.7
+              },
+              {
+                "from": 0.7,
+                "meanPredicted": 0.75,
+                "n": 22,
+                "observedRate": 0.9091,
+                "to": 0.8
+              },
+              {
+                "from": 0.8,
+                "meanPredicted": 0.8516,
+                "n": 7,
+                "observedRate": 1,
+                "to": 0.9
+              },
+              {
+                "from": 0.9,
+                "meanPredicted": 0.9366,
+                "n": 5,
+                "observedRate": 1,
+                "to": 1
+              }
+            ],
+            "brier": 0.1587,
+            "ece": 0.1836,
+            "n": 111
+          },
+          "falseBlock": {
+            "ci95": [
+              0.0626,
+              0.2938
+            ],
+            "k": 5,
+            "n": 35,
+            "rate": 0.1429
+          },
+          "missedBlock": {
+            "ci95": [
+              0.1773,
+              0.3718
+            ],
+            "k": 20,
+            "n": 76,
+            "rate": 0.2632
+          },
+          "outcomes": {
+            "mayShip": {
+              "fail": 5,
+              "notChecked": 0,
+              "pass": 30
+            },
+            "mustNotShip": {
+              "fail": 56,
+              "notChecked": 0,
+              "pass": 20
+            }
+          }
+        },
+        "realTranscripts": {
+          "accuracy": {
+            "ci95": [
+              0.5083,
+              0.8509
+            ],
+            "k": 17,
+            "n": 24,
+            "rate": 0.7083
+          },
+          "calibration": {
+            "auc": 0.8565,
+            "bins": [
+              {
+                "from": 0,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.1
+              },
+              {
+                "from": 0.1,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.2
+              },
+              {
+                "from": 0.2,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.3
+              },
+              {
+                "from": 0.3,
+                "meanPredicted": 0.3386,
+                "n": 12,
+                "observedRate": 0.5,
+                "to": 0.4
+              },
+              {
+                "from": 0.4,
+                "meanPredicted": 0.4022,
+                "n": 1,
+                "observedRate": 1,
+                "to": 0.5
+              },
+              {
+                "from": 0.5,
+                "meanPredicted": 0.5304,
+                "n": 1,
+                "observedRate": 1,
+                "to": 0.6
+              },
+              {
+                "from": 0.6,
+                "meanPredicted": 0.6437,
+                "n": 3,
+                "observedRate": 1,
+                "to": 0.7
+              },
+              {
+                "from": 0.7,
+                "meanPredicted": 0.7543,
+                "n": 6,
+                "observedRate": 1,
+                "to": 0.8
+              },
+              {
+                "from": 0.8,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.9
+              },
+              {
+                "from": 0.9,
+                "meanPredicted": 0.9182,
+                "n": 1,
+                "observedRate": 1,
+                "to": 1
+              }
+            ],
+            "brier": 0.1914,
+            "ece": 0.2345,
+            "n": 24
+          },
+          "falseBlock": {
+            "ci95": [
+              0,
+              0.3903
+            ],
+            "k": 0,
+            "n": 6,
+            "rate": 0
+          },
+          "missedBlock": {
+            "ci95": [
+              0.2031,
+              0.6138
+            ],
+            "k": 7,
+            "n": 18,
+            "rate": 0.3889
+          },
+          "outcomes": {
+            "mayShip": {
+              "fail": 0,
+              "notChecked": 0,
+              "pass": 6
+            },
+            "mustNotShip": {
+              "fail": 11,
+              "notChecked": 0,
+              "pass": 7
+            }
+          }
+        },
+        "test": {
+          "accuracy": {
+            "ci95": [
+              0.4791,
+              0.7851
+            ],
+            "k": 22,
+            "n": 34,
+            "rate": 0.6471
+          },
+          "calibration": {
+            "auc": 0.8313,
+            "bins": [
+              {
+                "from": 0,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.1
+              },
+              {
+                "from": 0.1,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.2
+              },
+              {
+                "from": 0.2,
+                "meanPredicted": 0.2528,
+                "n": 1,
+                "observedRate": 0,
+                "to": 0.3
+              },
+              {
+                "from": 0.3,
+                "meanPredicted": 0.3364,
+                "n": 13,
+                "observedRate": 0.4615,
+                "to": 0.4
+              },
+              {
+                "from": 0.4,
+                "meanPredicted": 0.4282,
+                "n": 6,
+                "observedRate": 0.8333,
+                "to": 0.5
+              },
+              {
+                "from": 0.5,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
+                "to": 0.6
+              },
+              {
+                "from": 0.6,
+                "meanPredicted": 0.6495,
+                "n": 3,
+                "observedRate": 1,
+                "to": 0.7
+              },
+              {
+                "from": 0.7,
+                "meanPredicted": 0.7385,
+                "n": 8,
+                "observedRate": 0.875,
+                "to": 0.8
+              },
+              {
+                "from": 0.8,
+                "meanPredicted": 0.8254,
+                "n": 2,
+                "observedRate": 1,
+                "to": 0.9
+              },
+              {
+                "from": 0.9,
+                "meanPredicted": 0.9173,
+                "n": 1,
+                "observedRate": 1,
+                "to": 1
+              }
+            ],
+            "brier": 0.195,
+            "ece": 0.2025,
+            "n": 34
+          },
+          "falseBlock": {
+            "ci95": [
+              0.0179,
+              0.4042
+            ],
+            "k": 1,
+            "n": 10,
+            "rate": 0.1
+          },
+          "missedBlock": {
+            "ci95": [
+              0.2789,
+              0.6493
+            ],
+            "k": 11,
+            "n": 24,
+            "rate": 0.4583
+          },
+          "outcomes": {
+            "mayShip": {
+              "fail": 1,
+              "notChecked": 0,
+              "pass": 9
+            },
+            "mustNotShip": {
+              "fail": 13,
+              "notChecked": 0,
+              "pass": 11
+            }
+          }
+        }
+      },
+      "riskBefore": {
+        "dev": {
+          "accuracy": {
+            "ci95": [
+              0.6886,
+              0.8425
+            ],
+            "k": 86,
+            "n": 111,
+            "rate": 0.7748
+          },
+          "calibration": {
+            "auc": 0.8297,
             "bins": [
               {
                 "from": 0,
@@ -6095,6 +6470,7 @@
             "rate": 0.7083
           },
           "calibration": {
+            "auc": 0.8102,
             "bins": [
               {
                 "from": 0,
@@ -6213,6 +6589,7 @@
             "rate": 0.6471
           },
           "calibration": {
+            "auc": 0.7771,
             "bins": [
               {
                 "from": 0,
@@ -6333,6 +6710,7 @@
             "rate": 0.6847
           },
           "calibration": {
+            "auc": 0.8102,
             "bins": [
               {
                 "from": 0,
@@ -6451,6 +6829,7 @@
             "rate": 0.75
           },
           "calibration": {
+            "auc": 0.8102,
             "bins": [
               {
                 "from": 0,
@@ -6569,6 +6948,7 @@
             "rate": 0.7059
           },
           "calibration": {
+            "auc": 0.6979,
             "bins": [
               {
                 "from": 0,
@@ -6679,7 +7059,7 @@
       },
       "schemaVersion": 1,
       "sweep": {
-        "argmaxUtility": 0.15,
+        "argmaxUtility": 0.4,
         "note": "utility = −(false blocks + c × missed blocks) at c = 1 on the dev split; the argmax is a check on the loss model, never adopted",
         "rows": [
           {
@@ -6701,67 +7081,67 @@
             "utility": -35
           },
           {
-            "accuracy": 0.8018,
-            "fn": 16,
-            "fp": 6,
+            "accuracy": 0.6847,
+            "fn": 0,
+            "fp": 35,
             "tau": 0.15,
-            "tn": 29,
-            "tp": 60,
-            "utility": -22
+            "tn": 0,
+            "tp": 76,
+            "utility": -35
           },
           {
-            "accuracy": 0.8018,
-            "fn": 16,
-            "fp": 6,
+            "accuracy": 0.6847,
+            "fn": 0,
+            "fp": 35,
             "tau": 0.2,
-            "tn": 29,
-            "tp": 60,
-            "utility": -22
+            "tn": 0,
+            "tp": 76,
+            "utility": -35
           },
           {
-            "accuracy": 0.8018,
-            "fn": 16,
-            "fp": 6,
+            "accuracy": 0.6847,
+            "fn": 0,
+            "fp": 35,
             "tau": 0.25,
-            "tn": 29,
-            "tp": 60,
-            "utility": -22
+            "tn": 0,
+            "tp": 76,
+            "utility": -35
           },
           {
-            "accuracy": 0.8018,
-            "fn": 16,
-            "fp": 6,
+            "accuracy": 0.7207,
+            "fn": 0,
+            "fp": 31,
             "tau": 0.3,
-            "tn": 29,
-            "tp": 60,
-            "utility": -22
+            "tn": 4,
+            "tp": 76,
+            "utility": -31
           },
           {
-            "accuracy": 0.8018,
-            "fn": 16,
-            "fp": 6,
+            "accuracy": 0.8468,
+            "fn": 10,
+            "fp": 7,
             "tau": 0.35,
-            "tn": 29,
-            "tp": 60,
-            "utility": -22
+            "tn": 28,
+            "tp": 66,
+            "utility": -17
           },
           {
-            "accuracy": 0.7838,
-            "fn": 18,
+            "accuracy": 0.8559,
+            "fn": 10,
             "fp": 6,
             "tau": 0.4,
             "tn": 29,
-            "tp": 58,
-            "utility": -24
+            "tp": 66,
+            "utility": -16
           },
           {
-            "accuracy": 0.7748,
-            "fn": 20,
-            "fp": 5,
+            "accuracy": 0.8018,
+            "fn": 16,
+            "fp": 6,
             "tau": 0.45,
-            "tn": 30,
-            "tp": 56,
-            "utility": -25
+            "tn": 29,
+            "tp": 60,
+            "utility": -22
           },
           {
             "accuracy": 0.7748,
@@ -6809,49 +7189,49 @@
             "utility": -34
           },
           {
-            "accuracy": 0.6937,
-            "fn": 29,
-            "fp": 5,
+            "accuracy": 0.6577,
+            "fn": 35,
+            "fp": 3,
             "tau": 0.75,
-            "tn": 30,
-            "tp": 47,
-            "utility": -34
+            "tn": 32,
+            "tp": 41,
+            "utility": -38
           },
           {
-            "accuracy": 0.6486,
-            "fn": 36,
+            "accuracy": 0.5946,
+            "fn": 42,
             "fp": 3,
             "tau": 0.8,
             "tn": 32,
-            "tp": 40,
-            "utility": -39
-          },
-          {
-            "accuracy": 0.5856,
-            "fn": 43,
-            "fp": 3,
-            "tau": 0.85,
-            "tn": 32,
-            "tp": 33,
-            "utility": -46
-          },
-          {
-            "accuracy": 0.5856,
-            "fn": 43,
-            "fp": 3,
-            "tau": 0.9,
-            "tn": 32,
-            "tp": 33,
-            "utility": -46
+            "tp": 34,
+            "utility": -45
           },
           {
             "accuracy": 0.5586,
             "fn": 46,
             "fp": 3,
-            "tau": 0.95,
+            "tau": 0.85,
             "tn": 32,
             "tp": 30,
             "utility": -49
+          },
+          {
+            "accuracy": 0.5586,
+            "fn": 46,
+            "fp": 3,
+            "tau": 0.9,
+            "tn": 32,
+            "tp": 30,
+            "utility": -49
+          },
+          {
+            "accuracy": 0.5315,
+            "fn": 49,
+            "fp": 3,
+            "tau": 0.95,
+            "tn": 32,
+            "tp": 27,
+            "utility": -52
           }
         ],
         "shippedTau": 0.5,
@@ -9349,7 +9729,7 @@
       "passed": null,
       "total": 51
     },
-    "totalCombined": 5094,
+    "totalCombined": 5097,
     "vitestDashboard": {
       "failed": 0,
       "passed": 442,
@@ -9357,8 +9737,8 @@
     },
     "vitestRoot": {
       "failed": 0,
-      "passed": 4601,
-      "total": 4601
+      "passed": 4604,
+      "total": 4604
     }
   },
   "version": {
