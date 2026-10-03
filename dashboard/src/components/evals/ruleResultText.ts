@@ -38,6 +38,12 @@ export const SKIP_CLASS_TEXT: Record<NonNullable<EvalRuleResult['skipClass']>, s
   config_invalid: 'Configuration invalid: the rule was configured with a value it cannot use.',
 };
 
+/** What a rule read when the output was JSON (EvalRuleResult.read). */
+export const READ_TEXT: Record<NonNullable<EvalRuleResult['read']>, string> = {
+  values: 'The output was JSON: this rule read what its fields say.',
+  labelled: 'The output was JSON: this rule read what its fields say, each with the name of its field.',
+};
+
 export const CRITICAL_SOURCE_TEXT: Record<'default' | 'config', string> = {
   default: 'Critical by the shipped default: a fail here vetoes the evaluation. Change it under eval.criticalRules.',
   config: 'Critical by your configuration (eval.criticalRules): a fail here vetoes the evaluation.',

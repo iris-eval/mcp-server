@@ -66,9 +66,10 @@ export const keywordOverlap: EvalRule = {
   kind: 'measurement',
   mechanism: 'formula',
   needs: ['output', 'input'],
+  outputView: 'values',
   question: 'relevant',
   classes: ['off_task'],
-  version: 1,
+  version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     if (!context.input) {
       return { ruleName: 'keyword_overlap', passed: false, score: 0, message: 'No input provided', skipped: true, skipReason: 'context.input not provided' };
@@ -132,9 +133,10 @@ export const topicConsistency: EvalRule = {
   kind: 'measurement',
   mechanism: 'formula',
   needs: ['output', 'input'],
+  outputView: 'values',
   question: 'relevant',
   classes: ['off_task'],
-  version: 1,
+  version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     if (!context.input) {
       return { ruleName: 'topic_consistency', passed: false, score: 0, message: 'No input provided', skipped: true, skipReason: 'context.input not provided' };
@@ -306,10 +308,11 @@ export const answersTheAsk: EvalRule = {
   kind: 'policy',
   mechanism: 'formula',
   needs: ['output', 'input'],
+  outputView: 'values',
   thresholdKeys: ['keyword_overlap', 'topic_consistency'],
   question: 'relevant',
   classes: ['off_task'],
-  version: 1,
+  version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     const ko = keywordOverlap.evaluate(context);
     const tc = topicConsistency.evaluate(context);

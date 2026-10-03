@@ -1925,6 +1925,21 @@ A `passed: true` from a server that demoted a rule is not the same claim as a `p
 
 ---
 
+### Structured outputs
+
+An output that is, whole, one JSON object or one JSON array (for example `{"answer": "…", "sources": […]}`) is read by what it says, not by its escaped form. Every built-in rule that reads the output takes one of two readings of it:
+
+| Reading | What the rule reads | Rules |
+|---|---|---|
+| `values` | every string, number and boolean, in the order written, each its own paragraph | `min_output_length`, `non_empty_output`, `sentence_count`, `expected_coverage`, `ask_coverage`, `keyword_overlap`, `topic_consistency`, `answers_the_ask`, `no_stub_output`, `no_hallucination_markers`, `no_silent_tool_failure`, `grounded_in_reads`, `no_injection_compliance` |
+| `labelled` | the same, each with the name of its field in front (`password: …`, `dob: …`) | `no_pii`, `no_blocklist_words`, `no_injection_patterns` |
+
+`null` and blank strings say nothing, so `{"answer": ""}` is an empty answer. A rule result that read a structured output carries `read` (`"values"` or `"labelled"`), and every evidence offset it reports still points into the output as it was sent, so a span can be shown or redacted in the stored text. The injection rule reads one more thing in the labelled reading only: a directive smuggled as a field name (`_assistant_directive`, `instructions_for_the_model`). The same words opening a paragraph of prose are a configuration an agent wrote and do not fire.
+
+What is not read this way: JSON inside a sentence, a fenced code block, a bare JSON string, and an output longer than 512,000 characters are read as written. Custom rules always read the output exactly as sent, so a `regex_match` written against your response format keeps matching it.
+
+---
+
 ## Custom Rules
 
 Pass custom rules via the `custom_rules` array in `evaluate_output` with `eval_type: "custom"`. Each rule needs a `name`, `type`, `config` object, and optional `weight` (default: 1).

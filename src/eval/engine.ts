@@ -15,6 +15,7 @@ import { bundleState, compose, interpretations, roleOf, COMPOSER_RULES, DEFAULT_
 import { inputsPresent, ruleStateOf, stampRuleResult, type PriorInForce } from './stamp.js';
 import type { LocalLabelSource } from './local-labels.js';
 import { toSteps } from './steps.js';
+import { readStructured, spanInOutput, type StructuredOutput } from './text/structured.js';
 import { toolsHash } from './catalogue.js';
 import { buildProvenance, configHash, deriveCoverage, rulesetHash } from './verdict.js';
 import { PUBLISHED_CALIBRATION } from './published-calibration.js';
@@ -598,6 +599,18 @@ export class EvalEngine {
      */
     const evalContext: EvalContext = { ...context, regexBudget: { breaches: 0 }, steps: toSteps(context) };
     /*
+     * An output written as JSON, read as the text it carries (0.20.0). The
+     * built-in text rules used to read a structured answer in its escaped
+     * form: a line break was the two characters `\n` and a field name was a
+     * word the answer had said, so an injection was missed and an empty
+     * answer was not empty. Each rule that reads the output declares which
+     * reading it takes (EvalRule.outputView); custom rules read the output
+     * as sent. Parsed once per evaluation, and only when the output is a
+     * JSON object or array.
+     */
+    const structured = readStructured(context.output);
+    delete evalContext.outputRead;
+    /*
      * The relevance judge, asked once and before any rule (#649). Only when
      * the deployment installed one, answers_the_ask is among the rules this
      * call runs, and the call carries an ask and an answer to compare — so a
@@ -646,7 +659,7 @@ export class EvalEngine {
               skipped: true,
               skipReason: 'this evaluation may not spend (context.allowPaid is not set)',
             }
-          : evaluateGuarded(rule, evalContext);
+          : readingAs(rule, evalContext, structured);
       const ruleId = this.idByRule.get(rule);
       /*
        * The bundle this rule ran under. `categories` is only supplied for
@@ -892,6 +905,38 @@ export class EvalEngine {
     }
     return breakdown;
   }
+}
+
+/**
+ * One rule's result over the output as the rule reads it: as sent, or, for
+ * a structured output and a rule that declares a reading, that reading's
+ * text, with every span the rule reports mapped back onto the output as
+ * sent (a leak detector's offsets are what a redaction cuts).
+ */
+function readingAs(
+  rule: EvalRule,
+  context: EvalContext,
+  structured: StructuredOutput | null,
+  run: (rule: EvalRule, context: EvalContext) => EvalRuleResult = evaluateGuarded,
+): EvalRuleResult {
+  if (structured === null || rule.outputView === undefined) return run(rule, context);
+  const view = structured[rule.outputView];
+  const result = run(rule, { ...context, output: view.text, outputRead: rule.outputView });
+  const evidence = result.evidence?.map((e) => (e.type === 'span' && e.source === 'output' ? { ...e, ...spanInOutput(view, e.start, e.end) } : e));
+  return { ...result, ...(evidence !== undefined ? { evidence } : {}), ...(result.skipped === true ? {} : { read: rule.outputView }) };
+}
+
+/**
+ * One rule over one context, reading the output the way the engine hands it
+ * to that rule. For the proof runner, which measures each rule on its own:
+ * a rule measured on the escaped form of a structured output would publish
+ * the accuracy of a reading the product does not perform. A rule that
+ * throws throws here, so a measurement never counts an error as a skip.
+ */
+export function evaluateRuleAsRead(rule: EvalRule, context: EvalContext): EvalRuleResult {
+  const asSent: EvalContext = { ...context };
+  delete asSent.outputRead;
+  return readingAs(rule, asSent, readStructured(context.output), (r, c) => r.evaluate(c));
 }
 
 /**

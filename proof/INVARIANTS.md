@@ -1,7 +1,7 @@
 # What a verdict does when evidence is taken away, a failure is added, or the output is written another way
 
-Generated 2026-10-02T22:27:54.080Z for v0.19.0 (local generating commit `68887672` — branch commits are squashed on merge, so cite the version).
-Composite version `3765a8bdc492`, 145 labelled cases, the shipped configuration. Reproduce with `npm run proof -- --invariants`; CI runs `npm run proof -- --check --invariants`.
+Generated 2026-10-02T23:49:28.827Z for v0.19.0 (local generating commit `bcbbddb6` — branch commits are squashed on merge, so cite the version).
+Composite version `ed158f72a620`, 145 labelled cases, the shipped configuration. Reproduce with `npm run proof -- --invariants`; CI runs `npm run proof -- --check --invariants`.
 
 ## Sending less, at the shipped configuration
 
@@ -81,24 +81,24 @@ Each row takes every case, adds one more thing wrong with it, and evaluates agai
 
 Each row rewrites the output of every case one way and evaluates again. It counts the verdicts whose state changed and, per rule that can decide a verdict (a gate, a veto, a detection or an inference), the cases where the rule stopped or started firing.
 
-**Spacing and line wrapping are the same text: both rows must be all zeros.** Until 0.20.0 they were not: a phrase typed with two spaces, or cut by a line wrap, was not the phrase the rule knew.
+**Spacing, line wrapping and a JSON envelope say the same thing: these rows must be all zeros.** Until 0.20.0 they were not. A phrase typed with two spaces, or cut by a line wrap, was not the phrase the rule knew; and a structured output was read in its escaped form, so a line break was the two characters `\n` and the name of a field was a word the answer had said.
 
 | Rewriting | Cases it changes | Verdicts: fail → pass | pass → fail | Rules whose answer changed |
 |---|--:|--:|--:|---|
 | every space doubled | 138 | **0** | **0** | none |
 | each line wrapped at 60 columns | 117 | **0** | **0** | none |
+| the output as one string field of a JSON object | 145 | **0** | **0** | none |
 
-**These rewritings are measured and are not held at zero.** Each changes something a rule is right to read, or is a shape of output the text rules do not read yet. The reason is beside each.
+**These rewritings are measured and are not held at zero.** Each changes something a rule is right to read. The reason is beside each.
 
 | Rewriting | Cases it changes | Verdicts: fail → pass | pass → fail | Rules whose answer changed | Why it is not held at zero |
 |---|--:|--:|--:|---|---|
 | straight quotes written as curly quotes | 72 | 1 | 0 | `no_injection_patterns` (stopped 1, started 0) | the one finding lost is a JSON key in a tool payload ("_assistant_directive":), found by its shape; written with curly quotes it is no longer a JSON key, and the phrase patterns do not match the sentence inside it. A gap in the phrase patterns, not in how quotes are read |
 | every line prefixed as a Markdown quote | 145 | 1 | 0 | `no_stub_output` (stopped 0, started 1); `non_empty_output` (stopped 1, started 0) | an empty output becomes a line holding a quote mark, which is no longer empty; and a diff is no longer a diff, so a TODO on a removed line is read as a TODO |
-| the output as one string field of a JSON object | 145 | 3 | 2 | `grounded_in_reads` (stopped 0, started 5); `no_hallucination_markers` (stopped 0, started 2); `no_injection_patterns` (stopped 3, started 1); `no_stub_output` (stopped 0, started 1); `non_empty_output` (stopped 1, started 0) | a structured output is a different shape: the text rules read its escaped form (\n, \") and not its string values, so phrases and line structure are lost and the field name is read as a claim. Reading the string values of a structured output is not built yet |
 | the output in upper case | 142 | 5 | 4 | `grounded_in_reads` (stopped 4, started 0); `no_hallucination_markers` (stopped 0, started 5); `no_pii` (stopped 2, started 0); `no_stub_output` (stopped 1, started 1) | case is part of what two rules are right to read: a seed phrase or a token in another case is not that secret, and a file name in another case is another file. The third change is a fault left as measured: the fabrication rule reads capitalised words as names of metrics, so prose in capitals starts findings |
 | the output in lower case | 141 | 4 | 0 | `grounded_in_reads` (stopped 3, started 0); `no_pii` (stopped 2, started 0); `no_stub_output` (stopped 4, started 0) | a private key block and a file name in another case are not that key or that file, and a placeholder marker is an upper-case word on purpose: "TODO" is a marker and "a todo app" is not |
 
-**Violations: 0 under a contract, 0 rescued, 0 changed by spacing or wrapping.**
+**Violations: 0 under a contract, 0 rescued, 0 changed by spacing, wrapping or a JSON envelope.**
 
 ## What this does not cover
 

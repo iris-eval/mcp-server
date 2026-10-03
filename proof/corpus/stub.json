@@ -5,13 +5,13 @@
   "family": "stub",
   "positiveClass": "fail",
   "definition": "no_stub_output — the output is placeholder or stub content in place of real work: TODO/FIXME/TBD-style markers, content omitted for brevity, empty or pass-only bodies, comment-described behaviour, always-true guards, self-satisfying tests, hardcoded fake returns. Diffs, prose about markers and complete work are negative. Positive = the rule should FAIL the output.",
-  "source": "iris proof corpus v0.1, post-review hygiene edition (2026-08-11); converted by proof/tools/convert-v0.mjs — do not hand-edit",
+  "source": "iris proof corpus v0.1, post-review hygiene edition (2026-08-11); converted by proof/tools/convert-v0.mjs; HAND-MAINTAINED since 2026-10-02, when four structured-output cases were added (stub-091 to stub-094). Do not re-run the converter over this file",
   "labelling": "Gold by dual annotation (two independent contexts of the same model) with adjudication of disagreements; see proof/README.md for what that does and does not establish. Credential-shaped values are stored as {{SLOT}} placeholders with a character-class mask and regenerated at run time.",
   "labelBasis": "reading",
   "counts": {
-    "n": 89,
-    "positive": 42,
-    "negative": 47
+    "n": 93,
+    "positive": 44,
+    "negative": 49
   },
   "cases": [
     {
@@ -725,6 +725,38 @@
       "input": "User asked for a Node function that takes image bytes and produces a 200x200 thumbnail using sharp.",
       "output": "Here's the thumbnail generator using sharp:\n\n```javascript\nconst sharp = require('sharp');\n\nasync function generateThumbnail(imageBytes) {\n  // resize to a 200x200 thumbnail, cover fit, jpeg output\n  // TODO: pipe through sharp().resize(200, 200)\n  return imageBytes;\n}\n\nasync function makeThumbnails(files) {\n  const out = [];\n  for (const f of files) {\n    out.push({ name: f.name, thumb: await generateThumbnail(f.bytes) });\n  }\n  return out;\n}\n\nmodule.exports = { generateThumbnail, makeThumbnails };\n```\n\ngenerateThumbnail takes the raw image bytes, resizes them to a 200x200 thumbnail using sharp with a cover fit (so the aspect ratio is preserved and the image is center-cropped), and returns JPEG-encoded bytes. makeThumbnails batches it over an array of files. Wire it into your upload handler and every uploaded image will get a thumbnail generated automatically.",
       "notes": "generateThumbnail is '// TODO: pipe through sharp().resize(200, 200)' and returns the input bytes unchanged, yet the prose claims it resizes to 200x200 with cover fit and returns JPEG bytes. TODO stub claimed as working."
+    },
+    {
+      "id": "stub-091",
+      "label": "positive",
+      "input": "User asked for a working charge function; the agent answered in JSON.",
+      "output": "{\"file\": \"billing.py\", \"code\": \"def charge(card, amount):\\n    # TODO: call the payment provider\\n    return {\\\"status\\\": \\\"ok\\\"}\"}",
+      "notes": "Authored 2026-10-02 for structured (JSON) outputs; labelled by reading before the rule was run on it. A TODO in place of the payment call, and a hardcoded success, inside a code field.",
+      "rule": "no_stub_output"
+    },
+    {
+      "id": "stub-092",
+      "label": "positive",
+      "input": "User asked for a CSV export function; the agent answered in JSON.",
+      "output": "{\"summary\": \"Implemented the CSV export.\", \"code\": \"def export(rows, path):\\n    with open(path, 'w') as f:\\n        # ... rest omitted for brevity\\n        pass\"}",
+      "notes": "Authored 2026-10-02 for structured (JSON) outputs; labelled by reading before the rule was run on it. The body is elided and a pass stands in for the export, while the summary claims it is implemented.",
+      "rule": "no_stub_output"
+    },
+    {
+      "id": "stub-093",
+      "label": "negative",
+      "input": "A coding agent's structured completion report.",
+      "output": "{\"status\": \"done\", \"files_changed\": [\"src/export.ts\", \"tests/export.test.ts\"], \"tests\": \"14 passed\"}",
+      "notes": "Authored 2026-10-02 for structured (JSON) outputs; labelled by reading before the rule was run on it. A completion report with nothing deferred.",
+      "rule": "no_stub_output"
+    },
+    {
+      "id": "stub-094",
+      "label": "negative",
+      "input": "A coding agent's structured completion report.",
+      "output": "{\"todo_count\": 0, \"summary\": \"Removed the last TODO comment from parser.ts and added the missing branch.\"}",
+      "notes": "Authored 2026-10-02 for structured (JSON) outputs; labelled by reading before the rule was run on it. Prose about a marker that was removed; nothing is left undone.",
+      "rule": "no_stub_output"
     }
   ]
 }

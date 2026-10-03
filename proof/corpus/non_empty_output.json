@@ -4,15 +4,15 @@
   "category": "completeness",
   "family": "nonempty",
   "positiveClass": "fail",
-  "definition": "non_empty_output — the output must not be empty or whitespace-only: pass when output.trim().length > 0. docs/api-reference.md §Completeness Rules. Positive = empty or nothing visible (the rule should FAIL).",
+  "definition": "non_empty_output — the output must not be empty or whitespace-only: pass when output.trim().length > 0. docs/api-reference.md §Completeness Rules. Positive = empty or nothing visible (the rule should FAIL). A structured (JSON object or array) answer is empty when no field carries anything: every string blank and nothing but null or empty containers (added 2026-10-02).",
   "source": "LLM-authored on 2026-09-04. Held out on 2026-09-23: the 6 case(s) copied from, varied from or modelled on the 24 real transcripts in tests/fixtures/real-transcripts (nonempty-024, nonempty-025, nonempty-026, nonempty-027, nonempty-028, nonempty-029) were removed, so no number this family publishes is estimated on a transcript, and the transcript line in proof/TRANSCRIPTS.md and proof/COMPOSITE.md is measured on cases none of these rates were estimated from. 1 replacement case(s), authored the same day and marked in their notes, bring the family back to the 24-case floor the runner enforces.",
-  "labelling": "LLM-authored and LLM-labelled on 2026-09-04 by one question a reader answers by looking: is anything visible? — not by applying trim(), the rule's mechanism. Where the two disagree the label follows the reader and the note says so: a zero-width space is positive because nothing is visible, although trim() does not strip it (nonempty-009).",
+  "labelling": "LLM-authored and LLM-labelled on 2026-09-04 by one question a reader answers by looking: is anything visible? — not by applying trim(), the rule's mechanism. Where the two disagree the label follows the reader and the note says so: a zero-width space is positive because nothing is visible, although trim() does not strip it (nonempty-009). The four structured-output cases (nonempty-031 to nonempty-034) were authored and labelled on 2026-10-02 by the same question applied to what the fields say: a reader of {\"answer\": \"\"} sees braces and quotes and no answer.",
   "labelBasis": "reading",
   "authored": "2026-09-04",
   "counts": {
-    "n": 24,
-    "positive": 12,
-    "negative": 12
+    "n": 28,
+    "positive": 14,
+    "negative": 14
   },
   "cases": [
     {
@@ -182,6 +182,34 @@
       "label": "negative",
       "output": "No results matched the query.",
       "notes": "A short honest negative answer is still an answer. Authored 2026-09-23 to replace the removed real-transcript cases; not derived from any transcript."
+    },
+    {
+      "id": "nonempty-031",
+      "label": "positive",
+      "output": "{\"answer\": \"\"}",
+      "notes": "Authored 2026-10-02 for structured (JSON) outputs; labelled by reading before the rule was run on it. A structured answer whose only field is empty says nothing.",
+      "rule": "non_empty_output"
+    },
+    {
+      "id": "nonempty-032",
+      "label": "positive",
+      "output": "{\"answer\": \"   \", \"sources\": []}",
+      "notes": "Authored 2026-10-02 for structured (JSON) outputs; labelled by reading before the rule was run on it. A blank answer and an empty list: nothing is said.",
+      "rule": "non_empty_output"
+    },
+    {
+      "id": "nonempty-033",
+      "label": "negative",
+      "output": "{\"answer\": \"No results matched the query.\", \"sources\": []}",
+      "notes": "Authored 2026-10-02 for structured (JSON) outputs; labelled by reading before the rule was run on it. A short honest answer in a field; the empty list beside it does not empty it.",
+      "rule": "non_empty_output"
+    },
+    {
+      "id": "nonempty-034",
+      "label": "negative",
+      "output": "{\"approved\": false, \"reason_code\": 4}",
+      "notes": "Authored 2026-10-02 for structured (JSON) outputs; labelled by reading before the rule was run on it. A boolean and a number are an answer from a classification agent.",
+      "rule": "non_empty_output"
     }
   ]
 }

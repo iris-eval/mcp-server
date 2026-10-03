@@ -46,7 +46,7 @@ import { measureTransforms, type TransformResults } from './lib/transforms.js';
 import { loadCustomCorpus, validateCustomCorpusFile, measureCustom, type CustomRow } from './lib/custom-corpus.js';
 import { wilson } from './judge/lib/wilson.js';
 import { measureLatency, type LatencyResults } from './lib/latency.js';
-import { EvalEngine } from '../src/eval/engine.js';
+import { EvalEngine, evaluateRuleAsRead } from '../src/eval/engine.js';
 import { defaultConfig } from '../src/config/defaults.js';
 
 export { contextFor };
@@ -196,7 +196,7 @@ export function measureEntities(file: CorpusFile, rule: EvalRule): EntityRow[] {
   const positives = file.cases.filter((c) => c.label === 'positive' && c.entities && c.entities.length > 0);
   const observed = positives.map((raw) => {
     const c = materialiseCase(raw);
-    const r = rule.evaluate(contextFor(c, file.config));
+    const r = evaluateRuleAsRead(rule, contextFor(c, file.config));
     const fired = !r.skipped && r.passed === false;
     const named = new Set<string>();
     for (const e of r.evidence ?? []) {
@@ -222,11 +222,15 @@ export function registryRules(): EvalRule[] {
   return (['completeness', 'relevance', 'safety', 'cost'] as const).flatMap((t) => rulesByType[t]);
 }
 
-/** Runs one family through its rule and returns the observations, one per case. */
+/**
+ * Runs one family through its rule and returns the observations, one per
+ * case. Each rule reads the output as the engine hands it over: a
+ * structured output in the reading the rule declares.
+ */
 export function observe(file: CorpusFile, rule: EvalRule): Observation[] {
   return file.cases.map((raw) => {
     const c = materialiseCase(raw);
-    const result = rule.evaluate(contextFor(c, file.config));
+    const result = evaluateRuleAsRead(rule, contextFor(c, file.config));
     const skipped = result.skipped === true;
     return {
       id: c.id,
@@ -703,7 +707,7 @@ async function invariants(check: boolean): Promise<void> {
     process.stdout.write(`  ${r.id.padEnd(18)} ${String(r.applied).padStart(3)} rewritten · verdicts changed ${r.verdicts.failToPass.length + r.verdicts.passToFail.length + r.verdicts.other.length} · rule answers changed ${moved}${r.sameText ? '  (held at zero)' : ''}
 `);
   }
-  process.stdout.write(`  under a contract: ${results.violations.contract} passed · rescued by an added failure: ${results.violations.rescued} · changed by spacing or wrapping: ${results.violations.rewritten}
+  process.stdout.write(`  under a contract: ${results.violations.contract} passed · rescued by an added failure: ${results.violations.rescued} · changed by spacing, wrapping or a JSON envelope: ${results.violations.rewritten}
 `);
   if (results.violations.contract > 0 || results.violations.rescued > 0 || results.violations.rewritten > 0) {
     const passed = results.contracts.filter((c) => c.held && c.passed.length > 0).map((c) => `${c.what}, ${c.removal}: ${c.passed.join(', ')}`);
@@ -714,7 +718,7 @@ async function invariants(check: boolean): Promise<void> {
         ...[...r.verdicts.failToPass, ...r.verdicts.passToFail, ...r.verdicts.other].map((id) => `${r.what}: the verdict on ${id} changed`),
         ...Object.entries(r.rules).map(([rule, x]) => `${r.what}: ${rule} stopped on ${x.stopped.join(', ') || 'none'}, started on ${x.started.join(', ') || 'none'}`),
       ]);
-    process.stderr.write(`proof --invariants — FAIL: a verdict passed with evidence left out under a contract, was rescued by an added failure, or changed with the spacing or the wrapping of the same output.
+    process.stderr.write(`proof --invariants — FAIL: a verdict passed with evidence left out under a contract, was rescued by an added failure, or changed with the spacing, the wrapping or the JSON envelope of the same output.
   ${[...passed, ...rescued, ...rewritten].join('\n  ')}
 `);
     process.exit(1);

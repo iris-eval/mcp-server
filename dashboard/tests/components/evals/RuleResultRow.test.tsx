@@ -202,6 +202,14 @@ describe('RuleResultRow: every stamped field has a place', () => {
     expect(container.querySelector('[data-evidence-incomplete]')).not.toBeNull();
   });
 
+  it('a rule that read a JSON output says which reading it took, and a rule over prose says nothing', () => {
+    const { container, unmount } = row({ ...fired, read: 'labelled' });
+    expect(container.querySelector('[data-read]')?.getAttribute('data-read')).toBe('labelled');
+    expect(container.querySelector('[data-read]')?.textContent).toMatch(/JSON.*name of its field/);
+    unmount();
+    expect(row(fired).container.querySelector('[data-read]')).toBeNull();
+  });
+
   it('the definition sits behind one disclosure when the page has the roster', () => {
     const { container } = row(fired, { meta });
     const details = container.querySelector('details[data-definition="no_pii"]');

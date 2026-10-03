@@ -21,6 +21,7 @@ import {
   CRITICAL_SOURCE_TEXT,
   KIND_TEXT,
   PRE_STAMP_TEXT,
+  READ_TEXT,
   ROLE_TEXT,
   SKIP_CLASS_TEXT,
   describeEvidence,
@@ -242,7 +243,7 @@ export function RuleResultRow({ result, meta = null, proof = null, callHref, tex
         )}
       </div>
 
-      {(preStamp || state === 'skipped' || result.evidenceIncomplete || showEvidence || showComputation) && (
+      {(preStamp || state === 'skipped' || result.evidenceIncomplete || result.read !== undefined || showEvidence || showComputation) && (
         <div style={styles.detail}>
           {preStamp && <span data-pre-stamp="true">{PRE_STAMP_TEXT}</span>}
 
@@ -256,6 +257,8 @@ export function RuleResultRow({ result, meta = null, proof = null, callHref, tex
           {result.evidenceIncomplete && (
             <span data-evidence-incomplete="true">Evidence was truncated: the rule read more than it could keep.</span>
           )}
+
+          {result.read !== undefined && <span data-read={result.read}>{READ_TEXT[result.read]}</span>}
 
           {showEvidence && (
             <ul style={styles.evidenceList} aria-label={`Evidence for ${result.ruleName}`}>

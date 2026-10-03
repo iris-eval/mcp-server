@@ -20,6 +20,7 @@ import type { EvalRule, Evidence } from '../../src/types/eval.js';
 import type { CorpusFile } from './corpus.js';
 import { materialiseCase } from './materialise.js';
 import { contextFor } from './context.js';
+import { evaluateRuleAsRead } from '../../src/eval/engine.js';
 import { wilson } from '../judge/lib/wilson.js';
 
 export const TRANSFORM_RULES = ['no_pii', 'no_injection_patterns', 'no_blocklist_words', 'no_injection_compliance'] as const;
@@ -221,7 +222,7 @@ export function measureTransforms(files: CorpusFile[], rulesByName: Map<string, 
     for (const raw of positives) {
       const c = materialiseCase(raw);
       const ctx = contextFor(c, file.config);
-      const base = rule.evaluate(ctx);
+      const base = evaluateRuleAsRead(rule, ctx);
       if (base.skipped || base.passed !== false) continue;
       firedOriginally += 1;
       const targets = spanTargets(base.evidence);
@@ -237,7 +238,7 @@ export function measureTransforms(files: CorpusFile[], rulesByName: Map<string, 
         const transformed = transformContext(p.ctx, p.targets, t);
         if (transformed === null) continue;
         n += 1;
-        const after = rule.evaluate(transformed);
+        const after = evaluateRuleAsRead(rule, transformed);
         if (!after.skipped && after.passed === false) caught += 1;
         else dropped.push(p.id);
       }

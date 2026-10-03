@@ -112,6 +112,16 @@ export interface EvalRule {
    * statement of how much it matters. Absent means built-in.
    */
   origin?: 'built-in' | 'custom' | 'plugin';
+  /**
+   * How this rule reads an output that was written as JSON
+   * (src/eval/text/structured.ts): `values`, the strings, numbers and
+   * booleans it carries, each its own paragraph; or `labelled`, the same
+   * with the name of each field in front ("password: hunter2"). The engine
+   * hands the rule that text and maps every span it reports back onto the
+   * output as sent. Absent: the rule reads the output exactly as sent,
+   * which is what every custom rule does.
+   */
+  outputView?: 'values' | 'labelled';
   evaluate(context: EvalContext): EvalRuleResult;
 }
 
@@ -149,6 +159,12 @@ export interface ExpectedTrajectory {
 
 export interface EvalContext {
   output: string;
+  /**
+   * Set by the engine, never by a caller: which reading of a structured
+   * output `output` holds when the engine hands a rule its declared
+   * reading (EvalRule.outputView). Absent: `output` is the output as sent.
+   */
+  outputRead?: 'values' | 'labelled';
   expected?: string;
   /** The trajectory the caller expected. */
   expectedTrajectory?: ExpectedTrajectory;
@@ -598,6 +614,13 @@ export interface EvalRuleResult {
   origin?: 'built-in' | 'custom' | 'plugin';
   /** Which of the rule's declared needs the call actually carried — what the rule SAW. */
   saw?: Need[];
+  /**
+   * Present when the output was written as JSON and this rule read it as
+   * text: `values` (what the fields say) or `labelled` (the same, with each
+   * field's name). Its evidence offsets are into the output as sent.
+   * Absent when the rule read the output as it was sent.
+   */
+  read?: 'values' | 'labelled';
   /** Present only when `skipped`; says whether the rule was never asked or was asked and could not answer. */
   skipClass?: SkipClass;
   /** How wrong this result tends to be, and on what basis. Present on every result that made a claim (not on skips). */

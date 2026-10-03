@@ -5,7 +5,7 @@
  * are the numbers on https://iris-eval.com/proof, for the release named below.
  */
 
-export const PUBLISHED_ACCURACY_CORPUS_VERSION = '4701065c4b6b';
+export const PUBLISHED_ACCURACY_CORPUS_VERSION = '451a94a7bc92';
 export const PUBLISHED_ACCURACY_RELEASE = '0.19.0';
 export const PUBLISHED_ACCURACY_LABELLING = 'same-model' as const;
 
@@ -16,9 +16,9 @@ export const PUBLISHED_ACCURACY = {
     ci95: { precision: [0.7719, 1], recall: [0.7719, 1], f1: [1, 1] },
   },
   non_empty_output: {
-    n: 24, tp: 10, fp: 0, fn: 2, tn: 12,
-    precision: 1, recall: 0.8333, f1: 0.9091,
-    ci95: { precision: [0.7225, 1], recall: [0.552, 0.953], f1: [0.7368, 1] },
+    n: 28, tp: 12, fp: 0, fn: 2, tn: 14,
+    precision: 1, recall: 0.8571, f1: 0.9231,
+    ci95: { precision: [0.7575, 1], recall: [0.6006, 0.9599], f1: [0.7826, 1] },
   },
   sentence_count: {
     n: 24, tp: 14, fp: 0, fn: 0, tn: 10,
@@ -66,9 +66,9 @@ export const PUBLISHED_ACCURACY = {
     ci95: { precision: [0.6787, 0.9546], recall: [0.8389, 1], f1: [0.8372, 1] },
   },
   no_pii: {
-    n: 93, tp: 40, fp: 5, fn: 5, tn: 43,
-    precision: 0.8889, recall: 0.8889, f1: 0.8889,
-    ci95: { precision: [0.765, 0.9516], recall: [0.765, 0.9516], f1: [0.8125, 0.9495] },
+    n: 101, tp: 44, fp: 5, fn: 5, tn: 47,
+    precision: 0.898, recall: 0.898, f1: 0.898,
+    ci95: { precision: [0.7824, 0.9556], recall: [0.7824, 0.9556], f1: [0.8276, 0.9558] },
   },
   no_blocklist_words: {
     n: 26, tp: 15, fp: 1, fn: 0, tn: 10,
@@ -76,14 +76,14 @@ export const PUBLISHED_ACCURACY = {
     ci95: { precision: [0.7167, 0.9889], recall: [0.7961, 1], f1: [0.8889, 1] },
   },
   no_injection_patterns: {
-    n: 90, tp: 41, fp: 0, fn: 1, tn: 48,
-    precision: 1, recall: 0.9762, f1: 0.988,
-    ci95: { precision: [0.9143, 1], recall: [0.8768, 0.9958], f1: [0.96, 1] },
+    n: 97, tp: 44, fp: 0, fn: 1, tn: 52,
+    precision: 1, recall: 0.9778, f1: 0.9888,
+    ci95: { precision: [0.9197, 1], recall: [0.8843, 0.9961], f1: [0.9623, 1] },
   },
   no_stub_output: {
-    n: 89, tp: 30, fp: 5, fn: 12, tn: 42,
-    precision: 0.8571, recall: 0.7143, f1: 0.7792,
-    ci95: { precision: [0.7062, 0.9374], recall: [0.5643, 0.8283], f1: [0.6667, 0.8736] },
+    n: 93, tp: 32, fp: 5, fn: 12, tn: 44,
+    precision: 0.8649, recall: 0.7273, f1: 0.7901,
+    ci95: { precision: [0.7202, 0.9409], recall: [0.5815, 0.8365], f1: [0.6849, 0.8817] },
   },
   no_hallucination_markers: {
     n: 90, tp: 34, fp: 0, fn: 12, tn: 44,

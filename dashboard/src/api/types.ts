@@ -133,6 +133,8 @@ export interface EvalRuleResult {
   classes?: string[];
   ruleVersion?: number;
   saw?: string[];
+  /** When the output was a JSON object or array: which reading of it the rule judged. Evidence offsets still point into the output as sent. */
+  read?: 'values' | 'labelled';
   skipClass?: 'not_applicable' | 'defeated' | 'config_invalid';
   /** On a rule that skipped for missing evidence: the inputs it reads that the call did not carry. */
   lacked?: string[];
