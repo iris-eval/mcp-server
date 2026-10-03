@@ -1,5 +1,6 @@
-// Stop — the turn ended: assemble the trace, write it to a file, and detach
-// the ingest runner so the user's turn never waits on the evaluation.
+// Stop and StopFailure — a turn ended: assemble what it has not sent, write
+// it to a file, and detach the ingest runner so the user's turn never waits on
+// the evaluation.
 //
 // Why a file and a runner, not a pipe (0.13.0 → 0.13.1 of this plugin): the
 // first version spawned `npx … ingest` itself, detached, with the trace on a
@@ -9,65 +10,42 @@
 // passed only when the hook was made to wait. A detached child must own
 // nothing of the process that spawned it: the payload lives in a file, and
 // hooks/ingest-runner.mjs is started with every stdio ignored.
-import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { IRIS_TOOL, clearSession, dataDir, here, log, readSession, readStdin } from './common.mjs';
-
-function assemble(input, session) {
-  const calls = Array.isArray(session.tool_calls) ? session.tool_calls : [];
-  // The hook and the model must not both log one turn: if the model already
-  // called log_trace this turn, the trace exists and this hook does nothing.
-  if (calls.some((c) => IRIS_TOOL.exec(c.tool_name)?.[1] === 'log_trace')) return { skipped: 'the model logged this turn itself' };
-  // Iris evaluating its own calls to itself is not the trajectory anyone
-  // wants judged.
-  const tool_calls = calls.filter((c) => !IRIS_TOOL.test(c.tool_name));
-  const output = typeof input.last_assistant_message === 'string' ? input.last_assistant_message : undefined;
-  if (!output && tool_calls.length === 0) return { skipped: 'nothing to record' };
-  return {
-    trace: {
-      agent_name: 'claude-code',
-      framework: 'claude-code',
-      ...(session.prompt !== undefined ? { input: session.prompt } : {}),
-      ...(output !== undefined ? { output } : {}),
-      ...(tool_calls.length > 0 ? { tool_calls } : {}),
-      run: String(input.session_id ?? session.session_id ?? 'unknown'),
-      metadata: { session_id: input.session_id, cwd: input.cwd ?? session.cwd, captured_by: 'iris-eval-capture' },
-      timestamp: new Date().toISOString(),
-    },
-  };
-}
+//
+// Three kinds of end:
+//   - Stop: the answer, and the calls it can be judged against.
+//   - Stop again for the same prompt: a Stop hook (such as /goal) kept the turn
+//     going. The calls since the first end go as the turn's next part, with the
+//     answer it ended on this time; every part carries the prompt's id.
+//   - StopFailure: an API error (a rate limit, an overloaded model, a failed
+//     credential) ended the turn. Its calls are recorded with the error; there
+//     is no answer, so the part is stored without being judged, rather than
+//     judged on the error text.
+// The turn's files stay until the next prompt, so a later part can still find
+// what was sent before it.
+import { assemble, log, markSent, readStdin, readTurn, retryable, send, sweep, turnKeyOf } from './common.mjs';
 
 try {
   const input = await readStdin();
-  const session = readSession(input.session_id);
-  const built = assemble(input, session);
-  clearSession(input.session_id);
+  const key = turnKeyOf(input);
+  const { header, calls, sent } = readTurn(input.session_id, key);
+  const how = input.hook_event_name === 'StopFailure' ? 'failed' : sent.stopped || input.stop_hook_active === true ? 'continued' : 'answered';
+  const output = typeof input.last_assistant_message === 'string' ? input.last_assistant_message : undefined;
+  const built = assemble({ sessionId: input.session_id, key, header, calls, sent, how, output, input });
   if (process.env.IRIS_CAPTURE_DRY_RUN === '1') {
-    // The test seam: print what would be sent, send nothing.
-    process.stdout.write(JSON.stringify(built) + '\n');
-    process.exit(0);
-  }
-  if (built.skipped) {
-    log(`stop hook: skipped — ${built.skipped}`);
-    process.exit(0);
-  }
-  // The payload goes to a file under the plugin's data directory; the runner
-  // removes it once the ingest has stored the turn, and leaves it in place
-  // when it could not (the evidence, and the retry).
-  const pending = join(dataDir(), 'pending');
-  mkdirSync(pending, { recursive: true });
-  const file = join(pending, `${Date.now()}-${process.pid}.json`);
-  writeFileSync(file, JSON.stringify(built.trace));
-  const runner = join(here, 'ingest-runner.mjs');
-  if (process.env.IRIS_CAPTURE_WAIT === '1') {
-    // Tests (and a host that reaps detached children) wait for the outcome.
-    const r = spawnSync(process.execPath, [runner, file], { stdio: 'ignore', windowsHide: true });
-    if (r.status !== 0) log(`stop hook: the ingest runner exited ${r.status ?? r.error?.message ?? '?'}`);
+    // The test seam: print what would be sent, send nothing. The process ends
+    // when the write has drained: on a pipe, POSIX stdout is asynchronous, and
+    // an exit right after a large write cuts it off.
+    if (built) markSent(input.session_id, key, built.sentAfter);
+    process.stdout.write(JSON.stringify(built ? { trace: built.trace, evaluate: built.evaluate } : { skipped: 'nothing to record' }) + '\n');
   } else {
-    // Fire and forget: no pipe, no shell, nothing of this process for the
-    // runner to lose when it exits a moment from now.
-    spawn(process.execPath, [runner, file], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+    sweep({ sessionId: input.session_id });
+    if (!built) {
+      log('stop hook: skipped — nothing to record');
+    } else {
+      markSent(input.session_id, key, built.sentAfter);
+      // Turns an earlier runner could not ingest ride along, a few at a time.
+      send(built, retryable());
+    }
   }
 } catch (err) {
   log(`stop hook: ${err instanceof Error ? err.message : String(err)}`);
