@@ -16,28 +16,31 @@
  * This rule reads the shape of a non-answer against what the ask asked for.
  * It fires only where a short correct answer cannot have that shape, which
  * is why most shapes need an ask that asks for something WRITTEN (write,
- * draft, summarise, explain, describe, list, translate, rewrite …): a
- * question can be answered by "OK", "null", "===" or "Done.", and an ask to
- * act can be answered by a report that it was done.
+ * draft, summarise, explain, describe, list, translate, rewrite …), or an
+ * ask to ACT (an action verb leads it) on a call that says no tool was
+ * called: a question can be answered by "OK", "null", "===" or "Done.", an
+ * ask to confirm by "OK", and an ask to act by a report that it was done.
  *
  *   promise       the whole output promises the work instead of doing it
  *                 ("Sure!", "Will do!", "Working on it.") — to an ask for
- *                 something written or a wh-question, when the call records
- *                 no tool call that could have done the work elsewhere
- *   completion    the whole output says the work is done ("Done.", "Fixed.",
- *                 "The task has been completed successfully.") — to an ask
- *                 for something written, when the call says no tool was
- *                 called (`tool_calls: []`); with no list sent, the work may
- *                 be in a file, and the rule does not guess
+ *                 something written or a wh-question when the call records
+ *                 no tool call that could have done the work elsewhere, or
+ *                 to an ask to act when it says no tool was called
+ *   completion    the whole output says the work is done ("Done.", "OK",
+ *                 "Fixed.", "The task has been completed successfully.") —
+ *                 to an ask to write or to act, when the call says no tool
+ *                 was called (`tool_calls: []`); with no list sent, the work
+ *                 may be in a file, and the rule does not guess
  *   lead-in       the whole output announces content that is not there:
  *                 it ends on a colon ("Here is the summary:"), or, to an ask
  *                 for something written with no tool call recorded, it
  *                 says "here is …" and stops
  *   placeholder   the whole output is a serialisation artefact ("null",
- *                 "undefined", "NaN", "[object Object]"), only punctuation,
- *                 or lorem-ipsum filler — to an ask for something written
- *                 (lorem ipsum also to a wh-question), unless the ask asks
- *                 for filler
+ *                 "undefined", "NaN", "[object Object]"), a template's slot
+ *                 ("{{answer}}"), no word or number at all, or lorem-ipsum
+ *                 filler — to an ask for something written, or to an ask to
+ *                 act when the call says no tool was called (lorem ipsum
+ *                 also to a wh-question), unless the ask asks for filler
  *   echo          the output is the ask handed back: nothing in it the ask
  *                 does not say, apart from a few framing words, to an ask
  *                 for something written or a question, unless the ask says
@@ -59,6 +62,7 @@
  */
 import type { EvalContext, EvalRule, EvalRuleResult, Evidence } from '../../types/eval.js';
 import { contentTerms } from '../terms.js';
+import { ASK_VERBS } from '../text/asks.js';
 import { MIN_ASK_TERMS_TO_JUDGE } from './relevance.js';
 
 /** The longest output read as a bare promise, completion claim, lead-in or placeholder, in words. */
@@ -79,6 +83,8 @@ const WRITE_VERBS = new Set([
 /** What may come before the verb: "Please write", "Can you summarise", "Now draft". */
 const ASK_PREFIX = new Set(['please', 'kindly', 'now', 'also', 'then', 'and', 'can', 'could', 'would', 'will', 'you', 'pls', 'plz']);
 const WH_WORDS = new Set(['what', 'which', 'who', 'whom', 'whose', 'when', 'where', 'why', 'how']);
+/** An ask led by one of these asks for an acknowledgement, and "OK" or "Done." answers it. */
+const ACKNOWLEDGE_VERBS = new Set(['acknowledge', 'confirm', 'reply', 'respond', 'say']);
 /** A question that opens with one of these asks yes or no, with or without its question mark. */
 const AUX_WORDS = new Set(['is', 'are', 'was', 'were', 'am', 'do', 'does', 'did', 'has', 'have', 'had', 'should', 'shall', 'may', 'might', 'must', 'isn', 'aren', 'didn', 'doesn']);
 
@@ -98,8 +104,8 @@ const COMPLETION_WORDS = new Set([
   'task', 'tasks', 'request', 'job', 'work', 'everything', 'it', "it's", 'its', 'this', 'that', 'the', 'your', 'my', 'as', 'requested', 'asked',
   'has', 'have', 'had', 'been', 'is', 'was', 'are', 'i', "i've", 'ive', 'we', "we've", 'now', 'just', 'fully', 'there', 'you', 'go', 'and',
 ]);
-/** Each completion claim names one of these. */
-const COMPLETION_MARKS = ['done', 'complete', 'completed', 'finished', 'success', 'successful', 'successfully', 'succeeded', 'fixed', 'applied', 'made', 'processed', 'handled', 'care'];
+/** Each completion claim names one of these; "OK" alone is one too, to an ask that did not ask for an acknowledgement. */
+const COMPLETION_MARKS = ['done', 'complete', 'completed', 'finished', 'success', 'successful', 'successfully', 'succeeded', 'fixed', 'applied', 'made', 'processed', 'handled', 'care', 'ok', 'okay'];
 /** Serialisation artefacts: what a program prints when it has nothing to print. "None." and "N/A" are English answers and are not here. */
 const ARTEFACTS = new Set(['null', 'undefined', 'nan', 'nil', '[object object]', '<empty>', '<none>', '(empty)', '(none)']);
 /** A template's slot left unfilled: "{{answer}}", "<summary>", "{response}". Bounded, so it cannot backtrack. */
@@ -154,6 +160,8 @@ function askHead(ask: string): string {
 interface AskKind {
   /** Something written: the output is the work. */
   write: boolean;
+  /** Something to be done ("Rename …", "Deploy …", "Run …"): an action verb leads it. */
+  act: boolean;
   /** A wh-question: the answer is content. */
   wh: boolean;
   /** Any question, with or without its question mark. */
@@ -165,7 +173,9 @@ function askKindOf(ask: string): AskKind {
   // "Can you write the summary?" asks for something written, question mark or not.
   const write = WRITE_VERBS.has(head);
   const question = !write && (ask.includes('?') || WH_WORDS.has(head) || AUX_WORDS.has(head));
-  return { write, wh: WH_WORDS.has(head), question };
+  // An action: "Remember …" and "Keep …" are instructions to hold, not work, and an ask to confirm is answered by "OK".
+  const act = !write && !question && ASK_VERBS.has(head) && !ACKNOWLEDGE_VERBS.has(head);
+  return { write, act, wh: WH_WORDS.has(head), question };
 }
 
 /** Every word of the output is in `vocabulary`, it names one of `marks`, and it is short. */
@@ -179,16 +189,17 @@ function askNamesAll(ask: string, words: readonly string[]): boolean {
   return words.every((w) => asked.has(w) || !COMPLETION_MARKS.concat(PROMISE_MARKS).includes(w));
 }
 
-function placeholderOf(output: string, ask: string, kind: AskKind): string | null {
+function placeholderOf(output: string, ask: string, kind: AskKind, noToolCalls: boolean): string | null {
   const bare = trimChars(output, '"\'`()[]{}<>.!?;,').toLowerCase();
-  if (kind.write) {
+  // To an ask for something written; to an ask to act, when the call says no tool was called: nothing was done, and nothing was said.
+  if (kind.write || (kind.act && noToolCalls)) {
     if (!/[\p{L}\p{N}]/u.test(output)) return 'no word or number at all';
     const artefact = ARTEFACTS.has(trimChars(output, '"\'`.!?;,').toLowerCase()) ? trimChars(output, '"\'`.!?;,') : ARTEFACTS.has(bare) ? bare : null;
     if (artefact !== null) return `"${artefact}", a value a program prints when it has nothing to print`;
     const slot = trimChars(output, '"\'`');
     if (slot.length <= 48 && TEMPLATE_SLOT.test(slot)) return `"${slot}", a template's slot left unfilled`;
   }
-  if (kind.write || kind.wh) {
+  if (kind.write || kind.wh || (kind.act && noToolCalls)) {
     const words = wordsOf(output);
     const askLower = plainQuotes(ask).toLowerCase();
     if (words.includes('lorem') && words.includes('ipsum') && !FILLER_ASK.some((w) => askLower.includes(w))) {
@@ -354,7 +365,7 @@ export interface NonAnswer {
  */
 export function nonAnswerOf(output: string, ask: string, toolCalls: readonly unknown[] | undefined, structured = false): NonAnswer | null {
   const hasAsk = ask.trim().length > 0 && new Set(contentTerms(ask)).size >= MIN_ASK_TERMS_TO_JUDGE;
-  const kind: AskKind = hasAsk ? askKindOf(ask) : { write: false, wh: false, question: false };
+  const kind: AskKind = hasAsk ? askKindOf(ask) : { write: false, act: false, wh: false, question: false };
   const noToolCalls = Array.isArray(toolCalls) && toolCalls.length === 0;
   const workRecorded = Array.isArray(toolCalls) && toolCalls.length > 0;
   const said = trimChars(output, '').slice(0, 60);
@@ -364,14 +375,14 @@ export function nonAnswerOf(output: string, ask: string, toolCalls: readonly unk
   if (lead !== null) return { shape: 'lead-in', message: `The output announces an answer and gives none: ${lead}`, whole: true };
 
   if (hasAsk) {
-    const placeholder = placeholderOf(output, ask, kind);
+    const placeholder = placeholderOf(output, ask, kind, noToolCalls);
     if (placeholder !== null) return { shape: 'placeholder', message: `The output says nothing: it is ${placeholder}`, whole: true };
 
-    if ((kind.write || kind.wh) && !workRecorded && madeOf(words, PROMISE_WORDS, PROMISE_MARKS) && !askNamesAll(ask, words)) {
+    if ((kind.write || kind.wh || (kind.act && noToolCalls)) && !workRecorded && madeOf(words, PROMISE_WORDS, PROMISE_MARKS) && !askNamesAll(ask, words)) {
       return { shape: 'promise', message: `The output promises the work ("${said}") and does not do it, and the call records no tool call that did it elsewhere`, whole: true };
     }
     // A claim of completion, when the call says no tool was called: an ask for something written got nothing, and an ask to act was not acted on.
-    if (!kind.question && noToolCalls && madeOf(words, COMPLETION_WORDS, COMPLETION_MARKS) && !askNamesAll(ask, words)) {
+    if ((kind.write || kind.act) && noToolCalls && madeOf(words, COMPLETION_WORDS, COMPLETION_MARKS) && !askNamesAll(ask, words)) {
       const what = kind.write ? 'the ask asked for something written, and none was written' : 'the ask asked for something to be done, and nothing could have done it';
       return { shape: 'completion', message: `The output only says the work is done ("${said}"); the call says no tool was called, so ${what}`, whole: true };
     }
@@ -391,7 +402,7 @@ export const SAYS_SOMETHING_PASS = 'The output says something: it is not a promi
 export const saysSomething: EvalRule = {
   name: 'says_something',
   description:
-    'Fails an answer that says nothing, read against what the ask asked for. To an ask for something written (write, draft, summarise, explain, list …): a promise in place of the work ("Sure!", "Will do!") when no tool call is recorded, a bare "Done." when the call says no tool was called, a placeholder ("null", "…", lorem ipsum), or a "here is …" with nothing after it. To any ask: an output that ends on a colon with nothing after it, the ask handed back, or one passage repeated ten times or more as most of the output. A question answered "OK", "null" or "Done.", an action reported done, and a refusal pass: each can be a correct answer. Skips an empty output, which non_empty_output judges',
+    'Fails an answer that says nothing, read against what the ask asked for. To an ask for something written (write, draft, summarise, explain, list …): a promise in place of the work ("Sure!", "Will do!") when no tool call is recorded, a placeholder ("null", "…", lorem ipsum), or a "here is …" with nothing after it. To an ask to write or to act, when the call says no tool was called (tool_calls: []): a bare "Done." or "OK", a promise, or a placeholder. To any ask: an output that ends on a colon with nothing after it, the ask handed back (to an ask to write or a question), or one passage repeated ten times or more as most of the output. A question answered "OK", "null" or "Done.", an ask to confirm answered "OK", an action reported done when the call does not say no tool ran, and a refusal pass: each can be a correct answer. Skips an empty output, which non_empty_output judges',
   evalType: 'completeness',
   weight: 2,
   kind: 'detection',

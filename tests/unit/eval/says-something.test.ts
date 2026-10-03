@@ -80,6 +80,22 @@ describe('a bare claim of completion', () => {
     }
   });
 
+  it('reads an ask to act by its verb: an instruction to keep, or an ask to confirm, is answered by "OK" or "Done."', () => {
+    expect(shape({ output: 'OK', input: RENAME, toolCalls: [] })).toBe('completion');
+    expect(shape({ output: 'Done.', input: 'Tell me the capital of France.', toolCalls: [] })).toBe('completion');
+    expect(fires({ output: 'Done.', input: 'Remember that my preferred language is TypeScript.', toolCalls: [] })).toBe(false);
+    expect(fires({ output: 'OK', input: 'Confirm you received the invoice for order 4471.', toolCalls: [] })).toBe(false);
+    expect(fires({ output: 'Done.', input: 'Acknowledge the incident in the on-call channel.', toolCalls: [] })).toBe(false);
+  });
+
+  it('fails a promise or a placeholder in place of an action when the call says no tool was called', () => {
+    for (const output of ['Will do!', '…', 'null', 'lorem ipsum dolor sit amet']) {
+      expect(fires({ output, input: RENAME, toolCalls: [] }), output).toBe(true);
+      expect(fires({ output, input: RENAME }), `${output}, no list sent`).toBe(false);
+      expect(fires({ output, input: RENAME, toolCalls: [{ tool_name: 'edit_file', output: 'ok' }] }), `${output}, a tool ran`).toBe(false);
+    }
+  });
+
   it('is only a claim: a report that says what happened is not one', () => {
     expect(fires({ output: 'Done — written to RELEASE_NOTES.md.', input: 'Write the release notes to RELEASE_NOTES.md.', toolCalls: [] })).toBe(false);
     expect(fires({ output: 'OK, restarted; it came back healthy in 4 seconds.', input: 'Restart the worker.', toolCalls: [] })).toBe(false);

@@ -94,7 +94,7 @@ const SERVER_TEXT_FILES: Array<[string, string[]]> = [
    * says_something, copied whole so the playground fails the same
    * non-answers the server does.
    */
-  ['src/eval/rules/says-something.ts', ['BARE_ANSWER_MAX_WORDS', 'REPEAT_MIN_COUNT', 'REPEAT_MIN_SHARE', 'REPEAT_SCAN_CHARS', 'ARTEFACT', 'LOREM', 'LOREM_WORDS', 'ACK_WORDS', 'INFORMATION_ASK', 'YES_NO_QUESTION', 'AI_DISCLAIMER', 'CAPABILITY_REFUSAL', 'wordsOf', 'placeholderOf', 'isBareAcknowledgement', 'isBareRefusal', 'plain', 'isAskHandedBack', 'askNamesBlocklisted', 'repetitionOf', 'nonAnswerOf', 'SAYS_SOMETHING_PASS']],
+  ['src/eval/rules/says-something.ts', ['BARE_ANSWER_MAX_WORDS', 'LOOP_MIN_COUNT', 'LOOP_MIN_SHARE', 'LOOP_SCAN_CHARS', 'ECHO_MIN_ASK_WORDS', 'WRITE_VERBS', 'ASK_PREFIX', 'WH_WORDS', 'ACKNOWLEDGE_VERBS', 'AUX_WORDS', 'PROMISE_WORDS', 'PROMISE_MARKS', 'COMPLETION_WORDS', 'COMPLETION_MARKS', 'ARTEFACTS', 'TEMPLATE_SLOT', 'LOREM_WORDS', 'FILLER_ASK', 'ECHO_FRAME', 'ECHO_ASK', 'plainQuotes', 'wordsOf', 'isSpace', 'trimChars', 'askHead', 'askKindOf', 'madeOf', 'askNamesAll', 'placeholderOf', 'leadInOf', 'isAskHandedBack', 'codeFree', 'collapsed', 'shortestPeriod', 'loopOf', 'nonAnswerOf', 'SAYS_SOMETHING_PASS']],
   /*
    * ask_coverage is the one act-layer rule that RUNS in the playground —
    * it reads only the input and the output — so its whole module is
@@ -345,18 +345,28 @@ const FIXED_CASES: Array<{ name: string; ctx: EvalContext; expect: Record<string
    * leave a short right answer alone.
    */
   {
-    name: 'an acknowledgement in place of the list that was asked for says nothing',
-    ctx: { output: 'Done.', input: 'List the three biggest risks in the Q3 plan.' },
+    name: 'a promise in place of the list that was asked for says nothing',
+    ctx: { output: 'Will do!', input: 'List the three biggest risks in the Q3 plan.' },
     expect: { says_something: 'fail' },
   },
   {
-    name: 'a refusal of an ordinary writing task says nothing',
+    name: 'an announcement with nothing after it says nothing',
+    ctx: { output: 'Here are the release notes:', input: 'Write the release notes for version 2.3.' },
+    expect: { says_something: 'fail' },
+  },
+  {
+    name: 'a structured promise is read by its values and says nothing',
+    ctx: { output: '{"answer": "Will do!"}', input: 'Write the release notes for version 2.3.' },
+    expect: { says_something: 'fail' },
+  },
+  {
+    name: 'a refusal is an answer',
     ctx: { output: "I can't help with that.", input: 'Write the release notes for version 2.3.' },
-    expect: { says_something: 'fail' },
+    expect: { says_something: 'pass' },
   },
   {
-    name: 'a one-word right answer says something',
-    ctx: { output: 'Paris.', input: 'What is the capital of France?' },
+    name: 'a one-word right answer says something, and so does "OK" as the reason phrase of 200',
+    ctx: { output: 'OK', input: 'What is the reason phrase for HTTP status code 200?' },
     expect: { says_something: 'pass' },
   },
   {
