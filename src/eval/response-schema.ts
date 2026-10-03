@@ -97,7 +97,14 @@ export const measuredValueSchema = z.looseObject({ stat: z.string(), unit: z.str
 export const claimKindSchema = z.enum(['measurement', 'detection', 'inference', 'judgment', 'policy', 'verification']);
 export const roleSchema = z.enum(['gate', 'veto', 'risk', 'advisory']);
 export const skipClassSchema = z.enum(['not_applicable', 'defeated', 'config_invalid']);
-export const needSchema = z.enum(['output', 'input', 'expected', 'tool_calls', 'tool_outputs', 'tools_catalogue', 'cost', 'tokens', 'citations']);
+/*
+ * Every input a rule can read (types/eval.ts, Need). `expected_trajectory`
+ * was missing until 0.20.0: tool_sequence and step_budget read it, it was
+ * stamped into `saw`, and every evaluate_output call that sent an expected
+ * trajectory with the default bundle failed its own output schema with
+ * IRIS_INTERNAL_ERROR. A test now holds the two lists equal.
+ */
+export const needSchema = z.enum(['output', 'input', 'expected', 'expected_trajectory', 'tool_calls', 'tool_outputs', 'tools_catalogue', 'cost', 'tokens', 'citations']);
 export const questionIdSchema = z.enum(['safe_output', 'grounded', 'complete', 'relevant', 'task_completed', 'tool_use_correct', 'within_budget']);
 
 export const evalRuleResultSchema = z.looseObject({

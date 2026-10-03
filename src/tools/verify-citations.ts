@@ -10,6 +10,7 @@ import { JUDGE_KEY_VARS } from '../judge-enablement.js';
 import { strictInput } from './strict-input.js';
 import { assertTraceExists, insertLinkedEvalResult } from './trace-link.js';
 import { besideNote } from '../eval/of-record.js';
+import { evidenceOf } from '../eval/evidence.js';
 import type { EvalEngine } from '../eval/engine.js';
 import { verdictSchema } from '../eval/response-schema.js';
 import { inferProvider, resolveApiKey } from './evaluate-with-llm-judge.js';
@@ -242,7 +243,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
         rules_skipped: 0,
         insufficient_data: result.overallScore === null,
         eval_cost_usd: result.totalCostUsd,
-      });
+      }, evidenceOf({ output: args.output, recordedBy: 'agent' }));
       /*
        * The one sentence the fields do not already carry: a citation check
        * that judged nothing is not a pass, and a caller who reads only

@@ -10,7 +10,7 @@
  */
 import { afterEach, describe, expect, it } from 'vitest';
 import { EvalEngine } from '../../../src/eval/engine.js';
-import { compose, DEFAULT_COMPOSE } from '../../../src/eval/compose.js';
+import { compose, DEFAULT_COMPOSE, verdictPath } from '../../../src/eval/compose.js';
 import { brokenOf, canonicalCapture, evidenceOf, recordOfTrace } from '../../../src/eval/evidence.js';
 import { inputsPresent } from '../../../src/eval/stamp.js';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
@@ -59,11 +59,44 @@ describe('an empty list of tool calls', () => {
     }
   });
 
-  it('is the same statement when an OpenTelemetry capture source sent spans with no TOOL span among them', async () => {
+  it('only an explicit list says none: spans with no TOOL span among them are not an observation, since a tool span Iris does not read is not a TOOL span', async () => {
     const spans = [{ span_id: 's1', trace_id: 't1', name: 'chat', kind: 'LLM' as const, status_code: 'OK' as const, start_time: '2026-10-03T00:00:00.000Z' }];
-    const r = await requiresCalls.evaluateAll(harness({ spans }, { name: 'otel-agent', complete: ['tool_calls'] }));
-    expect(r.verdict).toMatchObject({ state: 'pass' });
-    expect(r.provenance!.evidence).toMatchObject({ carried: expect.arrayContaining(['tool_calls']), toolCalls: 0 });
+    const r = await requiresCalls.evaluateAll(harness({ spans }, { name: 'span-source', complete: ['tool_calls'] }));
+    expect(r.verdict).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['tool_calls'] });
+    expect(r.provenance!.evidence!.carried).not.toContain('tool_calls');
+  });
+
+  it('carries the tool outputs too: with no call made, no result is missing, whatever else the source declared', async () => {
+    const r = await engine({ requiredEvidence: ['tool_outputs'] }).evaluateAll(harness({ toolCalls: [] }, { name: 'calls-only', complete: ['tool_calls'] }));
+    expect(r.verdict!.state).toBe('pass');
+    expect(r.provenance!.evidence!.carried).toEqual(expect.arrayContaining(['tool_calls', 'tool_outputs']));
+  });
+});
+
+describe('every call the record carries, past the first 500 the trajectory rules read', () => {
+  const calls = (n: number, missing: number) =>
+    Array.from({ length: n }, (_, i) => (i === missing ? { tool_name: 'read', input: { i } } : { tool_name: 'read', input: { i }, output: `line ${i}` }));
+
+  it('a call past the 500th with no result is a hole, and the count is every call', async () => {
+    for (const missing of [3, 549]) {
+      const r = await shipped.evaluateAll(harness({ toolCalls: calls(600, missing) }));
+      expect(r.verdict, `call ${missing + 1}`).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['tool_outputs'] });
+      expect(r.provenance!.evidence!.toolCalls).toBe(600);
+    }
+    expect((await shipped.evaluateAll(harness({ toolCalls: calls(600, -1) }))).provenance!.evidence).toMatchObject({ toolCalls: 600, carried: expect.arrayContaining(['tool_outputs']) });
+  });
+});
+
+describe('a blank is not sent', () => {
+  it('a blank expected answer, or an expectation no trajectory rule can use, does not meet a requirement for one', async () => {
+    const r = await engine({ requiredEvidence: ['expected'] }).evaluateAll({ ...ASK, expected: '   ' });
+    expect(r.verdict).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['expected'] });
+    for (const expectedTrajectory of [{}, { tool_calls: [] }, { step_budget: 0 }]) {
+      const t = await engine({ requiredEvidence: ['expected_trajectory'] }).evaluateAll({ ...ASK, toolCalls: [], expectedTrajectory });
+      expect(t.verdict, JSON.stringify(expectedTrajectory)).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['expected_trajectory'] });
+    }
+    const used = await engine({ requiredEvidence: ['expected_trajectory'] }).evaluateAll({ ...ASK, toolCalls: [], expectedTrajectory: { step_budget: 3 } });
+    expect(used.verdict!.basis).not.toBe('required_evidence_missing');
   });
 });
 
@@ -104,6 +137,28 @@ describe('a field the capture source declared and the trace left out', () => {
     const r = await shipped.evaluateAll(harness());
     for (const row of Object.values(r.categories ?? {})) expect(row.state).toBe('unknown');
   });
+
+  it('is said beside a verdict nothing could judge, and a gate on it trips', async () => {
+    const r = await shipped.evaluate('cost', { output: ASK.output, recordedBy: 'harness', capture: HOOK });
+    expect(r.verdict).toMatchObject({ state: 'unknown', basis: 'no_rules', also: [{ basis: 'required_evidence_missing', state: 'unknown', by: ['input', 'tool_calls'] }] });
+    expect(sentences(r).some((t) => t.startsWith('[block/operator] Also not checked: iris-eval-capture 0.20.0 declares it records input and tool_calls in full'))).toBe(true);
+    // A row judged under the earlier composer rules reads back as it was given.
+    expect(compose(r, { ...DEFAULT_COMPOSE, rules: 1 })).toEqual({ state: 'unknown', passed: false, basis: 'no_rules', by: [], risk: null });
+  });
+
+  it('a hole and a field the agent can send are two sentences, each to the one who can act on it', async () => {
+    const r = await engine({ requiredEvidence: ['cost'] }).evaluateAll(harness());
+    const said = sentences(r);
+    expect(said).toContain('[block/agent] Not checked, which is not a pass: this deployment requires cost on every evaluation. Send cost and ask again.');
+    expect(said.some((t) => t.startsWith('[block/operator] Not checked, which is not a pass: iris-eval-capture 0.20.0 declares it records tool_calls in full'))).toBe(true);
+  });
+
+  it('verdictPath and compose see the hole through their public types', async () => {
+    const r = await shipped.evaluateAll(harness());
+    const typed = { rule_results: r.rule_results, score: r.score, insufficient_data: r.insufficient_data, rules_evaluated: r.rules_evaluated, provenance: r.provenance };
+    expect(verdictPath(typed, DEFAULT_COMPOSE).map((n) => n.node)).toContain('evidence');
+    expect(compose(typed, DEFAULT_COMPOSE)).toMatchObject({ basis: 'required_evidence_missing', by: ['tool_calls'] });
+  });
 });
 
 describe('required evidence is met by what the call carried', () => {
@@ -140,6 +195,14 @@ describe('who recorded the evidence', () => {
     const agent = { ...ASK, toolCalls: [], recordedBy: 'agent' as const, capture: HOOK };
     expect(inputsPresent(agent).has('tool_calls')).toBe(false);
     expect(evidenceOf(agent)).toEqual({ recordedBy: 'agent', carried: ['input', 'output'] });
+  });
+
+  it('a judgment row carries the record of what the tool judged', () => {
+    const row = shipped.verdictOf(
+      { id: 'j1', eval_type: 'custom', output_text: ASK.output, score: 1, passed: true, rule_results: [{ ruleName: 'judge', passed: true, score: 1, message: 'ok', kind: 'judgment' }], rules_evaluated: 1, rules_skipped: 0 } as EvalResult,
+      evidenceOf({ output: ASK.output, input: ASK.input, recordedBy: 'agent' }),
+    );
+    expect(row.provenance!.evidence).toEqual({ recordedBy: 'agent', carried: ['input', 'output'] });
   });
 
   it('a declaration is stored in one form: each field once, in order, and no empty list', () => {

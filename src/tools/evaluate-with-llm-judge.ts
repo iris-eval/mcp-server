@@ -14,6 +14,7 @@ import { JUDGE_COST_CAP_VAR, JUDGE_DEFAULT_COST_CAP_USD, JUDGE_KEY_VARS, judgeCo
 import { strictInput } from './strict-input.js';
 import { getTraceOrThrow, insertLinkedEvalResult } from './trace-link.js';
 import { besideNote } from '../eval/of-record.js';
+import { evidenceOf } from '../eval/evidence.js';
 import { agentModelOf, sameFamily, sameFamilyWarning } from '../eval/llm-judge/family.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { advertisedOutput } from './advertise.js';
@@ -214,6 +215,8 @@ export function registerEvaluateWithLLMJudgeTool(
           inputTokens: result.inputTokens,
           outputTokens: result.outputTokens,
         }),
+        // The text the caller passed, through the agent's own tool.
+        evidenceOf({ output: args.output, input: args.input, expected: args.expected, recordedBy: 'agent' }),
       );
       /*
        * A judgment answers the judge's question about the text the caller

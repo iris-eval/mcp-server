@@ -158,7 +158,11 @@ export function appendCall(sessionId, key, call) {
   appendFileSync(callsFile(sessionId, key), `\n${JSON.stringify(call)}\n`, { mode: FILE_MODE });
 }
 
-/** A turn as recorded: its header (when its prompt was seen), every call in the order they finished, and how much of it was sent. */
+/**
+ * A turn as recorded: its header (when its prompt was seen), every call in the
+ * order they finished, how much of it was sent, and how many calls it lost (a
+ * line a killed hook left unreadable, or a hook that failed and said so).
+ */
 export function readTurn(sessionId, key, path = callsFile(sessionId, key)) {
   let header = null;
   try {
@@ -167,14 +171,20 @@ export function readTurn(sessionId, key, path = callsFile(sessionId, key)) {
     /* a resumed session, or a part that outlived its prompt's header */
   }
   const calls = [];
+  let lost = 0;
   if (existsSync(path)) {
     for (const line of readFileSync(path, 'utf8').split('\n')) {
       if (line.trim() === '') continue;
+      let record;
       try {
-        calls.push(JSON.parse(line));
+        record = JSON.parse(line);
       } catch {
+        lost += 1;
         log(`a recorded call could not be read and is left out: ${line.slice(0, 80)}`);
+        continue;
       }
+      if (record && record.lost === true) lost += 1;
+      else calls.push(record);
     }
   }
   let sent = { parts: 0, calls: 0, stopped: false };
@@ -183,7 +193,12 @@ export function readTurn(sessionId, key, path = callsFile(sessionId, key)) {
   } catch {
     /* nothing sent yet */
   }
-  return { header, calls, sent };
+  return { header, calls, sent, lost };
+}
+
+/** Marks a call this turn lost: its hook failed before the call was recorded. Read by readTurn, so the turn's list is never declared whole. */
+export function markLost(sessionId, key) {
+  appendFileSync(callsFile(sessionId, key), `\n${JSON.stringify({ lost: true })}\n`, { mode: FILE_MODE });
 }
 
 export function markSent(sessionId, key, sent) {
@@ -236,7 +251,7 @@ function loggedTraceIds(call) {
  *              calls came after it ended (a background sub-agent); not judged
  * Returns null when there is nothing to send.
  */
-export function assemble({ sessionId, key, header, calls, sent, how, output, input = {} }) {
+export function assemble({ sessionId, key, header, calls, sent, how, output, input = {}, lost = 0 }) {
   const fresh = calls.slice(sent.calls);
   const own = fresh.filter((c) => IRIS_TOOL.exec(c.tool_name)?.[1] === 'log_trace');
   const logged = own.filter((c) => c.error === undefined);
@@ -249,10 +264,14 @@ export function assemble({ sessionId, key, header, calls, sent, how, output, inp
   /*
    * An empty list says no call was made, and Iris reads it so. It is sent only
    * when the record is known whole: the turn's prompt was seen, it ended with
-   * Stop on its first end, and nothing was left running in the background.
-   * Otherwise a turn with no recorded call sends no list, which says nothing.
+   * Stop on its first end, nothing was left running in the background, no
+   * call was lost (an unreadable line, a hook that failed), and the list
+   * leaves none out (Iris's own tools are not in it, so a turn that called
+   * one does not have its every call in the list). Otherwise a turn with no
+   * recorded call sends no list, which says nothing either way.
    */
-  const whole = how === 'answered' && header !== null && sent.parts === 0 && Array.isArray(input.background_tasks) && input.background_tasks.length === 0;
+  const leftOut = fresh.some((c) => IRIS_TOOL.test(c.tool_name));
+  const whole = how === 'answered' && header !== null && sent.parts === 0 && Array.isArray(input.background_tasks) && input.background_tasks.length === 0 && lost === 0 && !leftOut;
   const part = sent.parts + 1;
   /*
    * What this record holds in full, declared to Iris (its trace `capture`):
@@ -261,12 +280,13 @@ export function assemble({ sessionId, key, header, calls, sent, how, output, inp
    * call's output or error when each recorded call has one. Iris then reads
    * the empty list as "no tool was called", and a field declared here that
    * the trace lacks as a hole in the record. Only what this part holds is
-   * declared, so the declaration is never false.
+   * declared, so the declaration is never false: a result cut to its head
+   * and tail is not one recorded in full.
    */
   const complete = [
     ...(typeof header?.prompt === 'string' && header.prompt.trim() !== '' ? ['input'] : []),
     ...(whole ? ['tool_calls'] : []),
-    ...(tool_calls.every((c) => c.output !== undefined || c.error !== undefined) ? ['tool_outputs'] : []),
+    ...(lost === 0 && tool_calls.every((c) => (c.output !== undefined || c.error !== undefined) && c.truncated !== true) ? ['tool_outputs'] : []),
   ];
   const version = pinnedVersion();
   return {
@@ -347,8 +367,8 @@ export function flushTurn(sessionId, key, dryRun = []) {
   } catch {
     /* no calls file */
   }
-  const { header, calls, sent } = readTurn(sessionId, key, moved ? moving : path);
-  const built = assemble({ sessionId, key, header, calls, sent, how: 'unfinished' });
+  const { header, calls, sent, lost } = readTurn(sessionId, key, moved ? moving : path);
+  const built = assemble({ sessionId, key, header, calls, sent, how: 'unfinished', lost });
   if (built) {
     if (process.env.IRIS_CAPTURE_DRY_RUN === '1') dryRun.push(built);
     else send(built);

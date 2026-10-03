@@ -162,6 +162,42 @@ describe('iris-eval-capture hooks: one turn', () => {
     expect(await declared()).toEqual({ name: 'iris-eval-capture', version, complete: ['tool_outputs'] });
   }, 120_000);
 
+  it('never declares the calls whole when its list leaves one out: an Iris tool filtered out, a line it could not read, a hook that failed', async () => {
+    const turn = async () => built((await hook('stop', stop, DRY)).stdout).trace;
+    const fresh = () => rmSync(join(data, 'sessions'), { recursive: true, force: true });
+    // Only Iris's own tools were called: the list is empty, and "no tool was called" would be false.
+    await hook('prompt', prompt);
+    await hook('tool', { ...grep, tool_name: 'mcp__iris-eval__deploy_rule', tool_input: { name: 'x' }, tool_use_id: 'toolu_i1' });
+    let t = await turn();
+    expect(t.tool_calls).toBeUndefined();
+    expect(t.capture?.complete).toEqual(['input', 'tool_outputs']);
+    // A call a killed hook left half written.
+    fresh();
+    await hook('prompt', prompt);
+    await hook('tool', read);
+    const dir = join(data, 'sessions', SID);
+    const calls = readdirSync(dir).find((n) => n.endsWith('.calls.jsonl'))!;
+    appendFileSync(join(dir, calls), '{"tool_name":"Bash","input":{"command":"npm test"},"output":"rem');
+    t = await turn();
+    expect(t.tool_calls!.map((c) => c.tool_name)).toEqual(['Read']);
+    expect(t.capture?.complete).toEqual(['input']);
+    // A hook that failed and marked its call lost (markLost).
+    fresh();
+    await hook('prompt', prompt);
+    appendFileSync(join(data, 'sessions', SID, `${P1}.calls.jsonl`), '\n{"lost":true}\n');
+    t = await turn();
+    expect(t.tool_calls).toBeUndefined();
+    expect(t.capture?.complete).toEqual(['input']);
+  }, 120_000);
+
+  it('does not declare the results in full when one was cut to its head and tail', async () => {
+    await hook('prompt', prompt);
+    await hook('tool', { ...read, tool_name: 'Bash', tool_input: { command: 'cat big.log' }, tool_response: 'x'.repeat(300_000) });
+    const t = built((await hook('stop', stop, DRY)).stdout).trace;
+    expect(t.tool_calls![0].truncated).toBe(true);
+    expect(t.capture?.complete).toEqual(['input', 'tool_calls']);
+  }, 60_000);
+
   it('loses no call when the host runs several at once', async () => {
     await hook('prompt', prompt);
     const ids = Array.from({ length: 8 }, (_, i) => `toolu_p${i}`);

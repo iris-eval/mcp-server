@@ -26,7 +26,7 @@
 import type { EvalContext, EvidenceRecord, Need, RecordedBy } from '../types/eval.js';
 import { CAPTURE_FIELDS, type CaptureField, type Trace, type TraceCapture } from '../types/trace.js';
 import { inputsPresent } from './stamp.js';
-import { stepsOf } from './steps.js';
+import { stepStatsOf } from './steps.js';
 
 /** Who recorded a stored trace: the agent when it came through the agent's own door, the capture source that declared itself, else nobody said. */
 export function recordOfTrace(trace: Pick<Trace, 'source' | 'capture'>): { recordedBy: RecordedBy; capture?: TraceCapture } {
@@ -53,7 +53,8 @@ export function evidenceOf(context: EvalContext): EvidenceRecord {
     recordedBy,
     ...(recordedBy === 'harness' && context.capture !== undefined ? { capture: canonicalCapture(context.capture) } : {}),
     carried,
-    ...(carried.includes('tool_calls') ? { toolCalls: stepsOf(context).length } : {}),
+    // Every call the record carries, not the first MAX_STEPS_DERIVED the trajectory rules read.
+    ...(carried.includes('tool_calls') ? { toolCalls: stepStatsOf(context).available } : {}),
   };
 }
 

@@ -40,8 +40,8 @@ Every trace it sends names it as the recorder: `capture: { name: "iris-eval-capt
 | Declared | When |
 |---|---|
 | `input` | the turn's prompt was seen and has text |
-| `tool_calls` | the record is known whole: the turn's prompt was seen, the turn ended with `Stop` the first time, and Claude Code reported nothing still running in the background |
-| `tool_outputs` | every recorded call carries what it returned, or the error it failed with |
+| `tool_calls` | the record is known whole: the turn's prompt was seen, the turn ended with `Stop` the first time, Claude Code reported nothing still running in the background, no call was lost (a line a killed hook left unreadable, a hook that failed), and the turn called none of Iris's own tools, which the list leaves out |
+| `tool_outputs` | every recorded call carries what it returned, or the error it failed with, none of them cut to its head and tail, and no call was lost |
 
 With `tool_calls` declared, an empty list says no call was made, and Iris reads it as an observation, not a claim: it meets a deployment's `eval.requiredEvidence: ["tool_calls"]`, and the verdict says "no tool was called". Iris's own tools are left out of the list (below). When the record is not known whole, a turn with no recorded call sends no list, which says nothing either way. A field is declared only when this part of the turn holds it, so the declaration is never false.
 

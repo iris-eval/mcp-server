@@ -185,7 +185,7 @@ function inputsSeen(rows: readonly EvalRuleResult[]): Set<Need> {
  * did not happen because a cost ceiling was broken first.
  */
 export function verdictPath(
-  result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated'>,
+  result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated' | 'provenance'>,
   cfg: ComposeConfig,
 ): VerdictNode[] {
   const nodes = walk(result, cfg, false);
@@ -222,14 +222,23 @@ function primaryOf(nodes: VerdictNode[], cfg: ComposeConfig): VerdictNode | unde
  * disagree about what a layer is.
  */
 function walk(
-  result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated'>,
+  result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated' | 'provenance'>,
   cfg: ComposeConfig,
   stopAtDecision: boolean,
 ): VerdictNode[] {
   const rows = result.rule_results;
   const evaluated = result.rules_evaluated ?? rows.filter((r) => !r.skipped).length;
   if (result.insufficient_data || evaluated === 0) {
-    return [{ node: 'nothing_judged', by: [], decided: true }];
+    /*
+     * Nothing judged decides the verdict, and evidence that was asked for or
+     * promised and is not in the record is still said beside it: a capture
+     * source's hole, on a call whose bundle ran nothing, read `no_rules` with
+     * no word about the hole, and a gate on required_evidence_missing passed
+     * it. A row judged under the earlier rules reads back as it was given.
+     */
+    const nothing: VerdictNode = { node: 'nothing_judged', by: [], decided: true };
+    const ev = (cfg.rules ?? COMPOSER_RULES) >= 2 ? evidenceNode(result, cfg) : null;
+    return ev?.decided ? [nothing, ev] : [nothing];
   }
   const path: VerdictNode[] = [];
 
@@ -288,14 +297,9 @@ function walk(
    * read as it always was, by what an evaluated rule read: so a cost sent
    * to a call that ran only the safety bundle read as missing.
    */
-  const evidence = (result as EvalResult).provenance?.evidence;
-  const seen = cfg.requiredEvidence.length > 0 ? (evidence !== undefined ? new Set<Need>(evidence.carried) : inputsSeen(rows)) : null;
-  const required = seen ? cfg.requiredEvidence.filter((n) => !seen.has(n)) : [];
-  const asked = askedAndNotSent(rows, cfg);
-  const broken = brokenOf(evidence);
-  const missing = [...new Set<string>([...required, ...broken, ...asked.flatMap((r) => r.lacked!)])];
-  if (cfg.requiredEvidence.length > 0 || asked.length > 0 || broken.length > 0) {
-    path.push({ node: 'evidence', by: missing, decided: missing.length > 0 });
+  const ev = evidenceNode(result, cfg);
+  if (ev !== null) {
+    path.push(ev);
     if (stopAtDecision && path.some((n) => n.decided)) return path;
   }
 
@@ -315,6 +319,19 @@ function walk(
           .map(([cls]) => cls);
   path.push({ node: 'risk', by: risk !== null && risk.pBad > t ? by : [], decided: risk !== null && risk.pBad > t, risk });
   return path;
+}
+
+/** The evidence layer's node, or null when nothing asked for or promised any evidence (walk(), step 4, says what it reads). */
+function evidenceNode(result: Pick<EvalResult, 'rule_results' | 'provenance'>, cfg: ComposeConfig): VerdictNode | null {
+  const rows = result.rule_results;
+  const evidence = result.provenance?.evidence;
+  const seen = cfg.requiredEvidence.length > 0 ? (evidence !== undefined ? new Set<Need>(evidence.carried) : inputsSeen(rows)) : null;
+  const required = seen ? cfg.requiredEvidence.filter((n) => !seen.has(n)) : [];
+  const asked = askedAndNotSent(rows, cfg);
+  const broken = brokenOf(evidence);
+  const missing = [...new Set<string>([...required, ...broken, ...asked.flatMap((r) => r.lacked!)])];
+  if (cfg.requiredEvidence.length === 0 && asked.length === 0 && broken.length === 0) return null;
+  return { node: 'evidence', by: missing, decided: missing.length > 0 };
 }
 
 /**
@@ -423,13 +440,16 @@ function unlabelledText(cfg: Pick<ComposeConfig, 'calibration'>): string {
  * node.
  */
 export function compose(
-  result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated'>,
+  result: Pick<EvalResult, 'rule_results' | 'score' | 'insufficient_data' | 'rules_evaluated' | 'provenance'>,
   cfg: ComposeConfig,
 ): Verdict {
   const nodes = walk(result, cfg, false);
   const decided = primaryOf(nodes, cfg);
   const later = nodes.filter((n) => n.decided && n !== decided);
-  if (decided?.node === 'nothing_judged') return { state: 'unknown', passed: false, basis: 'no_rules', by: [], risk: null };
+  if (decided?.node === 'nothing_judged') {
+    const also = later.map((n) => layerOf(n, cfg) as VerdictLayer);
+    return { state: 'unknown', passed: false, basis: 'no_rules', by: [], risk: null, ...(also.length > 0 ? { also } : {}) };
+  }
 
   /*
    * The estimate and its label ride on the verdict only when the risk layer
@@ -695,29 +715,35 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
     const layer = verdict.basis === 'required_evidence_missing' ? verdict : (verdict.also ?? []).find((l) => l.basis === 'required_evidence_missing')!;
     const asked = askedAndNotSent(result.rule_results, cfg);
     const byRule = asked.map((r) => `${r.ruleName} could not run without ${r.lacked!.join(', ')} (${r.asked === 'config' ? 'this deployment asks for it' : 'this call asks for it'})`);
-    const required = cfg.requiredEvidence.filter((n) => layer.by.includes(n));
-    // A field the capture source promised and the record lacks is the capture's to fix, not the agent's to send.
+    /*
+     * A field the capture source promised and the record lacks is the
+     * capture's to fix, not the agent's to send: it gets its own sentence,
+     * to the operator. What is left is the agent's to send.
+     */
     const evidence = result.provenance?.evidence;
     const broken = brokenOf(evidence).filter((n) => layer.by.includes(n));
     const send = layer.by.filter((n) => !(broken as string[]).includes(n));
+    const required = cfg.requiredEvidence.filter((n) => send.includes(n));
     const source = captureLabel(evidence?.capture);
-    const parts = [
-      ...(required.length > 0 ? [`this deployment requires ${required.join(', ')} on every evaluation`] : []),
-      ...byRule,
-      ...(broken.length > 0 ? [`${source} declares it records ${broken.join(' and ')} in full, and this trace does not carry ${broken.length === 1 ? 'it' : 'them'} in full`] : []),
-    ];
+    // On a verdict that failed, or that nothing could judge, the missing evidence is a second thing to fix, not the answer.
     const first = verdict.basis === 'required_evidence_missing';
-    const remedies = [
-      ...(send.length > 0 ? [first ? `Send ${send.join(', ')} and ask again.` : `Send ${send.join(', ')} so it can be.`] : []),
-      ...(broken.length > 0 ? [`The record is incomplete: check how ${source} records ${broken.join(' and ')}.`] : []),
-    ];
-    out.push({
-      severity: 'block',
-      addressee: send.length > 0 ? 'agent' : 'operator',
-      // On a verdict that failed, the missing evidence is a second thing to fix, not the answer.
-      text: `${first ? 'Not checked, which is not a pass' : 'Also not checked'}: ${parts.join('; ')}. ${remedies.join(' ')}`,
-      ...(required.length > 0 ? { configKey: 'eval.requiredEvidence' } : {}),
-    });
+    const lead = first ? 'Not checked, which is not a pass' : 'Also not checked';
+    if (send.length > 0) {
+      const parts = [...(required.length > 0 ? [`this deployment requires ${required.join(', ')} on every evaluation`] : []), ...byRule];
+      out.push({
+        severity: 'block',
+        addressee: 'agent',
+        text: `${lead}: ${parts.join('; ') || `${send.join(', ')} was asked for and not sent`}. ${first ? `Send ${send.join(', ')} and ask again.` : `Send ${send.join(', ')} so it can be.`}`,
+        ...(required.length > 0 ? { configKey: 'eval.requiredEvidence' } : {}),
+      });
+    }
+    if (broken.length > 0) {
+      out.push({
+        severity: 'block',
+        addressee: 'operator',
+        text: `${lead}: ${source} declares it records ${broken.join(' and ')} in full, and this trace does not carry ${broken.length === 1 ? 'it' : 'them'} in full. The record is incomplete: check how ${source} records ${broken.join(' and ')}.`,
+      });
+    }
   }
   /*
    * A critical rule that skipped but did NOT make the verdict unknown —

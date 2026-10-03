@@ -7,6 +7,7 @@ import type {
   EvalType,
   EvalCategoryResult,
   CustomRuleDefinition,
+  EvidenceRecord,
   Provenance,
 } from '../types/eval.js';
 import { getRulesForType, createCustomRule } from './rules/index.js';
@@ -326,8 +327,10 @@ export class EvalEngine {
    * meant the threshold on those two and the composer everywhere else.
    * Every stored row now carries the same verdict, basis and
    * interpretations, from the one composer, under this engine's config.
+   * `evidence` is what the judged call carried and who recorded it
+   * (src/eval/evidence.ts), as the tool that judged it knows them.
    */
-  verdictOf(result: EvalResult): EvalResult {
+  verdictOf(result: EvalResult, evidence?: EvidenceRecord): EvalResult {
     /*
      * The receipt too: a stored row derives its verdict on read only under
      * the composer facts its provenance carries (rowToEvalResult), so a
@@ -342,6 +345,7 @@ export class EvalEngine {
       threshold: this.threshold,
       ruleThresholds: this.ruleThresholds,
       composer: this.composerFacts(),
+      ...(evidence !== undefined ? { evidence } : {}),
       judgedAt: new Date().toISOString(),
     });
     return this.decide(result);

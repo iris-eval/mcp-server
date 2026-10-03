@@ -569,6 +569,7 @@
                 "output",
                 "input",
                 "expected",
+                "expected_trajectory",
                 "tool_calls",
                 "tool_outputs",
                 "tools_catalogue",

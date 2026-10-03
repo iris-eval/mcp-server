@@ -39,11 +39,11 @@
  *                as `evaluate: true` does on POST /api/v1/traces
  *   capture      `iris.capture.name`, `iris.capture.version` and
  *                `iris.capture.complete` (a list, or one comma-separated
- *                string, of input, tool_calls, tool_outputs) on the resource
- *                or the root: the instrumentation declares itself and what
- *                it records in full (src/eval/evidence.ts). With
- *                tool_calls declared, a trace with no TOOL span says no tool
- *                was called
+ *                string, of input and tool_outputs) on the resource or the
+ *                root: the instrumentation declares itself and what it
+ *                records in full (src/eval/evidence.ts). tool_calls is not
+ *                taken here: a trace can arrive in several requests, so a
+ *                request without a TOOL span cannot show that none was made
  *   spans        every span: kind from `iris.span_kind`, else TOOL when it
  *                carries a tool attribute or `gen_ai.operation.name` is
  *                execute_tool, else INTERNAL for an agent operation
@@ -486,24 +486,45 @@ function firstNumber(attrs: Record<string, unknown>, keys: readonly string[]): n
  * `lacked`; so is a declaration without a name, since a reader must be able
  * to say who made the promise.
  */
-function captureOf(read: (key: string) => unknown, lacked: string[]): TraceCapture | undefined {
-  const name = read('iris.capture.name');
-  const version = read('iris.capture.version');
-  const listed = read('iris.capture.complete');
-  const named = (Array.isArray(listed) ? listed : typeof listed === 'string' ? listed.split(',') : [])
-    .map((v) => (typeof v === 'string' ? v.trim() : ''))
-    .filter((v) => v.length > 0);
+function captureOf(resource: Record<string, unknown>, root: Record<string, unknown>, lacked: string[]): TraceCapture | undefined {
+  /*
+   * One place, whole: the resource when it carries any of the keys, else the
+   * root span. Read key by key across the two, a name from one and a list
+   * from the other made a declaration nobody made.
+   */
+  const KEYS = ['iris.capture.name', 'iris.capture.version', 'iris.capture.complete'];
+  const from = KEYS.some((k) => resource[k] !== undefined) ? resource : root;
+  const name = from['iris.capture.name'];
+  const version = from['iris.capture.version'];
+  const listed = from['iris.capture.complete'];
+  if (listed !== undefined && !Array.isArray(listed) && typeof listed !== 'string') lacked.push('iris.capture.complete as a list or a comma-separated string (it was neither, and was ignored)');
+  const raw: unknown[] = Array.isArray(listed) ? listed : typeof listed === 'string' ? listed.split(',') : [];
+  const notText = raw.filter((v) => typeof v !== 'string');
+  if (notText.length > 0) lacked.push(`iris.capture.complete values as strings (${notText.length} ${notText.length === 1 ? 'was' : 'were'} not, and ${notText.length === 1 ? 'was' : 'were'} ignored)`);
+  const named = raw.filter((v): v is string => typeof v === 'string').map((v) => v.trim()).filter((v) => v.length > 0);
   if (typeof name !== 'string' || name.trim().length === 0) {
     if (named.length > 0 || version !== undefined) lacked.push('iris.capture.name (a declaration says who makes it, so iris.capture.complete and iris.capture.version were ignored)');
     return undefined;
   }
+  if (version !== undefined && (typeof version !== 'string' || version.trim().length === 0)) lacked.push('iris.capture.version as a string (it was not, and was ignored)');
+  if (name.trim().length > 200) lacked.push(`iris.capture.name of at most 200 characters (it had ${name.trim().length}; the first 200 were kept)`);
   const isField = (v: string): v is CaptureField => (CAPTURE_FIELDS as readonly string[]).includes(v);
   const unknown = named.filter((v) => !isField(v));
-  if (unknown.length > 0) lacked.push(`iris.capture.complete values from ${CAPTURE_FIELDS.join(', ')} (${unknown.join(', ')} ${unknown.length === 1 ? 'is' : 'are'} not one, and was ignored)`);
+  if (unknown.length > 0) lacked.push(`iris.capture.complete values from ${CAPTURE_FIELDS.join(', ')} (${unknown.join(', ')} ${unknown.length === 1 ? 'is not one, and was' : 'are not, and were'} ignored)`);
+  /*
+   * `tool_calls` is not taken over OTLP. One trace can arrive in several
+   * requests (a batching exporter sends the spans that have ended), and each
+   * request is stored as its own trace, so a request without a TOOL span can
+   * be the part of the run that came after its calls; a tool span in a
+   * vocabulary Iris does not read is not a TOOL span either. Either way "no
+   * TOOL span here" is not an observation that no tool was called, and
+   * reading it as one passed a "Done" whose failed call sat in another trace.
+   */
+  if (named.includes('tool_calls')) lacked.push('iris.capture.complete tool_calls (not read over OTLP: a trace can arrive in several requests, each stored as its own trace, so one without a TOOL span cannot show that no tool was called; it was ignored)');
   return canonicalCapture({
     name: name.trim().slice(0, 200),
     ...(typeof version === 'string' && version.trim().length > 0 ? { version: version.trim().slice(0, 100) } : {}),
-    complete: named.filter(isField),
+    complete: named.filter(isField).filter((v) => v !== 'tool_calls'),
   });
 }
 
@@ -760,7 +781,7 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
     const framework = group.resource['iris.framework'] ?? root.attrs['iris.framework'];
     const evaluateFlag = group.resource['iris.evaluate'] ?? root.attrs['iris.evaluate'];
     const evalType = group.resource['iris.eval_type'] ?? root.attrs['iris.eval_type'];
-    const capture = captureOf((key) => group.resource[key] ?? root.attrs[key], lacked);
+    const capture = captureOf(group.resource, root.attrs, lacked);
 
     const irisTraceId = mint();
     const spanIds = new Map<string, string>();
