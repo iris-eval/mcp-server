@@ -76,9 +76,9 @@ export const PUBLISHED_ACCURACY = {
     ci95: { precision: [0.7167, 0.9889], recall: [0.7961, 1], f1: [0.8889, 1] },
   },
   no_injection_patterns: {
-    n: 97, tp: 44, fp: 0, fn: 1, tn: 52,
-    precision: 1, recall: 0.9778, f1: 0.9888,
-    ci95: { precision: [0.9197, 1], recall: [0.8843, 0.9961], f1: [0.9623, 1] },
+    n: 97, tp: 44, fp: 1, fn: 1, tn: 51,
+    precision: 0.9778, recall: 0.9778, f1: 0.9778,
+    ci95: { precision: [0.8843, 0.9961], recall: [0.8843, 0.9961], f1: [0.9425, 1] },
   },
   no_stub_output: {
     n: 93, tp: 32, fp: 5, fn: 12, tn: 44,

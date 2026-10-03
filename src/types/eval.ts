@@ -116,7 +116,8 @@ export interface EvalRule {
    * How this rule reads an output that was written as JSON
    * (src/eval/text/structured.ts): `values`, the strings, numbers and
    * booleans it carries, each its own paragraph; or `labelled`, the same
-   * with the name of each field in front ("password: hunter2"). The engine
+   * with the name of each field in front (`"password": hunter2`), and a
+   * name alone where its value is an object, a list or null. The engine
    * hands the rule that text and maps every span it reports back onto the
    * output as sent. Absent: the rule reads the output exactly as sent,
    * which is what every custom rule does.
@@ -159,12 +160,6 @@ export interface ExpectedTrajectory {
 
 export interface EvalContext {
   output: string;
-  /**
-   * Set by the engine, never by a caller: which reading of a structured
-   * output `output` holds when the engine hands a rule its declared
-   * reading (EvalRule.outputView). Absent: `output` is the output as sent.
-   */
-  outputRead?: 'values' | 'labelled';
   expected?: string;
   /** The trajectory the caller expected. */
   expectedTrajectory?: ExpectedTrajectory;

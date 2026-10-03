@@ -87,8 +87,8 @@ const SERVER_TEXT_FILES: Array<[string, string[]]> = [
    * JSON, so a reader that drifted would make the two libraries disagree on
    * every structured answer.
    */
-  ['src/eval/text/structured.ts', ['STRUCTURED_OUTPUT_MAX_CHARS', 'VALUE_BREAK', 'readString', 'readScalar', 'leavesOf', 'viewOf', 'readStructured', 'spanInOutput']],
-  ['src/eval/text/sentences.ts', ['ALWAYS_ABBREVIATION', 'ABBREVIATION_BEFORE_NUMBER', 'TERMINATORS', 'blankLineFollows', 'opensSentence', 'isDigit', 'precedingToken', 'sentencesOf', 'countSentences']],
+  ['src/eval/text/structured.ts', ['STRUCTURED_OUTPUT_MAX_CHARS', 'VALUE_BREAK', 'readString', 'readScalar', 'entriesOf', 'viewOf', 'jsonTrimmed', 'readStructured', 'spanInOutput']],
+  ['src/eval/text/sentences.ts', ['ALWAYS_ABBREVIATION', 'ABBREVIATION_BEFORE_NUMBER', 'TERMINATORS', 'blankLineFollows', 'opensSentence', 'isDigit', 'precedingToken', 'saysAWord', 'sentencesOf', 'countSentences']],
   /*
    * ask_coverage is the one act-layer rule that RUNS in the playground —
    * it reads only the input and the output — so its whole module is
@@ -325,7 +325,7 @@ const FIXED_CASES: Array<{ name: string; ctx: EvalContext; expect: Record<string
     expect: { no_injection_patterns: 'fail' },
   },
   {
-    name: 'a structured answer: a configuration line in prose is not a field name',
+    name: 'a structured answer: a configuration line in prose is not a smuggled directive',
     ctx: { output: 'assistant_instructions: be brief and cite sources' },
     expect: { no_injection_patterns: 'pass' },
   },
@@ -457,7 +457,6 @@ const SHARED_SAFETY_BLOCKS = [
   // no_injection_patterns — the whole library and the obfuscation fold
   'INJECTION_PATTERNS',
   'PHRASE_PATTERN_COUNT',
-  'DIRECTIVE_FIELD_NAME',
   'REMOVED_MARKER',
   'precededByRemoval',
   'ZERO_WIDTH_CHARS',

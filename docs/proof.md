@@ -268,11 +268,13 @@ say the same thing and are held at zero changes, in the verdict and in
 every rule that can decide one: every space doubled, each line wrapped at
 60 columns, and the output sent as one string field of a JSON object (a
 structured output is read by its values; see the API reference, "Structured
-outputs"). The other four are measured and published with the reason each
-is not held: curly quotes and a Markdown quote prefix (each changes one
-structure a rule reads: a JSON key, a diff), and upper and lower case
-(case is part of a secret, a file name and a placeholder marker; and one
-real fault, the fabrication rule reading capitals as names of metrics).
+outputs"). The others are measured and published with the reason each is
+not held: curly quotes and a Markdown quote prefix (each changes one
+structure a rule reads: a JSON key, a diff), two envelopes that put a
+field beside the answer (a chat message's role, a confidence), which is
+read as something the output says, and upper and lower case (case is part
+of a secret, a file name and a placeholder marker; and one real fault, the
+fabrication rule reading capitals as names of metrics).
 
 What a deployment that gates on a verdict takes from the first table: name
 the evidence the gate must rest on. `eval.requiredEvidence: ["tool_calls"]`

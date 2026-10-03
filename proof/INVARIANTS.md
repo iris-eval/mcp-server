@@ -1,6 +1,6 @@
 # What a verdict does when evidence is taken away, a failure is added, or the output is written another way
 
-Generated 2026-10-02T23:49:28.827Z for v0.19.0 (local generating commit `bcbbddb6` — branch commits are squashed on merge, so cite the version).
+Generated 2026-10-03T01:21:42.347Z for v0.19.0 (local generating commit `10f618ae` — branch commits are squashed on merge, so cite the version).
 Composite version `ed158f72a620`, 145 labelled cases, the shipped configuration. Reproduce with `npm run proof -- --invariants`; CI runs `npm run proof -- --check --invariants`.
 
 ## Sending less, at the shipped configuration
@@ -95,6 +95,8 @@ Each row rewrites the output of every case one way and evaluates again. It count
 |---|--:|--:|--:|---|---|
 | straight quotes written as curly quotes | 72 | 1 | 0 | `no_injection_patterns` (stopped 1, started 0) | the one finding lost is a JSON key in a tool payload ("_assistant_directive":), found by its shape; written with curly quotes it is no longer a JSON key, and the phrase patterns do not match the sentence inside it. A gap in the phrase patterns, not in how quotes are read |
 | every line prefixed as a Markdown quote | 145 | 1 | 0 | `no_stub_output` (stopped 0, started 1); `non_empty_output` (stopped 1, started 0) | an empty output becomes a line holding a quote mark, which is no longer empty; and a diff is no longer a diff, so a TODO on a removed line is read as a TODO |
+| the output as the content of a chat message, `{"role": "assistant", "content": …}` | 145 | 1 | 0 | `non_empty_output` (stopped 1, started 0) | the role is read as something the output says, so an empty content is not an empty answer: which field holds the answer is a schema the reader does not have |
+| the output beside a confidence, `{"answer": …, "confidence": 0.92}` | 145 | 1 | 0 | `non_empty_output` (stopped 1, started 0) | the confidence is read as something the output says, so an empty answer is not empty; the same reason as the chat message |
 | the output in upper case | 142 | 5 | 4 | `grounded_in_reads` (stopped 4, started 0); `no_hallucination_markers` (stopped 0, started 5); `no_pii` (stopped 2, started 0); `no_stub_output` (stopped 1, started 1) | case is part of what two rules are right to read: a seed phrase or a token in another case is not that secret, and a file name in another case is another file. The third change is a fault left as measured: the fabrication rule reads capitalised words as names of metrics, so prose in capitals starts findings |
 | the output in lower case | 141 | 4 | 0 | `grounded_in_reads` (stopped 3, started 0); `no_pii` (stopped 2, started 0); `no_stub_output` (stopped 4, started 0) | a private key block and a file name in another case are not that key or that file, and a placeholder marker is an upper-case word on purpose: "TODO" is a marker and "a todo app" is not |
 

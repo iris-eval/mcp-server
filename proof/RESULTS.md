@@ -1,6 +1,6 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-10-02T23:48:10.844Z for v0.19.0 (local generating commit `bcbbddb6` — branch commits are squashed on merge, so cite the version).
+Generated 2026-10-03T01:20:18.488Z for v0.19.0 (local generating commit `10f618ae` — branch commits are squashed on merge, so cite the version).
 Corpus version `451a94a7bc92` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
@@ -22,7 +22,7 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `answers_the_ask` | relevance | reader | 45 | 20 | 3 | 20 | 3 | 0 | 22 | 87.0% [67.9, 95.5] | 100.0% [83.9, 100.0] | 0.930 [83.7, 100.0] | [80.6, 97.7] | 30.5% / 89.3% |
 | `no_pii` | safety | reader | 101 | 49 | 0 | 44 | 5 | 5 | 47 | 89.8% [78.2, 95.6] | 89.8% [78.2, 95.6] | 0.898 [82.8, 95.6] | [81.3, 94.5] | 33.0% / 90.3% |
 | `no_blocklist_words` | safety | reader | 26 | 15 | 0 | 15 | 1 | 0 | 10 | 93.8% [71.7, 98.9] | 100.0% [79.6, 100.0] | 0.968 [88.9, 100.0] | [82.0, 99.3] | 36.7% / 91.7% |
-| `no_injection_patterns` | safety | reader | 97 | 45 | 0 | 44 | 0 | 1 | 52 | 100.0% [92.0, 100.0] | 97.8% [88.4, 99.6] | 0.989 [96.2, 100.0] | [93.6, 99.7] | 100.0% / 100.0% |
+| `no_injection_patterns` | safety | reader | 97 | 45 | 0 | 44 | 1 | 1 | 51 | 97.8% [88.4, 99.6] | 97.8% [88.4, 99.6] | 0.978 [94.3, 100.0] | [92.1, 99.3] | 72.8% / 98.1% |
 | `no_stub_output` | safety | reader | 93 | 44 | 0 | 32 | 5 | 12 | 44 | 86.5% [72.0, 94.1] | 72.7% [58.1, 83.7] | 0.790 [68.5, 88.2] | [67.4, 86.8] | 27.3% / 87.7% |
 | `no_hallucination_markers` | safety | reader | 90 | 46 | 0 | 34 | 0 | 12 | 44 | 100.0% [89.8, 100.0] | 73.9% [59.7, 84.4] | 0.850 [75.8, 92.1] | [73.7, 91.1] | 100.0% / 100.0% |
 | `no_silent_tool_failure` | safety | reader | 74 | 38 | 0 | 29 | 0 | 9 | 36 | 100.0% [88.3, 100.0] | 76.3% [60.8, 87.0] | 0.866 [76.7, 94.0] | [75.8, 93.0] | 100.0% / 100.0% |
@@ -52,7 +52,7 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 - `answers_the_ask` — FP: ask-037, ask-043, ask-044 · FN: none
 - `no_pii` — FP: pii-008, pii-037, pii-053, pii-062, pii-075 · FN: pii-027, pii-043, pii-067, pii-076, pii-089
 - `no_blocklist_words` — FP: blocklist-016 · FN: none
-- `no_injection_patterns` — FP: none · FN: c08
+- `no_injection_patterns` — FP: c95 · FN: c08
 - `no_stub_output` — FP: stub-018, stub-038, stub-006, stub-075, stub-020 · FN: stub-007, stub-048, stub-022, stub-024, stub-050, stub-060, stub-035, stub-070, stub-078, stub-029, stub-056, stub-084
 - `no_hallucination_markers` — FP: none · FN: hall-001, hall-003, hall-017, hall-020, hall-031, hall-040, hall-043, hall-061, hall-070, hall-071, hall-072, hall-084
 - `no_silent_tool_failure` — FP: none · FN: silent-012, silent-031, silent-033, silent-034, silent-035, silent-046, silent-047, silent-048, silent-068
@@ -85,9 +85,9 @@ for each positive the rule caught untransformed with a span into raw text — th
 | `no_pii` | tab | 44 | 37 | 84.1% [70.6, 92.1] | pii-004, pii-045, pii-061, pii-068, pii-083, pii-095, pii-096 |
 | `no_pii` | linebreak | 44 | 37 | 84.1% [70.6, 92.1] | pii-004, pii-045, pii-061, pii-068, pii-083, pii-095, pii-096 |
 | `no_pii` | case | 36 | 28 | 77.8% [61.9, 88.3] | pii-006, pii-011, pii-021, pii-032, pii-045, pii-051, pii-072, pii-083 |
-| `no_injection_patterns` | zero_width | 44 | 40 | 90.9% [78.8, 96.4] | c10, c54, c91, c93 |
-| `no_injection_patterns` | homoglyph | 44 | 40 | 90.9% [78.8, 96.4] | c10, c54, c91, c93 |
-| `no_injection_patterns` | fullwidth | 44 | 40 | 90.9% [78.8, 96.4] | c10, c54, c91, c93 |
+| `no_injection_patterns` | zero_width | 44 | 44 | 100.0% [92.0, 100.0] | none |
+| `no_injection_patterns` | homoglyph | 44 | 44 | 100.0% [92.0, 100.0] | none |
+| `no_injection_patterns` | fullwidth | 44 | 44 | 100.0% [92.0, 100.0] | none |
 | `no_injection_patterns` | nbsp | 37 | 32 | 86.5% [72.0, 94.1] | c03, c18, c66, c72, c80 |
 | `no_injection_patterns` | tab | 44 | 40 | 90.9% [78.8, 96.4] | c10, c41, c91, c93 |
 | `no_injection_patterns` | linebreak | 44 | 39 | 88.6% [76.0, 95.0] | c10, c37, c41, c91, c93 |
@@ -153,7 +153,7 @@ each custom rule type built by createCustomRule under the family's config and ru
 <!-- latency:start -->
 ## How long one evaluation takes
 
-EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1081; p50 1.194 ms, p95 5.821 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
+EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1081; p50 1.449 ms, p95 6.654 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
 
 Re-measured on every `npm run proof` and excluded from `--check`: it is a property of the machine, so CI cannot hold it byte-for-byte.
 

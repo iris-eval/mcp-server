@@ -5,11 +5,10 @@
  * answer, a response schema, `{"answer": "...", "sources": [...]}`. The
  * text rules read the output as written, so a structured answer was read
  * in its escaped form. A line break was the two characters `\n`, a quote
- * was `\"`, and a field name was a word the answer had said. Measured on
- * the labelled corpus, writing every output as one string field of a JSON
- * object changed five verdicts and thirteen answers of the rules that
- * decide one: an injection the rule had found was missed, an empty answer
- * was no longer empty, and "not.\n\nThe" was read as the name of a file.
+ * was `\"`, and a phrase inside a string value sat between quotes, where
+ * the injection rule reads it as a quotation. Measured on the labelled
+ * corpus, writing every output as one string field of a JSON object
+ * changed five verdicts and thirteen answers of the rules that decide one.
  *
  * This module reads a structured output as the text it carries. Two views:
  *
@@ -17,11 +16,25 @@
  *   its own paragraph. What the output says. The quality, relevance,
  *   placeholder, fabrication and grounding rules read this.
  *
- *   LABELLED: the same, each prefixed with the name of the field it sits
- *   in ("password: hunter2"). What the output says and what it calls it.
- *   The leak, blocklist and injection rules read this, because a field
- *   name is part of what was written: a secret is recognised by the name
- *   it is assigned to, and a smuggled directive hides in a key.
+ *   LABELLED: every field name, quoted as JSON writes it, followed by the
+ *   value it holds (`"password": hunter2`), and a field name alone where
+ *   its value is an object, a list, null or blank. What the output says
+ *   and what it calls it. The leak, blocklist and injection rules read
+ *   this: a secret is recognised by the name it is assigned to, a date of
+ *   birth by its label, a smuggled directive by its key, and a key can
+ *   itself be the leak (`{"dana@example.org": {...}}`). The name keeps its
+ *   quotes so that a field called "system" is a field and not a forged
+ *   `System:` line, and the patterns that read JSON keys inside prose read
+ *   them here unchanged. A list's items carry its name once, before the
+ *   first: so each character of the reading comes from later in the
+ *   output than the one before it, and the reading is never more than a
+ *   few characters per value longer than the output.
+ *
+ * Between two values is a paragraph mark on its own line (VALUE_BREAK), not
+ * just a blank line: the folds the detectors apply turn a run of blank
+ * lines into one line break, which a phone number or a phrase reads
+ * across, and `[100, 250, 1000]` became a phone number. The sentence
+ * splitter counts no segment without a letter or a digit as a sentence.
  *
  * Every view keeps, for each character it holds, where that character came
  * from in the output as sent. A rule reports offsets into the text it read,
@@ -29,16 +42,20 @@
  * the right characters of the stored output. That is the reason this is a
  * scanner and not JSON.parse: a parsed value does not know where it was.
  *
- * What counts as structured: an output that is, whole and trimmed, one
- * JSON object or one JSON array, and that JSON.parse accepts. A sentence
- * that contains JSON, a fenced code block and a bare JSON string are prose.
- * Past STRUCTURED_OUTPUT_MAX_CHARS the output is read as written.
+ * What counts as structured: an output that is one JSON object or one JSON
+ * array with nothing around it but JSON whitespace (space, tab, line
+ * breaks), and that JSON.parse accepts. A byte-order mark or a no-break
+ * space beside it, a sentence that contains JSON, a fenced code block and
+ * a bare JSON string are read as written. Past STRUCTURED_OUTPUT_MAX_CHARS
+ * the output is read as written.
  *
- * An output with no string, number or boolean in it at all (`[]`, `{}`,
- * `{"results": []}`) is read as written too: the structure is the only
- * thing it says, and an empty list from an agent asked for a list is the
- * answer "none". One that carries strings and every one of them blank
- * (`{"answer": ""}`) says nothing, and its readings are empty.
+ * Emptiness: a blank string says nothing, so `{"answer": ""}` reads as
+ * empty. An output with no string, number or boolean in it at all (`[]`,
+ * `{"results": []}`, `{"answer": null}`) is read as written: the structure
+ * is the only thing it says, and an empty list from an agent asked for a
+ * list is the answer "none". A field beside an empty answer (a role, a
+ * confidence) is read as something the output says; which field is the
+ * answer is a schema this module does not have.
  *
  * Custom rules read the output exactly as it was sent. A deployment that
  * wrote a pattern against its own response format is matching that format.
@@ -47,14 +64,14 @@
 /** The longest output read as structured. Past it the output is read as written. */
 export const STRUCTURED_OUTPUT_MAX_CHARS = 512_000;
 
-/** Between two values in a view: a paragraph break, so no sentence or phrase runs from one field into the next. */
-const VALUE_BREAK = '\n\n';
+/** Between two values in a view: a paragraph mark on a line of its own, which no detector reads across. */
+const VALUE_BREAK = '\n\n¶\n\n';
 
 /** One reading of a structured output, and where each of its characters came from. */
 export interface OutputView {
   /** The text the rules read. */
   text: string;
-  /** For each character of `text`, the offset in the output as sent where its source begins. */
+  /** For each character of `text`, the offset in the output as sent where its source begins. Never decreases. */
   from: Int32Array;
   /** For each character of `text`, the offset in the output as sent where its source ends. */
   to: Int32Array;
@@ -65,109 +82,132 @@ export interface StructuredOutput {
   labelled: OutputView;
 }
 
-/** A string or a scalar, decoded, with the source offsets of each decoded character. */
+/**
+ * A run of the output as sent, as the text it decodes to. `start` and `end`
+ * are the raw offsets of the content; a token with no escapes maps one to
+ * one, and only a token with escapes carries a per-character map.
+ */
 interface Token {
   text: string;
-  from: number[];
-  to: number[];
-  /** Where the token's content ends in the output as sent; a zero-width point for what is inserted after it. */
+  start: number;
   end: number;
+  map: { from: number[]; to: number[] } | null;
 }
 
-interface Leaf {
-  key: Token | null;
-  value: Token;
-}
-
-/** A JSON string starting at `open` (the opening quote), decoded. Returns the token and the index after the closing quote. */
+/** A JSON string whose opening quote is at `open`, decoded. Returns the token and the index after the closing quote. */
 function readString(raw: string, open: number): { token: Token; next: number } {
+  let i = open + 1;
+  let close = i;
+  let escaped = false;
+  while (close < raw.length && raw.charCodeAt(close) !== 0x22) {
+    if (raw.charCodeAt(close) === 0x5c) {
+      escaped = true;
+      close += 2;
+    } else close += 1;
+  }
+  if (!escaped) return { token: { text: raw.slice(i, close), start: i, end: close, map: null }, next: close + 1 };
   const from: number[] = [];
   const to: number[] = [];
   let text = '';
-  let i = open + 1;
-  while (i < raw.length) {
-    const c = raw.charCodeAt(i);
-    if (c === 0x22) break; // "
-    if (c === 0x5c) {
-      // \
+  while (i < close) {
+    if (raw.charCodeAt(i) === 0x5c) {
       const e = raw[i + 1];
-      if (e === 'u') {
-        text += String.fromCharCode(parseInt(raw.slice(i + 2, i + 6), 16));
-        from.push(i);
-        to.push(i + 6);
-        i += 6;
-        continue;
-      }
-      text += e === 'n' ? '\n' : e === 't' ? '\t' : e === 'r' ? '\r' : e === 'b' ? '\b' : e === 'f' ? '\f' : e;
+      const width = e === 'u' ? 6 : 2;
+      text += e === 'u' ? String.fromCharCode(parseInt(raw.slice(i + 2, i + 6), 16)) : e === 'n' ? '\n' : e === 't' ? '\t' : e === 'r' ? '\r' : e === 'b' ? '\b' : e === 'f' ? '\f' : e;
       from.push(i);
-      to.push(i + 2);
-      i += 2;
-      continue;
+      to.push(i + width);
+      i += width;
+    } else {
+      text += raw[i];
+      from.push(i);
+      to.push(i + 1);
+      i += 1;
     }
-    text += raw[i];
-    from.push(i);
-    to.push(i + 1);
-    i += 1;
   }
-  return { token: { text, from, to, end: i }, next: i + 1 };
+  return { token: { text, start: open + 1, end: close, map: { from, to } }, next: close + 1 };
 }
 
-/** A number, true, false or null starting at `start`. Returns the token (null for `null`) and the index after it. */
+/** A number, true, false or null starting at `start`. Returns the token (null for `null`) and the index after it, always past `start`. */
 function readScalar(raw: string, start: number): { token: Token | null; next: number } {
   let i = start;
-  while (i < raw.length && !/[\s,\]}]/.test(raw[i])) i += 1;
+  while (i < raw.length && !/[\s,\]}:]/.test(raw[i])) i += 1;
+  // Never stand still: whatever the scanner was handed, it moves on.
+  if (i === start) return { token: null, next: start + 1 };
   const text = raw.slice(start, i);
   if (text === 'null') return { token: null, next: i };
-  const from: number[] = [];
-  const to: number[] = [];
-  for (let k = start; k < i; k++) {
-    from.push(k);
-    to.push(k + 1);
-  }
-  return { token: { text, from, to, end: i }, next: i };
+  return { token: { text, start, end: i, map: null }, next: i };
+}
+
+/** A field name as the output wrote it, and whether any value was read under it. */
+interface KeyEntry {
+  kind: 'key';
+  key: Token;
+  /** Set once a value is read under this occurrence of the name, which then carries it. */
+  carried: boolean;
+}
+
+interface ValueEntry {
+  kind: 'value';
+  value: Token;
+  /** The name this value is the first of, when it is: written before it in the labelled reading. */
+  key: KeyEntry | null;
 }
 
 interface Frame {
   kind: 'object' | 'array';
   /** In an object: whether the next string is a key. */
   expectKey: boolean;
-  /** The field this frame's values belong to: an object's latest key, or the key an array sits under. */
-  key: Token | null;
+  /** The name this frame's next value belongs to: an object's latest key, or the key a list sits under until its first value takes it. */
+  key: KeyEntry | null;
 }
 
 /**
- * Every value in the order written, each with the name of the field it sits
- * in, and whether the output carries any value at all (a blank string is a
- * value that says nothing; null and an empty container are not values). The
- * input is JSON that JSON.parse accepted.
+ * Every field name and every value, in the order written. A value takes the
+ * name it sits under when it is the first value to do so; a name no value
+ * took is read on its own. The input is JSON that JSON.parse accepted.
  */
-function leavesOf(raw: string): { leaves: Leaf[]; anyValue: boolean } {
-  const leaves: Leaf[] = [];
-  let anyValue = false;
+function entriesOf(raw: string): { entries: Array<KeyEntry | ValueEntry>; anyValue: boolean } {
+  const entries: Array<KeyEntry | ValueEntry> = [];
   const stack: Frame[] = [];
+  let anyValue = false;
+  const take = (top: Frame | undefined): KeyEntry | null => {
+    const key = top?.key ?? null;
+    if (key === null || key.carried) return null;
+    key.carried = true;
+    return key;
+  };
   let i = 0;
   while (i < raw.length) {
     const c = raw[i];
     const top = stack[stack.length - 1];
     if (c === '{' || c === '[') {
-      // A container under a key carries the key down; one inside an array carries the array's.
-      stack.push({ kind: c === '{' ? 'object' : 'array', expectKey: c === '{', key: c === '[' && top !== undefined ? top.key : null });
+      // A list under a name carries the name down until a value takes it.
+      const carried = c === '[' && top !== undefined ? top.key : null;
+      // A list whose item is a container gives its name to nothing later: written on its own, the name stays before what follows it.
+      if (top?.kind === 'array') top.key = null;
+      stack.push({ kind: c === '{' ? 'object' : 'array', expectKey: c === '{', key: carried });
       i += 1;
     } else if (c === '}' || c === ']') {
       stack.pop();
       i += 1;
     } else if (c === ',') {
-      if (top?.kind === 'object') top.expectKey = true;
+      if (top?.kind === 'object') {
+        top.expectKey = true;
+        top.key = null;
+      }
       i += 1;
     } else if (c === ':') {
       if (top !== undefined) top.expectKey = false;
       i += 1;
     } else if (c === '"') {
       const { token, next } = readString(raw, i);
-      if (top?.kind === 'object' && top.expectKey) top.key = token;
-      else {
+      if (top?.kind === 'object' && top.expectKey) {
+        const entry: KeyEntry = { kind: 'key', key: token, carried: false };
+        entries.push(entry);
+        top.key = entry;
+      } else {
         anyValue = true;
-        if (token.text.trim() !== '') leaves.push({ key: top?.key ?? null, value: token });
+        if (token.text.trim() !== '') entries.push({ kind: 'value', value: token, key: take(top) });
       }
       i = next;
     } else if (c === ' ' || c === '\n' || c === '\r' || c === '\t') {
@@ -176,38 +216,53 @@ function leavesOf(raw: string): { leaves: Leaf[]; anyValue: boolean } {
       const { token, next } = readScalar(raw, i);
       if (token !== null) {
         anyValue = true;
-        leaves.push({ key: top?.key ?? null, value: token });
+        entries.push({ kind: 'value', value: token, key: take(top) });
       }
       i = next;
     }
   }
-  return { leaves, anyValue };
+  return { entries, anyValue };
 }
 
-/** Join tokens into one view. Inserted characters (breaks, ": ") map to a zero-width point after what precedes them. */
-function viewOf(parts: Array<Token | { inserted: string; at: number }>): OutputView {
+/** A piece of a reading: text from the output (a token, or a token's quotes) or text the reading inserts at a point. */
+type Piece = { token: Token; quoted: boolean } | { inserted: string; at: number };
+
+function viewOf(pieces: readonly Piece[]): OutputView {
   let length = 0;
-  for (const p of parts) length += 'inserted' in p ? p.inserted.length : p.text.length;
+  for (const p of pieces) length += 'inserted' in p ? p.inserted.length : p.token.text.length + (p.quoted ? 2 : 0);
   const from = new Int32Array(length);
   const to = new Int32Array(length);
-  let text = '';
+  const parts: string[] = [];
   let n = 0;
-  for (const p of parts) {
+  const put = (a: number, b: number): void => {
+    from[n] = a;
+    to[n] = b;
+    n += 1;
+  };
+  for (const p of pieces) {
     if ('inserted' in p) {
-      for (let k = 0; k < p.inserted.length; k++, n++) {
-        from[n] = p.at;
-        to[n] = p.at;
-      }
-      text += p.inserted;
-    } else {
-      for (let k = 0; k < p.text.length; k++, n++) {
-        from[n] = p.from[k];
-        to[n] = p.to[k];
-      }
-      text += p.text;
+      for (let k = 0; k < p.inserted.length; k++) put(p.at, p.at);
+      parts.push(p.inserted);
+      continue;
     }
+    const t = p.token;
+    if (p.quoted) put(t.start - 1, t.start);
+    if (t.map === null) for (let k = 0; k < t.text.length; k++) put(t.start + k, t.start + k + 1);
+    else for (let k = 0; k < t.text.length; k++) put(t.map.from[k], t.map.to[k]);
+    if (p.quoted) put(t.end, t.end + 1);
+    parts.push(p.quoted ? `"${t.text}"` : t.text);
   }
-  return { text, from, to };
+  return { text: parts.join(''), from, to };
+}
+
+/** The output with JSON whitespace (and only that) taken off both ends, and where what is left starts. */
+function jsonTrimmed(output: string): { body: string; offset: number } {
+  let a = 0;
+  let b = output.length;
+  const ws = (c: string | undefined): boolean => c === ' ' || c === '\n' || c === '\r' || c === '\t';
+  while (a < b && ws(output[a])) a += 1;
+  while (b > a && ws(output[b - 1])) b -= 1;
+  return { body: output.slice(a, b), offset: a };
 }
 
 /**
@@ -216,31 +271,39 @@ function viewOf(parts: Array<Token | { inserted: string; at: number }>): OutputV
  */
 export function readStructured(output: string): StructuredOutput | null {
   if (output.length > STRUCTURED_OUTPUT_MAX_CHARS) return null;
-  const trimmed = output.trim();
-  const first = trimmed[0];
-  const last = trimmed[trimmed.length - 1];
+  const { body } = jsonTrimmed(output);
+  const first = body[0];
+  const last = body[body.length - 1];
   if (!((first === '{' && last === '}') || (first === '[' && last === ']'))) return null;
   try {
-    JSON.parse(trimmed);
+    JSON.parse(body);
   } catch {
     return null;
   }
-  const { leaves, anyValue } = leavesOf(output);
+  // The scanner reads the output as sent: around the body there is only JSON whitespace, which it skips.
+  const { entries, anyValue } = entriesOf(output);
   if (!anyValue) return null;
-  const values: Array<Token | { inserted: string; at: number }> = [];
-  const labelled: Array<Token | { inserted: string; at: number }> = [];
-  leaves.forEach((leaf, n) => {
-    if (n > 0) {
-      const after = leaves[n - 1].value.end;
-      values.push({ inserted: VALUE_BREAK, at: after });
-      labelled.push({ inserted: VALUE_BREAK, at: after });
+  const values: Piece[] = [];
+  const labelled: Piece[] = [];
+  let lastValueEnd = -1;
+  let lastLabelledEnd = -1;
+  for (const entry of entries) {
+    if (entry.kind === 'key') {
+      // Written only when no value took it: a name alone, where its value is an object, a list, null or blank.
+      if (entry.carried) continue;
+      if (lastLabelledEnd >= 0) labelled.push({ inserted: VALUE_BREAK, at: lastLabelledEnd });
+      labelled.push({ token: entry.key, quoted: true }, { inserted: ':', at: entry.key.end + 1 });
+      lastLabelledEnd = entry.key.end + 1;
+      continue;
     }
-    values.push(leaf.value);
-    if (leaf.key !== null && leaf.key.text.trim() !== '') {
-      labelled.push(leaf.key, { inserted: ': ', at: leaf.key.end });
-    }
-    labelled.push(leaf.value);
-  });
+    if (lastValueEnd >= 0) values.push({ inserted: VALUE_BREAK, at: lastValueEnd });
+    values.push({ token: entry.value, quoted: false });
+    lastValueEnd = entry.value.end;
+    if (lastLabelledEnd >= 0) labelled.push({ inserted: VALUE_BREAK, at: lastLabelledEnd });
+    if (entry.key !== null) labelled.push({ token: entry.key.key, quoted: true }, { inserted: ': ', at: entry.key.key.end + 1 });
+    labelled.push({ token: entry.value, quoted: false });
+    lastLabelledEnd = entry.value.end;
+  }
   return { values: viewOf(values), labelled: viewOf(labelled) };
 }
 
@@ -250,7 +313,7 @@ export function spanInOutput(view: OutputView, start: number, end: number): { st
   if (n === 0) return { start: 0, end: 0 };
   let s = Math.min(Math.max(start, 0), n - 1);
   let e = Math.min(Math.max(end, s), n);
-  // Characters the reading inserted (a paragraph break, ": ") are points; the span is what came from the output.
+  // Characters the reading inserted (a value break, ": ") are points; the span is what came from the output.
   while (s < e && view.from[s] === view.to[s]) s += 1;
   while (e > s && view.from[e - 1] === view.to[e - 1]) e -= 1;
   if (e === s) return { start: view.from[Math.min(s, n - 1)], end: view.from[Math.min(s, n - 1)] };

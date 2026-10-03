@@ -601,15 +601,15 @@ export class EvalEngine {
     /*
      * An output written as JSON, read as the text it carries (0.20.0). The
      * built-in text rules used to read a structured answer in its escaped
-     * form: a line break was the two characters `\n` and a field name was a
-     * word the answer had said, so an injection was missed and an empty
+     * form: a line break was the two characters `\n` and a phrase in a
+     * value sat between quotes, so an injection was missed and an empty
      * answer was not empty. Each rule that reads the output declares which
      * reading it takes (EvalRule.outputView); custom rules read the output
      * as sent. Parsed once per evaluation, and only when the output is a
-     * JSON object or array.
+     * JSON object or array. A structured `expected` is read the same way,
+     * so a rule that compares the two compares like with like.
      */
-    const structured = readStructured(context.output);
-    delete evalContext.outputRead;
+    const structured = readingsOf(context);
     /*
      * The relevance judge, asked once and before any rule (#649). Only when
      * the deployment installed one, answers_the_ask is among the rules this
@@ -913,15 +913,26 @@ export class EvalEngine {
  * text, with every span the rule reports mapped back onto the output as
  * sent (a leak detector's offsets are what a redaction cuts).
  */
+interface Readings {
+  output: StructuredOutput | null;
+  expected: StructuredOutput | null;
+}
+
+function readingsOf(context: EvalContext): Readings {
+  return { output: readStructured(context.output), expected: typeof context.expected === 'string' ? readStructured(context.expected) : null };
+}
+
 function readingAs(
   rule: EvalRule,
   context: EvalContext,
-  structured: StructuredOutput | null,
+  readings: Readings,
   run: (rule: EvalRule, context: EvalContext) => EvalRuleResult = evaluateGuarded,
 ): EvalRuleResult {
+  const structured = readings.output;
   if (structured === null || rule.outputView === undefined) return run(rule, context);
   const view = structured[rule.outputView];
-  const result = run(rule, { ...context, output: view.text, outputRead: rule.outputView });
+  const expected = readings.expected?.[rule.outputView].text;
+  const result = run(rule, { ...context, output: view.text, ...(expected !== undefined ? { expected } : {}) });
   const evidence = result.evidence?.map((e) => (e.type === 'span' && e.source === 'output' ? { ...e, ...spanInOutput(view, e.start, e.end) } : e));
   return { ...result, ...(evidence !== undefined ? { evidence } : {}), ...(result.skipped === true ? {} : { read: rule.outputView }) };
 }
@@ -934,9 +945,7 @@ function readingAs(
  * throws throws here, so a measurement never counts an error as a skip.
  */
 export function evaluateRuleAsRead(rule: EvalRule, context: EvalContext): EvalRuleResult {
-  const asSent: EvalContext = { ...context };
-  delete asSent.outputRead;
-  return readingAs(rule, asSent, readStructured(context.output), (r, c) => r.evaluate(c));
+  return readingAs(rule, context, readingsOf(context), (r, c) => r.evaluate(c));
 }
 
 /**

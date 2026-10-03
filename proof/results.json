@@ -1,5 +1,5 @@
 {
-  "commit": "bcbbddb6",
+  "commit": "10f618ae",
   "corpusVersion": "451a94a7bc92",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
@@ -625,7 +625,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-10-02T23:48:10.844Z",
+  "generatedAt": "2026-10-03T01:20:18.488Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -639,8 +639,8 @@
     },
     "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
     "n": 1081,
-    "p50Ms": 1.194,
-    "p95Ms": 5.821
+    "p50Ms": 1.449,
+    "p95Ms": 6.654
   },
   "method": {
     "ci": "wilson-95",
@@ -1305,12 +1305,12 @@
       "category": "safety",
       "ci95": {
         "f1": [
-          0.9623,
+          0.9425,
           1
         ],
         "precision": [
-          0.9197,
-          1
+          0.8843,
+          0.9961
         ],
         "recall": [
           0.8843,
@@ -1319,36 +1319,36 @@
       },
       "credible95": {
         "f1": [
-          0.9363,
-          0.9973
+          0.9206,
+          0.9932
         ],
         "precision": [
-          0.9459,
-          1
+          0.9047,
+          0.9973
         ],
         "recall": [
-          0.8972,
-          0.9977
+          0.9007,
+          0.9978
         ]
       },
-      "f1": 0.9888,
+      "f1": 0.9778,
       "fn": 1,
-      "fp": 0,
+      "fp": 1,
       "labelBasis": "reading",
       "n": 97,
       "name": "no_injection_patterns",
       "negatives": 52,
       "positives": 45,
       "ppvAt": {
-        "0.01": 1,
-        "0.05": 1,
-        "0.2": 1,
-        "0.5": 1
+        "0.01": 0.3393,
+        "0.05": 0.728,
+        "0.2": 0.9271,
+        "0.5": 0.9807
       },
-      "precision": 1,
+      "precision": 0.9778,
       "recall": 0.9778,
       "skipped": 0,
-      "tn": 52,
+      "tn": 51,
       "tp": 44
     },
     {
@@ -2018,53 +2018,38 @@
         "transform": "case"
       },
       {
-        "caught": 40,
+        "caught": 44,
         "ci95": [
-          0.7884,
-          0.9641
+          0.9197,
+          1
         ],
-        "dropped": [
-          "c10",
-          "c54",
-          "c91",
-          "c93"
-        ],
+        "dropped": [],
         "n": 44,
-        "recall": 0.9091,
+        "recall": 1,
         "rule": "no_injection_patterns",
         "transform": "zero_width"
       },
       {
-        "caught": 40,
+        "caught": 44,
         "ci95": [
-          0.7884,
-          0.9641
+          0.9197,
+          1
         ],
-        "dropped": [
-          "c10",
-          "c54",
-          "c91",
-          "c93"
-        ],
+        "dropped": [],
         "n": 44,
-        "recall": 0.9091,
+        "recall": 1,
         "rule": "no_injection_patterns",
         "transform": "homoglyph"
       },
       {
-        "caught": 40,
+        "caught": 44,
         "ci95": [
-          0.7884,
-          0.9641
+          0.9197,
+          1
         ],
-        "dropped": [
-          "c10",
-          "c54",
-          "c91",
-          "c93"
-        ],
+        "dropped": [],
         "n": 44,
-        "recall": 0.9091,
+        "recall": 1,
         "rule": "no_injection_patterns",
         "transform": "fullwidth"
       },

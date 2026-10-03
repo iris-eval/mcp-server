@@ -223,6 +223,20 @@ export const REWRITINGS: readonly Rewriting[] = [
    */
   { id: 'json_field', what: 'the output as one string field of a JSON object', sameText: true, apply: (o) => JSON.stringify({ answer: o }) },
   {
+    id: 'chat_message',
+    what: 'the output as the content of a chat message, `{"role": "assistant", "content": …}`',
+    sameText: false,
+    why: 'the role is read as something the output says, so an empty content is not an empty answer: which field holds the answer is a schema the reader does not have',
+    apply: (o) => JSON.stringify({ role: 'assistant', content: o }),
+  },
+  {
+    id: 'answer_with_confidence',
+    what: 'the output beside a confidence, `{"answer": …, "confidence": 0.92}`',
+    sameText: false,
+    why: 'the confidence is read as something the output says, so an empty answer is not empty; the same reason as the chat message',
+    apply: (o) => JSON.stringify({ answer: o, confidence: 0.92 }),
+  },
+  {
     id: 'upper_case',
     what: 'the output in upper case',
     sameText: false,

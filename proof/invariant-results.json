@@ -96,7 +96,7 @@
     }
   ],
   "cases": 145,
-  "commit": "bcbbddb6",
+  "commit": "10f618ae",
   "compositeVersion": "ed158f72a620",
   "contracts": [
     {
@@ -512,7 +512,7 @@
       "what": "the call supplied an expected trajectory"
     }
   ],
-  "generatedAt": "2026-10-02T23:49:28.827Z",
+  "generatedAt": "2026-10-03T01:21:42.347Z",
   "removals": [
     {
       "carried": 127,
@@ -966,6 +966,50 @@
         "passToFail": []
       },
       "what": "the output as one string field of a JSON object"
+    },
+    {
+      "applied": 145,
+      "id": "chat_message",
+      "rules": {
+        "non_empty_output": {
+          "started": [],
+          "stopped": [
+            "format-050"
+          ]
+        }
+      },
+      "sameText": false,
+      "verdicts": {
+        "failToPass": [
+          "format-050"
+        ],
+        "other": [],
+        "passToFail": []
+      },
+      "what": "the output as the content of a chat message, `{\"role\": \"assistant\", \"content\": …}`",
+      "why": "the role is read as something the output says, so an empty content is not an empty answer: which field holds the answer is a schema the reader does not have"
+    },
+    {
+      "applied": 145,
+      "id": "answer_with_confidence",
+      "rules": {
+        "non_empty_output": {
+          "started": [],
+          "stopped": [
+            "format-050"
+          ]
+        }
+      },
+      "sameText": false,
+      "verdicts": {
+        "failToPass": [
+          "format-050"
+        ],
+        "other": [],
+        "passToFail": []
+      },
+      "what": "the output beside a confidence, `{\"answer\": …, \"confidence\": 0.92}`",
+      "why": "the confidence is read as something the output says, so an empty answer is not empty; the same reason as the chat message"
     },
     {
       "applied": 142,

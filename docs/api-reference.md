@@ -1932,11 +1932,15 @@ An output that is, whole, one JSON object or one JSON array (for example `{"answ
 | Reading | What the rule reads | Rules |
 |---|---|---|
 | `values` | every string, number and boolean, in the order written, each its own paragraph | `min_output_length`, `non_empty_output`, `sentence_count`, `expected_coverage`, `ask_coverage`, `keyword_overlap`, `topic_consistency`, `answers_the_ask`, `no_stub_output`, `no_hallucination_markers`, `no_silent_tool_failure`, `grounded_in_reads`, `no_injection_compliance` |
-| `labelled` | the same, each with the name of its field in front (`password: …`, `dob: …`) | `no_pii`, `no_blocklist_words`, `no_injection_patterns` |
+| `labelled` | every field name, quoted as JSON writes it, before the value it holds (`"password": …`, `"dob": …`), and a name alone where its value is an object, a list or `null`; a list's name is written once, before its first item | `no_pii`, `no_blocklist_words`, `no_injection_patterns` |
 
-`null` and blank strings say nothing, so `{"answer": ""}` is an empty answer. A rule result that read a structured output carries `read` (`"values"` or `"labelled"`), and every evidence offset it reports still points into the output as it was sent, so a span can be shown or redacted in the stored text. The injection rule reads one more thing in the labelled reading only: a directive smuggled as a field name (`_assistant_directive`, `instructions_for_the_model`). The same words opening a paragraph of prose are a configuration an agent wrote and do not fire.
+Field names are part of what is read: a secret is recognised by the name it is assigned to, a key can itself be the leak (`{"dana@example.org": {…}}`), and a directive smuggled as a key (`"_assistant_directive": …`) is read by the same patterns that read JSON keys inside prose. The name keeps its quotes, so a field called `"system"` in a request body is a field, not a forged `System:` line. Two values are separated by a paragraph mark on a line of its own, which no detector reads across: three numbers in a list are not a phone number.
 
-What is not read this way: JSON inside a sentence, a fenced code block, a bare JSON string, and an output longer than 512,000 characters are read as written. Custom rules always read the output exactly as sent, so a `regex_match` written against your response format keeps matching it.
+A blank string says nothing, so `{"answer": ""}` is an empty answer. An output with no string, number or boolean in it at all (`[]`, `{"results": []}`, `{"answer": null}`) is read as written: the structure is all it says. A field beside an empty answer, such as a role or a confidence, is read as something the output says, so `{"role": "assistant", "content": ""}` is not empty; which field holds the answer is a schema Iris does not have. [proof/INVARIANTS.md](../proof/INVARIANTS.md) publishes how often each of these envelopes changes an answer.
+
+A rule result that read a structured output carries `read` (`"values"` or `"labelled"`). Every evidence offset still points into the output as sent, and in order, so a span can be shown or redacted in the stored text; the relevance judge's redaction reads a structured text the same way the leak rule does. A structured `expected` is read the same way as the output.
+
+What is not read this way: JSON with anything but JSON whitespace beside it (a byte-order mark, a no-break space), JSON inside a sentence, a fenced code block, a bare JSON string, and an output longer than 512,000 characters are read as written. Custom rules always read the output exactly as sent, so a `regex_match` written against your response format keeps matching it.
 
 ---
 
