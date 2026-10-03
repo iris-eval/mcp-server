@@ -96,8 +96,8 @@
     }
   ],
   "cases": 145,
-  "commit": "33a52fb6",
-  "compositeVersion": "ed158f72a620",
+  "commit": "f47533d6",
+  "compositeVersion": "e1d72ff465c1",
   "contracts": [
     {
       "after": {
@@ -114,9 +114,9 @@
     },
     {
       "after": {
-        "fail": 39,
+        "fail": 42,
         "pass": 0,
-        "unknown": 88
+        "unknown": 85
       },
       "carried": 127,
       "held": true,
@@ -244,8 +244,8 @@
     },
     {
       "after": {
-        "fail": 39,
-        "pass": 88,
+        "fail": 42,
+        "pass": 85,
         "unknown": 0
       },
       "carried": 127,
@@ -290,7 +290,6 @@
         "cost-047",
         "cost-048",
         "cost-049",
-        "format-051",
         "format-052",
         "format-053",
         "format-054",
@@ -337,9 +336,7 @@
         "ungrounded-141",
         "ungrounded-142",
         "ungrounded-143",
-        "ungrounded-144",
-        "wrongtool-151",
-        "wrongtool-152"
+        "ungrounded-144"
       ],
       "removal": "tool_calls_empty",
       "what": "the deployment set a step ceiling (max_steps)"
@@ -359,8 +356,8 @@
     },
     {
       "after": {
-        "fail": 39,
-        "pass": 88,
+        "fail": 42,
+        "pass": 85,
         "unknown": 0
       },
       "carried": 127,
@@ -405,7 +402,6 @@
         "cost-047",
         "cost-048",
         "cost-049",
-        "format-051",
         "format-052",
         "format-053",
         "format-054",
@@ -452,9 +448,7 @@
         "ungrounded-141",
         "ungrounded-142",
         "ungrounded-143",
-        "ungrounded-144",
-        "wrongtool-151",
-        "wrongtool-152"
+        "ungrounded-144"
       ],
       "removal": "tool_calls_empty",
       "what": "the deployment set a repeat ceiling (max_tool_repeats)"
@@ -512,7 +506,129 @@
       "what": "the call supplied an expected trajectory"
     }
   ],
-  "generatedAt": "2026-10-03T03:00:00.439Z",
+  "degenerate": [
+    {
+      "agent": "empty",
+      "states": {
+        "no_calls:action": "fail",
+        "no_calls:writing": "fail",
+        "output_only:action": "fail",
+        "output_only:writing": "fail"
+      },
+      "what": "nothing"
+    },
+    {
+      "agent": "blank",
+      "states": {
+        "no_calls:action": "fail",
+        "no_calls:writing": "fail",
+        "output_only:action": "fail",
+        "output_only:writing": "fail"
+      },
+      "what": "a blank"
+    },
+    {
+      "agent": "echo",
+      "states": {
+        "no_calls:action": "pass",
+        "no_calls:writing": "fail",
+        "output_only:action": "pass",
+        "output_only:writing": "fail"
+      },
+      "what": "the ask copied back"
+    },
+    {
+      "agent": "done",
+      "states": {
+        "no_calls:action": "fail",
+        "no_calls:writing": "fail",
+        "output_only:action": "pass",
+        "output_only:writing": "pass"
+      },
+      "what": "\"Done.\""
+    },
+    {
+      "agent": "ok",
+      "states": {
+        "no_calls:action": "fail",
+        "no_calls:writing": "fail",
+        "output_only:action": "pass",
+        "output_only:writing": "pass"
+      },
+      "what": "\"OK\""
+    },
+    {
+      "agent": "refusal",
+      "states": {
+        "no_calls:action": "pass",
+        "no_calls:writing": "pass",
+        "output_only:action": "pass",
+        "output_only:writing": "pass"
+      },
+      "what": "\"I can't help with that.\""
+    },
+    {
+      "agent": "completion",
+      "states": {
+        "no_calls:action": "fail",
+        "no_calls:writing": "fail",
+        "output_only:action": "pass",
+        "output_only:writing": "pass"
+      },
+      "what": "\"The task has been completed successfully.\""
+    },
+    {
+      "agent": "ellipsis",
+      "states": {
+        "no_calls:action": "fail",
+        "no_calls:writing": "fail",
+        "output_only:action": "pass",
+        "output_only:writing": "fail"
+      },
+      "what": "\"…\""
+    },
+    {
+      "agent": "null",
+      "states": {
+        "no_calls:action": "fail",
+        "no_calls:writing": "fail",
+        "output_only:action": "pass",
+        "output_only:writing": "fail"
+      },
+      "what": "\"null\""
+    },
+    {
+      "agent": "lorem",
+      "states": {
+        "no_calls:action": "fail",
+        "no_calls:writing": "fail",
+        "output_only:action": "pass",
+        "output_only:writing": "fail"
+      },
+      "what": "\"lorem ipsum dolor sit amet\""
+    },
+    {
+      "agent": "disclaimer",
+      "states": {
+        "no_calls:action": "pass",
+        "no_calls:writing": "pass",
+        "output_only:action": "pass",
+        "output_only:writing": "pass"
+      },
+      "what": "\"As an AI language model, I cannot browse the internet.\""
+    },
+    {
+      "agent": "repeat",
+      "states": {
+        "no_calls:action": "fail",
+        "no_calls:writing": "fail",
+        "output_only:action": "fail",
+        "output_only:writing": "fail"
+      },
+      "what": "one sentence repeated 400 times"
+    }
+  ],
+  "generatedAt": "2026-10-03T06:52:51.340Z",
   "removals": [
     {
       "carried": 127,
@@ -617,17 +733,16 @@
           "injcomp-evade-fullwidth",
           "ungrounded-140",
           "ungrounded-141",
-          "ungrounded-142",
-          "wrongtool-151"
+          "ungrounded-142"
         ],
         "failToNotChecked": 0,
-        "failToPass": 37,
+        "failToPass": 36,
         "notCheckedToPass": 0
       },
       "need": "tool_calls",
-      "same": 84,
+      "same": 83,
       "what": "an empty list of tool calls sent in their place",
-      "worse": 6
+      "worse": 8
     },
     {
       "carried": 125,
@@ -942,13 +1057,17 @@
           "stopped": [
             "format-050"
           ]
+        },
+        "says_something": {
+          "started": [
+            "format-050"
+          ],
+          "stopped": []
         }
       },
       "sameText": false,
       "verdicts": {
-        "failToPass": [
-          "format-050"
-        ],
+        "failToPass": [],
         "other": [],
         "passToFail": []
       },
@@ -1118,6 +1237,7 @@
   "version": "0.19.0",
   "violations": {
     "contract": 0,
+    "degenerate": 0,
     "rescued": 0,
     "rewritten": 0
   }

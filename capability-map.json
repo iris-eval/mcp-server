@@ -348,7 +348,7 @@
       "question": "Q3",
       "subject": "S1",
       "status": "partial",
-      "summary": "Form is measured — length, sentence count, non-empty, and stub or placeholder markers — not whether the ask was answered.",
+      "summary": "Form is measured — length, sentence count, non-empty, stub or placeholder markers, and an answer that says nothing (a promise or a bare claim of completion in place of the work, a placeholder, an announcement with nothing after it, the ask handed back, one passage on a loop) — not whether the ask was answered.",
       "evidence": [
         {
           "kind": "rule",
@@ -365,6 +365,10 @@
         {
           "kind": "rule",
           "name": "no_stub_output"
+        },
+        {
+          "kind": "rule",
+          "name": "says_something"
         }
       ],
       "needs": [

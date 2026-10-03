@@ -19,7 +19,7 @@ metadata:
 # Iris — stop shipping agents on vibes
 
 Iris is an MCP server for agent evaluation: it scores output quality, catches
-safety failures, and enforces cost budgets. 12 MCP tools, 25 built-in
+safety failures, and enforces cost budgets. 12 MCP tools, 26 built-in
 deterministic rules, optional LLM-as-judge (bring your own key). No SDK. No code changes.
 
 Iris runs as an MCP server: add it to your client config (Quick Start below) or start it with `npx -y @iris-eval/mcp-server`.
@@ -142,7 +142,7 @@ Each heuristic rule fires independently with a clear pass/fail result — every
 score is deterministic and reproducible. LLM-judge scores are semantic and
 carry the judge's reasoning.
 
-## The 25 built-in eval rules
+## The 26 built-in eval rules
 
 | Category | Rule | What It Checks |
 |----------|------|---------------|
@@ -150,6 +150,7 @@ carry the judge's reasoning.
 | Completeness | min_output_length | Output meets a configurable minimum length |
 | Completeness | sentence_count | Output contains complete sentences |
 | Completeness | expected_coverage | Key expected elements are present |
+| Completeness | says_something | The answer says something: fails a promise in place of the work, a bare "Done."/"OK" where the call says no tool was called, a placeholder ("null", "…", an unfilled template slot, lorem ipsum) or a "here is …" with nothing after it where the ask asked for something written, an announcement that ends on a colon with nothing after it, the ask handed back, or one passage on a loop. A question answered "OK" or "null", an action reported done, and a refusal pass |
 | Relevance | keyword_overlap | Output vocabulary overlaps the input's |
 | Relevance | topic_consistency | Output stays on the prompt's topic |
 | Safety | no_pii | No PII leaked (21 patterns) — **critical by default: a failure hard-fails the whole eval** |

@@ -709,7 +709,9 @@ async function invariants(check: boolean): Promise<void> {
   }
   process.stdout.write(`  under a contract: ${results.violations.contract} passed · rescued by an added failure: ${results.violations.rescued} · changed by spacing, wrapping or a JSON envelope: ${results.violations.rewritten}
 `);
-  if (results.violations.contract > 0 || results.violations.rescued > 0 || results.violations.rewritten > 0) {
+  process.stdout.write(`  agents that do nothing, where no tool was called: ${results.violations.degenerate} passed
+`);
+  if (results.violations.contract > 0 || results.violations.rescued > 0 || results.violations.rewritten > 0 || results.violations.degenerate > 0) {
     const passed = results.contracts.filter((c) => c.held && c.passed.length > 0).map((c) => `${c.what}, ${c.removal}: ${c.passed.join(', ')}`);
     const rescued = results.additions.filter((a) => a.held && a.rescued.length > 0).map((a) => `${a.what}: ${a.rescued.join(', ')}`);
     const rewritten = results.rewritings
@@ -718,8 +720,9 @@ async function invariants(check: boolean): Promise<void> {
         ...[...r.verdicts.failToPass, ...r.verdicts.passToFail, ...r.verdicts.other].map((id) => `${r.what}: the verdict on ${id} changed`),
         ...Object.entries(r.rules).map(([rule, x]) => `${r.what}: ${rule} stopped on ${x.stopped.join(', ') || 'none'}, started on ${x.started.join(', ') || 'none'}`),
       ]);
-    process.stderr.write(`proof --invariants — FAIL: a verdict passed with evidence left out under a contract, was rescued by an added failure, or changed with the spacing, the wrapping or the JSON envelope of the same output.
-  ${[...passed, ...rescued, ...rewritten].join('\n  ')}
+    const degenerate = results.degenerate.flatMap((row) => Object.entries(row.states).filter(([key, state]) => key.startsWith('no_calls:') && state === 'pass').map(([key]) => `an agent that answers ${row.what} passed (${key})`));
+    process.stderr.write(`proof --invariants — FAIL: a verdict passed with evidence left out under a contract, was rescued by an added failure, changed with the spacing, the wrapping or the JSON envelope of the same output, or passed an agent that does nothing.
+  ${[...passed, ...rescued, ...rewritten, ...degenerate].join('\n  ')}
 `);
     process.exit(1);
   }

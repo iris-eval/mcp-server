@@ -1,6 +1,6 @@
 {
-  "commit": "33a52fb6",
-  "corpusVersion": "451a94a7bc92",
+  "commit": "f47533d6",
+  "corpusVersion": "7c27824a2b98",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
     "types": [
@@ -625,7 +625,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-10-03T02:59:05.943Z",
+  "generatedAt": "2026-10-03T06:51:42.807Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -638,9 +638,9 @@
       "platform": "win32"
     },
     "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
-    "n": 1081,
-    "p50Ms": 0.887,
-    "p95Ms": 5.329
+    "n": 1323,
+    "p50Ms": 0.883,
+    "p95Ms": 5.394
   },
   "method": {
     "ci": "wilson-95",
@@ -1000,6 +1000,56 @@
       "skipped": 0,
       "tn": 23,
       "tp": 28
+    },
+    {
+      "category": "completeness",
+      "ci95": {
+        "f1": [
+          0.224,
+          0.4277
+        ],
+        "precision": [
+          0.8569,
+          1
+        ],
+        "recall": [
+          0.1359,
+          0.28
+        ]
+      },
+      "credible95": {
+        "f1": [
+          0.2344,
+          0.4293
+        ],
+        "precision": [
+          0.8977,
+          1
+        ],
+        "recall": [
+          0.133,
+          0.2743
+        ]
+      },
+      "f1": 0.3309,
+      "fn": 93,
+      "fp": 0,
+      "labelBasis": "reading",
+      "n": 242,
+      "name": "says_something",
+      "negatives": 126,
+      "positives": 116,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
+      "precision": 1,
+      "recall": 0.1983,
+      "skipped": 1,
+      "tn": 126,
+      "tp": 23
     },
     {
       "category": "relevance",

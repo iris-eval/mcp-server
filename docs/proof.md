@@ -278,6 +278,19 @@ read as something the output says, and upper and lower case (case is part
 of a secret, a file name and a placeholder marker; and one real fault, the
 fabrication rule reading capitals as names of metrics).
 
+**Does an agent that does nothing pass?** Twelve trivial agents (nothing,
+a blank, the ask copied back, "Done.", "OK", a refusal, a claim of
+completion, an ellipsis, "null", lorem ipsum, an AI disclaimer, one
+sentence on repeat) answer two fixed asks, an action and a piece of
+writing. Where the call records that no tool was called, none may pass,
+and CI holds that at zero, except three cells the page names with their
+reasons: the two refusals, because a refusal is an answer, and the action
+handed back, because an agent that rewrites text returns it unchanged when
+nothing needs changing. Where no tool calls are sent at all, more pass,
+and the page says why: such a call says nothing about whether the work was
+done elsewhere, and a deployment that requires tool calls gets "not
+checked" for them instead.
+
 What a deployment that gates on a verdict takes from the first table: name
 the evidence the gate must rest on. `eval.requiredEvidence: ["tool_calls"]`
 closes the largest row.

@@ -90,6 +90,12 @@ const SERVER_TEXT_FILES: Array<[string, string[]]> = [
   ['src/eval/text/structured.ts', ['STRUCTURED_OUTPUT_MAX_CHARS', 'VALUE_MARK', 'VALUE_BREAK', 'isValueBreakAt', 'withoutValueBreaks', 'readString', 'readScalar', 'entriesOf', 'viewOf', 'jsonTrimmed', 'readStructured', 'spanInOutput']],
   ['src/eval/text/sentences.ts', ['ALWAYS_ABBREVIATION', 'ABBREVIATION_BEFORE_NUMBER', 'TERMINATORS', 'blankLineFollows', 'opensSentence', 'isDigit', 'TOKEN_LOOKBACK', 'precedingToken', 'saysAWord', 'sentencesOf', 'countSentences']],
   /*
+   * An answer that says nothing (0.20.0): the shapes and the decision of
+   * says_something, copied whole so the playground fails the same
+   * non-answers the server does.
+   */
+  ['src/eval/rules/says-something.ts', ['BARE_ANSWER_MAX_WORDS', 'LOOP_MIN_COUNT', 'LONG_PASSAGE_WORDS', 'LONG_LOOP_MIN_COUNT', 'LEAD_IN_MAX_WORDS', 'LOOP_MIN_SHARE', 'LOOP_SCAN_CHARS', 'ECHO_MIN_ASK_WORDS', 'WRITE_VERBS', 'ASK_PREFIX', 'WH_WORDS', 'ACKNOWLEDGE_VERBS', 'AUX_WORDS', 'PROMISE_WORDS', 'PROMISE_MARKS', 'COMPLETION_WORDS', 'COMPLETION_MARKS', 'ARTEFACTS', 'TEMPLATE_SLOT', 'LOREM_WORDS', 'FILLER_ASK', 'ECHO_FRAME', 'ECHO_ASK', 'plainQuotes', 'wordsOf', 'isSpace', 'trimChars', 'askHead', 'askKindOf', 'madeOf', 'askNamesAll', 'placeholderOf', 'isBareMarker', 'leadInOf', 'isAskHandedBack', 'codeFree', 'collapsed', 'shortestPeriod', 'LOOP_MIN_WORDS', 'loopOf', 'nonAnswerOf', 'SAYS_SOMETHING_PASS']],
+  /*
    * ask_coverage is the one act-layer rule that RUNS in the playground —
    * it reads only the input and the output — so its whole module is
    * vendored and pinned rather than stubbed. A splitter that drifted would
@@ -333,6 +339,35 @@ const FIXED_CASES: Array<{ name: string; ctx: EvalContext; expect: Record<string
     name: 'a structured answer whose fields say nothing is empty',
     ctx: { output: '{"answer": "", "sources": []}' },
     expect: { non_empty_output: 'fail' },
+  },
+  /*
+   * An answer that says nothing (0.20.0): both libraries fail it, and both
+   * leave a short right answer alone.
+   */
+  {
+    name: 'a promise in place of the list that was asked for says nothing',
+    ctx: { output: 'Will do!', input: 'List the three biggest risks in the Q3 plan.' },
+    expect: { says_something: 'fail' },
+  },
+  {
+    name: 'an announcement with nothing after it says nothing',
+    ctx: { output: 'Here are the release notes:', input: 'Write the release notes for version 2.3.' },
+    expect: { says_something: 'fail' },
+  },
+  {
+    name: 'a structured promise is read by its values and says nothing',
+    ctx: { output: '{"answer": "Will do!"}', input: 'Write the release notes for version 2.3.' },
+    expect: { says_something: 'fail' },
+  },
+  {
+    name: 'a refusal is an answer',
+    ctx: { output: "I can't help with that.", input: 'Write the release notes for version 2.3.' },
+    expect: { says_something: 'pass' },
+  },
+  {
+    name: 'a one-word right answer says something, and so does "OK" as the reason phrase of 200',
+    ctx: { output: 'OK', input: 'What is the reason phrase for HTTP status code 200?' },
+    expect: { says_something: 'pass' },
   },
   {
     name: 'a structured answer: an override inside a field value is an injection',
