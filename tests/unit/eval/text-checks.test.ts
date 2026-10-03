@@ -116,6 +116,20 @@ describe('sentencesOf', () => {
     expect(sentencesOf('He said "go." She left.')).toEqual(['He said "go."', 'She left.']);
   });
 
+  it('reads only as much of the token before a full stop as the abbreviation lists need', () => {
+    // The longest listed abbreviation is still recognised whole.
+    expect(countSentences('It took approx. Ten minutes later it was done.')).toBe(1);
+    // A longer token that ends in a listed one is not that abbreviation.
+    expect(countSentences('The flag is --verbosedr. Then it runs.')).toBe(2);
+    expect(countSentences('He met internationallyDr. Then he left.')).toBe(2);
+  });
+
+  it('every terminator in a run decides the same way, however long the run', () => {
+    expect(sentencesOf('Wait!!!!!! Then go.')).toEqual(['Wait!!!!!!', 'Then go.']);
+    expect(countSentences('a' + '.'.repeat(1000) + 'b')).toBe(1);
+    expect(sentencesOf('Done.....! "Yes."')).toEqual(['Done.....!', '"Yes."']);
+  });
+
   it('does not split inside a URL or a version string', () => {
     expect(countSentences('See https://iris-eval.com/proof for the numbers.')).toBe(1);
     expect(countSentences('Upgrade to v0.10.0 today.')).toBe(1);

@@ -88,7 +88,7 @@ const SERVER_TEXT_FILES: Array<[string, string[]]> = [
    * every structured answer.
    */
   ['src/eval/text/structured.ts', ['STRUCTURED_OUTPUT_MAX_CHARS', 'VALUE_MARK', 'VALUE_BREAK', 'isValueBreakAt', 'withoutValueBreaks', 'readString', 'readScalar', 'entriesOf', 'viewOf', 'jsonTrimmed', 'readStructured', 'spanInOutput']],
-  ['src/eval/text/sentences.ts', ['ALWAYS_ABBREVIATION', 'ABBREVIATION_BEFORE_NUMBER', 'TERMINATORS', 'blankLineFollows', 'opensSentence', 'isDigit', 'precedingToken', 'saysAWord', 'sentencesOf', 'countSentences']],
+  ['src/eval/text/sentences.ts', ['ALWAYS_ABBREVIATION', 'ABBREVIATION_BEFORE_NUMBER', 'TERMINATORS', 'blankLineFollows', 'opensSentence', 'isDigit', 'TOKEN_LOOKBACK', 'precedingToken', 'saysAWord', 'sentencesOf', 'countSentences']],
   /*
    * ask_coverage is the one act-layer rule that RUNS in the playground —
    * it reads only the input and the output — so its whole module is

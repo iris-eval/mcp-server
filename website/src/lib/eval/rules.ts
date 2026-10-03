@@ -1062,10 +1062,20 @@ function opensSentence(ch: string): boolean {
 
 const isDigit = (ch: string | undefined): boolean => ch !== undefined && ch >= '0' && ch <= '9';
 
-/** The token immediately before `at`, lowercased, without its trailing stop. */
+/*
+ * How far back the token before a full stop is read. One character more than
+ * the longest abbreviation either list holds: a longer token is never on a
+ * list and never an initial, so reading the rest of it decides nothing. Read
+ * whole, a long stretch with no space in it (`a.B` repeated) was read again at
+ * every full stop, in quadratic time.
+ */
+const TOKEN_LOOKBACK = Math.max(...[...ALWAYS_ABBREVIATION, ...ABBREVIATION_BEFORE_NUMBER].map((t) => t.length)) + 1;
+
+/** The token immediately before `at`, lowercased, without its trailing stop; at most its last TOKEN_LOOKBACK characters. */
 function precedingToken(text: string, at: number): string {
+  const floor = Math.max(0, at - TOKEN_LOOKBACK);
   let i = at - 1;
-  while (i >= 0 && !/[\s(["']/.test(text[i])) i--;
+  while (i >= floor && !/[\s(["']/.test(text[i])) i--;
   return text.slice(i + 1, at).toLowerCase();
 }
 
@@ -1088,6 +1098,15 @@ function saysAWord(piece: string): boolean {
 export function sentencesOf(text: string): string[] {
   const out: string[] = [];
   let start = 0;
+  /*
+   * The run of terminators the current one belongs to, and what follows it.
+   * Every terminator in a run has the same run end and the same next
+   * character, so they are found once per run. Found again at each one, a
+   * long run ("!!!!…" inside a word) was quadratic.
+   */
+  let runEnd = -1;
+  let after = 0;
+  let next = 0;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
 
@@ -1104,17 +1123,19 @@ export function sentencesOf(text: string): string[] {
     // 3.5 — a full stop between digits is a decimal point.
     if (ch === '.' && isDigit(text[i - 1]) && isDigit(text[i + 1])) continue;
 
-    // Run past a cluster of terminators ("What?!").
-    let end = i;
-    while (end + 1 < text.length && TERMINATORS.has(text[end + 1])) end++;
+    if (i > runEnd) {
+      // Run past a cluster of terminators ("What?!").
+      runEnd = i;
+      while (runEnd + 1 < text.length && TERMINATORS.has(text[runEnd + 1])) runEnd++;
 
-    // Closing quotes and brackets belong to the sentence that ends here.
-    let after = end + 1;
-    while (after < text.length && '"’”\')]}'.includes(text[after])) after++;
+      // Closing quotes and brackets belong to the sentence that ends here.
+      after = runEnd + 1;
+      while (after < text.length && '"’”\')]}'.includes(text[after])) after++;
 
-    // What comes next has to look like a new sentence.
-    let next = after;
-    while (next < text.length && /[ \t\r\n]/.test(text[next])) next++;
+      // What comes next has to look like a new sentence.
+      next = after;
+      while (next < text.length && /[ \t\r\n]/.test(text[next])) next++;
+    }
     /*
      * No whitespace after the stop is usually a mid-token full stop — a
      * version (v0.10.0), a filename (package.json), a hostname
