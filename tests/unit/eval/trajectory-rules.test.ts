@@ -73,7 +73,7 @@ describe('no_silent_tool_failure', () => {
   it('passes when no call failed', () => {
     const r = noSilentToolFailure.evaluate(ctx(ANSWER, [{ tool_name: 'bash', output: 'anthropic.ts\nopenai.ts' }]));
     expect(r.passed).toBe(true);
-    expect(r.message).toContain('No tool call failed');
+    expect(r.message).toContain('No tool call was left failed');
   });
 
   /*

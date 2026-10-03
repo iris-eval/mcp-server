@@ -23,6 +23,7 @@
 import type { EvalContext, EvalRuleResult } from '../../types/eval.js';
 import type { Step, ToolCallRecord } from '../../types/trace.js';
 import { stepsOf, trajectoryAbsence } from '../steps.js';
+import { exitCodeStated, failingVerdict, passingVerdict } from './command-output.js';
 
 /** How much of a string tool output is inspected. Bounds the work per call. */
 export const OUTPUT_SCAN_CHARS = 400;
@@ -194,11 +195,44 @@ function headTokenIsThrowable(line: string): boolean {
   return token.endsWith('error') || token.endsWith('exception');
 }
 
+/** The longest string output read as JSON. Past it the output is text. */
+export const JSON_OUTPUT_CHARS = 262_144;
+
+/**
+ * An object output that reached Iris as a string. The same result written
+ * `{"ok": false}` by one framework and `"{\"ok\": false}"` by another is
+ * the same result, and until 0.20.0 only the first was read as a failure.
+ */
+function objectWrittenAsText(text: string): Record<string, unknown> | null {
+  if (text.length > JSON_OUTPUT_CHARS) return null;
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return null;
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** `exit code 1`, `exit status 2`, alone on the line: what a harness writes first when the command it ran did not return zero. */
+function firstLineIsNonZeroExit(line: string): boolean {
+  for (const prefix of ['exit code', 'exit status']) {
+    if (!line.startsWith(prefix)) continue;
+    const code = exitCodeStated(line, prefix);
+    return code !== null && code !== 0;
+  }
+  return false;
+}
+
 function stringOutputLooksFailed(text: string): boolean {
+  const asObject = objectWrittenAsText(text);
+  if (asObject !== null) return objectOutputLooksFailed(asObject);
   const line = firstNonEmptyLineFolded(text);
   if (line.length === 0) return false;
   if (headTokenIsThrowable(line)) return true;
   if (ERROR_LINE_PREFIXES.some((p) => line.startsWith(p))) return true;
+  if (firstLineIsNonZeroExit(line)) return true;
   return ERROR_LINE_PHRASES.some((p) => line.includes(p));
 }
 
@@ -238,10 +272,15 @@ function objectOutputLooksFailed(value: Record<string, unknown>): boolean {
  *      contract field — log_trace documents it as "the tool really failed"
  *      — and it is what the real transcripts carry.
  *   2. `output` is error-SHAPED, for the callers who do not set `error`:
- *      an object declaring failure through one of ERROR_OBJECT_KEYS, or a
- *      string whose FIRST non-empty line starts with one of
- *      ERROR_LINE_PREFIXES, names a throwable before its first colon
- *      (`TypeError:`), or contains one of ERROR_LINE_PHRASES.
+ *      an object declaring failure through one of ERROR_OBJECT_KEYS (or a
+ *      string that is such an object written as JSON), or a string whose
+ *      FIRST non-empty line starts with one of ERROR_LINE_PREFIXES, names a
+ *      throwable before its first colon (`TypeError:`), is `exit code N`
+ *      with N not zero, or contains one of ERROR_LINE_PHRASES.
+ *
+ * A command that ran to the end and whose output REPORTS failure (a test
+ * runner's "3 failed") is not this: the call succeeded. That is
+ * `openFailures` below, which no_silent_tool_failure reads.
  *
  * Anything else is a successful call, INCLUDING an empty output: "the tool
  * returned nothing" is not by itself a failure (a `find` with no hits and
@@ -266,6 +305,104 @@ export function failureReason(call: ToolCallRecord): string {
   const out = call.output;
   if (typeof out === 'string') return truncate(firstNonEmptyLine(out), 80);
   return 'output declares failure';
+}
+
+/* ------------------------------------------------------------------ *
+ * The failures an answer has to own
+ * ------------------------------------------------------------------ */
+
+/** One step that went wrong: the call failed, or the command it ran reports failure. */
+export interface StepFailure {
+  index: number;
+  step: Step;
+  /** `failed`: the call itself failed (isFailedCall). `reported`: it ran, and its output reports failure (command-output.ts). */
+  kind: 'failed' | 'reported';
+  /** In the words the message uses. */
+  reason: string;
+}
+
+/** Values compared when asking whether a later call carries what a failed one did. */
+const MAX_INPUT_VALUES = 50;
+
+/** The strings and numbers a call was given, wherever they sit in its input. */
+function inputValues(input: unknown): Set<string> {
+  const values = new Set<string>();
+  const walk = (value: unknown, depth: number): void => {
+    if (values.size >= MAX_INPUT_VALUES || depth > 4) return;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.length > 0) values.add(trimmed);
+    } else if (typeof value === 'number') {
+      values.add(String(value));
+    } else if (Array.isArray(value)) {
+      for (const v of value) walk(v, depth + 1);
+    } else if (value !== null && typeof value === 'object') {
+      for (const v of Object.values(value as Record<string, unknown>)) walk(v, depth + 1);
+    }
+  };
+  walk(input, 0);
+  return values;
+}
+
+/** Why this step went wrong, or null when it did not. */
+function failureOf(step: Step, index: number): StepFailure | null {
+  if (isFailedStep(step)) return { index, step, kind: 'failed', reason: stepFailureReason(step) };
+  const verdict = failingVerdict(asCallRecord(step));
+  return verdict === null ? null : { index, step, kind: 'reported', reason: `reports "${truncate(verdict, 70)}"` };
+}
+
+/**
+ * Did the agent recover from this failure later in the same trajectory?
+ *
+ * An agent that calls a tool with a misspelled argument, reads the error,
+ * calls it again correctly and answers from what came back has nothing to
+ * own: the event happened and the answer is fine. Until 0.20.0 every such
+ * answer failed this rule unless it happened to use a failure word. A
+ * failure is recovered when a LATER call to the same tool went right and is
+ * about the same thing:
+ *
+ *   - the same target (`targetKey`: the same path, query, command, …), or
+ *   - the failed call named no target at all (the misspelled or missing
+ *     argument), and everything it was given is in the later call, or
+ *   - the failure was a command's own verdict (failing tests) and a later
+ *     command reports a passing one. What an answer says about the tests
+ *     is about how they ended.
+ *
+ * A later success on something ELSE recovers nothing: `read a.txt` failing
+ * and `read b.txt` succeeding leaves the answer owing the first.
+ */
+function recoveredBy(failure: StepFailure, later: readonly Step[]): boolean {
+  const target = targetKey(failure.step);
+  const given = target === null ? inputValues(failure.step.input) : null;
+  for (const step of later) {
+    const wentRight = !isFailedStep(step) && failingVerdict(asCallRecord(step)) === null;
+    if (!wentRight) continue;
+    if (failure.kind === 'reported' && passingVerdict(asCallRecord(step)) !== null) return true;
+    if (step.name !== failure.step.name) continue;
+    if (target !== null) {
+      if (targetKey(step) === target) return true;
+      continue;
+    }
+    const has = inputValues(step.input);
+    if ([...given!].every((v) => has.has(v))) return true;
+  }
+  return false;
+}
+
+/**
+ * The failures in a trajectory, split into the ones still open at the end
+ * and the ones the agent recovered from. no_silent_tool_failure asks the
+ * answer to own the open ones.
+ */
+export function failuresIn(steps: readonly Step[]): { open: StepFailure[]; recovered: StepFailure[] } {
+  const open: StepFailure[] = [];
+  const recovered: StepFailure[] = [];
+  for (const [index, step] of steps.entries()) {
+    const failure = failureOf(step, index);
+    if (failure === null) continue;
+    (recoveredBy(failure, steps.slice(index + 1)) ? recovered : open).push(failure);
+  }
+  return { open, recovered };
 }
 
 /* ------------------------------------------------------------------ *

@@ -90,6 +90,12 @@ const SERVER_TEXT_FILES: Array<[string, string[]]> = [
    * on the one input where it mattered.
    */
   ['src/eval/text/asks.ts', ['MAX_ASK_CHARS', 'MAX_ASK_PARTS', 'MIN_MEASURABLE_TERMS', 'GENERIC_ASK_TERMS', 'COVER_MAX_REQUIRED', 'PREFIX_MATCH_CHARS', 'LIST_MARKERS', 'ASK_VERBS', 'MANNER_PREFIXES', 'isManner', 'PRODUCE_VERBS', 'MIN_PRODUCED_WORDS', 'isProduceAsk', 'askFencedSpans', 'withinAskSpan', 'enumerationRuns', 'ORDINAL_WORDS', 'ordinalWordRuns', 'trimJoiner', 'splitAsk', 'measurableParts', 'answerIndex', 'askSubjectTerms', 'hitsPart', 'requiredHits', 'coversPart']],
+  /*
+   * What a command's output reports (0.20.0): the runner and build-tool verdicts
+   * no_silent_tool_failure reads. Vendored whole, for the same reason as the
+   * trajectory vocabulary below.
+   */
+  ['src/eval/rules/command-output.ts', ['VERDICT_HEAD_CHARS', 'VERDICT_TAIL_CHARS', 'VERDICT_LINE_MAX', 'COMMAND_TOOL_WORDS', 'COMMAND_INPUT_KEYS', 'ranACommand', 'stripAnsi', 'verdictLines', 'FAILING_LINE_STARTS', 'PASSING_LINE_STARTS', 'SUMMARY_WORDS', 'FAIL_COUNT_WORDS', 'ERROR_COUNT_WORDS', 'PASS_COUNT_WORDS', 'EXIT_CODE_PHRASES', 'isDigits', 'isCountOrDuration', 'tokensOf', 'isSummaryLine', 'exitCodeStated', 'startsWithMarker', 'adjacent', 'assigned', 'positive', 'counted', 'lineFails', 'linePasses', 'writtenBy', 'failingVerdict', 'passingVerdict']],
 ];
 
 const CATEGORIES: EvalCategory[] = ['safety', 'relevance', 'completeness', 'cost'];
@@ -420,6 +426,12 @@ const SHARED_SAFETY_BLOCKS = [
   'insideQuotedSpan',
   'injectionPatternFires',
   // no_stub_output
+  'spaced',
+  'squeezeSpaces',
+  'WRAPPED_LINE_MIN',
+  'startsBlock',
+  'joinWrappedLines',
+  'asWritten',
   'DEFAULT_STUB_MARKERS',
   'STUB_SHAPE_PATTERNS',
   'removedDiffLineSpans',
@@ -523,6 +535,9 @@ const SHARED_TRAJECTORY_BLOCKS = [
   'firstNonEmptyLine',
   'firstNonEmptyLineFolded',
   'headTokenIsThrowable',
+  'JSON_OUTPUT_CHARS',
+  'objectWrittenAsText',
+  'firstLineIsNonZeroExit',
   'stringOutputLooksFailed',
   'objectOutputLooksFailed',
   'isFailedCall',

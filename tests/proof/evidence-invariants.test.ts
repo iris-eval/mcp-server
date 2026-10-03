@@ -13,7 +13,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ADDITIONS, CONTRACTS, INVARIANT_RESULTS_JSON, INVARIANTS_MD, REMOVALS, measureInvariants, renderInvariantsMarkdown, type InvariantResults } from '../../proof/lib/invariants.js';
+import { ADDITIONS, CONTRACTS, INVARIANT_RESULTS_JSON, INVARIANTS_MD, REMOVALS, REWRITINGS, measureInvariants, renderInvariantsMarkdown, type InvariantResults } from '../../proof/lib/invariants.js';
 import { EvalEngine } from '../../src/eval/engine.js';
 import { defaultConfig } from '../../src/config/defaults.js';
 
@@ -24,6 +24,7 @@ describe('the published sweep is what this code measures', () => {
     const { results } = await measureInvariants(process.cwd());
     expect(results.removals.map((r) => r.id)).toEqual(REMOVALS.map((r) => r.id));
     expect(results.additions.map((a) => a.id)).toEqual(ADDITIONS.map((a) => a.id));
+    expect(results.rewritings.map((r) => r.id)).toEqual(REWRITINGS.map((r) => r.id));
     expect(results.contracts).toHaveLength(CONTRACTS.reduce((n, c) => n + c.covers.length + (c.measures?.length ?? 0), 0));
     // The committed file, without the three stamps of when and where it was generated.
     const rest: Partial<InvariantResults> = { ...committed };
@@ -73,6 +74,27 @@ describe('under a contract, leaving the field out never yields a pass', () => {
   });
 });
 
+describe('the same output, spaced or wrapped another way, gets the same answer', () => {
+  it('no verdict and no deciding rule changes when every space is doubled or the lines are wrapped', () => {
+    const held = committed.rewritings.filter((r) => r.sameText);
+    expect(held.map((r) => r.id)).toEqual(['double_spaces', 'wrapped']);
+    for (const r of held) {
+      expect(r.verdicts, r.what).toEqual({ failToPass: [], passToFail: [], other: [] });
+      expect(r.rules, r.what).toEqual({});
+      // And it rewrote most of the corpus: a sweep over nothing would also read zero.
+      expect(r.applied, r.what).toBeGreaterThan(100);
+    }
+    expect(committed.violations.rewritten).toBe(0);
+  });
+
+  it('every rewriting that is not held at zero says why, and at least one of them does change an answer', () => {
+    const measured = committed.rewritings.filter((r) => !r.sameText);
+    expect(measured.length).toBeGreaterThan(0);
+    for (const r of measured) expect(r.why, r.what).toMatch(/\S{3,}/);
+    expect(measured.some((r) => Object.keys(r.rules).length > 0)).toBe(true);
+  });
+});
+
 describe('an explicit empty list of tool calls', () => {
   it('is refused by a requirement and by an expectation of calls, and is published (not held) under a ceiling on the calls', () => {
     const rows = committed.contracts.filter((c) => c.removal === 'tool_calls_empty');
@@ -87,10 +109,10 @@ describe('an explicit empty list of tool calls', () => {
   });
 });
 
-describe('a failure added to a case that does not pass never makes it pass, for the four additions that are held', () => {
+describe('a failure added to a case that does not pass never makes it pass, for the additions that are held', () => {
   it('zero rescued on every held addition', () => {
     const held = committed.additions.filter((x) => x.held);
-    expect(held.map((a) => a.id)).toEqual(['pii', 'stub', 'failed_tool_call', 'over_budget']);
+    expect(held.map((a) => a.id)).toEqual(['pii', 'stub', 'failed_tool_call', 'failed_test_run', 'over_budget']);
     for (const a of held) {
       expect(a.rescued, a.what).toEqual([]);
       expect(a.notPassing, a.what).toBeGreaterThan(50);
