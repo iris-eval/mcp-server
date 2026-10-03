@@ -122,7 +122,7 @@ export default function Security(): React.ReactElement {
             </p>
             <p className="mt-3">
               <strong className="text-text-primary">
-                There is no hosted version of Iris.
+                Iris is self-hosted.
               </strong>{" "}
               Every control on this page describes software that runs on your
               machine.
@@ -502,8 +502,8 @@ export default function Security(): React.ReactElement {
               Compliance
             </h2>
             <p>
-              Iris holds no compliance certification, and none is in progress.
-              For anyone assessing it:
+              Iris runs inside your environment, and none of your traces reach
+              us. Iris itself holds no certification. Where it stands:
             </p>
             <ul className="mt-3 list-disc space-y-2 pl-6">
               <li>
