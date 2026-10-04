@@ -28,6 +28,13 @@ docs/capabilities.md text eol=lf
 docs/evaluators.template.md text eol=lf
 docs/evaluators.md text eol=lf
 
+# The outside line (npm run proof -- --outside): AgentDojo's run logs are checked byte for byte against the
+# git blob hashes AgentDojo's repository lists, so they must reach every checkout exactly as published (LF);
+# the results are byte-compared in CI like the lines above.
+proof/outside/** text eol=lf
+proof/outside-results.json text eol=lf
+proof/OUTSIDE.md text eol=lf
+
 # The iris-eval launcher is packed from a checkout (release.yml does it on
 # Linux; 1.0.0 was packed by hand): its bin must start with an LF shebang on
 # every platform: a carriage return after "node" fails on macOS and Linux
