@@ -81,12 +81,20 @@ export class SearchWorkerClient {
   /** Threads started, for tests and the health of the pool. */
   started = 0;
 
-  /** `entry` and `closeTimeoutMs`: tests only, a module to run as the thread instead of search-worker's, and how long close() waits. */
+  /** When the running thread was started: close() names its age when it has to stop one that had not finished starting. */
+  private startedAt = 0;
+
+  /**
+   * `entry` and `closeTimeoutMs`: tests only, a module to run as the thread
+   * instead of search-worker's, and how long close() waits. `warn` is told,
+   * in one line, when close() had to stop the thread and why.
+   */
   constructor(
     private readonly data: SearchWorkerData,
     private readonly graceMs = WORKER_GRACE_MS,
     private readonly entry?: URL,
     private readonly closeTimeoutMs = CLOSE_TIMEOUT_MS,
+    private readonly warn?: (line: string) => void,
   ) {}
 
   /** Whether a thread is running and has opened its connection. */
@@ -127,6 +135,7 @@ export class SearchWorkerClient {
     else w = new Worker(entry, { workerData: this.data });
     this.worker = w;
     this.ready = false;
+    this.startedAt = performance.now();
     this.started += 1;
     w.unref();
     w.on('message', (msg: { type?: 'ready'; id?: number; result?: MatchResult; error?: { message: string } }) => {
@@ -179,6 +188,7 @@ export class SearchWorkerClient {
     this.closed = true;
     const w = this.worker;
     this.worker = undefined;
+    const searching = this.pending.size;
     for (const [id, p] of [...this.pending]) {
       this.settle(id);
       p.reject(new Error('the store is closed'));
@@ -190,7 +200,15 @@ export class SearchWorkerClient {
     const late = new Promise<'late'>((resolve) => {
       timer = setTimeout(() => resolve('late'), this.closeTimeoutMs);
     });
-    if ((await Promise.race([exited, late])) === 'late') void w.terminate();
+    if ((await Promise.race([exited, late])) === 'late') {
+      const why = !this.ready
+        ? `it had not finished starting, ${Math.round(performance.now() - this.startedAt)} ms after it was started`
+        : searching > 0
+          ? `it was in a search`
+          : `no search was running`;
+      this.warn?.(`The search thread had not ended ${this.closeTimeoutMs} ms after close() (${why}); it is being stopped, and ends when the statement it is in returns.`);
+      void w.terminate();
+    }
     clearTimeout(timer);
   }
 }
