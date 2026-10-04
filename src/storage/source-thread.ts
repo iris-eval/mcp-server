@@ -1,10 +1,12 @@
 import { Worker, type WorkerOptions } from 'node:worker_threads';
 
 /*
- * A thread does not take --import, so when Iris runs from its TypeScript
- * sources (tests, `npx tsx`) the thread registers tsx's loader itself, then
- * loads its entry. The entry arrives as the thread's last argv item, so the
- * code the thread evaluates is a constant: nothing is spliced into it.
+ * A thread inherits its process's --import (Node 22 and 24), but a process
+ * running Iris from its TypeScript sources need not have one: the test
+ * runner transforms the sources itself. So the thread registers tsx's loader
+ * itself, then loads its entry. The entry arrives as the thread's last argv
+ * item, so the code the thread evaluates is a constant: nothing is spliced
+ * into it.
  */
 const BOOT = "import('tsx/esm/api').then((tsx) => { tsx.register(); return import(process.argv[process.argv.length - 1]); })";
 
