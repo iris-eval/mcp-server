@@ -25,8 +25,10 @@ import type { Trace } from '../../../src/types/trace.js';
 import { SEARCH_DRIVER } from './fts5-here.js';
 
 // File-backed stores and worker threads: under coverage on a Windows runner, two of these once
-// went past vitest's 5 s default (1 run in 50), with no thread or process dying.
-vi.setConfig({ testTimeout: 30_000 });
+// went past vitest's 5 s default (1 run in 50), with no thread or process dying. The cleanup
+// hook closes stores too, and a close that waits for a thread to end once went past the hook's
+// 10 s default the same way; a close that had to stop a thread says why on stderr.
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
 
 const dirs: string[] = [];
 const open: SqliteAdapter[] = [];
@@ -406,7 +408,8 @@ describe('SearchWorkerClient', () => {
         '});',
       ].join('\n'),
     );
-    const client = new SearchWorkerClient({ path: 'unused', driver, busyTimeoutMs: 5000 }, 60_000, pathToFileURL(file), 200);
+    const warned: string[] = [];
+    const client = new SearchWorkerClient({ path: 'unused', driver, busyTimeoutMs: 5000 }, 60_000, pathToFileURL(file), 200, (line) => warned.push(line));
     // Settled into a value at once, so the rejection close() causes is never unhandled.
     const running = client.search({ tenantId: 'local', parsed: parseSearch('refund'), plan, index: 'scan', budgetMs: 60_000 }).then(
       () => undefined,
@@ -427,10 +430,29 @@ describe('SearchWorkerClient', () => {
     // close() returned while the thread was still inside its statement: it did not wait for the statement to end.
     expect(exited).toBe(false);
     expect((await running)?.message).toBe('the store is closed');
+    // And it said so, naming what the thread was doing.
+    expect(warned).toEqual([expect.stringMatching(/^The search thread had not ended 200 ms after close\(\) \(it was in a search\); it is being stopped/)]);
     // The thread still ends, when its statement does.
     await new Promise<void>((resolve) => (exited ? resolve() : thread.once('exit', () => resolve())));
     expect(exited).toBe(true);
   }, 30_000);
+  it('says when close() had to stop a thread that had not finished starting', async () => {
+    // A thread that never reports ready and does not hear the close message: only JavaScript, so stopping it is safe.
+    const dir = mkdtempSync(join(tmpdir(), 'iris-search-worker-unstarted-'));
+    dirs.push(dir);
+    const file = join(dir, 'unstarted.mjs');
+    writeFileSync(file, ["import { parentPort } from 'node:worker_threads';", "parentPort.on('message', () => undefined);"].join('\n'));
+    const warned: string[] = [];
+    const client = new SearchWorkerClient({ path: 'unused', driver, busyTimeoutMs: 5000 }, 60_000, pathToFileURL(file), 200, (line) => warned.push(line));
+    const running = client.search({ tenantId: 'local', parsed: parseSearch('refund'), plan, index: 'scan', budgetMs: 60_000 }).then(
+      () => undefined,
+      (err: Error) => err,
+    );
+    await client.close();
+    expect((await running)?.message).toBe('the store is closed');
+    expect(warned).toEqual([expect.stringMatching(/^The search thread had not ended 200 ms after close\(\) \(it had not finished starting, \d+ ms after it was started\); it is being stopped/)]);
+  }, 30_000);
+
   it('reports a thread that cannot open the file as unavailable, so the caller can search itself', async () => {
     const client = new SearchWorkerClient({ path: join(tmpdir(), 'iris-no-such-dir', 'missing.db'), driver, busyTimeoutMs: 5000 });
     try {

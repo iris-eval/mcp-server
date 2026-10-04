@@ -184,7 +184,8 @@ describe('WAL checkpoints on a worker thread', () => {
     await seed.initialize();
     await seed.insertTraces(LOCAL_TENANT, traces(1));
     await seed.close();
-    const w = new Checkpointer({ path, driver: CELL_DRIVER === 'node' ? 'node' : 'better-sqlite3', busyMs: 5000, onReady: () => undefined, onFailed: () => undefined, closeTimeoutMs: 100 });
+    const warned: string[] = [];
+    const w = new Checkpointer({ path, driver: CELL_DRIVER === 'node' ? 'node' : 'better-sqlite3', busyMs: 5000, onReady: () => undefined, onFailed: () => undefined, closeTimeoutMs: 100, warn: (line) => warned.push(line) });
     expect(await w.started).toBe(true);
     const thread = (w as unknown as { worker: { once(e: 'exit', f: (code: number) => void): void } }).worker;
     let ended = false;
@@ -203,6 +204,8 @@ describe('WAL checkpoints on a worker thread', () => {
     expect(waited).toBeGreaterThan(100);
     // The request the thread was in is answered, never left waiting (it used to be, once close() had begun).
     expect(await slow).toMatch(/answered|the checkpoint worker closed/);
+    // And close() said why it had to stop the thread, naming the request it was in.
+    expect(warned).toEqual([expect.stringMatching(/^The checkpoint thread had not ended 100 ms after close\(\) \(it was in a statement this process asked for \d+ ms earlier\); it is being stopped\.$/)]);
   });
 
   it('holds the thread from close() on, even when the answer to a request in flight empties its queue', async () => {
