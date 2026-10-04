@@ -660,12 +660,29 @@ jobs:
         with:
           name: mcpb-bundle
           path: ${{ runner.temp }}/mcpb
+      # Electron's install downloads its binary from GitHub's release
+      # servers on every run, and a 503 from them once failed this job on
+      # main with nothing wrong in the bundle. The binary is kept in a cache
+      # per version and OS, and the install is tried three times, so a
+      # passing moment of the download server does not fail the job.
+      - name: Electron's binary, from the cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ${{ runner.temp }}/electron-cache
+          key: electron-40.4.1-${{ runner.os }}
       - name: Install Electron (exact version)
+        env:
+          electron_config_cache: ${{ runner.temp }}/electron-cache
         run: |
           mkdir -p "$RUNNER_TEMP/electron"
           cd "$RUNNER_TEMP/electron"
           npm init -y > /dev/null
-          npm install --no-audit --no-fund --save-exact electron@40.4.1
+          for attempt in 1 2 3; do
+            npm install --no-audit --no-fund --save-exact electron@40.4.1 && break
+            [ "$attempt" = 3 ] && { echo "::error::Electron did not install in three attempts"; exit 1; }
+            echo "Electron's install failed (attempt $attempt of 3); trying again in $((attempt * 20)) s"
+            sleep $((attempt * 20))
+          done
       - name: The bundle runs in Electron's Node, lists every tool and stores a trace
         run: |
           ./node_modules/.bin/mcpb unpack "$RUNNER_TEMP/mcpb/iris-eval.mcpb" "$RUNNER_TEMP/unpacked"
