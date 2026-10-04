@@ -31,7 +31,7 @@
     "react-router": "^8.4.0"
   },
   "devDependencies": {
-    "@storybook/addon-docs": "^10.6.0",
+    "@storybook/addon-docs": "^10.6.1",
     "@storybook/react-vite": "^10.6.0",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
