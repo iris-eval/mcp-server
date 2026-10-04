@@ -70,5 +70,5 @@ The eval engine uses a `registerRule` API, so you can extend it programmatically
 
 GitHub: https://github.com/iris-eval/mcp-server
 npm: https://www.npmjs.com/package/@iris-eval/mcp-server
-Roadmap: https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md
+Roadmap: https://iris-eval.com/capabilities
 License: MIT

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Links to the old roadmap resolve.** `docs/roadmap.md` points at the capability map, which replaced it, so links to it in published posts and on other sites land somewhere current; the editor's notes on three posts link the map directly.
 - **The homepage's research section leads with published research:** the four-way comparison of Iris, Langfuse, Phoenix and Promptfoo, and each rule's measured precision and recall on /proof, in place of a survey card marked "Coming Soon". The terms add how a hosted or paid service would be offered: under its own terms, published before it starts, with no change to the open-source software's license.
 
 ## [0.20.0] - 2026-10-03

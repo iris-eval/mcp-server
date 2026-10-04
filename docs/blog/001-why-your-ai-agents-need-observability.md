@@ -10,7 +10,7 @@ relatedPosts: [mcp-observability-is-the-new-apm, why-every-mcp-agent-needs-an-in
 
 > **Editor's note (2026-04):** This post was written when Iris framed itself as observability-first. Iris has since repositioned as "the agent eval standard for MCP" — scoring outputs, not just watching them. See [Closing the Eval Gap](/blog/closing-the-eval-gap) for the current thesis.
 
-> **Editor's note (2026-08):** The "Cloud tier" described below is no longer a planned release. Iris's roadmap moved from a version ladder (v0.5 Cloud / v0.6 Alerting / v0.7 Enterprise) to three tracks — Proof, Coverage and Reach — and hosted/team features are now explicitly *under consideration, not under construction*, with no pricing. The open-source server remains unlimited and free. See [the roadmap](https://github.com/iris-eval/mcp-server/blob/main/docs/roadmap.md).
+> **Editor's note (2026-08):** The "Cloud tier" described below is no longer a planned release. Iris's roadmap moved from a version ladder (v0.5 Cloud / v0.6 Alerting / v0.7 Enterprise) to three tracks — Proof, Coverage and Reach — and hosted/team features are now explicitly *under consideration, not under construction*, with no pricing. The open-source server remains unlimited and free. See [the capability map](https://iris-eval.com/capabilities), which is the roadmap.
 
 # Why Your AI Agents Need Observability
 

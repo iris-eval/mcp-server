@@ -5,10 +5,11 @@
  * truthbase — every evaluation question against every subject, with what
  * Iris has, has with a limit, and lacks. Two roadmaps meant one of them was
  * always behind: the file still listed OpenTelemetry ingest and datasets as
- * open a release after they shipped. The file is gone, /roadmap redirects
- * to the map, and this holds the three things that keep it gone: no live
- * surface links the deleted file, the redirect is there and permanent, and
- * the tracks on the site do not call shipped work planned.
+ * open a release after they shipped. The file now only points at the map
+ * (links to it from published posts and other sites keep working), /roadmap
+ * redirects to the map, and this holds what keeps it so: the file stays a
+ * pointer, no live surface links it, the redirect is there and permanent,
+ * and the tracks on the site do not call shipped work planned.
  *
  * The last one is the same guard docs-contract.test.ts applies to run
  * comparison, keyed the same way — on what the product actually registers —
@@ -49,8 +50,15 @@ function liveSurfaces(): string[] {
 }
 
 describe('the roadmap is the capability map', () => {
-  it('docs/roadmap.md is gone, and the map it deferred to is still rendered', () => {
-    expect(existsSync(join(root, 'docs', 'roadmap.md'))).toBe(false);
+  it('docs/roadmap.md only points at the map, and the map is still rendered', () => {
+    // A second roadmap was always behind. The file stays so that links to it
+    // in published posts and on other sites resolve; it may name no work of
+    // its own, only where the map lives.
+    const pointer = read('docs/roadmap.md');
+    expect(pointer.split('\n').filter((l) => l.trim() !== '').length).toBeLessThanOrEqual(6);
+    expect(pointer).toContain('https://iris-eval.com/capabilities');
+    expect(pointer).toContain('(capabilities.md)');
+    expect(pointer).not.toMatch(/planned|coming|next release|in progress|\bv?\d+\.\d+(\.\d+)?\b/i);
     expect(existsSync(join(root, 'docs', 'capabilities.md'))).toBe(true);
     expect(claims.capabilityMap, 'the map comes from the truthbase').toBeDefined();
   });
