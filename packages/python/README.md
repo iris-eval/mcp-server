@@ -98,7 +98,7 @@ client.chat.completions.create(model="gpt-5.2", messages=[{"role": "user", "cont
 claude = wrap_anthropic(Anthropic(), agent_name="support-bot")
 ```
 
-`wrap_openai` and `wrap_anthropic` arrive in the release after 0.1.0 and are not yet published to PyPI. Until then, install the client from the repository: `pip install "iris-eval @ git+https://github.com/iris-eval/mcp-server#subdirectory=packages/python"`.
+`wrap_openai` and `wrap_anthropic` ship in `iris-eval` 0.2.0 and later: `pip install iris-eval`. The provider SDK is yours to install; the client imports none of them.
 
 Each call becomes one standard OpenTelemetry GenAI span (`gen_ai.*`) sent to Iris's OTLP ingest, `POST /v1/traces` on the dashboard port; Iris stores it as a trace with the input, the output, the token usage and the tool calls, and scores it. The span is the one the JavaScript package, `@iris-eval/sdk`, sends for the same call: both are held to one fixture, `tests/fixtures/genai-parity` at the repository root.
 
