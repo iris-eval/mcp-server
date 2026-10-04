@@ -2,18 +2,18 @@ import Link from "next/link";
 
 const PUBS = [
   {
+    type: "Comparison",
+    date: "October 2026",
+    title: "Iris vs Langfuse vs Phoenix vs Promptfoo: where each wins, where each loses",
+    desc: "Four ways to evaluate an AI agent, read from each vendor's own pages on 2026-10-01: how each gets into your stack, where the evaluation runs, what it costs to run, how it self-hosts, and what it does with MCP.",
+    href: "/blog/iris-vs-langfuse-vs-phoenix-vs-promptfoo",
+  },
+  {
     type: "Report",
     date: "March 2026",
     title: "The State of MCP Agent Observability",
     desc: "The gap between deploying AI agents and understanding what they're doing. Covers protocol-native observability, heuristic vs. semantic eval, cost visibility, and EU AI Act implications.",
     href: "/blog/state-of-mcp-agent-observability-2026",
-  },
-  {
-    type: "Blog",
-    date: "March 2026",
-    title: "Why Your AI Agents Need Observability",
-    desc: "AI agents fail silently. Traditional monitoring can't see the difference between a correct response and a hallucinated one. Why protocol-native observability changes the equation.",
-    href: "/blog/why-your-ai-agents-need-observability",
   },
 ];
 
@@ -68,19 +68,24 @@ export function Research(): React.ReactElement {
           </Link>
         </div>
 
-        {/* Survey */}
-        <div className="mx-auto mt-12 max-w-2xl rounded-2xl border border-border-default bg-bg-card p-8 text-center lg:mt-16">
-          <span className="rounded-lg bg-eval-warn/10 px-2.5 py-1 text-[11px] font-bold text-eval-warn">
-            Coming Soon
+        {/* Measured: the research that ships with every release */}
+        <Link
+          href="/proof"
+          className="glow-card card-premium group mx-auto mt-12 block max-w-2xl p-8 text-center lg:mt-16"
+        >
+          <span className="rounded-lg bg-iris-500/10 px-2.5 py-1 text-[11px] font-bold text-text-accent">
+            Measured
           </span>
-          <h3 className="mt-4 font-display text-xl font-bold text-text-primary">
-            MCP Agent Observability Survey 2026
+          <h3 className="mt-4 font-display text-xl font-bold text-text-primary transition-colors group-hover:text-text-accent">
+            {/* The measurement: https://iris-eval.com/proof */}
+            Every rule&apos;s precision and recall, published
           </h3>
           <p className="mt-2 text-[14px] text-text-secondary">
-            We&apos;re collecting data on how teams evaluate, monitor, and track
-            costs for AI agents in production.
+            Each built-in rule is measured on a public corpus, and the proof check
+            is required on every pull request: a rule change cannot merge without
+            its numbers.
           </p>
-        </div>
+        </Link>
       </div>
     </section>
   );
