@@ -2,7 +2,9 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "CommonJS",
-    "moduleResolution": "Node10",
+    // Bundler, not Node10: TypeScript 6 deprecates Node10 and TypeScript 7 removes it. The
+    // CommonJS this emits is byte for byte the Node10 build's (compared on TypeScript 6.0.3).
+    "moduleResolution": "Bundler",
     "outDir": "dist/cjs"
   }
 }
