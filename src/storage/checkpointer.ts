@@ -94,6 +94,20 @@ export interface CheckpointerOptions {
   onFailed: (reason: string) => void;
   /** How long close() lets the thread end on its own before it terminates it (CLOSE_TIMEOUT_MS); for tests. */
   closeTimeoutMs?: number;
+  /**
+   * Told, in one line, when close() had to stop the thread and why: it had
+   * not finished starting, or it was in a request this process made, or in
+   * its own periodic checkpoint. A shutdown that waited is never silent.
+   */
+  warn?: (line: string) => void;
+}
+
+/** What a request asks the thread to do, as the warning names it. */
+function describeRequest(m: { type: 'checkpoint'; mode: 'PASSIVE' | 'TRUNCATE' } | { type: 'exec'; sql: string } | { type: 'migrate' } | { type: 'close' }): string {
+  if (m.type === 'checkpoint') return `a ${m.mode} checkpoint`;
+  if (m.type === 'exec') return 'a statement';
+  if (m.type === 'migrate') return 'the migrations';
+  return 'its close';
 }
 
 export class Checkpointer {
@@ -102,6 +116,9 @@ export class Checkpointer {
   private failed = false;
   private nextId = 1;
   private readonly waiting = new Map<number, (reply: { busy?: number; error?: string }) => void>();
+  /** Each request still unanswered, what it asked and when: what close() names when it has to stop the thread. */
+  private readonly inFlight = new Map<number, { what: string; at: number }>();
+  private readonly createdAt = performance.now();
   /** A TRUNCATE in flight: it holds the write lock, so a write step started meanwhile would wait for it on the event loop. */
   private truncating: Promise<boolean> | undefined;
   private settle: (active: boolean) => void = () => undefined;
@@ -135,6 +152,7 @@ export class Checkpointer {
       if (m.id !== undefined) {
         this.waiting.get(m.id)?.(m);
         this.waiting.delete(m.id);
+        this.inFlight.delete(m.id);
         // Not once close() has begun (it sets failed, then holds the thread until it ends): a reply that empties the queue
         // then would let a CLI's event loop empty while close() still waits for the thread, and Node exits 13 under it.
         if (this.waiting.size === 0 && !this.failed) this.worker.unref();
@@ -178,6 +196,7 @@ export class Checkpointer {
     this.failed = true;
     for (const reply of this.waiting.values()) reply({ error: reason });
     this.waiting.clear();
+    this.inFlight.clear();
     this.options.onFailed(reason);
     this.settle(false);
   }
@@ -189,6 +208,7 @@ export class Checkpointer {
     this.worker.ref();
     return new Promise((resolve) => {
       this.waiting.set(id, resolve);
+      this.inFlight.set(id, { what: describeRequest(message), at: performance.now() });
       this.worker.postMessage({ ...message, id });
     });
   }
@@ -283,11 +303,25 @@ export class Checkpointer {
      * thread when it returns. This used to return at the timeout with the
      * thread still in its statement and the file still open.
      */
-    if ((await Promise.race([this.exited, late])) === 'late') await this.worker.terminate();
+    if ((await Promise.race([this.exited, late])) === 'late') {
+      this.options.warn?.(`The checkpoint thread had not ended ${this.options.closeTimeoutMs ?? CLOSE_TIMEOUT_MS} ms after close() (${this.lateReason()}); it is being stopped.`);
+      await this.worker.terminate();
+    }
     clearTimeout(timer);
     await this.exited;
     // A request the thread never answered (it was terminated in it, or it came after the close) is answered now, so nothing waits on it forever.
     for (const reply of this.waiting.values()) reply({ error: 'the checkpoint worker closed' });
     this.waiting.clear();
+    this.inFlight.clear();
+  }
+
+  /** Why the thread had not ended when close() gave up waiting: the oldest request this process made, or its start, or its own work. */
+  private lateReason(): string {
+    const now = performance.now();
+    if (!this.ready) return `it had not finished starting, ${Math.round(now - this.createdAt)} ms after it was created`;
+    let oldest: { what: string; at: number } | undefined;
+    for (const r of this.inFlight.values()) if (oldest === undefined || r.at < oldest.at) oldest = r;
+    if (oldest !== undefined) return `it was in ${oldest.what} this process asked for ${Math.round(now - oldest.at)} ms earlier`;
+    return 'no request of this process was in flight, so it was in its own periodic checkpoint';
   }
 }

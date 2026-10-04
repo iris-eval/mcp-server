@@ -522,5 +522,9 @@ describe('one copy of SQLite per file', () => {
         await storage.close();
       }
     }
-  });
+    // Up to four threads started from the TypeScript sources and closed again, on each driver. On a
+    // loaded Windows runner this took 16 to 19 s in 2 of about 180 jobs (2026-09-30 to 10-04) while it
+    // took about 1 s on a desktop under the same suite, so it is not held to vitest's 5 s default. A close() that
+    // had to stop a thread says why on stderr, which the job log keeps.
+  }, 60_000);
 });

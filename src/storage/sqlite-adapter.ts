@@ -837,6 +837,7 @@ export class SqliteAdapter implements IStorageAdapter {
           this.db.pragma(`wal_autocheckpoint = ${AUTOCHECKPOINT_PAGES}`);
           this.log('warn', `WAL checkpoints run on the server's own connection again (${reason}); a write that triggers one waits for it.`);
         },
+        warn: (line) => this.log('warn', line),
       });
     } catch (err) {
       this.log('warn', `WAL checkpoints stay on the server's own connection (the checkpoint worker did not start: ${err instanceof Error ? err.message : String(err)}).`);
@@ -889,7 +890,7 @@ export class SqliteAdapter implements IStorageAdapter {
   private async match(request: MatchRequest): Promise<MatchResult> {
     if (!this.searchOnWorker || this.closing || this.searchWorkerFailure !== undefined) return matchSearch(this.db, request);
     // The driver this connection ended up with, never the one asked for: a machine that fell back to node:sqlite here would fail to open the native one there.
-    this.searchWorker ??= new SearchWorkerClient({ path: this.dbPath, driver: this.db.name === 'node' ? 'node' : 'native', busyTimeoutMs: BUSY_TIMEOUT_MS }, undefined, this.searchWorkerEntry);
+    this.searchWorker ??= new SearchWorkerClient({ path: this.dbPath, driver: this.db.name === 'node' ? 'node' : 'native', busyTimeoutMs: BUSY_TIMEOUT_MS }, undefined, this.searchWorkerEntry, undefined, (line) => this.log('warn', line));
     try {
       return await this.searchWorker.search(request);
     } catch (err) {
