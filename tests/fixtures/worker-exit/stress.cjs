@@ -130,11 +130,14 @@ function parent() {
   }
   if (process.env.WORKER_EXIT_SEARCH === '1') {
     const cycles = join(__dirname, 'iris-workers.ts');
+    // No --import: every thread would inherit it, and an installed server's threads have no loader (iris-workers.ts
+    // says why). Node strips the file's types itself; a Node that does not by default is given the flag.
+    const strip = process.features.typescript ? [] : ['--experimental-strip-types'];
     for (const from of ['src', 'dist']) {
       for (const driver of drivers) {
         for (const ending of ['store', 'search-stuck', 'checkpoint-crash', 'checkpoint-kill']) {
           const label = `iris ${from} ${driver} ${ending}`;
-          summary.results.push(tally(label, processes, perProcess, ['--import', 'tsx', cycles, driver, ending, String(perProcess)], { WORKER_EXIT_FROM: from }));
+          summary.results.push(tally(label, processes, perProcess, [...strip, cycles, driver, ending, String(perProcess)], { WORKER_EXIT_FROM: from }));
         }
       }
     }

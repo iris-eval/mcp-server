@@ -53,6 +53,12 @@ jobs:
   # the mechanism on this OS and requires one copy to be clean; the last
   # step runs the search worker's test file in a loop with coverage on, as
   # the test job does, and requires every run to pass.
+  #
+  # Iris's own workers start with no --import, as an installed server's do.
+  # A thread inherits its process's --import, and on Node 24 a thread that
+  # inherited --import tsx can crash the process as it ends, in Node's own
+  # teardown of the thread (nodejs/node#65778; #804 has the measurements),
+  # so iris-workers.ts registers tsx on its main thread only.
   worker-exit:
     name: worker exit (${{ matrix.os }}, Node ${{ matrix.node-version }})
     runs-on: ${{ matrix.os }}

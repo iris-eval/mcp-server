@@ -1,9 +1,10 @@
 /*
  * Iris's own worker threads, started and ended again and again, every way
- * each ends in the product. Run with tsx; prints "done" when nothing took
- * the process down.
+ * each ends in the product. Prints "done" when nothing took the process down.
  *
- *   npx tsx iris-workers.ts <native|node> <ending> <cycles>      (WORKER_EXIT_FROM=dist: the built server)
+ *   node iris-workers.ts <native|node> <ending> <cycles>      (WORKER_EXIT_FROM=dist: the built server)
+ *
+ * Run with no loader: Node strips this file's types itself.
  *
  * Endings:
  *   store             a store opens, a write starts its checkpoint worker and a search its search
@@ -20,13 +21,23 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 /*
- * From the sources (tsx), as the test suite runs it, the search thread
- * registers tsx's loader before it loads search-worker.ts. From the build
- * (WORKER_EXIT_FROM=dist, after npm run build), as an installed server runs
- * it, the thread loads search-worker.js with no loader.
+ * A thread inherits its process's --import (Node 22 and 24), so a process
+ * started with --import tsx gives every thread Iris starts tsx's loader as
+ * well. An installed server's threads never have one, and on Node 24 a
+ * thread that inherited --import tsx can crash the process as it ends, in
+ * Node's own teardown of the thread (nodejs/node#65778). So the loader is
+ * registered here, in this thread only, and only from the sources:
+ *   - From the sources, as the test suite runs them, this thread registers
+ *     tsx's loader, and each of Iris's threads registers its own before it
+ *     loads its entry (source-thread.ts).
+ *   - From the build (WORKER_EXIT_FROM=dist, after npm run build), as an
+ *     installed server runs it, nothing registers a loader: the threads load
+ *     search-worker.js and checkpoint-worker.js as they are.
  */
-const base = process.env.WORKER_EXIT_FROM === 'dist' ? '../../../dist/' : '../../../src/';
-const ext = process.env.WORKER_EXIT_FROM === 'dist' ? '.js' : '.ts';
+const fromDist = process.env.WORKER_EXIT_FROM === 'dist';
+if (!fromDist) (await import('tsx/esm/api')).register();
+const base = fromDist ? '../../../dist/' : '../../../src/';
+const ext = fromDist ? '.js' : '.ts';
 const { SqliteAdapter } = (await import(`${base}storage/sqlite-adapter${ext}`)) as typeof import('../../../src/storage/sqlite-adapter.js');
 const { SearchWorkerClient } = (await import(`${base}storage/search-worker-client${ext}`)) as typeof import('../../../src/storage/search-worker-client.js');
 const { Checkpointer } = (await import(`${base}storage/checkpointer${ext}`)) as typeof import('../../../src/storage/checkpointer.js');
