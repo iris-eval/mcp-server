@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "iris-eval"
-version = "0.1.0"
+version = "0.2.0"
 description = "The Python client for Iris, the open-source agent-evaluation MCP server: log a trace, get its verdict, gate a test on it."
 readme = "README.md"
 license = "MIT"

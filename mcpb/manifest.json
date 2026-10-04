@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "iris-eval",
   "display_name": "Iris",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "description": "Stop shipping agents on vibes. Score every agent output for quality, safety, and cost.",
   "long_description": "Iris is an open-source MCP server that scores AI agent output for quality, safety and cost. Its built-in rules are deterministic and need no key: PII and prompt-injection detection, hallucination signals, cost thresholds, and checks on the agent's tool calls. Each verdict says which layer decided it and what was not judged.\n\nEvery trace and evaluation is stored in a local SQLite database under `~/.iris`. Nothing leaves your machine unless you add an Anthropic or OpenAI key below, which lets `evaluate_with_llm_judge` and `verify_citations` send the output they judge to that provider under a hard per-call cost cap, or set up an export yourself (an OpenTelemetry collector or a webhook). Naming a relevance judge model below as well sends each evaluation's input and output to that model's provider, with the personal data and credentials Iris detects replaced first, within a daily budget you set.\n\nThe web dashboard is off unless you turn it on here; it then serves http://localhost:6920 on this machine only.",
   "author": {

@@ -5141,8 +5141,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-10-03T21:17:28.573Z",
-  "generatedFromCommit": "cbe4a5f3",
+  "generatedAt": "2026-10-04T01:13:58.509Z",
+  "generatedFromCommit": "e7060722",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5230,7 +5230,7 @@
     ]
   },
   "proof": {
-    "commit": "f47533d6",
+    "commit": "35b8651d",
     "composite": {
       "compositeVersion": "e1d72ff465c1",
       "confidence": {
@@ -6956,7 +6956,7 @@
         "split": "dev",
         "variant": "per-output"
       },
-      "version": "0.19.0"
+      "version": "0.20.0"
     },
     "corpusVersion": "7c27824a2b98",
     "custom": {
@@ -7583,7 +7583,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-10-03T06:51:42.807Z",
+    "generatedAt": "2026-10-04T01:02:16.638Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7602,8 +7602,8 @@
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
       "n": 1323,
-      "p50Ms": 0.883,
-      "p95Ms": 5.394
+      "p50Ms": 0.837,
+      "p95Ms": 5.117
     },
     "method": {
       "ci": "wilson-95",
@@ -9000,7 +9000,7 @@
         "transcripts": 24
       },
       "transcriptsVersion": "cc79a661de5f",
-      "version": "0.19.0"
+      "version": "0.20.0"
     },
     "transforms": {
       "method": "for each positive the rule caught untransformed with a span into raw text — the agent output, or a tool output for a trajectory rule — the text inside every reported span is transformed and the rule re-run; recall = still fails / applicable cases, Wilson 95%; a case the rule missed in the clear, or a span the transform does not apply to, is not counted. Rebuilding a tool output clears the derived step list, or the rule would read the untransformed calls through stepsOf and the number would mean nothing",
@@ -9449,12 +9449,12 @@
         }
       ]
     },
-    "version": "0.19.0"
+    "version": "0.20.0"
   },
   "release": {
-    "currentReleaseDate": "2026-09-25",
-    "currentReleaseHeadline": "Verdicts that say how sure they are, detectors that see through disguises, and one command to set up any client",
-    "currentReleaseVersion": "0.19.0",
+    "currentReleaseDate": "2026-10-03",
+    "currentReleaseHeadline": "Iris says what it checked. A verdict tells a pass from a check that never ran, names who recorded the evidence it judged, and cannot be replaced by the agent it judges",
+    "currentReleaseVersion": "0.20.0",
     "nextPlannedScope": null,
     "nextPlannedVersion": null
   },
@@ -9513,7 +9513,7 @@
     "dashboardPackage": "0.1.0",
     "irisEvalPackage": "1.0.1",
     "langchainPackage": "0.1.0",
-    "mcpServer": "0.19.0",
+    "mcpServer": "0.20.0",
     "published": {
       "irisEvalPackage": true,
       "langchainPackage": false,
@@ -9521,7 +9521,7 @@
       "pythonPackage": true,
       "sdkPackage": false
     },
-    "pythonPackage": "0.1.0",
+    "pythonPackage": "0.2.0",
     "sdkPackage": "0.1.0",
     "websitePackage": "0.1.0"
   }

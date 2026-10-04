@@ -7,12 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-10-03
+
 **Iris says what it checked. A verdict tells a pass from a check that never ran, names who recorded the evidence it judged, and cannot be replaced by the agent it judges.** 0.20.0:
 - "Not checked" is its own answer in the verdict, the CI gate, the counts and the dashboard: a check that was asked for and could not run is no longer reported as a pass, and a `--fail-on` gate exits 0 only when every trace it read was judged.
 - Every verdict says who recorded what it judged. A capture source declares what it records in full, so an empty list of tool calls from software that watched every call means none were made, and the same list from the agent's own report does not.
 - The detectors read what was written: a test runner's verdict, a failure the agent recovered from, text spaced or wrapped to slip past a phrase rule, and an output written as JSON. A new rule, `says_something`, fails an answer that says nothing.
 - Full-text search over traces, spans included, in any language: every search is bounded, and on a store in a file it runs off the event loop. `install --upgrade` moves every MCP client on the machine to the new release and copies the database before it migrates.
-- Provider calls recorded without the model choosing to: OpenAI and Anthropic wrappers and LangChain and LangGraph handlers, for JavaScript and Python, are in this repository ahead of their packages, and OpenTelemetry GenAI traces sent to Iris are scored, with an estimated cost when a trace reports tokens but no cost.
+- Provider calls recorded without the model choosing to: OpenAI and Anthropic wrappers and LangChain and LangGraph handlers, in the Python client (`iris-eval` 0.2.0 on PyPI) and, for JavaScript, in this repository ahead of their npm packages, and OpenTelemetry GenAI traces sent to Iris are scored, with an estimated cost when a trace reports tokens but no cost.
 - Also: an optional relevance judge within a daily budget, CSV and JSON Lines export, Decision Moments ranked by significance, a dashboard that works from the keyboard and with a screen reader, and API key revocation that takes effect on the next request. The server is published with npm provenance, and its Docker image, MCPB bundle and SBOMs are signed.
 
 **Check before upgrading.** The first group can change what a CI job or a script does: read it if Iris gates a build or a script reads its answers.

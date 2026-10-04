@@ -79,12 +79,14 @@ describe('changelog-section', () => {
     expect(fitSection(s, '2.0.0', 200, REPO)).toBeNull();
   });
 
-  it('the notes being written now fit the release page', () => {
+  it('the notes the next tag carries fit the release page', () => {
     const text = readFileSync(resolve(root, 'CHANGELOG.md'), 'utf8');
-    const unreleased = sectionOf(text, 'Unreleased') as string;
-    expect(unreleased).not.toBeNull();
-    const fitted = fitSection(unreleased, 'Unreleased', RELEASE_BUDGET, REPO);
-    expect(fitted, 'the summary and "Check before upgrading" alone are over the release page budget').not.toBeNull();
+    // Unreleased while it is being written; once a release PR dates it, the newest release.
+    const versions = [...text.matchAll(/^## \[([^\]]+)\]/gm)].map((m) => m[1]);
+    const version = versions.find((v) => sectionOf(text, v) !== null) as string;
+    expect(version).toBeDefined();
+    const fitted = fitSection(sectionOf(text, version) as string, version, RELEASE_BUDGET, REPO);
+    expect(fitted, `the summary and "Check before upgrading" of ${version} alone are over the release page budget`).not.toBeNull();
     expect((fitted as string).length).toBeLessThanOrEqual(RELEASE_BUDGET);
   });
 

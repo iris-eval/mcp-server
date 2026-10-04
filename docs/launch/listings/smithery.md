@@ -9,7 +9,7 @@
 1. Download this release's bundle and check it was built by the release workflow:
 
    ```bash
-   curl -fLO https://github.com/iris-eval/mcp-server/releases/download/v0.19.0/iris-eval.mcpb
+   curl -fLO https://github.com/iris-eval/mcp-server/releases/download/v0.20.0/iris-eval.mcpb
    gh attestation verify iris-eval.mcpb -R iris-eval/mcp-server
    ```
 
@@ -27,11 +27,11 @@ Stop shipping agents on vibes. An MCP server that scores every agent run for qua
 
 ## The check before you save
 
-The listing must say **v0.19.0**, **12 tools**, **26 rules**, and the identifier **`iris-eval`** (the config key, the plugin and the command are all `iris-eval`; `iris` and `iris-mcp` are retired names). If any field on the form still shows an older number or the word "first", replace it — a live listing is not historical content.
+The listing must say **v0.20.0**, **12 tools**, **26 rules**, and the identifier **`iris-eval`** (the config key, the plugin and the command are all `iris-eval`; `iris` and `iris-mcp` are retired names). If any field on the form still shows an older number or the word "first", replace it — a live listing is not historical content.
 
 ## Links
 
 - Repository: https://github.com/iris-eval/mcp-server
 - Site: https://iris-eval.com · capabilities: https://iris-eval.com/capabilities · proof: https://iris-eval.com/proof
 - npm: https://www.npmjs.com/package/@iris-eval/mcp-server
-- Release notes: https://github.com/iris-eval/mcp-server/blob/main/CHANGELOG.md (current: v0.19.0, 2026-09-25 — Verdicts that say how sure they are, detectors that see through disguises, and one command to set up any client)
+- Release notes: https://github.com/iris-eval/mcp-server/blob/main/CHANGELOG.md (current: v0.20.0, 2026-10-03 — Iris says what it checked. A verdict tells a pass from a check that never ran, names who recorded the evidence it judged, and cannot be replaced by the agent it judges)
