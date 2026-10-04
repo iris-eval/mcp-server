@@ -38,6 +38,8 @@ describe('the site promises only what exists', () => {
   it('no page names or prices a plan that does not exist, offers a waitlist, or claims a certification or a customer', () => {
     const promoted = /Join (?:Cloud )?Waitlist|Cloud Starter|Cloud Pro|cloud tier|hosted tier|#waitlist|Not yet priced|pre-SOC|enterprise customers|Cloud team dashboards/i;
     for (const f of pages) expect(rendered(f), f).not.toMatch(promoted);
+    // A badge that promises something unbuilt, as a "Coming Soon" survey did for six months.
+    for (const f of pages) expect(rendered(f), f).not.toMatch(/Coming Soon/);
     for (const f of pages.filter((p) => !HOLDS_THE_OLD_LIST.test(p))) expect(rendered(f), f).not.toMatch(/waitlist/i);
     expect(read('README.md')).not.toMatch(/waitlist/i);
   });

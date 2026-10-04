@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The homepage's research section leads with published research:** the four-way comparison of Iris, Langfuse, Phoenix and Promptfoo, and each rule's measured precision and recall on /proof, in place of a survey card marked "Coming Soon". The terms add how a hosted or paid service would be offered: under its own terms, published before it starts, with no change to the open-source software's license.
+
 ## [0.20.0] - 2026-10-03
 
 **Iris says what it checked. A verdict tells a pass from a check that never ran, names who recorded the evidence it judged, and cannot be replaced by the agent it judges.** 0.20.0:

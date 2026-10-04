@@ -31,7 +31,7 @@ export default function Terms(): React.ReactElement {
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-text-primary md:text-4xl">
           Terms of Use
         </h1>
-        <p className="mt-2 text-[13px] text-text-muted">Last updated: March 17, 2026</p>
+        <p className="mt-2 text-[13px] text-text-muted">Last updated: October 3, 2026</p>
 
         <div className="mt-10 space-y-8 text-[15px] leading-relaxed text-text-secondary">
           <section>
@@ -49,6 +49,15 @@ export default function Terms(): React.ReactElement {
               <a href="https://github.com/iris-eval/mcp-server/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="text-text-accent underline">MIT License</a>.
               The MIT License governs your use of the software, including its warranty disclaimer
               and limitation of liability.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="mb-3 font-display text-xl font-bold text-text-primary">Paid services</h2>
+            <p>
+              If Iris offers a hosted or paid service, it will have its own terms, published
+              before it starts. Those terms will not change the license of the open-source
+              software or these terms for it.
             </p>
           </section>
 
