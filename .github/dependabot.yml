@@ -11,8 +11,13 @@ updates:
     commit-message:
       prefix: "deps"
     ignore:
+      # typescript-eslint admits typescript >=4.8.4 <6.1.0 (re-checked 2026-10-04), so 6.0 can land (#58).
       - dependency-name: "typescript"
-        versions: [">=6.0.0"]  # Blocked by @typescript-eslint peer deps (see #58)
+        versions: [">=6.1.0"]
+      # No 13.x release publishes Windows prebuilt binaries (none through 13.0.3, re-checked
+      # 2026-10-04), so a Windows install would have to compile it from source. Lift this when one does.
+      - dependency-name: "better-sqlite3"
+        versions: [">=13.0.0"]
     groups:
       linting:
         patterns:
@@ -72,6 +77,11 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "deps(dashboard)"
+    ignore:
+      # The dashboard is on TypeScript 6.0. Its lint, typescript-eslint, admits typescript
+      # <6.1.0 (re-checked 2026-10-04), so npm ci refuses 7 until typescript-eslint does.
+      - dependency-name: "typescript"
+        versions: [">=7.0.0"]
     groups:
       vite:
         patterns:
@@ -95,7 +105,7 @@ updates:
       prefix: "deps(sdk)"
     ignore:
       - dependency-name: "typescript"
-        versions: [">=6.0.0"]  # the same ceiling as the root (see #58)
+        versions: [">=6.1.0"]  # the same ceiling as the root (see #58)
       # The package supports Node >=22 (engines), so its Node types stay on 22:
       # newer types would let the SDK call an API its oldest supported runtime lacks.
       - dependency-name: "@types/node"
@@ -121,7 +131,7 @@ updates:
       prefix: "deps(langchain)"
     ignore:
       - dependency-name: "typescript"
-        versions: [">=6.0.0"]  # the same ceiling as the root (see #58)
+        versions: [">=6.1.0"]  # the same ceiling as the root (see #58)
     groups:
       langchain:
         patterns:

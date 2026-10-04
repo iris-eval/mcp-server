@@ -215,9 +215,17 @@ describe('release.yml — the MCPB bundle', () => {
     expect(ci).not.toContain('@anthropic-ai/mcpb@');
     expect(ci).toContain('IRIS_MCPB_LIB: ${{ github.workspace }}');
     expect(ci.match(/npm install [^\n]*/g) ?? []).toEqual(
-      expect.arrayContaining(['npm install --no-audit --no-fund --save-exact electron@40.4.1']),
+      expect.arrayContaining([expect.stringMatching(/^npm install --no-audit --no-fund --save-exact electron@40\.4\.1( && break)?$/)]),
     );
     for (const line of ci.match(/npm install [^\n]*/g) ?? []) expect(line, line).not.toMatch(/mcpb/);
+  });
+
+  it("CI keeps Electron's binary in a cache per version and OS, and tries its install three times", () => {
+    // A 503 from the release servers once failed the job with nothing wrong in the bundle.
+    const ci = workflow('.github/workflows/ci.yml');
+    expect(ci).toMatch(/actions\/cache@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+path: \$\{\{ runner\.temp \}\}\/electron-cache\n\s+key: electron-40\.4\.1-\$\{\{ runner\.os \}\}/);
+    expect(ci).toContain('electron_config_cache: ${{ runner.temp }}/electron-cache');
+    expect(ci).toContain('for attempt in 1 2 3; do');
   });
 
   it('leaves the npm publish alone', () => {
