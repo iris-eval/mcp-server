@@ -147,9 +147,15 @@ describe('search on a worker thread', () => {
     const how = fts5 ? 'with the index' : 'without FTS5';
     it(`answers exactly as a search on the adapter's own connection, ${how}`, async () => {
       const path = tempDb();
-      const seeded = await adapter(path, { fts5 });
+      // A search that runs out of time answers with what it found, so two
+      // searches compare exactly only when both completed. On a loaded
+      // Windows runner the one on the adapter's own connection once passed the
+      // default 1,000 ms (#805): both get a budget no runner reaches, and the
+      // test says so before comparing.
+      const searchBudgetMs = 60_000;
+      const seeded = await adapter(path, { fts5, searchBudgetMs });
       await seeded.insertTraces(LOCAL_TENANT, corpus);
-      const here = await adapter(path, { fts5, searchWorker: false });
+      const here = await adapter(path, { fts5, searchWorker: false, searchBudgetMs });
       const cases: Array<Parameters<SqliteAdapter['queryTraces']>[1]> = [
         { search: 'refund' },
         { search: 'refund approved', sort_by: 'timestamp', sort_order: 'asc' },
@@ -162,6 +168,7 @@ describe('search on a worker thread', () => {
       for (const c of cases) {
         const a = await seeded.queryTraces(LOCAL_TENANT, c);
         const b = await here.queryTraces(LOCAL_TENANT, c);
+        expect([a.search?.complete, b.search?.complete], JSON.stringify(c)).toEqual([true, true]);
         expect(a, JSON.stringify(c)).toEqual(b);
       }
       expect(workerOf(seeded)?.started).toBe(1);
