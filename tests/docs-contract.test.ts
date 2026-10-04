@@ -116,6 +116,7 @@ const FOREIGN_FLAGS = new Set([
   'composite', // npm run proof -- --composite (the verdict on the composite corpus)
   'transcripts', // npm run proof -- --transcripts (the held-out line on 24 staged real agent runs)
   'invariants', // npm run proof -- --invariants (what a verdict does when evidence is left out, and when a failure is added)
+  'outside', // npm run proof -- --outside (Iris on AgentDojo's published runs, scored against AgentDojo's labels)
   'yes', // cosign sign --yes
   'ignore-scripts', // npm ci --ignore-scripts
   'provenance', // npm publish --provenance

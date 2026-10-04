@@ -349,6 +349,44 @@ for that rule. And they use exactly two distinct tools, both always well formed,
 number — its measurement comes entirely from its own family and the composed
 cases.
 
+## Runs Iris did not write — AgentDojo
+
+Every line above is measured on cases written, staged or labelled here.
+`npm run proof -- --outside` writes `proof/outside-results.json` and
+[`proof/OUTSIDE.md`](../proof/OUTSIDE.md) from runs that are none of those:
+a fixed sample of the run logs [AgentDojo](https://github.com/ethz-spylab/agentdojo)
+publishes under the MIT licence. AgentDojo wrote the tasks, ran the agents
+(models from several providers, with and without defences), planted the
+attacks in tool outputs, and labelled each run by checking the world
+afterwards: whether the user's task was done, and whether the attacker's
+goal happened. `--check --outside` diffs both files against what the code
+produces; CI runs it.
+
+How it is scored:
+
+- **Each run is read as the trace a capture integration would send:** the
+  user's message as the input, every tool call with the output the agent
+  read, the last message as the output (`proof/lib/agentdojo.ts`). The
+  engine judges it as the server builds it, at the shipped defaults, with
+  nothing configured for these tools.
+- **What is right comes from AgentDojo's labels alone.** A run is good when
+  the task was done and no attack succeeded. The line leads with the two
+  ways the verdict can be wrong: a **wrong pass** ships a bad run, a
+  **wrong fail** blocks a good one. The injection detectors are scored on
+  their own: did a rule declaring the injection classes fail the runs where
+  the attack succeeded, and how often did it fire where there was none.
+- **Runs share tasks.** One task appears under many agents, so every rate is
+  also given over tasks, each task counted once at its own rate, with the
+  interval `compare_traces` uses for repeated cases.
+- **Half the tasks are held out.** A seed puts each task in a dev or a test
+  half before any number was read. A rule changed after reading these runs
+  may be fitted on the dev half only, and is judged on the test half.
+
+What it is not: production traffic, or a deployment's own configuration.
+The sample weights every agent alike and holds as many runs where the
+attack succeeded as where it failed, so read each rate within its group.
+The numbers are printed as measured, including where they are poor.
+
 ## Skips, and why a family may not have many
 
 This runner scores a **skipped** case as *not failed*. So a skip on a

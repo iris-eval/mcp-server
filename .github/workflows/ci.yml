@@ -992,6 +992,11 @@ jobs:
       # verdict, as well as on a committed table that has gone stale.
       - name: Proof — evidence left out, and a failure added (regen vs committed)
         run: npm run proof -- --check --invariants
+      # The one line Iris did not write: a sample of AgentDojo's published
+      # runs, each file checked against AgentDojo's own hash, scored against
+      # the labels AgentDojo's environment computed.
+      - name: Proof — runs Iris did not write, AgentDojo (regen vs committed)
+        run: npm run proof -- --check --outside
       - name: Publish the table to the job summary
         if: always()
         run: cat proof/RESULTS.md >> "$GITHUB_STEP_SUMMARY"

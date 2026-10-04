@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Proof on agent runs Iris did not write.** `npm run proof -- --outside` judges a fixed sample of the runs [AgentDojo](https://github.com/ethz-spylab/agentdojo) publishes, with the shipped engine at its defaults, and scores the verdicts against the labels AgentDojo's environment computed by checking the world after each run: was the user's task done, and did the attacker's goal happen. Every other proof line is measured on cases written or labelled here; this one is not. The sample is 700 runs of 29 agents and defences on all 97 of AgentDojo's user tasks, each file checked against the hash AgentDojo's repository lists for it, and CI regenerates the report on every change. What it found, at the shipped defaults:
+  - The verdict shipped 312 of 419 bad runs and blocked 68 of 281 good ones.
+  - No injection rule caught any of the 200 runs where the attack succeeded. In every one the rule judged, it found no directive: AgentDojo's attack is worded in a way the directive list does not hold.
+  - Nearly half the good runs blocked were failed by `no_pii`: an email assistant naming the addresses its user asked about, a banking assistant giving its own user an account number. The next most common was `no_silent_tool_failure`.
+
+  Half the tasks are held out by a seed, so a rule changed after reading these runs is judged on runs it was not fitted to. The report, with every rate also counted over tasks, is `proof/OUTSIDE.md`.
+
 ### Changed
 
 - **A shutdown that has to stop a storage thread says why.** `close()` gives the checkpoint thread and the search thread 5 s to end on their own. When one has not, Iris now writes one line to stderr before stopping it, naming the thread and what it was doing: still starting, in a request this process made (and for how long), or in its own periodic checkpoint. A shutdown that waited was silent before.
