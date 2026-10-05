@@ -14,7 +14,17 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+/*
+ * Each case starts two Node processes (the script and the stand-in) and
+ * waits for them inside spawnSync, whose own limit is 60 s; vitest cannot
+ * interrupt a spawnSync, so its 5 s default only marked a case failed after
+ * the fact. With the machine idle a case takes 0.6 to 0.9 s (Windows, three
+ * runs); with the machine busy, 2 to 27 s, nothing wrong. The test limit is
+ * now the spawn's, so a hang still fails, at 60 s.
+ */
+vi.setConfig({ testTimeout: 60_000 });
 
 const ROOT = resolve(__dirname, '..', '..', '..');
 const SCRIPT = join(ROOT, 'scripts', 'check-tools-listed.mjs');

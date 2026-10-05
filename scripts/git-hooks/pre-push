@@ -1,0 +1,25 @@
+#!/bin/sh
+# Refuses to push a branch whose tree `npm run preflight` has not verified in
+# this checkout, so a branch does not reach CI to fail a check that runs here.
+#
+#   Enable once per clone:  git config core.hooksPath scripts/git-hooks
+#
+# The preflight records the tree it verified in the checkout's git directory
+# (preflight-ok). Deleting a branch and pushing a tag are not checked.
+stamp="$(git rev-parse --git-dir)/preflight-ok"
+zero=0000000000000000000000000000000000000000
+status=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/*) ;;
+    *) continue ;;
+  esac
+  [ "$local_sha" = "$zero" ] && continue
+  tree=$(git rev-parse "$local_sha^{tree}")
+  if ! grep -q "\"tree\": \"$tree\"" "$stamp" 2>/dev/null; then
+    echo "pre-push: ${remote_ref#refs/heads/} has not passed npm run preflight on this tree ($tree) in this checkout." >&2
+    echo "pre-push: run npm run preflight, then push again. CI runs the same checks, and more." >&2
+    status=1
+  fi
+done
+exit $status
