@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CI_ONLY, STEPS, stepsFor } from '../scripts/preflight.mjs';
+import { CI_ONLY, REACHED_CAP, STEPS, stepsFor, testsToRun } from '../scripts/preflight.mjs';
 
 /*
  * `npm run preflight` is only worth running if it says what CI will say.
@@ -107,16 +107,18 @@ describe('the preflight says what the pull-request workflows say', () => {
 describe('the default preflight is the fast one', () => {
   const names = (full: boolean, changed: string[]) => stepsFor(full, changed).map((s: { name: string }) => s.name);
 
-  it('runs the test files the branch changes, never the whole suite or the builds', () => {
+  it('runs the tests a change reaches, never the whole suite or the builds', () => {
     const fast = names(false, ['src/tools/get-traces.ts']);
-    expect(fast).toContain('the test files this branch adds or changes');
+    expect(fast).toContain('the tests this change reaches');
     expect(fast).toContain('typecheck');
     expect(fast).not.toContain('every test, with the coverage floors');
     expect(fast).not.toContain('build');
   });
 
-  it("runs the dashboard's and the website's checks only when the branch touches them", () => {
-    expect(names(false, ['src/x.ts'])).not.toContain('dashboard tests');
+  it("runs the dashboard's checks when the branch touches it or the server source its tests import, and the website's only when it touches the website", () => {
+    expect(names(false, ['docs/x.md'])).not.toContain('dashboard tests');
+    expect(names(false, ['src/x.ts'])).toContain('dashboard tests');
+    expect(names(false, ['src/x.ts'])).not.toContain('website lint and types');
     expect(names(false, ['dashboard/src/App.tsx'])).toContain('dashboard tests');
     expect(names(false, ['website/src/app/page.tsx'])).toContain('website lint and types');
   });
@@ -124,7 +126,25 @@ describe('the default preflight is the fast one', () => {
   it('--full runs every mirrored step and none of the fast-only ones', () => {
     const full = names(true, []);
     expect(full).toContain('every test, with the coverage floors');
-    expect(full).not.toContain('the test files this branch adds or changes');
+    expect(full).not.toContain('the tests this change reaches');
     expect(full).not.toContain('website lint and types');
+  });
+});
+
+describe('the fast run picks the tests a change reaches, within a cap', () => {
+  it('runs every reached root-suite file, the branch\'s own included, when there are few', () => {
+    const r = testsToRun(['tests/a.test.ts', 'tests/b.test.ts'], ['src/x.ts', 'tests/c.test.ts']);
+    expect(r.files).toEqual(['tests/a.test.ts', 'tests/b.test.ts', 'tests/c.test.ts']);
+  });
+
+  it('above the cap, runs only the branch\'s own test files and says CI runs the rest', () => {
+    const many = Array.from({ length: REACHED_CAP + 1 }, (_, i) => `tests/t${i}.test.ts`);
+    const r = testsToRun(many, ['tests/mine.test.ts']);
+    expect(r.files).toEqual(['tests/mine.test.ts']);
+    expect(r.why).toMatch(/CI runs the rest/);
+  });
+
+  it('leaves out the folders that run under their own CI jobs', () => {
+    expect(testsToRun(['tests/upgrade/x.test.ts', 'tests/stall/y.test.ts', 'tests/z.test.ts'], []).files).toEqual(['tests/z.test.ts']);
   });
 });
