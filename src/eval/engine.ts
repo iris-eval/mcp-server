@@ -8,6 +8,7 @@ import type {
   EvalCategoryResult,
   CustomRuleDefinition,
   EvidenceRecord,
+  NarrowedArgument,
   Provenance,
 } from '../types/eval.js';
 import { getRulesForType, createCustomRule } from './rules/index.js';
@@ -328,9 +329,11 @@ export class EvalEngine {
    * Every stored row now carries the same verdict, basis and
    * interpretations, from the one composer, under this engine's config.
    * `evidence` is what the judged call carried and who recorded it
-   * (src/eval/evidence.ts), as the tool that judged it knows them.
+   * (src/eval/evidence.ts), as the tool that judged it knows them;
+   * `narrowed`, the arguments the operator's settings held back
+   * (src/tools/operator-ceilings.ts).
    */
-  verdictOf(result: EvalResult, evidence?: EvidenceRecord): EvalResult {
+  verdictOf(result: EvalResult, evidence?: EvidenceRecord, narrowed?: NarrowedArgument[]): EvalResult {
     /*
      * The receipt too: a stored row derives its verdict on read only under
      * the composer facts its provenance carries (rowToEvalResult), so a
@@ -346,6 +349,7 @@ export class EvalEngine {
       ruleThresholds: this.ruleThresholds,
       composer: this.composerFacts(),
       ...(evidence !== undefined ? { evidence } : {}),
+      ...(narrowed !== undefined ? { narrowed } : {}),
       judgedAt: new Date().toISOString(),
     });
     return this.decide(result);

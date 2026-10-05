@@ -22,6 +22,7 @@ import { REGEX_MATCH_BUDGET_MS } from './eval/rules/regex-sandbox.js';
 import { JUDGE_ENABLE_STEPS, judgeState, type JudgeProvider } from './judge-enablement.js';
 import { relevanceJudgeState, type RelevanceJudgeState } from './eval/llm-judge/relevance-judge.js';
 import { LOCAL_TENANT } from './types/tenant.js';
+import { citationTotalCostCapUsd } from './tools/operator-ceilings.js';
 import { TOOL_NAMES } from './tools/index.js';
 import { toolGuide, type ServedToolGuide } from './tools/guide.js';
 import { RESOURCE_URIS } from './resources/uris.js';
@@ -56,7 +57,8 @@ export interface Capabilities {
     /** The relevance judge answers_the_ask gates on (#649): installed only when IRIS_RELEVANCE_JUDGE_MODEL names a model. */
     relevance: RelevanceJudgeState;
   };
-  citations: { fetchAllowed: boolean; domainsRestricted: boolean };
+  /** totalCostCapUsd: the most one verify_citations call may spend (IRIS_CITATION_MAX_COST_USD_TOTAL); an argument can lower it, never raise it. */
+  citations: { fetchAllowed: boolean; domainsRestricted: boolean; totalCostCapUsd: number };
   dashboard: { enabled: boolean; url: string | null; mode: 'real' | 'demo' };
   limits: {
     customRulesPerCall: number;
@@ -118,6 +120,8 @@ export function buildCapabilities(ctx: CapabilitiesContext): Capabilities {
     citations: {
       fetchAllowed: process.env.IRIS_CITATION_ALLOW_FETCH === '1',
       domainsRestricted: Boolean(process.env.IRIS_CITATION_DOMAINS && process.env.IRIS_CITATION_DOMAINS.trim().length > 0),
+      // The most one call may spend; max_cost_usd_total can lower it, never raise it.
+      totalCostCapUsd: citationTotalCostCapUsd(),
     },
     dashboard: {
       enabled: config.dashboard.enabled,

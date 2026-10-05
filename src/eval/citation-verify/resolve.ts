@@ -24,8 +24,9 @@
 //   7. Cache — in-process LRU (100 entries) so retries don't re-fetch.
 //
 // This is opt-in: calls require passing {allowFetch: true} so an agent
-// can't trick Iris into fetching random URLs without operator consent
-// (consent granted via tool param or env IRIS_CITATION_ALLOW_FETCH=1).
+// can't trick Iris into fetching random URLs without operator consent.
+// Through the server, consent is IRIS_CITATION_ALLOW_FETCH=1 alone: a tool
+// argument can turn fetching off, never on (src/tools/operator-ceilings.ts).
 import { lookup as dnsLookupCb } from 'node:dns';
 import { promisify } from 'node:util';
 
@@ -460,7 +461,7 @@ export async function resolveSource(
 ): Promise<ResolvedSource> {
   if (!opts.allowFetch) {
     throw new CitationResolveError(
-      'Citation fetch is disabled. Pass allowFetch:true or set IRIS_CITATION_ALLOW_FETCH=1.',
+      'Citation fetch is off. The operator turns it on: IRIS_CITATION_ALLOW_FETCH=1 for the server, allowFetch: true in code.',
       'fetch_disabled',
     );
   }

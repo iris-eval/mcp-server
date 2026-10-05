@@ -603,7 +603,22 @@ export interface Provenance {
    * met by what an evaluated rule read, and no capture source.
    */
   evidence?: EvidenceRecord;
+  /**
+   * Arguments that asked for more than the operator allows and were held to
+   * the operator's setting (src/tools/operator-ceilings.ts). Stored because
+   * the operator reads the evaluation, not the agent's reply, and an agent
+   * steered into asking need not pass the warning on: interpretations()
+   * derives a sentence to the operator from each, on every read.
+   */
+  narrowed?: NarrowedArgument[];
   judgedAt: string;
+}
+
+/** One argument the operator's settings narrowed: the argument, the setting that applied, and what the caller was told. */
+export interface NarrowedArgument {
+  field: string;
+  setting: string;
+  message: string;
 }
 
 /**

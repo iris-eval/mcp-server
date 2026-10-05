@@ -211,6 +211,7 @@ export function buildProvenance(input: {
   composer?: Provenance['composer'];
   evidence?: Provenance['evidence'];
   supersedes?: string;
+  narrowed?: Provenance['narrowed'];
   judgedAt: string;
 }): Provenance {
   return {
@@ -222,6 +223,7 @@ export function buildProvenance(input: {
     ...(input.composer !== undefined ? { composer: input.composer } : {}),
     ...(input.evidence !== undefined ? { evidence: input.evidence } : {}),
     ...(input.supersedes !== undefined ? { supersedes: input.supersedes } : {}),
+    ...(input.narrowed?.length ? { narrowed: input.narrowed } : {}),
     corpusVersion: publishedProvenance().corpusVersion,
     judgedAt: input.judgedAt,
   };

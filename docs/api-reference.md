@@ -248,7 +248,7 @@ Since 0.10.0 the verdict is composed by the *kind* of claim each rule makes, in 
 
 Every rule result carries `role` — what the composer did with it here: `gate` (a policy you configured, or a judgment you paid for), `veto` (a critical detector), `risk` (a detection or inference whose published accuracy enters the estimate), `advisory` (a measurement, a policy at a shipped default, a custom rule at medium or low severity). Every count evidence carries `thresholdSource` — `config` when your config file set the number, `default` otherwise; it is where the number came from, never what it equals, so setting the shipped number counts as setting it.
 
-`interpretations[]` carries the sentences the verdict alone does not: for a rule that failed without deciding, why and which setting would change that (`rule`, `configKey`); for a question not judged because an input was missing, which input (`addressee: "agent"`); for a marginal verdict, which confidence test it did not pass (the interval straddles the cut, the setting or risk level was not measured, or the corpus measured the estimate off there), with the measured numbers. They are derived on every read from `provenance.composer`, so a stored evaluation reads back with the sentences it was given; rows written before 0.13.0 read back without any.
+`interpretations[]` carries the sentences the verdict alone does not: for a rule that failed without deciding, why and which setting would change that (`rule`, `configKey`); for a question not judged because an input was missing, which input (`addressee: "agent"`); for a marginal verdict, which confidence test it did not pass (the interval straddles the cut, the setting or risk level was not measured, or the corpus measured the estimate off there), with the measured numbers; for an argument that asked for more than the operator allows, what it asked and which setting applied (`provenance.narrowed`, addressed to the operator, `configKey` naming the setting). They are derived on every read from `provenance.composer`, so a stored evaluation reads back with the sentences it was given; rows written before 0.13.0 read back without any.
 
 `eval.defaultThreshold` governs only the legacy `score` gradient. The published error rates, the composer's arithmetic and its measured accuracy on a held-out corpus are on https://iris-eval.com/proof.
 
@@ -786,7 +786,7 @@ Score output using an LLM as the judge (Anthropic or OpenAI). Seven templates. C
 | `input` | `string` | Required for `relevance` template | Original user question (improves helpfulness/safety templates). `relevance` without it is refused with `IRIS_INVALID_ARGUMENT` before any spend |
 | `expected` | `string` | Required for `correctness` template | Reference answer |
 | `source_material` | `string` | Required for `faithfulness` template | RAG sources |
-| `max_cost_usd` | `number` | No | Cost cap; default `IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL` or $0.25 |
+| `max_cost_usd` | `number` | No | Cost cap for this call, at most the operator's `IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL` (default $0.25). A larger value is lowered to the operator's cap, with an `IRIS_ARGUMENT_NARROWED` warning |
 | `trace_id` | `string` | No | Keep the judgment beside a stored trace: the response carries `reference_trace_id`, and a judgment is never the trace's verdict |
 | `agent_model` | `string` | No | The model that produced the output, when no linked trace records it (a trace carries it as `metadata.model` or a span's `gen_ai.request.model`). Used only for the same-family warning |
 
@@ -828,9 +828,9 @@ Extract citations from output, fetch sources behind an SSRF-guarded resolver, ru
 | `output` | `string` | Yes | Agent output containing citations |
 | `model` | `string` | Yes | Judge model for verification |
 | `provider` | `enum` | No | Auto-inferred from model |
-| `allow_fetch` | `boolean` | No | Opt-in outbound HTTP. Defaults to `IRIS_CITATION_ALLOW_FETCH=1` or false |
-| `domain_allowlist` | `string[]` | No | Restrict fetches to these hostnames (suffix match). Merged with `IRIS_CITATION_DOMAINS` |
-| `max_cost_usd_total` | `number` | No | Total cost cap across all citations (default $1.00) |
+| `allow_fetch` | `boolean` | No | `false` skips fetching for this call. Fetching happens only when the operator sets `IRIS_CITATION_ALLOW_FETCH=1`; `true` cannot turn it on (`IRIS_ARGUMENT_NARROWED` warning) |
+| `domain_allowlist` | `string[]` | No | Fetch only from these hostnames (suffix match). With `IRIS_CITATION_DOMAINS` set, it narrows that list and never adds to it |
+| `max_cost_usd_total` | `number` | No | Total cost cap across all citations, at most the operator's `IRIS_CITATION_MAX_COST_USD_TOTAL` (default $1.00) |
 | `max_citations` | `number` | No | Cap extraction count (default 20, max 50) |
 | `per_source_timeout_ms` | `number` | No | Per-URL timeout (default 10000) |
 | `per_source_max_bytes` | `number` | No | Per-URL body cap (default 5MB) |
@@ -864,6 +864,8 @@ Each citation carries at most one of two error fields, one per stage:
 | `judge_error` | The source resolved (`resolve_status` is `ok`) and the judge gave no verdict, so `judge` is absent | `cost_cap_reached`, `malformed_judge_response`, and the provider error kinds `auth`, `rate_limit`, `bad_request`, `server_error`, `timeout`, `malformed_response`, `unknown` |
 
 A citation with either error is unverified, never unsupported: it is left out of `total_judged` and of the score. Until 0.20.0 judge failures were reported under `resolve_error` on citations whose `resolve_status` was `ok`.
+
+**The operator's settings are ceilings.** Whether sources are fetched, from which domains, and what a call may spend are the operator's settings: `IRIS_CITATION_ALLOW_FETCH`, `IRIS_CITATION_DOMAINS` and `IRIS_CITATION_MAX_COST_USD_TOTAL` here, `IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL` for `evaluate_with_llm_judge`. An argument can narrow them for one call and never widen them, because an agent's arguments can be steered by text it read. When an argument asks for more, the operator's setting applies and the call goes on: `warnings` carries an entry with code `IRIS_ARGUMENT_NARROWED`, the argument in `field`, and a sentence naming what applied and the setting that would allow more. The stored evaluation keeps the same fact in `provenance.narrowed`, with an `interpretations` sentence to the operator, so it is there on every later read. Until 0.21.0, `allow_fetch: true` turned fetching on without the operator's setting, `domain_allowlist` was added to `IRIS_CITATION_DOMAINS`, and either cost argument could replace the operator's cap with a larger one.
 
 **SSRF defense + auth:** Eight layers documented in [semantic-citation-verify.md](./semantic-citation-verify.md). Requires an LLM judge API key (same as `evaluate_with_llm_judge`).
 

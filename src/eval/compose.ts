@@ -783,5 +783,15 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
   if (verdict.risk !== null && !calibrationAvailable(cfg)) {
     out.push({ severity: 'note', addressee: 'operator', text: unlabelledText(cfg) });
   }
+  /*
+   * An argument that asked for more than the operator allows: fetching,
+   * domains or spend (src/tools/operator-ceilings.ts). The call went on
+   * under the operator's setting and the agent was told in its reply. The
+   * operator is told here, because an agent's arguments can be steered by
+   * text it read, and a steered agent need not pass the warning on.
+   */
+  for (const n of result.provenance?.narrowed ?? []) {
+    out.push({ severity: 'warn', addressee: 'operator', text: `The calling agent asked for more than you allow. ${n.message}`, configKey: n.setting });
+  }
   return out;
 }

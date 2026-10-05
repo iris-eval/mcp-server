@@ -22,8 +22,7 @@ It returns a per-citation verdict + an overall support ratio.
 await callTool('verify_citations', {
   output: 'A 2019 Stanford study found 73% of users prefer dark mode [1]. See https://arxiv.org/abs/1234.5678 for methodology.',
   model: 'claude-haiku-4-5-20251001',
-  allow_fetch: true,          // or set IRIS_CITATION_ALLOW_FETCH=1 globally
-  domain_allowlist: ['arxiv.org', 'doi.org'],
+  domain_allowlist: ['arxiv.org', 'doi.org'],  // fetches need IRIS_CITATION_ALLOW_FETCH=1 on the server
 });
 // →
 // {
@@ -47,17 +46,14 @@ await callTool('verify_citations', {
 
 ### Enable outbound HTTP
 
-Iris refuses to fetch anything by default. Two ways to enable:
+Iris fetches nothing until the operator turns fetching on, and only the operator can:
 
 ```bash
-# Environment-wide — off by default, set to 1 to enable
+# Off by default; 1 turns it on for this server
 export IRIS_CITATION_ALLOW_FETCH=1
 ```
 
-```ts
-// Or per-call via the tool argument
-callTool('verify_citations', { ..., allow_fetch: true });
-```
+A call can turn it off for itself with `allow_fetch: false`, never on. An agent's arguments can be steered by what it read, including text stored in Iris, so `allow_fetch: true` with the variable unset fetches nothing, and the response says why with an `IRIS_ARGUMENT_NARROWED` warning.
 
 ### Lock down which hostnames you'll fetch from
 
@@ -67,11 +63,13 @@ export IRIS_CITATION_DOMAINS=doi.org,arxiv.org,pubmed.ncbi.nlm.nih.gov,nature.co
 ```
 
 ```ts
-// Or per-call, merged with env
-callTool('verify_citations', { ..., domain_allowlist: ['openalex.org'] });
+// Per call, a list that narrows the operator's
+callTool('verify_citations', { ..., domain_allowlist: ['arxiv.org'] });
 ```
 
-Empty allowlist + `allow_fetch=true` means Iris fetches **any public URL** (still SSRF-guarded). For production deployments we strongly recommend an explicit allowlist of sources you trust.
+A call's list narrows `IRIS_CITATION_DOMAINS` and never adds to it: an entry outside the operator's list is dropped, with an `IRIS_ARGUMENT_NARROWED` warning, and when nothing is left nothing is fetched. With no operator list, the call's list applies as given.
+
+With fetching on and no list from either, Iris fetches **any public URL** (still SSRF-guarded). For production deployments we strongly recommend an explicit allowlist of sources you trust.
 
 ### Install an LLM judge key (shared with `evaluate_with_llm_judge`)
 
@@ -126,7 +124,7 @@ Iris does **not** send cookies, authentication headers, or any identifying info 
 
 Same structure as `evaluate_with_llm_judge`:
 
-- **Per-call cost cap** — `max_cost_usd_total` (default $1.00). Budget across all judge calls in one `verify_citations` invocation. When the next call's pessimistic estimate would push total cost past the cap, the pipeline stops: the citation it stopped on reports `judge_error.kind: "cost_cap_reached"`, and later citations are not attempted (`total_citations_found` still counts them).
+- **Per-call cost cap** — `max_cost_usd_total`, at most the operator's `IRIS_CITATION_MAX_COST_USD_TOTAL` (default $1.00): an argument can lower it for a call, never raise it. Budget across all judge calls in one `verify_citations` invocation. When the next call's pessimistic estimate would push total cost past the cap, the pipeline stops: the citation it stopped on reports `judge_error.kind: "cost_cap_reached"`, and later citations are not attempted (`total_citations_found` still counts them).
 - **Per-citation pessimistic estimate** — before each judge call, worst-case cost is computed. If adding it exceeds the cap, skip.
 - **Typical cost** — on haiku with 5 citations averaging 2KB source text: ~$0.002-$0.005 total. On opus with the same: ~$0.10-$0.25.
 
@@ -137,11 +135,11 @@ Same structure as `evaluate_with_llm_judge`:
 | Argument                   | Default     | Notes                                                           |
 |----------------------------|-------------|-----------------------------------------------------------------|
 | `max_citations`            | 20          | Cap extraction count — protects against DoS-by-spam             |
-| `max_cost_usd_total`       | 1.00        | Hard cost ceiling                                               |
+| `max_cost_usd_total`       | 1.00        | Hard cost ceiling; at most `IRIS_CITATION_MAX_COST_USD_TOTAL`   |
 | `per_source_timeout_ms`    | 10000       | Per-URL fetch timeout                                           |
 | `per_source_max_bytes`     | 5_242_880   | Per-URL body cap (5MB)                                          |
-| `allow_fetch`              | false       | Opt-in outbound HTTP (overrides env)                            |
-| `domain_allowlist`         | null        | Merged with `IRIS_CITATION_DOMAINS`                             |
+| `allow_fetch`              | the server's | `false` skips fetching; `true` cannot turn it on               |
+| `domain_allowlist`         | null        | Narrows `IRIS_CITATION_DOMAINS`, never adds to it               |
 
 ---
 
@@ -156,7 +154,7 @@ Set when `resolve_status` is `skipped` or `error`.
 | `resolve_error.kind`      | Meaning                                                                   |
 |---------------------------|---------------------------------------------------------------------------|
 | `unresolvable_kind`       | Numbered or author-year citation with no URL/DOI to fetch                 |
-| `fetch_disabled`          | `allow_fetch=false` and `IRIS_CITATION_ALLOW_FETCH` not set               |
+| `fetch_disabled`          | `IRIS_CITATION_ALLOW_FETCH` is not 1, the call passed `allow_fetch: false`, or its `domain_allowlist` left no domain the operator allows |
 | `bad_scheme`              | Citation URL uses `file:` / `data:` / unusual scheme                      |
 | `ssrf`                    | Hostname resolves to a private / localhost / cloud-metadata range         |
 | `not_allowed_domain`      | Host not in configured allowlist                                          |

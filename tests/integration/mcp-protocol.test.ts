@@ -31,6 +31,7 @@ describe('MCP Protocol Integration', () => {
   });
 
   afterEach(async () => {
+    vi.unstubAllEnvs();
     await client.close();
     await storage.close();
   });
@@ -444,6 +445,8 @@ describe('MCP Protocol Integration', () => {
   });
 
   it('verify_citations round-trip via MCP (mocked source fetch + judge)', async () => {
+    // The operator turns fetching on; an argument cannot (src/tools/operator-ceilings.ts).
+    vi.stubEnv('IRIS_CITATION_ALLOW_FETCH', '1');
     // Verifies the citation-verify flow round-trips through MCP. The
     // mock fetch dispatches by URL: api.anthropic.com → judge JSON,
     // anything else → the citation source page. DNS lookup is stubbed
@@ -485,7 +488,6 @@ describe('MCP Protocol Integration', () => {
           output:
             'The sky appears blue due to Rayleigh scattering. See https://example.com/sky-article for details.',
           model: 'claude-haiku-4-5',
-          allow_fetch: true,
         },
       });
       const content = result.content as Array<{ type: string; text: string }>;
