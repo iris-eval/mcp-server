@@ -3,13 +3,16 @@ name: Worker exit
 # Worker threads started and ended every way, on both SQLite drivers, on every
 # OS and Node the server supports (#739). A cell takes 20 to 60 minutes, so
 # this runs where a change can reach what it tests and on a clock, not on every
-# pull request:
-#   - pull requests that touch storage (the workers and the SQLite seam live in
-#     src/storage), the worker fixtures, the search worker's test, or the
-#     dependencies;
-#   - every push to main;
+# pull request or merge:
+#   - pull requests, and pushes to main, that touch storage (the workers and
+#     the SQLite seam live in src/storage), the worker fixtures, the search
+#     worker's test, or the dependencies. Every push to main used to run it:
+#     six cells for 34 to 77 minutes after a merge that touched none of this,
+#     holding the runners (two of them macOS, the scarcest) that the next
+#     pull request's checks then queued behind;
 #   - nightly, because a runner's Node can change under an unchanged repository
-#     (Node 24.19.0 changed a header native addons build against, #719);
+#     (Node 24.19.0 changed a header native addons build against, #719), and
+#     because it also catches anything the paths below miss;
 #   - by hand.
 # A failure here is a real finding about thread or process endings, never a
 # job that cannot pass, so the nightly run stays honest in public.
@@ -26,6 +29,13 @@ on:
       - '.github/workflows/worker-exit.yml'
   push:
     branches: [main]
+    paths:
+      - 'src/storage/**'
+      - 'tests/fixtures/worker-exit/**'
+      - 'tests/unit/storage/search-worker.test.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/worker-exit.yml'
   schedule:
     - cron: '23 5 * * *'
   workflow_dispatch:
