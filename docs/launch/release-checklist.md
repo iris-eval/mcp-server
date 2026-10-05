@@ -40,7 +40,7 @@ The release workflow (`.github/workflows/release.yml`) does the publishing and, 
 
 - [ ] npm: `npm view @iris-eval/mcp-server dist-tags` → `latest` is the new version.
 - [ ] Registry: `curl -s https://registry.modelcontextprotocol.io/v0.1/servers/io.github.iris-eval%2Fmcp-server/versions/latest` → `"version":"X.Y.Z"` and `"isLatest":true`.
-- [ ] Docker actually **runs**: `docker run --rm ghcr.io/iris-eval/mcp-server:vX.Y.Z node dist/index.js --self-test` passes. The workflow checks that `:latest` is the digest it pushed, not that the image starts; 0.5.0's image exited on its default command and the checklist never asked.
+- [ ] The release workflow's `verify-release` job is green: it now pulls the pushed image by digest and runs its `--self-test` (0.5.0's image exited on its default command), and the Python release reads PyPI back.
 - [ ] GitHub release page: the CHANGELOG section is at the top, "Check before upgrading" included if there is one.
 
 ## Post-release — human (no workflow can do these)
