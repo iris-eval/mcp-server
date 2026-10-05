@@ -99,3 +99,16 @@ jobs:
         with:
           packages-dir: dist/
           print-hash: true
+      # A green publish step is the uploader's word. Read the version back from
+      # PyPI itself, as the npm release reads npm back.
+      - name: PyPI serves the version just published
+        run: |
+          version="${GITHUB_REF_NAME#py-v}"
+          for _ in $(seq 1 20); do
+            if curl -fsS "https://pypi.org/pypi/iris-eval/${version}/json" > /dev/null; then
+              echo "✓ iris-eval ${version} is on PyPI"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "✗ iris-eval ${version} is not on PyPI five minutes after publishing" && exit 1
