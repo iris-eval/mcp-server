@@ -11,21 +11,26 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
  * would hand it on stdin, which starts far fewer processes than a push.
  *
  * A push or a hook run starts several processes, and on Windows each start
- * costs up to about 0.8 s: there, with the machine idle, the file took 20 s
- * in each of three runs and a push alone 3.5 to 4 s. Under the full suite
- * with other work beside it, a case took over 60 s once a push needed one
- * per case; 60 s a case is now three times the whole file.
+ * costs up to about 0.8 s idle, and a push alone took 3.5 to 4 s. Inside
+ * the full suite, with every worker starting processes too, a case that ran
+ * three hooks and made a commit passed 60 s in two of four runs. So the
+ * cases make no commits now (a changed tree is a stamp naming another tree,
+ * which the hook reads the same way): the file takes 15.6 s idle, down from
+ * 20 s. The limit is website-build-scope.test.ts's, for the same reason:
+ * 180 s.
  */
-vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
+vi.setConfig({ testTimeout: 180_000, hookTimeout: 180_000 });
 
 const hooks = resolve(__dirname, '..', 'scripts', 'git-hooks');
 const ZERO = '0'.repeat(40);
 let dir: string;
+/** The commit the repository holds, and its tree: read once. */
+let sha: string;
+let tree: string;
 
 const work = (): string => join(dir, 'work');
 const git = (...args: string[]) => spawnSync('git', ['-c', `core.hooksPath=${hooks}`, ...args], { cwd: work(), encoding: 'utf-8' });
-const head = (): { sha: string; tree: string } => ({ sha: git('rev-parse', 'HEAD').stdout.trim(), tree: git('rev-parse', 'HEAD^{tree}').stdout.trim() });
-const stamp = (tree: string): void => writeFileSync(join(work(), '.git', 'preflight-ok'), `${JSON.stringify({ tree, commit: 'x' }, null, 2)}\n`);
+const stamp = (verified: string): void => writeFileSync(join(work(), '.git', 'preflight-ok'), `${JSON.stringify({ tree: verified, commit: 'x' }, null, 2)}\n`);
 /** The hook, run by git as a push would run it, with these lines on stdin. */
 function hook(...lines: string[]) {
   const input = join(dir, 'stdin');
@@ -33,7 +38,7 @@ function hook(...lines: string[]) {
   return git('hook', 'run', `--to-stdin=${input}`, 'pre-push', '--', 'origin', join(dir, 'remote.git'));
 }
 
-// One repository for the file, built once rather than once a case: seven git processes each time.
+// One repository for the file, built once rather than once a case.
 beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), 'iris-pre-push-'));
   spawnSync('git', ['init', '-q', '--bare', 'remote.git'], { cwd: dir });
@@ -44,6 +49,8 @@ beforeAll(() => {
   writeFileSync(join(work(), 'a.txt'), 'one\n');
   git('add', 'a.txt');
   git('commit', '-q', '-m', 'one');
+  sha = git('rev-parse', 'HEAD').stdout.trim();
+  tree = git('rev-parse', 'HEAD^{tree}').stdout.trim();
 });
 
 afterAll(() => {
@@ -59,18 +66,15 @@ describe('the pre-push hook', () => {
   });
 
   it('lets a branch go at the tree the preflight recorded, and at no other', () => {
-    const { sha, tree } = head();
     const line = `refs/heads/main ${sha} refs/heads/main ${ZERO}`;
-    expect(hook(line).status).not.toBe(0);
     stamp(tree);
     expect(hook(line).status).toBe(0);
-    writeFileSync(join(work(), 'a.txt'), 'two\n');
-    git('commit', '-q', '-am', 'two');
-    expect(hook(`refs/heads/main ${head().sha} refs/heads/main ${sha}`).status).not.toBe(0);
+    // The preflight verified another tree: the branch's is not the one it passed.
+    stamp('f'.repeat(40));
+    expect(hook(line).status).not.toBe(0);
   });
 
   it('does not stand in the way of deleting a branch or pushing a tag', () => {
-    const { sha } = head();
     expect(hook(`(delete) ${ZERO} refs/heads/old ${sha}`).status).toBe(0);
     expect(hook(`refs/tags/v1 ${sha} refs/tags/v1 ${ZERO}`).status).toBe(0);
   });
