@@ -1,0 +1,31 @@
+name: Advisory inventory
+
+# Every open dependency advisory at moderate or above has a triage row in
+# SECURITY-EXPOSURE.md (scripts/security/check-exposure-coverage.mjs). It
+# runs on every push to main (ci.yml's security-exposure job) and here, once
+# a day, because an advisory can be published with nothing merged. A
+# failure is one alert about main, answered by one triage row or one bump;
+# pull requests are gated only on what they themselves add.
+
+on:
+  schedule:
+    - cron: '41 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Every open advisory has a triage row
+        run: node scripts/security/check-exposure-coverage.mjs

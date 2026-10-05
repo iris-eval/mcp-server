@@ -757,6 +757,13 @@ jobs:
   # SECURITY-EXPOSURE.md. Forces every new alert to be triaged with a
   # documented decision (override / dismiss / track / patch) instead of
   # accumulating silently. See also SECURITY-EXPOSURE.md operational notes.
+  # Dependency advisories, in the place each can be acted on. On a pull
+  # request: fail only on a vulnerable dependency the pull request's own
+  # changes bring in (GitHub's dependency review), unless SECURITY-EXPOSURE.md
+  # already triages it. On main: every open advisory has a triage row (the
+  # inventory, also run daily by advisory-inventory.yml). Until 0.21.0 the
+  # inventory ran on every pull request, so each newly published advisory
+  # turned every open PR red at once, about changes none of them made.
   security-exposure:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -764,13 +771,28 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Advisories already triaged in SECURITY-EXPOSURE.md
+        if: github.event_name == 'pull_request'
+        id: triaged
+        run: echo "ids=$(grep -oE 'GHSA(-[0-9a-z]{4}){3}' SECURITY-EXPOSURE.md | sort -u | paste -sd, -)" >> "$GITHUB_OUTPUT"
+      - name: No vulnerable dependency added by this pull request
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5.0.0
+        with:
+          fail-on-severity: moderate
+          allow-ghsas: ${{ steps.triaged.outputs.ids }}
+          license-check: false
+          comment-summary-in-pr: never
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        if: github.event_name != 'pull_request'
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
-      - run: npm ci
-      - name: Check exposure coverage
+      - if: github.event_name != 'pull_request'
+        run: npm ci
+      - name: Every open advisory has a triage row
+        if: github.event_name != 'pull_request'
         run: node scripts/security/check-exposure-coverage.mjs
 
   # Smoke-build the Dockerfile on every PR. The host build (`build` job)
