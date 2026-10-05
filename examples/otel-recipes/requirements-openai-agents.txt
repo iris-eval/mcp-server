@@ -2,7 +2,7 @@
 # it was proven against (tests/fixtures/otlp/openai-agents.pb was recorded with
 # these). The last two lines are the end-to-end test's own needs.
 openai-agents==0.22.3
-openai==3.19.2
+openai==3.22.1
 openinference-instrumentation-openai-agents==2.5.0
 opentelemetry-sdk==1.45.0
 opentelemetry-exporter-otlp-proto-http==1.45.0
