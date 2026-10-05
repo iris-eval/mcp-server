@@ -2,6 +2,7 @@
   "branch": "main",
   "contexts": [
     "Build the sdist and the wheel",
+    "CodeQL",
     "Hardcoded-claim scanner",
     "Proof — rule accuracy regen vs committed",
     "Real clients (macos-latest)",

@@ -71,7 +71,7 @@ Match the formatting of the file you are editing. CI does not run Prettier, and 
 
 ### What to expect after you open a PR
 
-- **CI must pass.** Branch protection blocks merge until every required check is green. These are the exact context names, as GitHub reports them; the list is [`.github/required-checks.json`](.github/required-checks.json), which CI compares with the live branch protection on every run:
+- **CI must pass.** Branch protection blocks merge until every required check is green. These are the exact context names, as GitHub reports them; the list is [`.github/required-checks.json`](.github/required-checks.json), which CI compares on every run with what the live settings require (branch protection and rulesets together):
 
   | Check | What it covers |
   |---|---|
@@ -96,6 +96,7 @@ Match the formatting of the file you are editing. CI does not run Prettier, and 
   | `Proof — rule accuracy regen vs committed` | The published accuracy numbers regenerate identical, so a rule change carries its numbers |
   | `Build the sdist and the wheel` | The Python client builds |
   | `analyze (javascript-typescript)` | CodeQL static analysis |
+  | `CodeQL` | GitHub's code-scanning result for that analysis: no new alert of the severity it blocks on |
 
   Other workflows (Lighthouse, the Vercel preview, the upgrade and bundle jobs) run on PRs and are worth reading, but they do **not** block merge.
 

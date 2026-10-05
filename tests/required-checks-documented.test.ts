@@ -15,7 +15,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { compare } from '../scripts/ci/check-required-checks.mjs';
+import { compare, requiredContexts } from '../scripts/ci/check-required-checks.mjs';
 
 const root = resolve(__dirname, '..');
 const read = (rel: string): string => readFileSync(join(root, rel), 'utf8').replace(/\r\n/g, '\n');
@@ -33,7 +33,9 @@ describe('the required checks, as documented', () => {
   });
 
   it('every context is a job some workflow defines, by id or by name', () => {
-    for (const context of required.contexts) {
+    // `CodeQL` is the check GitHub's code scanning reports for the analysis job's upload, not a job of ours.
+    const reportedByGitHub = new Set(['CodeQL']);
+    for (const context of required.contexts.filter((c) => !reportedByGitHub.has(c))) {
       // `test (22)` and `Real clients (ubuntu-latest)` are one job across a matrix: the part before the bracket names it.
       const base = context.replace(/ \(.*\)$/, '');
       const esc = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -69,6 +71,16 @@ describe('the required checks, as documented', () => {
 
   it('the claims workflow compares the file with the live branch protection', () => {
     expect(workflows).toMatch(/node scripts\/ci\/check-required-checks\.mjs/);
+  });
+
+  it('requiredContexts() takes the union of classic protection and every ruleset rule, once each', () => {
+    const rules = [
+      { type: 'pull_request', parameters: {} },
+      { type: 'required_status_checks', parameters: { required_status_checks: [{ context: 'build' }, { context: 'CodeQL' }] } },
+      { type: 'required_status_checks', parameters: { required_status_checks: [{ context: 'e2e' }] } },
+    ];
+    expect(requiredContexts(['build', 'test (22)'], rules)).toEqual(['CodeQL', 'build', 'e2e', 'test (22)']);
+    expect(requiredContexts([], [])).toEqual([]);
   });
 
   it('compare() names a context on either side alone', () => {
