@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { IStorageAdapter } from '../../types/query.js';
 import type { CustomRuleStore } from '../../custom-rule-store.js';
-import { RULE_TYPE_VALUES } from '../../custom-rule-store.js';
+import { RULE_NAME_MESSAGE, RULE_NAME_PATTERN, RULE_TYPE_VALUES } from '../../custom-rule-store.js';
 import type { EvalEngine } from '../../eval/engine.js';
 import { createCustomRule } from '../../eval/rules/custom.js';
 import { builtInRuleRoster, type BuiltInRuleMeta } from '../../eval/criticality.js';
@@ -43,7 +43,7 @@ const DefinitionSchema = strictBody({
 });
 
 const DeploySchema = strictBody({
-  name: z.string().min(1).max(80).regex(/^[a-z0-9._-]+$/i, 'Use letters, digits, dot, dash, underscore'),
+  name: z.string().min(1).max(80).regex(RULE_NAME_PATTERN, RULE_NAME_MESSAGE),
   description: z.string().max(500).optional(),
   evalType: EvalTypeSchema,
   severity: SeveritySchema.optional(),

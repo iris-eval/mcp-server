@@ -113,7 +113,9 @@ describe('the relevance judge over MCP', () => {
     const stored = JSON.parse(resourceTextOf(await client.readResource({ uri: `iris://evaluations/${e.id}` }))) as Evaluation;
     expect(stored.passed).toBe(false);
     expect(stored.verdict).toMatchObject({ state: 'fail', basis: 'policy_gate', by: ['answers_the_ask'] });
-    expect(answers(stored).judge).toMatchObject({ score: 0.03, rationale: 'A weather bulletin, not a summary of the report.' });
+    expect(answers(stored).judge).toMatchObject({ score: 0.03 });
+    // Read back, the rationale is a model's words about text a caller chose, so it comes fenced (src/tools/untrusted.ts).
+    expect(answers(stored).judge?.rationale).toMatch(/^<untrusted_judge_rationale id="([0-9a-f]{12})">\nA weather bulletin, not a summary of the report\.\n<\/untrusted_judge_rationale id="\1">$/);
   });
 
   it('a linked trace that records a same-family agent names the judge as a same-family opinion', async () => {
