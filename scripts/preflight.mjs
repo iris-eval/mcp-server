@@ -41,8 +41,17 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 /** Where the root suite's JSON report goes; replaced with a fresh temporary path when it runs. */
 const ROOT_REPORT = '{root-report}';
-/** The root-suite test files the branch adds or changes; replaced when a step runs. */
+/** The root-suite test files the fast run executes; replaced when a step runs. */
 const TEST_FILES = '{test-files}';
+/**
+ * The most test files the fast run executes. A change reaches every test
+ * file that imports what it touched (vitest list --changed); a narrow change
+ * reaches a handful, and one to a module most files import reaches hundreds,
+ * which is the whole suite and CI's job. Above this, the fast run executes
+ * the branch's own test files and says so. 60 files run in about 2 minutes
+ * on a desktop; 105, which one storage change reached, in about 4.
+ */
+export const REACHED_CAP = 60;
 const ACTIONLINT = 'rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667';
 
 /** Checks the pack list carries the dashboard, as the build job does with jq. */
@@ -79,8 +88,8 @@ export const STEPS = [
   { name: 'search tokenizer table', ci: ['ci.yml#search-tokenizer-table'], run: 'npm run -s unicode61:check' },
   { name: 'security exposure coverage', ci: ['ci.yml#security-exposure'], run: 'node scripts/security/check-exposure-coverage.mjs' },
   { name: 'workflows lint (actionlint, in Docker)', ci: ['ci.yml#actionlint'], run: `docker run --rm -v "${root.replace(/\\/g, '/')}:/repo" -w /repo ${ACTIONLINT} -color` },
-  { name: 'dashboard typecheck and lint', fast: 'dashboard/', ci: ['ci.yml#lint-and-typecheck'], cwd: 'dashboard', run: 'npm run -s typecheck && npm run -s lint' },
-  { name: 'dashboard tests', fast: 'dashboard/', ci: ['ci.yml#lint-and-typecheck'], cwd: 'dashboard', run: 'npm test --silent' },
+  { name: 'dashboard typecheck and lint', fast: ['dashboard/', 'src/'], ci: ['ci.yml#lint-and-typecheck'], cwd: 'dashboard', run: 'npm run -s typecheck && npm run -s lint' },
+  { name: 'dashboard tests', fast: ['dashboard/', 'src/'], ci: ['ci.yml#lint-and-typecheck'], cwd: 'dashboard', run: 'npm test --silent' },
   { name: 'dashboard Storybook build', ci: ['ci.yml#lint-and-typecheck'], cwd: 'dashboard', run: 'npm run -s build-storybook' },
   { name: 'website lint and types', fast: 'website/', fastOnly: true, ci: ['ci.yml#website-lint-and-typecheck'], cwd: 'website', run: 'npm run -s lint && npx tsc --noEmit' },
   { name: 'website lint, types and build', ci: ['ci.yml#website-lint-and-typecheck'], cwd: 'website', run: 'npm run -s lint && npx tsc --noEmit && npm run -s build' },
@@ -103,7 +112,7 @@ export const STEPS = [
   },
   { name: 'truthbase regenerated matches the committed one', fast: true, ci: ['claims-alignment.yml#check-truthbase-regen'], run: 'node scripts/claims/generate.mjs --check' },
   {
-    name: 'the test files this branch adds or changes',
+    name: 'the tests this change reaches',
     fast: true,
     fastOnly: true,
     ci: ['ci.yml#test'],
@@ -149,10 +158,24 @@ function baseOf() {
   return git(['merge-base', 'HEAD', 'origin/main']) || git(['rev-parse', 'HEAD~1']);
 }
 
-/** The steps a mode runs. Fast: the marked ones, and a folder's only when the branch touched it. */
+/** The steps a mode runs. Fast: the marked ones, and a folder's only when the branch touched one of its prefixes. */
 export function stepsFor(full, changed) {
   if (full) return STEPS.filter((s) => !s.fastOnly);
-  return STEPS.filter((s) => s.fast === true || (typeof s.fast === 'string' && changed.some((f) => f.startsWith(s.fast))));
+  const prefixes = (s) => (typeof s.fast === 'string' ? [s.fast] : Array.isArray(s.fast) ? s.fast : []);
+  return STEPS.filter((s) => s.fast === true || prefixes(s).some((p) => changed.some((f) => f.startsWith(p))));
+}
+
+/**
+ * The root-suite test files the fast run executes: every file the change
+ * reaches when there are at most REACHED_CAP of them, else only the
+ * branch's own test files. Returns the files and a sentence saying which.
+ */
+export function testsToRun(reached, own) {
+  const rootSuite = (f) => /^tests\/.*\.test\.ts$/.test(f) && !/^tests\/(real-clients|mcpb|stall|upgrade)\//.test(f);
+  const mine = own.filter(rootSuite);
+  const all = [...new Set([...reached.filter(rootSuite), ...mine])].sort();
+  if (all.length <= REACHED_CAP) return { files: all, why: `${all.length} test file(s) this change reaches` };
+  return { files: mine, why: `this change reaches ${all.length} test files, more than ${REACHED_CAP}: running the branch's own ${mine.length}; CI runs the rest` };
 }
 
 function main(scratch) {
@@ -168,7 +191,7 @@ function main(scratch) {
     return 0;
   }
   if (git(['status', '--porcelain'])) {
-    process.stderr.write('preflight — the working tree has uncommitted changes. It verifies a commit: commit or stash them, then run it again.\n');
+    process.stderr.write('preflight — the working tree has uncommitted changes. It verifies a commit: commit them, then run it again. (In a repository with several worktrees, a stash is shared by all of them, so it is not a safe place to put them.)\n');
     return 1;
   }
   for (const dir of ['', 'dashboard', 'website']) {
@@ -181,8 +204,15 @@ function main(scratch) {
   const commit = git(['rev-parse', 'HEAD']);
   const base = baseOf();
   const changed = git(['diff', '--name-only', `${base}...HEAD`]).split('\n').filter(Boolean);
-  // Root-suite test files only: the dashboard runs its own, and the excluded folders run in their own CI jobs.
-  const testFiles = changed.filter((f) => /^tests\/.*\.test\.ts$/.test(f) && !/^tests\/(real-clients|mcpb|stall|upgrade)\//.test(f) && existsSync(join(root, f)));
+  // The tests the change reaches (vitest's own import graph), capped; the dashboard runs its own, and the excluded folders run in their own CI jobs.
+  let testFiles = [];
+  if (!full && changed.some((f) => /\.(ts|tsx|mts|mjs|js|json)$/.test(f))) {
+    const listed = spawnSync(`npx vitest list --filesOnly --changed ${base}`, { cwd: root, shell: true, encoding: 'utf-8' });
+    const reached = listed.status === 0 ? listed.stdout.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : [];
+    const chosen = testsToRun(reached, changed.filter((f) => existsSync(join(root, f))));
+    testFiles = chosen.files;
+    process.stdout.write(`preflight — tests: ${listed.status === 0 ? chosen.why : `vitest could not list what the change reaches, so the branch's own ${chosen.files.length} test file(s)`}\n`);
+  }
   const steps = stepsFor(full, changed).filter((s) => !(s.run?.includes(TEST_FILES) && testFiles.length === 0));
   const started = Date.now();
   for (const [i, step] of steps.entries()) {
