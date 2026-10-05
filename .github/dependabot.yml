@@ -1,10 +1,19 @@
 version: 2
+# One pull request per directory per week for minor and patch updates (the
+# catch-all group last in each block), majors on their own, and a five-day
+# cooldown before a new release is proposed. Measured 10-01 to 10-05: 266 of
+# 1,000 Actions runs were on Dependabot branches (31 branches, 21 re-pushes),
+# each running about 73 checks, and the batches were then hand-merged. The
+# cooldown also keeps a release that is pulled within days of publishing (the
+# usual shape of a compromised package) from reaching a PR at all.
 updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
+    cooldown:
+      default-days: 5
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
@@ -31,12 +40,21 @@ updates:
       types:
         patterns:
           - "@types/*"
+      # Everything else that is not a major: one PR.
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "npm"
     directory: "/website"
     schedule:
       interval: "weekly"
       day: "monday"
+    cooldown:
+      default-days: 5
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -66,12 +84,21 @@ updates:
       types:
         patterns:
           - "@types/*"
+      # Everything else that is not a major: one PR.
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "npm"
     directory: "/dashboard"
     schedule:
       interval: "weekly"
       day: "monday"
+    cooldown:
+      default-days: 5
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -93,11 +120,21 @@ updates:
 
   # The JavaScript SDK's own toolchain and the provider SDKs its tests drive
   # (packages/sdk has its own lockfile; the package has no runtime dependencies).
+      # Everything else that is not a major: one PR.
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
   - package-ecosystem: "npm"
     directory: "/packages/sdk"
     schedule:
       interval: "weekly"
       day: "monday"
+    cooldown:
+      default-days: 5
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -119,11 +156,21 @@ updates:
 
   # The LangChain.js integration's toolchain and the framework its tests drive
   # (packages/langchain has its own lockfile; @iris-eval/sdk is linked from ../sdk).
+      # Everything else that is not a major: one PR.
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
   - package-ecosystem: "npm"
     directory: "/packages/langchain"
     schedule:
       interval: "weekly"
       day: "monday"
+    cooldown:
+      default-days: 5
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -140,11 +187,20 @@ updates:
   # The MCP clients the real-clients CI job drives (Claude Code, Gemini CLI),
   # installed with `npm ci` from this lockfile. A bump is a re-verification:
   # the job proves the new client still connects to the packed server.
+      # Everything else that is not a major: one PR.
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
   - package-ecosystem: "npm"
     directory: "/.github/real-clients"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "monthly"
+    cooldown:
+      default-days: 5
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -154,23 +210,43 @@ updates:
 
   # The hash-pinned tools publish-python.yml builds the Python client with
   # (build.in -> build.txt, pip-compile --generate-hashes).
+    groups:
+      # Everything else that is not a major: one PR.
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
   - package-ecosystem: "pip"
     directory: "/.github/requirements"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "monthly"
+    cooldown:
+      default-days: 5
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "ci"
     commit-message:
       prefix: "ci(python-build)"
+    groups:
+      # Everything else that is not a major: one PR.
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
+    cooldown:
+      default-days: 5
     labels:
       - "dependencies"
       - "ci"
@@ -203,8 +279,9 @@ updates:
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "monthly"
+    cooldown:
+      default-days: 5
     labels:
       - "dependencies"
       - "docker"
@@ -217,3 +294,58 @@ updates:
       # major still flow through Dependabot.
       - dependency-name: "node"
         update-types: ["version-update:semver-major"]
+    groups:
+      # Everything else that is not a major: one PR.
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Directories CI installs from that nothing watched until now. They are
+  # examples and the Python client's own toolchain: monthly, one PR each.
+  - package-ecosystem: "npm"
+    directory: "/examples/otel-recipes/js"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "deps(examples)"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "pip"
+    directory: "/examples/otel-recipes"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "deps(examples)"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "pip"
+    directory: "/packages/python"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "deps(python)"
+    groups:
+      all:
+        patterns:
+          - "*"
