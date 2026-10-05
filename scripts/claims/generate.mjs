@@ -9,7 +9,8 @@
 //
 // Usage:
 //   node scripts/claims/generate.mjs              # regen and write if changed
-//   node scripts/claims/generate.mjs --check      # regen and exit non-zero if disk diff
+//   node scripts/claims/generate.mjs --check      # regen and exit non-zero if disk diff (test totals as committed)
+//   node scripts/claims/generate.mjs --check --with-test-counts   # the same, with the captured test totals (a release)
 //   node scripts/claims/generate.mjs --print      # regen and print to stdout (no write)
 //   node scripts/claims/generate.mjs --live       # also re-sample the `maintenance` block
 //                                                 # from the GitHub API (the only generator
@@ -42,11 +43,28 @@ const SCHEMA_VERSION = 1;
 const args = new Set(process.argv.slice(2));
 const CHECK = args.has('--check');
 const PRINT = args.has('--print');
+/*
+ * The test totals are measured at a release (claims:capture-tests, in the
+ * roll), not on every pull request. They feed one line of the website, they
+ * only move when a test is added or removed, and checking them on every PR
+ * made each PR that added a test run the whole suite a second time to count
+ * it, locally and again in CI, and conflict on every rebase. `--check` keeps
+ * the committed totals unless `--with-test-counts` asks for them.
+ */
+const WITH_TEST_COUNTS = args.has('--with-test-counts');
+
+async function committedTests() {
+  try {
+    return JSON.parse(await readFile(CLAIMS_PATH, 'utf-8')).tests ?? (await tests());
+  } catch {
+    return tests();
+  }
+}
 
 async function main() {
   const generators = [
     ['version', version],
-    ['tests', tests],
+    ['tests', CHECK && !WITH_TEST_COUNTS ? committedTests : tests],
     ['mcpTools', mcpTools],
     ['evalRules', evalRules],
     ['llmJudgeTemplates', llmJudgeTemplates],
@@ -146,8 +164,12 @@ async function main() {
        * that cannot fix it. Capture runs the suite, so it must come first
        * and it must come from a GREEN run.
        */
-      console.error('Run `node scripts/claims/capture-tests.mjs` (from a green suite) then `npm run claims:generate`, and commit the result.');
-      console.error('If only the test counts moved, capture-tests is the one you need — generate alone will not change them.');
+      if (WITH_TEST_COUNTS) {
+        console.error('Run `node scripts/claims/capture-tests.mjs` (from a green suite) then `npm run claims:generate`, and commit the result.');
+        console.error('If only the test counts moved, capture-tests is the one you need — generate alone will not change them.');
+      } else {
+        console.error('Run `npm run claims:generate` and commit the result. (Test totals are not compared here; a release captures them.)');
+      }
       process.exit(2);
     }
   }

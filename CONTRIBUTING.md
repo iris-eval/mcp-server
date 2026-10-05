@@ -37,7 +37,7 @@ cd dashboard && npm install && cd ..   # the dashboard is its own workspace; `np
 | `npm run test:integration` | Run integration tests |
 | `npm run test:coverage` | Run tests with coverage |
 | `npm run lint` | Lint source code |
-| `npm run preflight` | Every check a pull request's CI runs that can run on your machine, in CI's order, stopping at the first failure. `-- --list` shows them, and the jobs only CI runs |
+| `npm run preflight` | The checks a branch most often fails CI on, in a few minutes: claims and renders, lint, types, and the test files your branch changes. `-- --full` runs every check CI runs that can run here; `-- --list` shows both, and the jobs only CI runs |
 
 ## Dashboard Development
 
@@ -62,7 +62,7 @@ what a caller sees, say so in the PR description and write that sentence.
 
 1. Fork the repo and create a feature branch
 2. Make your changes, and commit them
-3. Run `npm run preflight`. It needs `npm ci` in the root, `dashboard/` and `website/`, and Docker for the workflows lint. It runs the lint, the type checks, the proof checks, the builds and every test with the coverage floors, then regenerates the truthbase and compares it with the committed one, which is what fails most often when tests are added. Each check it runs is one CI runs, so after a pass here CI can fail one of them only on what differs between the two machines: the operating system, the Node version, or the SQLite driver.
+3. Run `npm run preflight`. It needs `npm ci` in the root, `dashboard/` and `website/`. In a few minutes it runs the claims and render checks, lint, the type checks, the dashboard's and the website's checks when your branch touches them, and the test files your branch adds or changes. CI then runs everything in parallel: the whole suite on both Node lines and both SQLite drivers, the builds, the proofs, and the jobs that need other operating systems. `npm run preflight -- --full` runs every check that can run here, one after another, in about 25 minutes on a desktop, for a change wide enough that you want that answer before CI's. The test totals in `.claims.json` are counted at a release, not on each pull request.
 4. Submit a PR against `main` with a clear description of changes
 
 To have git refuse a push the preflight has not passed, run `git config core.hooksPath scripts/git-hooks` once. The preflight records the tree it verified, and the hook lets a branch go only at that tree.

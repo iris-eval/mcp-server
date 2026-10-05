@@ -18,7 +18,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   tree=$(git rev-parse "$local_sha^{tree}")
   if ! grep -q "\"tree\": \"$tree\"" "$stamp" 2>/dev/null; then
     echo "pre-push: ${remote_ref#refs/heads/} has not passed npm run preflight on this tree ($tree) in this checkout." >&2
-    echo "pre-push: run npm run preflight, then push again. CI runs the same checks, and more." >&2
+    echo "pre-push: run npm run preflight (the fast checks, a few minutes), then push again. CI runs everything." >&2
     status=1
   fi
 done
