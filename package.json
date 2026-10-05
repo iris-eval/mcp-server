@@ -57,6 +57,7 @@
     "compare:verify": "node scripts/verify-compare-quotes.mjs",
     "schema:render": "tsx scripts/render-response-schema.mts",
     "schema:check": "tsx scripts/render-response-schema.mts --check",
+    "preflight": "node scripts/preflight.mjs",
     "proof": "tsx proof/run.ts",
     "proof:typecheck": "tsc -p proof/tsconfig.json",
     "proof:review": "tsx proof/human-review.ts",

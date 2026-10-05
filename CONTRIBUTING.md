@@ -37,6 +37,7 @@ cd dashboard && npm install && cd ..   # the dashboard is its own workspace; `np
 | `npm run test:integration` | Run integration tests |
 | `npm run test:coverage` | Run tests with coverage |
 | `npm run lint` | Lint source code |
+| `npm run preflight` | Every check a pull request's CI runs that can run on your machine, in CI's order, stopping at the first failure. `-- --list` shows them, and the jobs only CI runs |
 
 ## Dashboard Development
 
@@ -60,10 +61,11 @@ what a caller sees, say so in the PR description and write that sentence.
 ## PR Process
 
 1. Fork the repo and create a feature branch
-2. Make your changes
-3. Ensure all tests pass: `npm test && npm run test:integration`
-4. Ensure it lints and type-checks: `npm run lint && npm run typecheck && npm run typecheck:tests`
-5. Submit a PR against `main` with a clear description of changes
+2. Make your changes, and commit them
+3. Run `npm run preflight`. It needs `npm ci` in the root, `dashboard/` and `website/`, and Docker for the workflows lint. It runs the lint, the type checks, the proof checks, the builds and every test with the coverage floors, then regenerates the truthbase and compares it with the committed one, which is what fails most often when tests are added. Each check it runs is one CI runs, so after a pass here CI can fail one of them only on what differs between the two machines: the operating system, the Node version, or the SQLite driver.
+4. Submit a PR against `main` with a clear description of changes
+
+To have git refuse a push the preflight has not passed, run `git config core.hooksPath scripts/git-hooks` once. The preflight records the tree it verified, and the hook lets a branch go only at that tree.
 
 Match the formatting of the file you are editing. CI does not run Prettier, and the tree is not Prettier-clean, so `npm run format` would rewrite files your change does not touch; leave it out of a pull request.
 

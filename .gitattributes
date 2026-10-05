@@ -35,6 +35,13 @@ proof/outside/** text eol=lf
 proof/outside-results.json text eol=lf
 proof/OUTSIDE.md text eol=lf
 
+# Git hooks run under sh: a carriage return after the shebang would stop them on any platform.
+scripts/git-hooks/* text eol=lf
+
+# Test snapshots: vitest writes them with LF and rewrites a CRLF checkout on every run, so a Windows
+# checkout without this came out of each test run with a snapshot file changed and nothing in it different.
+*.snap text eol=lf
+
 # The iris-eval launcher is packed from a checkout (release.yml does it on
 # Linux; 1.0.0 was packed by hand): its bin must start with an LF shebang on
 # every platform: a carriage return after "node" fails on macOS and Linux
