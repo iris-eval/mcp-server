@@ -12,6 +12,13 @@ on:
 permissions:
   contents: read
 
+# One run per pull request: a new push cancels the run it replaces, so a
+# fix-up push or a Dependabot rebase does not leave the old run holding
+# runners. Runs on main and on tags are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Every workflow file in .github/workflows, linted on every pull request:
   # YAML syntax, expressions, job and step references, action inputs, and
@@ -24,6 +31,7 @@ jobs:
   actionlint:
     name: Workflows lint (actionlint)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -33,6 +41,7 @@ jobs:
 
   lint-and-typecheck:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -92,6 +101,7 @@ jobs:
     # are checked by its own `npm run typecheck` in lint-and-typecheck.
     # Named so branch protection can require it.
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -109,6 +119,7 @@ jobs:
     # set, or it blocks every PR waiting for a check that can never report.
     name: ${{ matrix.os == 'macos-latest' && format('test ({0}, macOS)', matrix.node-version) || (matrix.driver == 'native' && format('test ({0})', matrix.node-version) || format('test ({0}, {1})', matrix.node-version, matrix.driver)) }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       # One red cell must not cancel its siblings. Dependabot #308 sat open for
       # six weeks on the reading that better-sqlite3 13 crashed on Node 20, 22
@@ -162,6 +173,7 @@ jobs:
   search-index:
     name: search index (${{ matrix.os }}, ${{ matrix.driver }}, Node ${{ matrix.node-version }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -199,6 +211,7 @@ jobs:
   stall-guard:
     name: stall guard (${{ matrix.driver }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -232,6 +245,7 @@ jobs:
   native-from-source:
     name: native addon built from source (${{ matrix.os }}, Node ${{ matrix.node-version }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -283,7 +297,7 @@ jobs:
 
   integration:
     runs-on: ubuntu-latest
-    needs: test
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -300,6 +314,7 @@ jobs:
   # fails when the committed table differs from the simulation.
   cusum-thresholds:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -316,6 +331,7 @@ jobs:
   # when the committed table differs.
   search-tokenizer-table:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -331,6 +347,7 @@ jobs:
   # This job makes website lint + typecheck a first-class check.
   website-lint-and-typecheck:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -362,7 +379,7 @@ jobs:
   upgrade:
     name: Upgrade from the previous release (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    needs: [lint-and-typecheck]
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -409,7 +426,7 @@ jobs:
   # call and need no account. Bump a client's version here to re-verify it.
   real-clients-pack:
     runs-on: ubuntu-latest
-    needs: [lint-and-typecheck]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -442,6 +459,7 @@ jobs:
   no-native-sqlite:
     name: Install without better-sqlite3 (node:sqlite)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [real-clients-pack]
     steps:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -485,6 +503,7 @@ jobs:
   real-clients:
     name: Real clients (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     needs: [real-clients-pack]
     strategy:
       fail-fast: false
@@ -543,7 +562,7 @@ jobs:
   # — then checks the bundle holds the tarball's files byte for byte.
   mcpb-pack:
     runs-on: ubuntu-latest
-    needs: [lint-and-typecheck]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -582,6 +601,7 @@ jobs:
   mcpb:
     name: MCPB bundle (${{ matrix.os }}, Node ${{ matrix.node-version }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     needs: [mcpb-pack]
     strategy:
       fail-fast: false
@@ -640,6 +660,7 @@ jobs:
   mcpb-electron:
     name: MCPB bundle in Electron's Node (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     needs: [mcpb-pack]
     strategy:
       fail-fast: false
@@ -690,7 +711,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    needs: [lint-and-typecheck, test]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -738,6 +759,7 @@ jobs:
   # accumulating silently. See also SECURITY-EXPOSURE.md operational notes.
   security-exposure:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -760,7 +782,7 @@ jobs:
   # with gha cache so it stays under ~2min on warm runs.
   docker-build:
     runs-on: ubuntu-latest
-    needs: lint-and-typecheck
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
@@ -778,7 +800,9 @@ jobs:
           load: true
           tags: iris-eval/mcp-server:ci
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Written by main only: a pull request's cache can be read by that pull request alone, and every
+          # PR writing one filled the repository's 10 GB cache and evicted what main needs.
+          cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=max' || '' }}
       - name: Run the image — does it actually start?
         # --self-test exercises boot, storage init, the eval engine (PII and
         # injection positives), a dashboard bind and the rebinding guard,
@@ -919,6 +943,7 @@ jobs:
   # dashboard install of its own, then requires every tool to be listed.
   fresh-clone-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -930,7 +955,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    needs: build
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -967,6 +992,7 @@ jobs:
   proof:
     name: Proof — rule accuracy regen vs committed
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -1009,7 +1035,7 @@ jobs:
   gate-action:
     name: Gate action — dogfood
     runs-on: ubuntu-latest
-    needs: [lint-and-typecheck]
+    timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: write   # the action posts the receipt as one PR comment
@@ -1105,7 +1131,7 @@ jobs:
   python-client:
     name: Python client (${{ matrix.python }}${{ matrix.sdks == 'oldest' && ', oldest provider SDKs' || '' }})
     runs-on: ubuntu-latest
-    needs: [lint-and-typecheck]
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -1171,7 +1197,7 @@ jobs:
   sdk-js:
     name: JavaScript SDK (node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
-    needs: [lint-and-typecheck]
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -1217,7 +1243,7 @@ jobs:
   langchain-js:
     name: LangChain.js integration (node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
-    needs: [lint-and-typecheck]
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -1267,7 +1293,7 @@ jobs:
   otel-recipes:
     name: OTel recipe (${{ matrix.recipe }})
     runs-on: ubuntu-latest
-    needs: [lint-and-typecheck]
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:

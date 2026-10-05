@@ -1,7 +1,9 @@
 name: Lighthouse
 
 # Perf + a11y + best-practices + SEO budgets on the dashboard SPA.
-# Runs on PR + main push. Fails the build if any category score drops
+# Runs on a PR or a push to main that touches the dashboard, the server that
+# serves it, the seed data or this budget; it is not a required check, so a
+# path filter cannot leave a PR waiting. Fails if any category score drops
 # below the floor declared in lighthouserc.json.
 #
 # Why separate from ci.yml: Lighthouse runs Chromium headless against
@@ -13,13 +15,34 @@ name: Lighthouse
 on:
   push:
     branches: [main]
+    paths:
+      - 'dashboard/**'
+      - 'src/dashboard/**'
+      - 'scripts/seed-demo-data.ts'
+      - 'lighthouserc.json'
+      - 'package-lock.json'
+      - '.github/workflows/lighthouse.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'dashboard/**'
+      - 'src/dashboard/**'
+      - 'scripts/seed-demo-data.ts'
+      - 'lighthouserc.json'
+      - 'package-lock.json'
+      - '.github/workflows/lighthouse.yml'
 
 # Top-level least-privilege. Lighthouse only needs to read the repo.
 # Closes Scorecard Token-Permissions for this workflow.
 permissions:
   contents: read
+
+# One run per pull request: a new push cancels the run it replaces, so a
+# fix-up push or a Dependabot rebase does not leave the old run holding
+# runners. Runs on main and on tags are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lighthouse:
@@ -41,7 +64,8 @@ jobs:
       # background. IRIS_NO_AUTO_LAUNCH keeps the server from opening a
       # browser window (Lighthouse drives its own Chromium).
       - name: Seed demo data
-        run: node dist/index.js --help > /dev/null 2>&1 && npm run seed:demo || true
+        # No `|| true`: a seed that fails would score an empty dashboard and pass.
+        run: node dist/index.js --help > /dev/null 2>&1 && npm run seed:demo
       - name: Start iris-mcp + dashboard
         run: |
           IRIS_NO_AUTO_LAUNCH=1 node dist/index.js --dashboard --dashboard-port 6922 &
