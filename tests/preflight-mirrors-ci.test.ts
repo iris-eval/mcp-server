@@ -51,6 +51,16 @@ for (const f of workflows) for (const [id, body] of jobsOf(read(f))) jobs.set(`$
 const mirrored = new Set(STEPS.flatMap((s) => s.ci));
 const runs = STEPS.map((s) => s.run ?? '').join('\n');
 
+/** Whether a step runs `npm run <name>` (or `npm run -s <name>`), and not merely a script whose name starts with it. */
+function runsScript(name: string): boolean {
+  for (const phrase of [`npm run ${name}`, `npm run -s ${name}`]) {
+    for (let at = runs.indexOf(phrase); at >= 0; at = runs.indexOf(phrase, at + 1)) {
+      if (!/[\w:-]/.test(runs[at + phrase.length] ?? '')) return true;
+    }
+  }
+  return false;
+}
+
 describe('the preflight says what the pull-request workflows say', () => {
   it('reads the workflows (guards the parser itself)', () => {
     expect(workflows).toEqual(expect.arrayContaining(['ci.yml', 'claims-alignment.yml']));
@@ -79,7 +89,7 @@ describe('the preflight says what the pull-request workflows say', () => {
       for (const m of body.matchAll(/npm run(?: -s)? ([\w:-]+)|(?:node|bash) (scripts\/[\w./-]+)|--config (tests\/[\w./-]+)/g)) {
         const script = m[1] ?? m[2] ?? m[3];
         if (script in sameCheck) continue;
-        const ran = m[1] ? new RegExp(`npm run(?: -s)? ${script.replace(/[:-]/g, '\\$&')}\\b`).test(runs) : runs.includes(script);
+        const ran = m[1] ? runsScript(script) : runs.includes(script);
         if (!ran) missing.push(`${job}: ${m[0]}`);
       }
       for (const m of body.matchAll(/npm run proof -- (--check[^\n]*)/g)) if (!runs.includes(`proof -- ${m[1].trim()}`)) missing.push(`${job}: ${m[0]}`);
