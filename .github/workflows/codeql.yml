@@ -15,9 +15,12 @@ permissions:
 
 # One run per pull request: a new push cancels the run it replaces, so a
 # fix-up push or a Dependabot rebase does not leave the old run holding
-# runners. Runs on main and on tags are never cancelled.
+# runners. Every other run (a push to main, a tag, a schedule) has a group of
+# its own, so none waits behind or is replaced by another: with a shared
+# group, a merge queued behind a running one replaced the one queued before
+# it, and that commit never got its run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
