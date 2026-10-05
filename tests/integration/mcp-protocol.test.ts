@@ -92,13 +92,13 @@ describe('MCP Protocol Integration', () => {
         readOnlyHint: true,
         destructiveHint: false,
         idempotentHint: true,
-        openWorldHint: false,
+        openWorldHint: true,      // returns text written outside Iris, fenced
       },
       list_rules: {
         readOnlyHint: true,
         destructiveHint: false,
         idempotentHint: true,
-        openWorldHint: false,
+        openWorldHint: true,      // returns text written outside Iris, fenced
       },
       deploy_rule: {
         readOnlyHint: false,

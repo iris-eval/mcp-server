@@ -13,7 +13,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
-import { RULE_TYPE_VALUES } from '../custom-rule-store.js';
+import { RULE_NAME_MESSAGE, RULE_NAME_PATTERN, RULE_TYPE_VALUES } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
 import { createCustomRule } from '../eval/rules/custom.js';
 import type { DeployedCustomRule } from '../types/custom-rule.js';
@@ -23,6 +23,8 @@ import { strictInput, strictNested } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { advertisedOutput } from './advertise.js';
 import { guarded, respond } from './respond.js';
+import { irisError } from './errors.js';
+import { carriesFence, FENCE_RECOVERY } from './untrusted.js';
 
 const EvalTypeSchema = z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom']);
 
@@ -128,7 +130,12 @@ const inputSchema = {
   // used to allow 120, so a 100-char name passed the tool schema and then
   // surfaced the store's ZodError as a raw 500 (#332). One limit, enforced
   // at the boundary, fails cleanly as a 400.
-  name: z.string().min(1).max(80).describe('Human-readable rule name (1-80 chars; used in eval results). Must be unique among deployed rules unless replace=true'),
+  name: z
+    .string()
+    .min(1)
+    .max(80)
+    .regex(RULE_NAME_PATTERN, RULE_NAME_MESSAGE)
+    .describe('Rule name, 1-80 letters, digits, dots, dashes and underscores (used in eval results). Must be unique among deployed rules unless replace=true'),
   description: z
     .string()
     .max(500)
@@ -216,6 +223,12 @@ export function registerDeployRuleTool(
       },
     },
     guarded(async (args) => {
+      if (carriesFence(args)) {
+        throw irisError('IRIS_INVALID_ARGUMENT', 'The rule carries an <untrusted_…> tag, which marks stored text on a read and is not part of it. Nothing was deployed.', {
+          recovery: [FENCE_RECOVERY],
+          retryable: false,
+        });
+      }
       const evalType = (args.eval_type ?? args.evalType) as EvalType;
       const sourceMomentId = args.source_moment_id ?? args.sourceMomentId;
 

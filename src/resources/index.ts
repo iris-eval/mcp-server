@@ -15,6 +15,7 @@ import { publishedProvenance, publishedRuleNames } from '../eval/accuracy.js';
 import { toEvaluationResponse } from '../eval/response.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { readAuditLog } from '../audit-log-reader.js';
+import { fenceEvaluation, fenceRecord, fenceValue, newFence, TRACE_OWN_FIELDS, untrustedHeader } from '../tools/untrusted.js';
 import {
   AUDIT_RESOURCE_URI,
   CAPABILITIES_RESOURCE_URI,
@@ -82,7 +83,12 @@ export function registerAllResources(
     'dashboard-summary',
     DASHBOARD_SUMMARY_RESOURCE_URI,
     { title: 'Dashboard summary', description: 'Dashboard summary with key metrics and trends for the last hour', mimeType: 'application/json' },
-    async (uri) => json(uri.href, await storage.getDashboardSummary(LOCAL_TENANT)),
+    async (uri) => {
+      // Agent names and the other labels in it were written by callers: fenced unless they cannot carry a sentence (tools/untrusted.ts).
+      const fence = newFence();
+      const summary = fenceValue(fence, 'summary', await storage.getDashboardSummary(LOCAL_TENANT)) as object;
+      return json(uri.href, { ...untrustedHeader(fence), ...summary });
+    },
   );
 
   /*
@@ -102,7 +108,10 @@ export function registerAllResources(
     },
     async (uri) => {
       const { entries, total } = readAuditLog({ limit: 100, filePath: auditPath });
-      return json(uri.href, { total, entries: entries.filter((e) => (e.tenantId ?? LOCAL_TENANT) === LOCAL_TENANT) });
+      // Rule names and descriptions in it were written by callers.
+      const fence = newFence();
+      const mine = entries.filter((e) => (e.tenantId ?? LOCAL_TENANT) === LOCAL_TENANT).map((e) => fenceRecord(fence, e));
+      return json(uri.href, { ...untrustedHeader(fence), total, entries: mine });
     },
   );
 
@@ -118,7 +127,14 @@ export function registerAllResources(
         storage.getSpansByTraceId(LOCAL_TENANT, traceId),
         storage.getEvalsByTraceId(LOCAL_TENANT, traceId),
       ]);
-      return json(uri.href, { trace, spans, evals: evals.map((e) => toEvaluationResponse(e, { traceId })) });
+      // Everything the trace and its spans carry was written outside Iris; of the evaluations, only what a caller or a judge wrote (tools/untrusted.ts).
+      const fence = newFence();
+      const body = {
+        trace: fenceRecord(fence, trace, TRACE_OWN_FIELDS),
+        spans: spans.map((s) => fenceRecord(fence, s)),
+        evals: evals.map((e) => fenceEvaluation(fence, toEvaluationResponse(e, { traceId }))),
+      };
+      return json(uri.href, { ...untrustedHeader(fence), ...body });
     },
   );
 
@@ -130,7 +146,9 @@ export function registerAllResources(
       const id = String(variables.id ?? '');
       const result = await storage.getEvalById(LOCAL_TENANT, id);
       if (!result) throw notFound(uri.href, 'evaluation');
-      return json(uri.href, toEvaluationResponse(result, { traceId: result.trace_id }));
+      const fence = newFence();
+      const body = fenceEvaluation(fence, toEvaluationResponse(result, { traceId: result.trace_id }));
+      return json(uri.href, { ...untrustedHeader(fence), ...body });
     },
   );
 }

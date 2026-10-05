@@ -58,6 +58,15 @@ const EVAL_TYPE_VALUES: EvalType[] = ['completeness', 'relevance', 'safety', 'co
  * an `action_policy` the tool accepted was refused over HTTP (found by the
  * 0.15.0 stranger's gate phase). Two surfaces, one constant.
  */
+/**
+ * What a deployed rule's name may hold: letters, digits, dot, dash and
+ * underscore. The dashboard has always required it; deploy_rule did not, so
+ * a name could carry a sentence into every evaluation and list that showed
+ * it. Two surfaces, one constant. A stored name from before is still loaded.
+ */
+export const RULE_NAME_PATTERN = /^[a-z0-9._-]+$/i;
+export const RULE_NAME_MESSAGE = 'Use letters, digits, dot, dash, underscore';
+
 export const RULE_TYPE_VALUES = [
   'regex_match',
   'regex_no_match',

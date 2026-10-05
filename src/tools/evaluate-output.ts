@@ -15,6 +15,7 @@ import { toolCallSchema, toolDescriptorSchema } from './log-trace.js';
 import { getTraceOrThrow, insertLinkedEvalResult } from './trace-link.js';
 import { differsFromRecord } from '../eval/of-record.js';
 import { irisError } from './errors.js';
+import { carriesFence, FENCE_RECOVERY } from './untrusted.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { advertisedOutput, NESTED_SHAPES_NOTE } from './advertise.js';
 import { evaluationLinks, guarded, respond } from './respond.js';
@@ -235,6 +236,13 @@ export function registerEvaluateOutputTool(
         ...(trace?.metadata ? { metadata: trace.metadata } : {}),
       };
       const customRules = args.custom_rules as CustomRuleDefinition[] | undefined;
+      if (carriesFence(customRules)) {
+        throw irisError('IRIS_INVALID_ARGUMENT', 'A custom_rules entry carries an <untrusted_…> tag, which marks stored text on a read and is not part of it. Nothing was evaluated.', {
+          field: 'custom_rules',
+          recovery: [FENCE_RECOVERY],
+          retryable: false,
+        });
+      }
 
       const result =
         evalType === 'all'

@@ -5141,8 +5141,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-10-05T17:06:12.498Z",
-  "generatedFromCommit": "547c3c39",
+  "generatedAt": "2026-10-05T18:37:33.041Z",
+  "generatedFromCommit": "b54a7a23",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5210,7 +5210,7 @@
   "mcpTools": {
     "annotations": {
       "destructiveHintCount": 2,
-      "openWorldHintCount": 2,
+      "openWorldHintCount": 4,
       "readOnlyHintCount": 4
     },
     "count": 12,
