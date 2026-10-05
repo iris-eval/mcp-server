@@ -11,10 +11,15 @@
  * proof job was not among them.
  *
  * .github/required-checks.json is the documented list. The unit tests hold
- * the documents to that file; this script holds the file to the setting,
- * read from the public branch endpoint (no admin scope is needed for a
- * public repository). It runs on every pull request and every push to
- * main, so a change to the setting without the file turns main red.
+ * the documents to that file; this script holds the file to the setting.
+ * The setting can live in two places, and on 2026-10-05 it lived in both,
+ * with different lists: classic branch protection (read from the branch
+ * endpoint) and repository rulesets (read from the branch's rules
+ * endpoint, every active rule that applies to it). A check either one
+ * requires blocks a merge, so the file is held to their union. Neither
+ * endpoint needs an admin scope on a public repository. It runs on every
+ * pull request and every push to main, so a change to either setting
+ * without the file turns main red, including a move from one to the other.
  *
  *   node scripts/ci/check-required-checks.mjs
  *
@@ -37,25 +42,41 @@ export function compare(documented, live) {
   };
 }
 
+/**
+ * Every context a merge to the branch waits for: classic protection's list,
+ * and each required_status_checks rule an active ruleset applies.
+ */
+export function requiredContexts(classic, rules) {
+  const fromRules = rules
+    .filter((r) => r?.type === 'required_status_checks')
+    .flatMap((r) => (r.parameters?.required_status_checks ?? []).map((c) => c.context));
+  return [...new Set([...classic, ...fromRules])].sort();
+}
+
 async function main() {
   const file = JSON.parse(readFileSync(resolve(root, '.github', 'required-checks.json'), 'utf8'));
   const repo = process.env.GITHUB_REPOSITORY || 'iris-eval/mcp-server';
   const api = process.env.GITHUB_API_URL || 'https://api.github.com';
   const headers = { accept: 'application/vnd.github+json', 'user-agent': 'iris-required-checks' };
   if (process.env.GITHUB_TOKEN) headers.authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-  const res = await fetch(`${api}/repos/${repo}/branches/${file.branch}`, { headers });
-  if (!res.ok) {
-    console.error(`[required-checks] GET branches/${file.branch} answered ${res.status}; the setting could not be read, so nothing is asserted about it.`);
-    process.exit(1);
-  }
-  const live = (await res.json())?.protection?.required_status_checks?.contexts;
-  if (!Array.isArray(live)) {
-    console.error('[required-checks] the branch endpoint carries no protection.required_status_checks.contexts; if protection moved to a ruleset, read it from there and update this script.');
+  const get = async (path) => {
+    const res = await fetch(`${api}/repos/${repo}/${path}`, { headers });
+    if (!res.ok) {
+      console.error(`[required-checks] GET ${path} answered ${res.status}; the setting could not be read, so nothing is asserted about it.`);
+      process.exit(1);
+    }
+    return res.json();
+  };
+  const classic = (await get(`branches/${file.branch}`))?.protection?.required_status_checks?.contexts ?? [];
+  const rules = await get(`rules/branches/${file.branch}`);
+  const live = requiredContexts(classic, Array.isArray(rules) ? rules : []);
+  if (live.length === 0) {
+    console.error(`[required-checks] neither branch protection nor any ruleset requires a check on ${file.branch}: a red pull request could merge.`);
     process.exit(1);
   }
   const { missingFromFile, notRequired } = compare(file.contexts, live);
   if (missingFromFile.length === 0 && notRequired.length === 0) {
-    console.log(`[required-checks] OK — .github/required-checks.json lists the ${live.length} contexts ${repo}@${file.branch} requires`);
+    console.log(`[required-checks] OK — .github/required-checks.json lists the ${live.length} contexts ${repo}@${file.branch} requires (branch protection and rulesets together)`);
     return;
   }
   for (const c of missingFromFile) console.error(`[required-checks] required on ${file.branch} and not in .github/required-checks.json: ${c}`);
