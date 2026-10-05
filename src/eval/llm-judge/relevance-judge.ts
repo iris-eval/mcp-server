@@ -25,8 +25,8 @@
  *
  * The user owns the key and the bill, so three things hold on every call
  * (budget.ts and redact.ts carry the reasoning):
- *   - a daily budget per tenant, kept in the database, that a call's worst
- *     case must fit before it is made;
+ *   - a daily budget per tenant, kept in the database and shared with the
+ *     judge tools, that a call's worst case must fit before it is made;
  *   - a cap on judge calls per request, so one batch cannot spend the day;
  *   - what leaves the machine is the ask and the answer with every span
  *     no_pii flags replaced by a marker, unless the deployment opts out.
@@ -45,12 +45,13 @@ import {
   JudgeBudget,
   MAX_CALLS_PER_REQUEST_VAR,
   dailyBudgetUsd,
+  judgeBudgetFromEnv,
   maxCallsPerRequest,
   memoryJudgeSpendLedger,
   newJudgeRequest,
   type BudgetToday,
+  type JudgeBudgetEnvOptions,
   type JudgeRequest,
-  type JudgeSpendLedger,
   type Setting,
 } from './budget.js';
 import { redactForJudge } from './redact.js';
@@ -114,7 +115,7 @@ export interface RelevanceJudgeOptions {
   /** The judge call itself; tests and the proof runner pass the real evaluator or a stand-in. */
   evaluate?: (params: LLMJudgeEvaluateParams) => Promise<LLMJudgeEvaluationResult>;
   /**
-   * The daily budget. Omitted: IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD (or its
+   * The daily budget. Omitted: IRIS_LLM_JUDGE_DAILY_BUDGET_USD (or its
    * default) over a ledger in this process's memory; an embedder with a
    * database passes one built on it, as the server and the CLI do.
    */
@@ -242,12 +243,13 @@ export function createRelevanceJudge(options: RelevanceJudgeOptions): RelevanceJ
  * IRIS_RELEVANCE_JUDGE_MODEL is unset. Literal reads on purpose: the docs
  * contract greps `process.env.IRIS_*` to learn what the server reads.
  */
-export interface RelevanceJudgeEnvOptions {
-  /** Where the daily spend is kept: the server and the CLI pass the database's ledger, so it survives a restart. */
-  ledger?: JudgeSpendLedger;
-  /** Where the one line goes when a tenant's budget first refuses a call on a day (default: stderr). */
-  log?: (line: string) => void;
-  now?: () => Date;
+export interface RelevanceJudgeEnvOptions extends JudgeBudgetEnvOptions {
+  /**
+   * The daily budget every judge call in this process draws on: the server
+   * passes the one its judge tools use, so the three share one balance.
+   * Omitted, one is built from the environment and the other options.
+   */
+  budget?: JudgeBudget;
 }
 
 export function relevanceJudgeFromEnv(options: RelevanceJudgeEnvOptions = {}): RelevanceJudge | null {
@@ -255,22 +257,18 @@ export function relevanceJudgeFromEnv(options: RelevanceJudgeEnvOptions = {}): R
   if (!model) return null;
   const provider = findPricing(model)?.provider;
   const apiKey = provider === 'anthropic' ? process.env.IRIS_ANTHROPIC_API_KEY : provider === 'openai' ? process.env.IRIS_OPENAI_API_KEY : undefined;
-  const daily = dailyBudgetUsd();
   const calls = maxCallsPerRequest();
   const redaction = redactionSetting();
-  const budget = new JudgeBudget({
-    dailyUsd: daily.value,
-    ledger: options.ledger ?? memoryJudgeSpendLedger(),
-    log: options.log ?? ((line) => process.stderr.write(`${line}\n`)),
-    ...(options.now ? { now: options.now } : {}),
-  });
+  // A budget passed in is the process's own, and whoever built it says its notes.
+  const built = options.budget ? null : judgeBudgetFromEnv(options);
+  const budget = options.budget ?? built!.budget;
   return createRelevanceJudge({
     model,
     ...(apiKey ? { apiKey } : {}),
     budget,
     maxCallsPerRequest: calls.value,
     redact: redaction.value === 'on',
-    notes: [daily.note, calls.note, redaction.note].filter((n): n is string => n !== undefined),
+    notes: [...(built?.notes ?? []), calls.note, redaction.note].filter((n): n is string => n !== undefined),
   });
 }
 

@@ -33,7 +33,7 @@
         "IRIS_ANTHROPIC_API_KEY": "${user_config.anthropic_api_key}",
         "IRIS_OPENAI_API_KEY": "${user_config.openai_api_key}",
         "IRIS_RELEVANCE_JUDGE_MODEL": "${user_config.relevance_judge_model}",
-        "IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD": "${user_config.relevance_judge_daily_budget_usd}"
+        "IRIS_LLM_JUDGE_DAILY_BUDGET_USD": "${user_config.judge_daily_budget_usd}"
       }
     }
   },
@@ -138,10 +138,10 @@
       "required": false,
       "default": ""
     },
-    "relevance_judge_daily_budget_usd": {
+    "judge_daily_budget_usd": {
       "type": "number",
-      "title": "Relevance judge daily budget (USD)",
-      "description": "The most the relevance judge may spend per UTC day. Past it, answers_the_ask reads the ask lexically until midnight UTC, and each result says so. 0 stops every call.",
+      "title": "LLM judge daily budget (USD)",
+      "description": "The most every judge call together may spend per UTC day: the relevance judge, evaluate_with_llm_judge and verify_citations. Past it, no judge call is made until midnight UTC, and each result says so. 0 stops every call.",
       "required": false,
       "default": 1,
       "min": 0

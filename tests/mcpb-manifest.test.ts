@@ -145,8 +145,8 @@ describe('mcpb/manifest.json', () => {
     // The relevance judge: off until a model is named, and inside the same daily budget the server defaults to.
     expect(manifest.user_config.relevance_judge_model).toMatchObject({ type: 'string', required: false, default: '' });
     expect(manifest.server.mcp_config.env.IRIS_RELEVANCE_JUDGE_MODEL).toBe('${user_config.relevance_judge_model}');
-    expect(manifest.user_config.relevance_judge_daily_budget_usd).toMatchObject({ type: 'number', required: false, default: DEFAULT_DAILY_BUDGET_USD });
-    expect(manifest.server.mcp_config.env.IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD).toBe('${user_config.relevance_judge_daily_budget_usd}');
+    expect(manifest.user_config.judge_daily_budget_usd).toMatchObject({ type: 'number', required: false, default: DEFAULT_DAILY_BUDGET_USD });
+    expect(manifest.server.mcp_config.env.IRIS_LLM_JUDGE_DAILY_BUDGET_USD).toBe('${user_config.judge_daily_budget_usd}');
     expect(manifest.server.mcp_config.env.IRIS_DASHBOARD).toBe('${user_config.dashboard}');
     for (const url of manifest.privacy_policies) expect(url.startsWith('https://'), url).toBe(true);
   });

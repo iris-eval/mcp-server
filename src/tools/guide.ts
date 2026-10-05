@@ -14,6 +14,7 @@
 import { RULE_ALPHA } from '../eval/compare.js';
 import { INJECTION_SCOPE_SENTENCE } from '../eval/rules/safety.js';
 import { JUDGE_COST_CAP_VAR, JUDGE_DEFAULT_COST_CAP_USD, JUDGE_KEY_VARS } from '../judge-enablement.js';
+import { DAILY_BUDGET_VAR } from '../eval/llm-judge/budget.js';
 import { OUTPUT_SCHEMAS, TOOL_NAMES, type ToolName } from './index.js';
 
 export interface ToolGuide {
@@ -224,6 +225,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
       `Calls Anthropic or OpenAI directly with the key in this process's environment (${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai}); Iris never proxies. ` +
       'template picks the question: accuracy, helpfulness, safety, correctness (needs expected), faithfulness (needs source_material), task_completed (pass the trajectory as source_material when you have it) or relevance (needs input: does the output address this request, not another); input improves helpfulness and safety. model is required; provider is inferred from it. ' +
       `The worst-case spend — both attempts, full max_output_tokens — is computed BEFORE the call and refused if it exceeds max_cost_usd (default ${JUDGE_COST_CAP_VAR} or ${JUDGE_DEFAULT_COST_CAP_USD}); max_cost_usd can lower the operator's cap, never raise it, and a larger value is lowered with an IRIS_ARGUMENT_NARROWED warning. ` +
+      `The same worst case must also fit in what is left of the day's ${DAILY_BUDGET_VAR}, which every judge call on the key shares. ` +
       'temperature defaults to 0; a rate-limited call is retried once. One evaluation row is stored with the provider response id, tokens, cost and latency. With trace_id it is kept beside that trace (reference_trace_id) and listed with it; a judgment is never the trace\'s verdict and cannot replace it. ' +
       'A judge from the same model family as the agent (agent_model, or the linked trace) is warned about, never refused. ' +
       "The judge's own accuracy is measurable on a key you supply and is not yet published (see iris://proof).",
@@ -231,7 +233,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
       'For length, keyword, PII, injection or cost checks: evaluate_output is free and deterministic. Without a key: the call returns IRIS_JUDGE_NOT_ENABLED with the enable steps — do not search for them. On very large outputs without raising max_cost_usd: the pre-check refuses.',
     errors:
       'IRIS_INVALID_ARGUMENT for relevance without input, before any spend. IRIS_JUDGE_NOT_ENABLED (no key for the provider reached this process; recovery carries the steps). IRIS_JUDGE_UNKNOWN_MODEL (valid lists the models). IRIS_UNKNOWN_TRACE, checked before any spend. ' +
-      'IRIS_BUDGET_EXCEEDED (nothing spent; the message carries both numbers). IRIS_PROVIDER_ERROR with kind auth, rate_limit, bad_request, server_error, timeout or malformed_response, and retryable set.',
+      `IRIS_BUDGET_EXCEEDED (nothing spent): over max_cost_usd, the message carries both numbers; over the daily budget, field is ${DAILY_BUDGET_VAR}, retryable is true and the message says when it resets. IRIS_PROVIDER_ERROR with kind auth, rate_limit, bad_request, server_error, timeout or malformed_response, and retryable set.`,
     parameters: {
       template:
         'Judge dimension: accuracy (factual correctness), helpfulness (does it address the ask), safety (harm potential), correctness (vs reference answer — requires `expected`), faithfulness (RAG grounding — requires `source_material`), task_completed (did the task actually complete — pass the trajectory as `source_material` when you have it), relevance (does it address THIS request rather than another — requires `input`; the judge answers_the_ask gates on when IRIS_RELEVANCE_JUDGE_MODEL is set).',
@@ -242,7 +244,8 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
   verify_citations: {
     does:
       'Three phases. Extraction, no network: [N] references, (Author, Year), bare URLs and DOIs. Fetch of URL and DOI citations only when the operator set IRIS_CITATION_ALLOW_FETCH=1 (allow_fetch: false skips it for a call; true cannot turn it on), through a scheme allowlist, private and cloud-metadata address blocking, an optional hostname allowlist (domain_allowlist, merged with IRIS_CITATION_DOMAINS), a per-source timeout and byte cap, and at most three re-checked redirects. ' +
-      'Then one judge call per resolved citation on your own key, reading the first part of each source, capped in total by max_cost_usd_total, which can lower the operator\'s IRIS_CITATION_MAX_COST_USD_TOTAL and never raise it. An argument that asks for more than the operator allows is narrowed, with an IRIS_ARGUMENT_NARROWED warning. Up to max_citations are verified; extras are skipped, not errored. ' +
+      'Then one judge call per resolved citation on your own key, reading the first part of each source, capped in total by max_cost_usd_total, which can lower the operator\'s IRIS_CITATION_MAX_COST_USD_TOTAL and never raise it. An argument that asks for more than the operator allows is narrowed, with an IRIS_ARGUMENT_NARROWED warning. ' +
+      `Each judge call's worst case must also fit in what is left of the day's ${DAILY_BUDGET_VAR}, which every judge call on the key shares; past it the citation gets judge_error daily_budget_reached and later ones are not attempted. Up to max_citations are verified; extras are skipped, not errored. ` +
       'overall_score is supported / judged and null when nothing was judged. Per-citation failures are reported on the citation, never scored as unsupported: resolve_error when the source was not resolved (fetch disabled, bad scheme, blocked address, fetch timeout, bad status), judge_error when it was and the judge gave no verdict (cost cap, provider error, unreadable reply). One evaluation row is stored.',
     whenNot:
       "When the output has no citations: the score is null, and evaluate_output's hallucination signals are the cheap check. " +

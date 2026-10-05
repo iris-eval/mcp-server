@@ -21,6 +21,7 @@ import { publishedAccuracyFor, publishedProvenance, ppvAt, type PublishedRuleAcc
 import { REGEX_MATCH_BUDGET_MS } from './eval/rules/regex-sandbox.js';
 import { JUDGE_ENABLE_STEPS, judgeState, type JudgeProvider } from './judge-enablement.js';
 import { relevanceJudgeState, type RelevanceJudgeState } from './eval/llm-judge/relevance-judge.js';
+import type { BudgetToday } from './eval/llm-judge/budget.js';
 import { LOCAL_TENANT } from './types/tenant.js';
 import { citationTotalCostCapUsd } from './tools/operator-ceilings.js';
 import { TOOL_NAMES } from './tools/index.js';
@@ -56,6 +57,8 @@ export interface Capabilities {
     howToEnable: readonly string[];
     /** The relevance judge answers_the_ask gates on (#649): installed only when IRIS_RELEVANCE_JUDGE_MODEL names a model. */
     relevance: RelevanceJudgeState;
+    /** Today's spend against IRIS_LLM_JUDGE_DAILY_BUDGET_USD, which every judge call draws on: the relevance judge's and the judge tools'. */
+    dailyBudget: BudgetToday | null;
   };
   /** totalCostCapUsd: the most one verify_citations call may spend (IRIS_CITATION_MAX_COST_USD_TOTAL); an argument can lower it, never raise it. */
   citations: { fetchAllowed: boolean; domainsRestricted: boolean; totalCostCapUsd: number };
@@ -116,6 +119,7 @@ export function buildCapabilities(ctx: CapabilitiesContext): Capabilities {
       costCapUsd: judge.costCapUsd,
       howToEnable: JUDGE_ENABLE_STEPS,
       relevance: relevanceJudgeState(ctx.evalEngine?.relevanceJudgeInForce() ?? null),
+      dailyBudget: ctx.evalEngine?.judgeBudgetInForce()?.today(LOCAL_TENANT) ?? null,
     },
     citations: {
       fetchAllowed: process.env.IRIS_CITATION_ALLOW_FETCH === '1',

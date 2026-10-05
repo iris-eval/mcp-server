@@ -11,6 +11,7 @@ import {
   SECURITY_NOTICE,
   TAIL_REINFORCEMENT,
 } from '../llm-judge/templates/index.js';
+import type { JudgeSpendGate } from '../llm-judge/budget.js';
 import { extractCitations, type ExtractedCitation } from './extract.js';
 import { resolveSource, CitationResolveError, type ResolvedSource } from './resolve.js';
 
@@ -26,6 +27,13 @@ export interface VerifyCitationsParams {
   perSourceMaxBytes?: number;
   // Cap number of citations we attempt — protects against DoS-by-spam.
   maxCitations?: number;
+  /**
+   * The daily budget every judge call on this key draws on, when the caller
+   * keeps one (llm-judge/budget.ts): each call's worst case is held while it
+   * runs and replaced by its cost. A citation the budget refuses gets
+   * judgeError `daily_budget_reached`, and no further call is made.
+   */
+  spend?: JudgeSpendGate;
 }
 
 export interface VerifiedCitation {
@@ -284,6 +292,22 @@ export async function verifyCitations(
       });
       break; // No point continuing — subsequent calls will also exceed.
     }
+    const hold = params.spend?.(pessimistic) ?? null;
+    if (hold !== null && !hold.ok) {
+      out.push({
+        citation,
+        resolveStatus: 'ok',
+        source: {
+          url: source.url,
+          status: source.status,
+          contentType: source.contentType,
+          bytesFetched: source.bytesFetched,
+          truncated: source.truncated,
+        },
+        judgeError: { kind: 'daily_budget_reached', message: hold.reason },
+      });
+      break; // The budget is per day: every later call would be refused too.
+    }
 
     let judgeResponse;
     try {
@@ -297,6 +321,8 @@ export async function verifyCitations(
         apiKey: params.apiKey,
       });
     } catch (err) {
+      // The provider may have billed a call that failed: its worst case stays counted.
+      if (hold?.ok) hold.settle(null);
       const e = err as Error;
       out.push({
         citation,
@@ -318,6 +344,7 @@ export async function verifyCitations(
 
     const cost = estimateCostUsd(params.model, judgeResponse.inputTokens, judgeResponse.outputTokens);
     totalCost += cost ?? 0;
+    if (hold?.ok) hold.settle(cost);
 
     let parsed;
     try {

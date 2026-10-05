@@ -126,7 +126,14 @@
           "name": "IRIS_RELEVANCE_JUDGE_MODEL"
         },
         {
-          "description": "What the relevance judge may spend per UTC day, per tenant, in USD (default 1); past it answers_the_ask reads the ask lexically",
+          "description": "What every judge call together may spend per UTC day, per tenant, in USD (default 1): the relevance judge, evaluate_with_llm_judge and verify_citations. Past it no judge call is made",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_LLM_JUDGE_DAILY_BUDGET_USD"
+        },
+        {
+          "description": "The name of IRIS_LLM_JUDGE_DAILY_BUDGET_USD before 0.21.0. Read when the new name is unset, and it then limits every judge call",
           "isRequired": false,
           "format": "string",
           "isSecret": false,

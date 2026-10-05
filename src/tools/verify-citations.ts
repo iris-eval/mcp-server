@@ -7,6 +7,7 @@ import { verifyCitations } from '../eval/citation-verify/verifier.js';
 import type { LLMProvider } from '../eval/llm-judge/client.js';
 import { generateEvalId } from '../utils/ids.js';
 import { JUDGE_KEY_VARS } from '../judge-enablement.js';
+import { DAILY_BUDGET_VAR } from '../eval/llm-judge/budget.js';
 import { strictInput } from './strict-input.js';
 import { assertTraceExists, insertLinkedEvalResult } from './trace-link.js';
 import { besideNote } from '../eval/of-record.js';
@@ -18,7 +19,7 @@ import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { advertisedOutput } from './advertise.js';
 import { irisError } from './errors.js';
 import { evaluationLinks, guarded, respond } from './respond.js';
-import { asRecord, asWarning, citationCostCeiling, domainCeiling, fetchCeiling } from './operator-ceilings.js';
+import { asRecord, asWarning, citationCostCeiling, domainCeiling, fetchCeiling, judgeBudgetFor } from './operator-ceilings.js';
 
 const inputSchema = {
   output: z.string().min(1).describe('The agent output containing citations to verify'),
@@ -76,11 +77,12 @@ export function assertJudgeRan(result: {
     `verify_citations could not judge any of the ${result.totalResolved} resolved citation(s): the judge failed on every one (${kinds}). ` +
       `Nothing was verified and nothing was stored, so there is no verdict. First error: ${first}`,
     {
-      retryable: /timeout|rate_limit|server_error/.test(kinds),
+      retryable: /timeout|rate_limit|server_error|daily_budget_reached/.test(kinds),
       recovery: [
         'Check the key and the model: a refused key or an unknown model fails every citation the same way.',
         'Retry when the kind is a timeout, a rate limit or a provider server error.',
         'Raise max_cost_usd_total when the kind is cost_cap_reached.',
+        `When the kind is daily_budget_reached, every judge call on this key has used the operator's ${DAILY_BUDGET_VAR} for today: retry after it resets, or the operator raises it.`,
       ],
     },
   );
@@ -144,6 +146,7 @@ export const verifyCitationsOutputSchema = z.looseObject({
 });
 
 export function registerVerifyCitationsTool(server: McpServer, storage: IStorageAdapter, engine: EvalEngine): void {
+  const judgeBudget = judgeBudgetFor(engine, storage);
   server.registerTool(
     'verify_citations',
     {
@@ -197,6 +200,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
         maxCitations: args.max_citations,
         perSourceTimeoutMs: args.per_source_timeout_ms,
         perSourceMaxBytes: args.per_source_max_bytes,
+        spend: judgeBudget().gate(LOCAL_TENANT),
       });
 
       assertJudgeRan(result);
