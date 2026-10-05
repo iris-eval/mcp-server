@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CI_ONLY, STEPS } from '../scripts/preflight.mjs';
+import { CI_ONLY, STEPS, stepsFor } from '../scripts/preflight.mjs';
 
 /*
  * `npm run preflight` is only worth running if it says what CI will say.
@@ -101,5 +101,30 @@ describe('the preflight says what the pull-request workflows say', () => {
     const pinned = /rhysd\/actionlint@sha256:[0-9a-f]{64}/.exec(jobs.get('ci.yml#actionlint') ?? '')?.[0];
     expect(pinned).toBeTruthy();
     expect(runs).toContain(pinned as string);
+  });
+});
+
+describe('the default preflight is the fast one', () => {
+  const names = (full: boolean, changed: string[]) => stepsFor(full, changed).map((s: { name: string }) => s.name);
+
+  it('runs the test files the branch changes, never the whole suite or the builds', () => {
+    const fast = names(false, ['src/tools/get-traces.ts']);
+    expect(fast).toContain('the test files this branch adds or changes');
+    expect(fast).toContain('typecheck');
+    expect(fast).not.toContain('every test, with the coverage floors');
+    expect(fast).not.toContain('build');
+  });
+
+  it("runs the dashboard's and the website's checks only when the branch touches them", () => {
+    expect(names(false, ['src/x.ts'])).not.toContain('dashboard tests');
+    expect(names(false, ['dashboard/src/App.tsx'])).toContain('dashboard tests');
+    expect(names(false, ['website/src/app/page.tsx'])).toContain('website lint and types');
+  });
+
+  it('--full runs every mirrored step and none of the fast-only ones', () => {
+    const full = names(true, []);
+    expect(full).toContain('every test, with the coverage floors');
+    expect(full).not.toContain('the test files this branch adds or changes');
+    expect(full).not.toContain('website lint and types');
   });
 });

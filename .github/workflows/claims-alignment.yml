@@ -48,8 +48,10 @@ jobs:
           node-version: '24'
       - name: Install root deps
         run: npm ci
-      - name: Capture test counts
-        run: node scripts/claims/capture-tests.mjs
+      # The test totals are measured at a release, not here: recounting them
+      # meant running the whole suite a second time on every pull request
+      # (the CI test job already runs it), and failed every PR that added a
+      # test until it was counted locally too. --check compares the rest.
       - name: Regenerate truthbase and compare
         run: node scripts/claims/generate.mjs --check
       # llms.txt / llms-full.txt are rendered from website/*.template.txt +

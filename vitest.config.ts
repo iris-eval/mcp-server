@@ -27,6 +27,17 @@ export default defineConfig({
      * Linux test jobs ran 10-30 s slower.
      */
     maxWorkers: process.env.CI ? undefined : '50%',
+    /*
+     * 30 s a test on a developer's machine, vitest's 5 s in CI. `npm run
+     * preflight` runs this suite under coverage on whatever else the machine
+     * is doing, and there 5 s measured the machine, not the test: on
+     * 2026-10-05, in four preflight runs on the 20-core machine above, a test
+     * that takes 45 ms alone (its first import of a module) timed out at 5 s
+     * twice, and one that starts a Node process once, each failing a
+     * 25-minute run. CI's runners do nothing else, keep the 5 s, and still
+     * fail a test that is genuinely slow.
+     */
+    testTimeout: process.env.CI ? undefined : 30_000,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],

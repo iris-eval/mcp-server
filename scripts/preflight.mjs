@@ -1,15 +1,26 @@
 #!/usr/bin/env node
 /*
- * npm run preflight — what CI will say, before you push.
+ * npm run preflight — the checks a branch fails CI on, before you push.
  *
- * Runs, on this machine, every check the pull-request workflows run that can
- * run here, in their order of cost, and stops at the first failure with the
- * CI job it stands for. A push that skipped this is how a branch goes red in
- * CI: a truthbase not regenerated after tests were added, a test that fails,
- * a coverage floor missed.
+ * By default it runs the fast ones, in a few minutes: the claims and render
+ * checks, lint, the type checks, the dashboard's and the website's checks
+ * when the branch touches them, and the test files the branch adds or
+ * changes. CI then runs everything, in parallel, in about eleven minutes.
  *
- *   npm run preflight           run every step; on success, record the tree it verified
- *   npm run preflight -- --list the steps, and the CI jobs that only CI runs, with why
+ * Not the whole suite, and not every test a change reaches: on a Windows
+ * desktop the suite takes 12 minutes (most of it starting git and node
+ * processes), and a change to a module every test imports reaches all of
+ * it. A test elsewhere that a change breaks is what CI is for; the fast
+ * checks are the ones that failed branches for no reason but a missed step.
+ *
+ * `--full` runs every check CI runs that can run here, one after another:
+ * the whole suite with coverage, the builds, the proofs. On a desktop that is
+ * 25 minutes and more, which is why it is not the default: run it when a
+ * change is wide enough that you want CI's answer before CI gives it.
+ *
+ *   npm run preflight             the fast checks; on success, record the tree it verified
+ *   npm run preflight -- --full   every check that can run here
+ *   npm run preflight -- --list   the steps, and the CI jobs that only CI runs, with why
  *
  * It verifies a commit, not a working tree: it refuses to start with
  * uncommitted changes, and fails if a step changes a tracked file. On
@@ -30,6 +41,8 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 /** Where the root suite's JSON report goes; replaced with a fresh temporary path when it runs. */
 const ROOT_REPORT = '{root-report}';
+/** The root-suite test files the branch adds or changes; replaced when a step runs. */
+const TEST_FILES = '{test-files}';
 const ACTIONLINT = 'rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667';
 
 /** Checks the pack list carries the dashboard, as the build job does with jq. */
@@ -55,19 +68,21 @@ function packageIntegrity() {
 export const STEPS = [
   { name: 'versions agree', ci: ['ci.yml#lint-and-typecheck'], run: 'bash scripts/check-version.sh' },
   { name: 'product claims', ci: ['ci.yml#lint-and-typecheck'], run: 'bash scripts/check-product-claims.sh' },
-  { name: 'no hardcoded claims', ci: ['claims-alignment.yml#check-no-hardcoded'], run: 'node scripts/claims/check-no-hardcoded.mjs' },
-  { name: 'llms.txt matches its templates', ci: ['ci.yml#lint-and-typecheck', 'claims-alignment.yml#check-truthbase-regen'], run: 'npm run -s llms:check' },
-  { name: 'the release narrative matches CHANGELOG.md', ci: ['claims-alignment.yml#check-truthbase-regen'], run: 'npm run -s changelog:check' },
-  { name: 'lint', ci: ['ci.yml#lint-and-typecheck'], run: 'npm run -s lint' },
-  { name: 'typecheck', ci: ['ci.yml#lint-and-typecheck'], run: 'npm run -s typecheck' },
-  { name: 'typecheck the tests', ci: ['ci.yml#typecheck-tests'], run: 'npm run -s typecheck:tests' },
+  { name: 'no hardcoded claims', fast: true, ci: ['claims-alignment.yml#check-no-hardcoded'], run: 'node scripts/claims/check-no-hardcoded.mjs' },
+  { name: 'llms.txt matches its templates', fast: true, ci: ['ci.yml#lint-and-typecheck', 'claims-alignment.yml#check-truthbase-regen'], run: 'npm run -s llms:check' },
+  { name: 'the release narrative matches CHANGELOG.md', fast: true, ci: ['claims-alignment.yml#check-truthbase-regen'], run: 'npm run -s changelog:check' },
+  { name: 'lint', fast: true, ci: ['ci.yml#lint-and-typecheck'], run: 'npm run -s lint' },
+  { name: 'typecheck', fast: true, ci: ['ci.yml#lint-and-typecheck'], run: 'npm run -s typecheck' },
+  { name: 'typecheck the tests', fast: true, ci: ['ci.yml#typecheck-tests'], run: 'npm run -s typecheck:tests' },
   { name: 'typecheck the proof runner', ci: ['ci.yml#proof'], run: 'npm run -s proof:typecheck' },
   { name: 'CUSUM thresholds', ci: ['ci.yml#cusum-thresholds'], run: 'npm run -s cusum:check' },
   { name: 'search tokenizer table', ci: ['ci.yml#search-tokenizer-table'], run: 'npm run -s unicode61:check' },
   { name: 'security exposure coverage', ci: ['ci.yml#security-exposure'], run: 'node scripts/security/check-exposure-coverage.mjs' },
   { name: 'workflows lint (actionlint, in Docker)', ci: ['ci.yml#actionlint'], run: `docker run --rm -v "${root.replace(/\\/g, '/')}:/repo" -w /repo ${ACTIONLINT} -color` },
-  { name: 'dashboard typecheck and lint', ci: ['ci.yml#lint-and-typecheck'], cwd: 'dashboard', run: 'npm run -s typecheck && npm run -s lint' },
+  { name: 'dashboard typecheck and lint', fast: 'dashboard/', ci: ['ci.yml#lint-and-typecheck'], cwd: 'dashboard', run: 'npm run -s typecheck && npm run -s lint' },
+  { name: 'dashboard tests', fast: 'dashboard/', ci: ['ci.yml#lint-and-typecheck'], cwd: 'dashboard', run: 'npm test --silent' },
   { name: 'dashboard Storybook build', ci: ['ci.yml#lint-and-typecheck'], cwd: 'dashboard', run: 'npm run -s build-storybook' },
+  { name: 'website lint and types', fast: 'website/', fastOnly: true, ci: ['ci.yml#website-lint-and-typecheck'], cwd: 'website', run: 'npm run -s lint && npx tsc --noEmit' },
   { name: 'website lint, types and build', ci: ['ci.yml#website-lint-and-typecheck'], cwd: 'website', run: 'npm run -s lint && npx tsc --noEmit && npm run -s build' },
   { name: 'build', ci: ['ci.yml#build'], run: 'npm run -s build' },
   { name: 'the pack carries the dashboard', ci: ['ci.yml#build'], check: packCarriesDashboard },
@@ -86,8 +101,14 @@ export const STEPS = [
     ci: ['ci.yml#test', 'ci.yml#integration', 'ci.yml#search-index'],
     run: `npx vitest run --coverage --reporter=dot --reporter=json --outputFile.json="${ROOT_REPORT}"`,
   },
-  { name: 'test counts captured (the dashboard suite runs here)', ci: ['claims-alignment.yml#check-truthbase-regen', 'ci.yml#lint-and-typecheck'], run: `node scripts/claims/capture-tests.mjs --report "root=${ROOT_REPORT}"` },
-  { name: 'truthbase regenerated matches the committed one', ci: ['claims-alignment.yml#check-truthbase-regen'], run: 'node scripts/claims/generate.mjs --check' },
+  { name: 'truthbase regenerated matches the committed one', fast: true, ci: ['claims-alignment.yml#check-truthbase-regen'], run: 'node scripts/claims/generate.mjs --check' },
+  {
+    name: 'the test files this branch adds or changes',
+    fast: true,
+    fastOnly: true,
+    ci: ['ci.yml#test'],
+    run: `npx vitest run ${TEST_FILES} --reporter=dot --passWithNoTests`,
+  },
 ];
 
 /**
@@ -123,10 +144,25 @@ function git(args) {
   return spawnSync('git', args, { cwd: root, encoding: 'utf-8' }).stdout.trim();
 }
 
+/** Where the branch left main: the merge base with origin/main, else the parent commit. */
+function baseOf() {
+  return git(['merge-base', 'HEAD', 'origin/main']) || git(['rev-parse', 'HEAD~1']);
+}
+
+/** The steps a mode runs. Fast: the marked ones, and a folder's only when the branch touched it. */
+export function stepsFor(full, changed) {
+  if (full) return STEPS.filter((s) => !s.fastOnly);
+  return STEPS.filter((s) => s.fast === true || (typeof s.fast === 'string' && changed.some((f) => f.startsWith(s.fast))));
+}
+
 function main(scratch) {
   const rootReport = join(scratch, 'root-tests.json');
+  const full = process.argv.includes('--full');
   if (process.argv.includes('--list')) {
-    for (const s of STEPS) process.stdout.write(`  ${s.name}  (${s.ci.join(', ')})\n`);
+    process.stdout.write('Fast (the default):\n');
+    for (const s of STEPS.filter((x) => x.fast)) process.stdout.write(`  ${s.name}${typeof s.fast === 'string' ? ` (when ${s.fast} changed)` : ''}\n`);
+    process.stdout.write('\n--full:\n');
+    for (const s of stepsFor(true, [])) process.stdout.write(`  ${s.name}  (${s.ci.join(', ')})\n`);
     process.stdout.write('\nCI only:\n');
     for (const [job, why] of Object.entries(CI_ONLY)) process.stdout.write(`  ${job}: ${why}\n`);
     return 0;
@@ -143,10 +179,15 @@ function main(scratch) {
   }
   const tree = git(['rev-parse', 'HEAD^{tree}']);
   const commit = git(['rev-parse', 'HEAD']);
+  const base = baseOf();
+  const changed = git(['diff', '--name-only', `${base}...HEAD`]).split('\n').filter(Boolean);
+  // Root-suite test files only: the dashboard runs its own, and the excluded folders run in their own CI jobs.
+  const testFiles = changed.filter((f) => /^tests\/.*\.test\.ts$/.test(f) && !/^tests\/(real-clients|mcpb|stall|upgrade)\//.test(f) && existsSync(join(root, f)));
+  const steps = stepsFor(full, changed).filter((s) => !(s.run?.includes(TEST_FILES) && testFiles.length === 0));
   const started = Date.now();
-  for (const [i, step] of STEPS.entries()) {
+  for (const [i, step] of steps.entries()) {
     const at = Date.now();
-    process.stdout.write(`\npreflight ${i + 1}/${STEPS.length} — ${step.name}\n`);
+    process.stdout.write(`\npreflight ${i + 1}/${steps.length} — ${step.name}\n`);
     let ok;
     let why = '';
     if (step.check) {
@@ -154,17 +195,17 @@ function main(scratch) {
       ok = r.ok;
       why = r.why ?? '';
     } else {
-      ok = spawnSync(step.run.replaceAll(ROOT_REPORT, rootReport), { cwd: join(root, step.cwd ?? ''), shell: true, stdio: 'inherit' }).status === 0;
+      ok = spawnSync(step.run.replaceAll(ROOT_REPORT, rootReport).replaceAll(TEST_FILES, testFiles.join(' ')), { cwd: join(root, step.cwd ?? ''), shell: true, stdio: 'inherit' }).status === 0;
     }
     if (!ok) {
       process.stderr.write(`\npreflight — FAILED at "${step.name}"${why ? `: ${why}` : ''}. CI runs this in ${step.ci.join(', ')}; it would fail there too.\n`);
       return 1;
     }
-    process.stdout.write(`preflight ${i + 1}/${STEPS.length} — ok (${Math.round((Date.now() - at) / 1000)} s)\n`);
+    process.stdout.write(`preflight ${i + 1}/${steps.length} — ok (${Math.round((Date.now() - at) / 1000)} s)\n`);
   }
-  const changed = git(['status', '--porcelain', '--untracked-files=no']);
-  if (changed) {
-    process.stderr.write(`\npreflight — every step passed, but a step changed tracked files, so the commit is not what was verified:\n${changed}\n`);
+  const dirty = git(['status', '--porcelain', '--untracked-files=no']);
+  if (dirty) {
+    process.stderr.write(`\npreflight — every step passed, but a step changed tracked files, so the commit is not what was verified:\n${dirty}\n`);
     return 1;
   }
   if (git(['rev-parse', 'HEAD']) !== commit) {
@@ -172,8 +213,11 @@ function main(scratch) {
     return 1;
   }
   const stamp = join(resolve(root, git(['rev-parse', '--git-dir'])), 'preflight-ok');
-  writeFileSync(stamp, `${JSON.stringify({ tree, commit, at: new Date().toISOString(), node: process.versions.node, platform: process.platform, steps: STEPS.length }, null, 2)}\n`);
-  process.stdout.write(`\npreflight — every step passed in ${Math.round((Date.now() - started) / 60_000)} min. Verified tree ${tree.slice(0, 12)} (commit ${commit.slice(0, 8)}); recorded in ${stamp}.\n`);
+  const mode = full ? 'full' : 'fast';
+  writeFileSync(stamp, `${JSON.stringify({ tree, commit, mode, at: new Date().toISOString(), node: process.versions.node, platform: process.platform, steps: steps.length }, null, 2)}\n`);
+  const took = Date.now() - started;
+  const elapsed = took < 120_000 ? `${Math.round(took / 1000)} s` : `${Math.round(took / 60_000)} min`;
+  process.stdout.write(`\npreflight — every ${mode} step passed in ${elapsed}. Verified tree ${tree.slice(0, 12)} (commit ${commit.slice(0, 8)}); recorded in ${stamp}.\n`);
   return 0;
 }
 
