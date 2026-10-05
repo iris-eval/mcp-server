@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
-import { evaluateWithLLMJudge } from '../eval/llm-judge/evaluator.js';
+import { CostCapError, evaluateWithLLMJudge, worstCaseJudgeCostUsd } from '../eval/llm-judge/evaluator.js';
 import { judgeEvalResult } from '../eval/llm-judge/persisted.js';
 import type { EvalEngine } from '../eval/engine.js';
 import { verdictSchema } from '../eval/response-schema.js';
@@ -11,7 +11,7 @@ import type { LLMProvider } from '../eval/llm-judge/client.js';
 import type { TemplateName } from '../eval/llm-judge/templates/index.js';
 import { generateEvalId } from '../utils/ids.js';
 import { JUDGE_COST_CAP_VAR, JUDGE_DEFAULT_COST_CAP_USD, JUDGE_KEY_VARS, judgeRecovery } from '../judge-enablement.js';
-import { asRecord, asWarning, judgeCostCeiling } from './operator-ceilings.js';
+import { DailyBudgetError, asRecord, asWarning, judgeBudgetFor, judgeCostCeiling } from './operator-ceilings.js';
 import { strictInput } from './strict-input.js';
 import { getTraceOrThrow, insertLinkedEvalResult } from './trace-link.js';
 import { besideNote } from '../eval/of-record.js';
@@ -121,6 +121,7 @@ export function registerEvaluateWithLLMJudgeTool(
   storage: IStorageAdapter,
   engine: EvalEngine,
 ): void {
+  const judgeBudget = judgeBudgetFor(engine, storage);
   server.registerTool(
     'evaluate_with_llm_judge',
     {
@@ -182,7 +183,7 @@ export function registerEvaluateWithLLMJudgeTool(
         ...(agentModel !== null && sameFamily(args.model, agentModel) ? [sameFamilyWarning(args.model, agentModel)] : []),
       ];
 
-      const result = await evaluateWithLLMJudge({
+      const params = {
         output: args.output,
         template: args.template as TemplateName,
         model: args.model,
@@ -195,7 +196,28 @@ export function registerEvaluateWithLLMJudgeTool(
         maxOutputTokens: args.max_output_tokens,
         temperature: args.temperature,
         timeoutMs: args.timeout_ms,
-      });
+      };
+      /*
+       * The daily budget every judge call on this key draws on: the call's
+       * worst case, priced as the per-call cap prices it, must fit in what is
+       * left today, or nothing is spent. A call over the per-call cap is not
+       * reserved: the evaluator refuses it before any spend.
+       */
+      const worst = worstCaseJudgeCostUsd(params);
+      const hold = worst !== null && worst <= maxCostUsd ? judgeBudget().gate(LOCAL_TENANT)(worst) : null;
+      if (hold !== null && !hold.ok) throw new DailyBudgetError(hold.reason);
+      let result;
+      try {
+        result = await evaluateWithLLMJudge(params);
+      } catch (err) {
+        // Refused before the call, nothing was spent; any other failure may have been billed, so its worst case stays counted.
+        if (hold?.ok) {
+          if (err instanceof CostCapError) hold.release();
+          else hold.settle(null);
+        }
+        throw err;
+      }
+      if (hold?.ok) hold.settle(result.costUsd);
 
       // Persist to eval_results so the dashboard can surface it.
       // eval_type='custom' — LLM judge scores span all 4 heuristic

@@ -25,6 +25,7 @@ import { PUBLISHED_CALIBRATION } from './published-calibration.js';
 import { answersTheAsk } from './rules/relevance.js';
 import { agentModelOf } from './llm-judge/family.js';
 import type { RelevanceJudge } from './llm-judge/relevance-judge.js';
+import type { JudgeBudget } from './llm-judge/budget.js';
 import { PKG_VERSION } from '../config/defaults.js';
 import { generateEvalId } from '../utils/ids.js';
 
@@ -147,6 +148,14 @@ export class EvalEngine {
   private relevanceJudge: RelevanceJudge | null = null;
 
   /**
+   * The daily budget every judge call on the user's key draws on: the
+   * relevance judge's and the judge tools' (llm-judge/budget.ts). The
+   * server sets it from the environment over the database's ledger and
+   * hands the same one to the relevance judge, so the three share a balance.
+   */
+  private judgeBudget: JudgeBudget | null = null;
+
+  /**
    * One structured event per evaluation, whichever door asked for it
    * (0.15.0): the server wires it to the logger's `event('evaluation', …)`.
    * The engine has no logger of its own on purpose — the tools, the ingest
@@ -171,6 +180,16 @@ export class EvalEngine {
   /** The relevance judge in force, for the surfaces that describe it. */
   relevanceJudgeInForce(): RelevanceJudge | null {
     return this.relevanceJudge;
+  }
+
+  /** Set the daily budget the judge tools draw on; pass the same one to the relevance judge. */
+  setJudgeBudget(budget: JudgeBudget | null): void {
+    this.judgeBudget = budget;
+  }
+
+  /** The daily budget in force: the one set, else the relevance judge's, else none. */
+  judgeBudgetInForce(): JudgeBudget | null {
+    return this.judgeBudget ?? this.relevanceJudge?.budget ?? null;
   }
 
   /** The judge's identity as the ruleset and config hashes fold it in: absent without a judge, so no existing hash moves. */

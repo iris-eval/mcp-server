@@ -1,5 +1,5 @@
 /*
- * The relevance judge's daily budget and its ledger, below the servers:
+ * The daily judge budget and its ledger, below the servers:
  * the ceiling is never passed, a call whose cost is unknown stays counted
  * at its worst case, a refusal before any spend gives the reservation back,
  * the day turns over at 00:00 UTC, tenants are kept apart, and two
@@ -14,6 +14,7 @@ import {
   DEFAULT_MAX_CALLS_PER_REQUEST,
   JudgeBudget,
   dailyBudgetUsd,
+  judgeBudgetFromEnv,
   maxCallsPerRequest,
   memoryJudgeSpendLedger,
   nextUtcMidnight,
@@ -98,7 +99,7 @@ describe('JudgeBudget', () => {
 });
 
 describe('the settings', () => {
-  const vars = ['IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD', 'IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST'] as const;
+  const vars = ['IRIS_LLM_JUDGE_DAILY_BUDGET_USD', 'IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD', 'IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST'] as const;
   const saved = Object.fromEntries(vars.map((k) => [k, process.env[k]]));
   afterEach(() => {
     for (const k of vars) {
@@ -114,15 +115,70 @@ describe('the settings', () => {
     expect(DEFAULT_DAILY_BUDGET_USD).toBe(1);
     expect(DEFAULT_MAX_CALLS_PER_REQUEST).toBe(20);
 
-    process.env.IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD = '2.5';
+    process.env.IRIS_LLM_JUDGE_DAILY_BUDGET_USD = '2.5';
     process.env.IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST = '0';
     expect(dailyBudgetUsd()).toEqual({ value: 2.5, source: 'env' });
     expect(maxCallsPerRequest()).toEqual({ value: 0, source: 'env' });
 
-    process.env.IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD = '5$';
+    process.env.IRIS_LLM_JUDGE_DAILY_BUDGET_USD = '5$';
     process.env.IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST = '2.5';
     expect(dailyBudgetUsd()).toMatchObject({ value: 1, source: 'default', note: expect.stringMatching(/"5\$" is not a number/) });
     expect(maxCallsPerRequest()).toMatchObject({ value: 20, source: 'default', note: expect.stringMatching(/"2\.5" is not a whole number/) });
+  });
+});
+
+describe('the old name of the daily budget', () => {
+  const vars = ['IRIS_LLM_JUDGE_DAILY_BUDGET_USD', 'IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD'] as const;
+  const saved = Object.fromEntries(vars.map((k) => [k, process.env[k]]));
+  afterEach(() => {
+    for (const k of vars) {
+      if (saved[k] === undefined) delete process.env[k];
+      else process.env[k] = saved[k];
+    }
+  });
+
+  it('is read when the new name is unset, and says it now limits every judge call', () => {
+    delete process.env.IRIS_LLM_JUDGE_DAILY_BUDGET_USD;
+    process.env.IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD = '3';
+    const s = dailyBudgetUsd();
+    expect(s).toMatchObject({ value: 3, source: 'env' });
+    expect(s.note).toContain('IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD is the old name of IRIS_LLM_JUDGE_DAILY_BUDGET_USD');
+    expect(judgeBudgetFromEnv().notes).toEqual([s.note]);
+  });
+
+  it('gives way to the new name, silently', () => {
+    process.env.IRIS_LLM_JUDGE_DAILY_BUDGET_USD = '0.5';
+    process.env.IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD = '3';
+    expect(dailyBudgetUsd()).toEqual({ value: 0.5, source: 'env' });
+    expect(judgeBudgetFromEnv().notes).toEqual([]);
+  });
+
+  it('a bad value under the old name is named by that name', () => {
+    delete process.env.IRIS_LLM_JUDGE_DAILY_BUDGET_USD;
+    process.env.IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD = 'lots';
+    expect(dailyBudgetUsd()).toMatchObject({ value: 1, source: 'default', note: expect.stringMatching(/^IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD="lots"/) });
+  });
+});
+
+describe('a gate for a caller that makes the call itself', () => {
+  it('holds the worst case, settles to the cost, releases a call never made, and refuses past the limit', () => {
+    const budget = new JudgeBudget({ dailyUsd: 0.01, ledger: memoryJudgeSpendLedger(), now: () => new Date('2026-10-05T12:00:00Z') });
+    const gate = budget.gate(LOCAL_TENANT);
+    const a = gate(0.006);
+    expect(a.ok).toBe(true);
+    if (a.ok) a.settle(0.001);
+    expect(budget.today(LOCAL_TENANT)).toMatchObject({ spentUsd: 0.001, calls: 1 });
+    const b = gate(0.006);
+    expect(b.ok).toBe(true);
+    if (b.ok) b.release();
+    expect(budget.today(LOCAL_TENANT)).toMatchObject({ spentUsd: 0.001, calls: 1 });
+    // A call that failed after the provider may have billed it keeps its worst case.
+    const c = gate(0.004);
+    if (c.ok) c.settle(null);
+    expect(budget.today(LOCAL_TENANT)).toMatchObject({ spentUsd: 0.005, calls: 2 });
+    const d = gate(0.006);
+    expect(d.ok).toBe(false);
+    if (!d.ok) expect(d.reason).toMatch(/daily judge budget has 0\.0050 of 0\.01 USD left today \(UTC\).*IRIS_LLM_JUDGE_DAILY_BUDGET_USD raises it/);
   });
 });
 

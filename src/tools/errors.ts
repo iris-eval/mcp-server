@@ -24,6 +24,7 @@ import { ZodError } from 'zod';
 import { LLMJudgeError } from '../eval/llm-judge/client.js';
 import { CAPABILITIES_RESOURCE_URI } from '../resources/uris.js';
 import { JUDGE_COST_CAP_VAR } from '../judge-enablement.js';
+import { DAILY_BUDGET_VAR } from '../eval/llm-judge/budget.js';
 
 export const ERROR_CODE_CATALOGUE = [
   'IRIS_INVALID_ARGUMENT',
@@ -125,6 +126,18 @@ export function toIrisError(err: unknown): IrisError {
         'Or call delete_rule with the existing rule id first.',
         'Or choose a different name.',
       ],
+    });
+  }
+
+  if (name === 'DailyBudgetError') {
+    return irisError('IRIS_BUDGET_EXCEEDED', message, {
+      field: DAILY_BUDGET_VAR,
+      retryable: true,
+      recovery: [
+        `Every judge call Iris makes on this key draws on one daily budget, the operator's ${DAILY_BUDGET_VAR}. Retry after it resets (the time is in the message), or the operator raises it.`,
+        'Nothing was spent.',
+      ],
+      see: CAPABILITIES,
     });
   }
 

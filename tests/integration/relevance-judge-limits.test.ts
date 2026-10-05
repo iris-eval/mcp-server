@@ -49,6 +49,7 @@ const ENV = [
   'IRIS_RELEVANCE_JUDGE_MODEL',
   'IRIS_ANTHROPIC_API_KEY',
   'IRIS_OPENAI_API_KEY',
+  'IRIS_LLM_JUDGE_DAILY_BUDGET_USD',
   'IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD',
   'IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST',
   'IRIS_RELEVANCE_JUDGE_REDACT',
@@ -155,7 +156,7 @@ const WORST = worstCaseJudgeCostUsd({ template: 'relevance', model: MODEL, input
 describe('the relevance judge daily budget', () => {
   it('admits calls while the worst case fits, then withholds the judge, falls back to the lexical reading, logs once and shows it on health', async () => {
     // Room for exactly two calls: the second needs one actual plus one worst case, the third two actuals plus one.
-    env({ IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD: String(2 * ACTUAL + WORST - 0.000002) });
+    env({ IRIS_LLM_JUDGE_DAILY_BUDGET_USD: String(2 * ACTUAL + WORST - 0.000002) });
     const storage = await store();
     const warn = vi.fn();
     const { server, client } = await mcp(storage, warn);
@@ -169,8 +170,8 @@ describe('the relevance judge daily budget', () => {
     const third = await evaluate(client, ASK);
     expect(providerCalls).toHaveLength(2);
     expect(third.judge).toMatchObject({ withheld: 'daily_budget', costUsd: 0 });
-    expect(third.judge?.error).toMatch(/daily budget has 0\.\d{4} of [\d.]+ USD left today \(UTC\)/);
-    expect(third.judge?.error).toContain('IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD');
+    expect(third.judge?.error).toMatch(/daily judge budget has 0\.\d{4} of [\d.]+ USD left today \(UTC\)/);
+    expect(third.judge?.error).toContain('IRIS_LLM_JUDGE_DAILY_BUDGET_USD');
     // The lexical reading decided, and it advises rather than gates.
     expect(third.kind).toBe('policy');
     expect(third.role).toBe('advisory');
@@ -191,7 +192,7 @@ describe('the relevance judge daily budget', () => {
   });
 
   it('is kept in the database: a new server on the same file starts from what was spent, not from zero', async () => {
-    env({ IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD: String(2 * ACTUAL + WORST - 0.000002) });
+    env({ IRIS_LLM_JUDGE_DAILY_BUDGET_USD: String(2 * ACTUAL + WORST - 0.000002) });
     const file = join(dir, 'restart.db');
     {
       const storage = await store(file);
@@ -235,7 +236,7 @@ describe('the relevance judge daily budget', () => {
   }, 60_000);
 
   it('0 stops every call before any spend', async () => {
-    env({ IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD: '0' });
+    env({ IRIS_LLM_JUDGE_DAILY_BUDGET_USD: '0' });
     const { client } = await mcp(await store());
     expect((await evaluate(client, ASK)).judge?.withheld).toBe('daily_budget');
     expect(providerCalls).toHaveLength(0);

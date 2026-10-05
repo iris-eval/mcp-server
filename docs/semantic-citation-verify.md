@@ -126,6 +126,7 @@ Same structure as `evaluate_with_llm_judge`:
 
 - **Per-call cost cap** — `max_cost_usd_total`, at most the operator's `IRIS_CITATION_MAX_COST_USD_TOTAL` (default $1.00): an argument can lower it for a call, never raise it. Budget across all judge calls in one `verify_citations` invocation. When the next call's pessimistic estimate would push total cost past the cap, the pipeline stops: the citation it stopped on reports `judge_error.kind: "cost_cap_reached"`, and later citations are not attempted (`total_citations_found` still counts them).
 - **Per-citation pessimistic estimate** — before each judge call, worst-case cost is computed. If adding it exceeds the cap, skip.
+- **Daily budget** — every judge call Iris makes on the key, this tool's, `evaluate_with_llm_judge`'s and the relevance judge's, draws on the operator's `IRIS_LLM_JUDGE_DAILY_BUDGET_USD` (default $1.00 per UTC day, per tenant, kept in the database). Each citation's worst case must fit in what is left today; one that does not gets `judge_error.kind: "daily_budget_reached"`, and later citations are not attempted.
 - **Typical cost** — on haiku with 5 citations averaging 2KB source text: ~$0.002-$0.005 total. On opus with the same: ~$0.10-$0.25.
 
 ---
@@ -171,6 +172,7 @@ Set when `resolve_status` is `ok` and `judge` is absent. Until 0.20.0 these were
 | `judge_error.kind`        | Meaning                                                                   |
 |---------------------------|---------------------------------------------------------------------------|
 | `cost_cap_reached`        | The next judge call would pass `max_cost_usd_total`; later citations are not attempted |
+| `daily_budget_reached`    | The next judge call does not fit in what is left of the day's `IRIS_LLM_JUDGE_DAILY_BUDGET_USD`; later citations are not attempted |
 | `malformed_judge_response`| The judge replied, but not with a readable verdict                        |
 | `auth`                    | The provider refused the key                                              |
 | `rate_limit`              | The provider rate-limited the call, after one retry                       |

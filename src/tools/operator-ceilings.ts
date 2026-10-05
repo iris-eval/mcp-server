@@ -24,6 +24,9 @@
  */
 import { JUDGE_COST_CAP_VAR, judgeCostCapUsd } from '../judge-enablement.js';
 import type { NarrowedArgument } from '../types/eval.js';
+import type { EvalEngine } from '../eval/engine.js';
+import type { IStorageAdapter } from '../types/query.js';
+import { judgeBudgetFromEnv, type JudgeBudget } from '../eval/llm-judge/budget.js';
 
 export const CITATION_ALLOW_FETCH_VAR = 'IRIS_CITATION_ALLOW_FETCH';
 export const CITATION_DOMAINS_VAR = 'IRIS_CITATION_DOMAINS';
@@ -151,4 +154,23 @@ export function judgeCostCeiling(asked: number | undefined): { value: number; wa
 /** verify_citations's `max_cost_usd_total`, under IRIS_CITATION_MAX_COST_USD_TOTAL. */
 export function citationCostCeiling(asked: number | undefined): { value: number; warning?: ArgumentNarrowed } {
   return costCeiling('max_cost_usd_total', asked, citationTotalCostCapUsd(), CITATION_TOTAL_COST_VAR);
+}
+
+/**
+ * The daily budget a judge tool draws on (llm-judge/budget.ts): the one the
+ * server set on the engine and shares with the relevance judge. A tool
+ * registered without one draws on the environment's over this store's
+ * ledger, which holds the same balance.
+ */
+export function judgeBudgetFor(engine: EvalEngine, storage: IStorageAdapter): () => JudgeBudget {
+  let own: JudgeBudget | null = null;
+  return () => engine.judgeBudgetInForce() ?? (own ??= judgeBudgetFromEnv({ ledger: storage.judgeSpendLedger() }).budget);
+}
+
+/** A judge call the daily budget refused, before any spend: IRIS_BUDGET_EXCEEDED, retryable once the budget resets. */
+export class DailyBudgetError extends Error {
+  constructor(reason: string) {
+    super(`Not judged: ${reason}.`);
+    this.name = 'DailyBudgetError';
+  }
 }

@@ -274,8 +274,10 @@ Environment variables (CLI flags take precedence):
   IRIS_RELEVANCE_JUDGE_MODEL           A priced model id: answers_the_ask then asks this judge on every
                                        evaluation that carries input, and gates on its verdict (off by default).
                                        Sends that input and output to the model's provider on your key
-  IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD  What the relevance judge may spend per UTC day, per tenant, kept in the
-                                       database (default: 1). Past it, answers_the_ask reads the ask lexically
+  IRIS_LLM_JUDGE_DAILY_BUDGET_USD      What every judge call together may spend per UTC day, per tenant: the
+                                       relevance judge, evaluate_with_llm_judge and verify_citations, kept in the
+                                       database (default: 1). Past it no judge call is made
+  IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD  Its name before 0.21.0, read when IRIS_LLM_JUDGE_DAILY_BUDGET_USD is unset
   IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST  Relevance judge calls one request may make (default: 20)
   IRIS_RELEVANCE_JUDGE_REDACT          on (default): PII and credentials no_pii flags are replaced before the
                                        input and output are sent to the judge; off sends them as they are
