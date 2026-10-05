@@ -14,9 +14,12 @@ permissions:
 
 # One run per pull request: a new push cancels the run it replaces, so a
 # fix-up push or a Dependabot rebase does not leave the old run holding
-# runners. Runs on main and on tags are never cancelled.
+# runners. Every other run (a push to main, a tag, a schedule) has a group of
+# its own, so none waits behind or is replaced by another: with a shared
+# group, a merge queued behind a running one replaced the one queued before
+# it, and that commit never got its run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -977,7 +980,12 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Longer than the 20 every other job gets: the browser download is the one
+    # step here that depends on someone else's server. On 2026-10-05 it took
+    # 976 s against about a minute normally, and the 20-minute limit
+    # cancelled a run whose tests were passing. The cache below makes the
+    # download rare; this limit lets a slow day finish.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -988,11 +996,23 @@ jobs:
       - run: npm ci
       - run: cd dashboard && npm ci --no-audit --no-fund
       - run: npm run build
+      # The browsers Playwright downloads, kept per Playwright version: the
+      # version is in the key, so a bump downloads the matching browsers once.
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache the Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium-firefox
       - name: Install Playwright browsers (Chromium + Firefox)
         # WebKit on Linux is NOT Safari (Safari uses Apple's WebKit,
         # macOS-only). We run Chromium + Firefox for real evergreen
         # coverage; Safari-real would require macOS CI as a later
         # decision. See playwright.config.ts for the full rationale.
+        # With the browsers cached this only installs the system libraries
+        # they need (--with-deps), which come from the runner's own mirror.
         run: npx playwright install --with-deps chromium firefox
       - name: Run Playwright E2E (Chromium + Firefox)
         run: npm run test:e2e
