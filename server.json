@@ -112,7 +112,7 @@
           "name": "IRIS_OPENAI_API_KEY"
         },
         {
-          "description": "Hard cap on the worst-case cost of one judge or citation call (default 0.25)",
+          "description": "Hard cap on the worst-case cost of one LLM judge call (default 0.25); max_cost_usd can lower it for a call, never raise it",
           "isRequired": false,
           "format": "string",
           "isSecret": false,
@@ -147,7 +147,7 @@
           "name": "IRIS_RELEVANCE_JUDGE_REDACT"
         },
         {
-          "description": "Let verify_citations fetch URLs (off by default)",
+          "description": "Let verify_citations fetch URLs (off by default); a tool argument can turn it off for a call, never on",
           "isRequired": false,
           "format": "boolean",
           "isSecret": false,
@@ -182,11 +182,18 @@
           "name": "IRIS_OTEL_ENDPOINT"
         },
         {
-          "description": "Comma-separated domain allowlist for verify_citations fetches (only consulted when IRIS_CITATION_ALLOW_FETCH is on)",
+          "description": "Comma-separated domain allowlist for verify_citations fetches (only consulted when IRIS_CITATION_ALLOW_FETCH is on); a tool argument can narrow it, never add to it",
           "isRequired": false,
           "format": "string",
           "isSecret": false,
           "name": "IRIS_CITATION_DOMAINS"
+        },
+        {
+          "description": "The most one verify_citations call may spend on judge calls, in USD (default 1); max_cost_usd_total can lower it, never raise it",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "IRIS_CITATION_MAX_COST_USD_TOTAL"
         },
         {
           "description": "Transport: stdio (default) or http; same as --transport",

@@ -10,7 +10,8 @@ import { findPricing, MODEL_PRICING, supportedModelsSummary } from '../eval/llm-
 import type { LLMProvider } from '../eval/llm-judge/client.js';
 import type { TemplateName } from '../eval/llm-judge/templates/index.js';
 import { generateEvalId } from '../utils/ids.js';
-import { JUDGE_COST_CAP_VAR, JUDGE_DEFAULT_COST_CAP_USD, JUDGE_KEY_VARS, judgeCostCapUsd, judgeRecovery } from '../judge-enablement.js';
+import { JUDGE_COST_CAP_VAR, JUDGE_DEFAULT_COST_CAP_USD, JUDGE_KEY_VARS, judgeRecovery } from '../judge-enablement.js';
+import { asRecord, asWarning, judgeCostCeiling } from './operator-ceilings.js';
 import { strictInput } from './strict-input.js';
 import { getTraceOrThrow, insertLinkedEvalResult } from './trace-link.js';
 import { besideNote } from '../eval/of-record.js';
@@ -44,7 +45,11 @@ const inputSchema = {
     .min(1)
     .optional()
     .describe('The model that produced the output, for the same-family warning, when no linked trace records it'),
-  max_cost_usd: z.number().positive().optional().describe(`Cost cap in USD for this call; defaults to ${JUDGE_COST_CAP_VAR} or ${JUDGE_DEFAULT_COST_CAP_USD}. The worst case (two attempts, full max_output_tokens) is computed before the call and refused if it exceeds the cap`),
+  max_cost_usd: z
+    .number()
+    .positive()
+    .optional()
+    .describe(`Cost cap in USD for this call, at most the operator's ${JUDGE_COST_CAP_VAR} (default ${JUDGE_DEFAULT_COST_CAP_USD}). The worst case (two attempts, full max_output_tokens) is computed before the call and refused if it exceeds the cap`),
   max_output_tokens: z.number().int().positive().max(4096).optional().describe('Judge output token cap; default 512'),
   temperature: z.number().min(0).max(2).optional().describe('Sampling temperature; default 0 (deterministic)'),
   timeout_ms: z.number().int().positive().optional().describe('Per-request timeout; default 60_000'),
@@ -86,11 +91,6 @@ export function resolveApiKey(provider: LLMProvider, toolName = 'evaluate_with_l
   return key;
 }
 
-function resolveMaxCost(paramValue?: number): number {
-  if (paramValue !== undefined) return paramValue;
-  return judgeCostCapUsd();
-}
-
 export const judgeOutputSchema = z.looseObject({
   id: z.string().describe('the evaluation id; read it back at iris://evaluations/{id}'),
   reference_trace_id: z.string().optional().describe('the trace this judgment is kept beside, when one was named; it is not that trace\'s verdict'),
@@ -113,7 +113,7 @@ export const judgeOutputSchema = z.looseObject({
   warnings: z
     .array(z.looseObject({ code: z.string(), message: z.string() }))
     .optional()
-    .describe('IRIS_JUDGE_SAME_FAMILY: the judge shares a model family with the agent; warned, never refused'),
+    .describe('IRIS_JUDGE_SAME_FAMILY: the judge shares a model family with the agent; warned, never refused. IRIS_ARGUMENT_NARROWED: max_cost_usd asked for more than the operator\'s cap, and the cap applied'),
 });
 
 export function registerEvaluateWithLLMJudgeTool(
@@ -160,7 +160,9 @@ export function registerEvaluateWithLLMJudgeTool(
       }
       const provider = (args.provider as LLMProvider | undefined) ?? inferProvider(args.model);
       const apiKey = resolveApiKey(provider);
-      const maxCostUsd = resolveMaxCost(args.max_cost_usd);
+      // The operator's cap is a ceiling: max_cost_usd may lower it for this call, never raise it (operator-ceilings.ts).
+      const cost = judgeCostCeiling(args.max_cost_usd);
+      const maxCostUsd = cost.value;
 
       // An unknown trace_id is refused BEFORE the provider call — the old
       // path spent the judge's money and then failed the INSERT with a raw
@@ -175,7 +177,10 @@ export function registerEvaluateWithLLMJudgeTool(
        * stands, but a reader is told it is a same-family opinion. Warned,
        * never refused — the caller may have no other key.
        */
-      const warnings = agentModel !== null && sameFamily(args.model, agentModel) ? [sameFamilyWarning(args.model, agentModel)] : [];
+      const warnings: Array<{ code: string; message: string; field?: string }> = [
+        ...(cost.warning ? [asWarning(cost.warning)] : []),
+        ...(agentModel !== null && sameFamily(args.model, agentModel) ? [sameFamilyWarning(args.model, agentModel)] : []),
+      ];
 
       const result = await evaluateWithLLMJudge({
         output: args.output,
@@ -217,6 +222,7 @@ export function registerEvaluateWithLLMJudgeTool(
         }),
         // The text the caller passed, through the agent's own tool.
         evidenceOf({ output: args.output, input: args.input, expected: args.expected, recordedBy: 'agent' }),
+        cost.warning ? [asRecord(cost.warning)] : undefined,
       );
       /*
        * A judgment answers the judge's question about the text the caller

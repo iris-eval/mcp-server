@@ -483,13 +483,14 @@ Every variable `--help` documents. CLI flags take precedence over environment va
 | `IRIS_NO_AUTO_LAUNCH` | Set to `1` to disable the first-run dashboard auto-launch |
 | `IRIS_ANTHROPIC_API_KEY` | Required by `evaluate_with_llm_judge` + `verify_citations` with `provider=anthropic` |
 | `IRIS_OPENAI_API_KEY` | Required by `evaluate_with_llm_judge` + `verify_citations` with `provider=openai` |
-| `IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL` | Hard cost cap per LLM judge call (default `0.25`) |
+| `IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL` | Hard cost cap per LLM judge call (default `0.25`). `max_cost_usd` can lower it for a call, never raise it |
 | `IRIS_RELEVANCE_JUDGE_MODEL` | A priced judge model id (e.g. `claude-haiku-4-5`). When set, with that provider's key, `answers_the_ask` asks this LLM judge on every evaluation that carries an input and gates on its relevance verdict — one judge call per evaluation, under the cost cap above and the two limits below. **Each such evaluation's input and output are sent to that model's provider (Anthropic or OpenAI) on your key**, with the personal data and credentials `no_pii` flags replaced first. Unset (the default), `answers_the_ask` reads the ask lexically and advises, and nothing is sent ([docs/llm-as-judge.md](https://github.com/iris-eval/mcp-server/blob/main/docs/llm-as-judge.md#the-relevance-judge-behind-answers_the_ask)) |
 | `IRIS_RELEVANCE_JUDGE_DAILY_BUDGET_USD` | What the relevance judge may spend per UTC day, per tenant (default `1`). Kept in the database, so a restart does not reset it. A call is made only if its worst case fits in what is left; past that, `answers_the_ask` reads the ask lexically and `judge.withheld` is `daily_budget`. `0` stops every call |
 | `IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST` | Relevance judge calls one request may make (default `20`): an OTLP batch or an `evaluate_runs` re-score judges its first 20 traces and reads the rest lexically, with `judge.withheld: "request_cap"` |
 | `IRIS_RELEVANCE_JUDGE_REDACT` | `on` (default): every span `no_pii` flags (personal data and credentials) in the input and output is replaced by a `[REDACTED:<kind>#<n>]` marker before they are sent to the relevance judge. `off` sends them as they are |
-| `IRIS_CITATION_ALLOW_FETCH` | Set to `1` to permit outbound HTTP in `verify_citations` (off by default) |
-| `IRIS_CITATION_DOMAINS` | Comma-separated hostname allowlist for `verify_citations` (suffix match) |
+| `IRIS_CITATION_ALLOW_FETCH` | Set to `1` to permit outbound HTTP in `verify_citations` (off by default). A tool argument can turn it off for a call, never on |
+| `IRIS_CITATION_DOMAINS` | Comma-separated hostname allowlist for `verify_citations` (suffix match). A tool argument can narrow it, never add to it |
+| `IRIS_CITATION_MAX_COST_USD_TOTAL` | The most one `verify_citations` call may spend on judge calls (default `1`). `max_cost_usd_total` can lower it for a call, never raise it |
 | `IRIS_OTEL_ENDPOINT` | Enable best-effort OTLP/HTTP JSON trace export to this collector URL |
 | `IRIS_OTEL_SERVICE_NAME` | `service.name` resource attribute for OTel export (default `iris-eval`) |
 | `IRIS_OTEL_HEADERS` | Comma-separated `k=v` headers for OTel export (e.g. `authorization=Bearer abc`) |

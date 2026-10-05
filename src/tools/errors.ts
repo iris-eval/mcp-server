@@ -23,6 +23,7 @@
 import { ZodError } from 'zod';
 import { LLMJudgeError } from '../eval/llm-judge/client.js';
 import { CAPABILITIES_RESOURCE_URI } from '../resources/uris.js';
+import { JUDGE_COST_CAP_VAR } from '../judge-enablement.js';
 
 export const ERROR_CODE_CATALOGUE = [
   'IRIS_INVALID_ARGUMENT',
@@ -49,6 +50,8 @@ export type IrisErrorCode = (typeof ERROR_CODE_CATALOGUE)[number];
 export const WARNING_CODE_CATALOGUE = [
   /** The LLM judge shares a model family with the agent it judged. */
   'IRIS_JUDGE_SAME_FAMILY',
+  /** An argument asked for more than the operator allows (fetching, domains, cost); the operator's setting applied (operator-ceilings.ts). */
+  'IRIS_ARGUMENT_NARROWED',
 ] as const;
 export type IrisWarningCode = (typeof WARNING_CODE_CATALOGUE)[number];
 
@@ -130,7 +133,7 @@ export function toIrisError(err: unknown): IrisError {
     return irisError('IRIS_BUDGET_EXCEEDED', message, {
       field: 'max_cost_usd',
       recovery: [
-        `Raise max_cost_usd on the call (the worst case was ${e.estimatedUsd?.toFixed(4) ?? '?'} USD against a cap of ${e.capUsd?.toFixed(4) ?? '?'} USD).`,
+        `The worst case was ${e.estimatedUsd?.toFixed(4) ?? '?'} USD against a cap of ${e.capUsd?.toFixed(4) ?? '?'} USD. Raise max_cost_usd on the call, up to the operator's ${JUDGE_COST_CAP_VAR}; above that, only the operator can raise ${JUDGE_COST_CAP_VAR}.`,
         'Or trim the output, the input or max_output_tokens so the worst case fits.',
         'Nothing was spent.',
       ],

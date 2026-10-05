@@ -75,6 +75,8 @@ describe('verify_citations: judge failures under judge_error, source failures un
 
   beforeEach(async () => {
     process.env.IRIS_ANTHROPIC_API_KEY = 'test-key';
+    // The operator turns fetching on; an argument cannot (src/tools/operator-ceilings.ts).
+    vi.stubEnv('IRIS_CITATION_ALLOW_FETCH', '1');
     __setDnsLookupForTests(async () => [{ address: '93.184.216.34', family: 4 }]);
     storage = new SqliteAdapter(':memory:');
     await storage.initialize();
@@ -88,6 +90,7 @@ describe('verify_citations: judge failures under judge_error, source failures un
   });
 
   afterEach(async () => {
+    vi.unstubAllEnvs();
     await client.close();
     await storage.close();
     rmSync(ruleDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
@@ -115,7 +118,6 @@ describe('verify_citations: judge failures under judge_error, source failures un
       arguments: {
         output: 'Alpha is 42 (https://a.example/alpha). Beta is 7 (https://b.example/beta). Gamma is 3 (https://c.example/gamma).',
         model: 'claude-haiku-4-5',
-        allow_fetch: true,
       },
     })) as Result;
     expect(r.isError).toBeFalsy();
@@ -164,7 +166,7 @@ describe('verify_citations: judge failures under judge_error, source failures un
     const unreadable = body(
       (await client.callTool({
         name: 'verify_citations',
-        arguments: { output: 'Alpha is 42 (https://a.example/alpha). Beta is 7 (https://b.example/beta).', model: 'claude-haiku-4-5', allow_fetch: true },
+        arguments: { output: 'Alpha is 42 (https://a.example/alpha). Beta is 7 (https://b.example/beta).', model: 'claude-haiku-4-5' },
       })) as Result,
     );
     // Both judge calls replied with prose: nothing was judged, so the tool
@@ -176,7 +178,7 @@ describe('verify_citations: judge failures under judge_error, source failures un
     global.fetch = network({ 'a.example': page('Alpha is 42.') }, [supportedVerdict]);
     const capped = (await client.callTool({
       name: 'verify_citations',
-      arguments: { output: 'Alpha is 42 (https://a.example/alpha).', model: 'claude-haiku-4-5', allow_fetch: true, max_cost_usd_total: 0.000001 },
+      arguments: { output: 'Alpha is 42 (https://a.example/alpha).', model: 'claude-haiku-4-5', max_cost_usd_total: 0.000001 },
     })) as Result;
     const cappedBody = body(capped);
     expect(cappedBody.error).toMatchObject({ code: 'IRIS_JUDGE_FAILED' });
@@ -202,7 +204,7 @@ describe('verify_citations: judge failures under judge_error, source failures un
     const out = body(
       (await client.callTool({
         name: 'verify_citations',
-        arguments: { output: 'Alpha is 42 (https://a.example/alpha). Beta is 7 (https://b.example/beta).', model: 'claude-haiku-4-5', allow_fetch: true, max_cost_usd_total: 0.5 },
+        arguments: { output: 'Alpha is 42 (https://a.example/alpha). Beta is 7 (https://b.example/beta).', model: 'claude-haiku-4-5', max_cost_usd_total: 0.5 },
       })) as Result,
     );
     const [, b] = out.citations as Citation[];

@@ -76,6 +76,7 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
   });
 
   afterEach(async () => {
+    vi.unstubAllEnvs();
     await client.close();
     await storage.close();
     rmSync(ruleDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
@@ -172,6 +173,8 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
 
   it('IRIS_JUDGE_FAILED — citations resolved but the judge failed on every one; nothing stored', async () => {
     process.env.IRIS_ANTHROPIC_API_KEY = 'test-key';
+    // The operator turns fetching on; an argument cannot (src/tools/operator-ceilings.ts).
+    vi.stubEnv('IRIS_CITATION_ALLOW_FETCH', '1');
     __setDnsLookupForTests(async () => [{ address: '93.184.216.34', family: 4 }]);
     global.fetch = vi.fn(async (input: string | URL | Request) => {
       // Route by hostname, not by substring: the provider host gets the
@@ -183,7 +186,7 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
     const e = envelope(
       (await client.callTool({
         name: 'verify_citations',
-        arguments: { output: 'The claim is supported by https://example.org/paper.', model: 'claude-haiku-4-5', allow_fetch: true },
+        arguments: { output: 'The claim is supported by https://example.org/paper.', model: 'claude-haiku-4-5' },
       })) as Result,
     );
     expect(e.code).toBe('IRIS_JUDGE_FAILED');

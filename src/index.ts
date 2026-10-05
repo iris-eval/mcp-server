@@ -269,7 +269,8 @@ Environment variables (CLI flags take precedence):
   IRIS_NO_AUTO_LAUNCH                  Set to 1 to disable first-run dashboard auto-launch
   IRIS_ANTHROPIC_API_KEY               Required by evaluate_with_llm_judge + verify_citations (provider=anthropic)
   IRIS_OPENAI_API_KEY                  Required by evaluate_with_llm_judge + verify_citations (provider=openai)
-  IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL Hard cost cap per LLM judge call (default: 0.25)
+  IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL Hard cost cap per LLM judge call (default: 0.25); max_cost_usd can lower it
+                                       for a call, never raise it
   IRIS_RELEVANCE_JUDGE_MODEL           A priced model id: answers_the_ask then asks this judge on every
                                        evaluation that carries input, and gates on its verdict (off by default).
                                        Sends that input and output to the model's provider on your key
@@ -278,8 +279,12 @@ Environment variables (CLI flags take precedence):
   IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQUEST  Relevance judge calls one request may make (default: 20)
   IRIS_RELEVANCE_JUDGE_REDACT          on (default): PII and credentials no_pii flags are replaced before the
                                        input and output are sent to the judge; off sends them as they are
-  IRIS_CITATION_ALLOW_FETCH            Set to 1 to permit outbound HTTP in verify_citations (off by default)
-  IRIS_CITATION_DOMAINS                Comma-separated hostname allowlist for verify_citations (suffix match)
+  IRIS_CITATION_ALLOW_FETCH            Set to 1 to permit outbound HTTP in verify_citations (off by default);
+                                       a tool argument can turn it off for a call, never on
+  IRIS_CITATION_DOMAINS                Comma-separated hostname allowlist for verify_citations (suffix match);
+                                       a tool argument can narrow it, never add to it
+  IRIS_CITATION_MAX_COST_USD_TOTAL     The most one verify_citations call may spend on judge calls (default: 1);
+                                       max_cost_usd_total can lower it for a call, never raise it
   IRIS_OTEL_ENDPOINT                   Enable best-effort OTLP/HTTP JSON trace export to this collector URL
   IRIS_OTEL_SERVICE_NAME               service.name resource attribute for OTel export (default: iris-eval)
   IRIS_OTEL_HEADERS                    Comma-separated k=v headers for OTel export (e.g. "authorization=Bearer abc")

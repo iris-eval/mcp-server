@@ -18,6 +18,7 @@ import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { advertisedOutput } from './advertise.js';
 import { irisError } from './errors.js';
 import { evaluationLinks, guarded, respond } from './respond.js';
+import { asRecord, asWarning, citationCostCeiling, domainCeiling, fetchCeiling } from './operator-ceilings.js';
 
 const inputSchema = {
   output: z.string().min(1).describe('The agent output containing citations to verify'),
@@ -27,31 +28,24 @@ const inputSchema = {
       `Judge model for per-citation verification. Supported: ${supportedModelsSummary()}; an unknown id is refused with the full priced list.`,
     ),
   provider: z.enum(['anthropic', 'openai']).optional().describe('Auto-detected from model when omitted'),
-  allow_fetch: z.boolean().optional().describe('Permit outbound HTTP to resolve URLs/DOIs. Defaults to IRIS_CITATION_ALLOW_FETCH=1; false otherwise. SSRF-guarded regardless.'),
+  allow_fetch: z
+    .boolean()
+    .optional()
+    .describe('false skips fetching for this call. Fetching happens only when the operator sets IRIS_CITATION_ALLOW_FETCH=1; true cannot turn it on. SSRF-guarded regardless.'),
   domain_allowlist: z
     .array(z.string())
     .optional()
-    .describe('Restrict fetches to hostnames in this list (suffix match allowed). Merged with IRIS_CITATION_DOMAINS env.'),
-  max_cost_usd_total: z.number().positive().optional().describe('Cap TOTAL judge cost across all citations in this call; default 1.00 USD — the pipeline stops when the next call would exceed it'),
+    .describe('Fetch only from these hostnames (suffix match). Narrows IRIS_CITATION_DOMAINS when the operator set it, never adds to it.'),
+  max_cost_usd_total: z
+    .number()
+    .positive()
+    .optional()
+    .describe('Cap TOTAL judge cost across all citations in this call, at most the operator\'s IRIS_CITATION_MAX_COST_USD_TOTAL (default 1.00 USD); the pipeline stops when the next call would exceed it'),
   max_citations: z.number().int().positive().max(50).optional().describe('Max citations to verify (extras skipped, not errored); default 20, at most 50'),
   per_source_timeout_ms: z.number().int().positive().optional().describe('Per-URL fetch timeout; default 10_000'),
   per_source_max_bytes: z.number().int().positive().optional().describe('Per-URL body cap; default 5MB'),
   trace_id: z.string().optional().describe('Keep the verification result beside a stored trace (id from log_trace / get_traces). It is listed with the trace and never replaces its verdict; an unknown id is rejected before any fetch or judge call'),
 };
-
-function resolveAllowFetch(paramValue?: boolean): boolean {
-  if (paramValue !== undefined) return paramValue;
-  return process.env.IRIS_CITATION_ALLOW_FETCH === '1';
-}
-
-function resolveDomainAllowlist(paramValue?: string[]): readonly string[] | undefined {
-  const envRaw = process.env.IRIS_CITATION_DOMAINS;
-  const fromEnv = envRaw ? envRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
-  if (paramValue && paramValue.length > 0) {
-    return [...new Set([...fromEnv, ...paramValue])];
-  }
-  return fromEnv.length > 0 ? fromEnv : undefined;
-}
 
 type CitationFailures = ReadonlyArray<{
   resolveStatus: string;
@@ -142,6 +136,10 @@ export const verifyCitationsOutputSchema = z.looseObject({
   total_judged: z.number().int().describe('citations the judge ruled on'),
   total_supported: z.number().int().describe('citations the judge found supported'),
   total_cost_usd: z.number().describe('the spend across every judge call'),
+  warnings: z
+    .array(z.looseObject({ code: z.string(), field: z.string(), message: z.string() }))
+    .optional()
+    .describe('IRIS_ARGUMENT_NARROWED: an argument asked for more than the operator allows (fetching, domains or cost), and the operator\'s setting applied instead'),
   citations: z.array(z.looseObject({ resolve_status: z.string() })).describe('per citation: the citation (raw, kind, identifier, offsets), resolve_status ok | skipped | error, resolve_error { kind, message } when the source was not resolved, source (url, status, content_type, bytes_fetched, truncated), judge (supported, confidence, rationale, cost_usd, latency_ms, tokens), judge_error { kind, message } when the source resolved but the judge gave no verdict'),
 });
 
@@ -154,7 +152,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
         summary:
           'Is each citation in an output supported by its source? Extracts, fetches (opt-in, SSRF-guarded) and judges on your key.',
         does:
-          'Fetches only with allow_fetch or IRIS_CITATION_ALLOW_FETCH=1, blocking private addresses. One judge call per resolved citation, capped by max_cost_usd_total; overall_score is supported / judged, null when none was judged.',
+          'Fetches only if the operator set IRIS_CITATION_ALLOW_FETCH=1, blocking private addresses. One judge call per resolved citation, within max_cost_usd_total. overall_score: supported / judged; null if none judged.',
         whenNot:
           `With no citations (evaluate_output). Without ${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai}.`,
         returns: verifyCitationsOutputSchema,
@@ -177,8 +175,11 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
     guarded(async (args) => {
       const provider = (args.provider as LLMProvider | undefined) ?? inferProvider(args.model);
       const apiKey = resolveApiKey(provider, 'verify_citations');
-      const allowFetch = resolveAllowFetch(args.allow_fetch);
-      const domainAllowlist = resolveDomainAllowlist(args.domain_allowlist);
+      // Operator settings are ceilings: an argument may narrow them, never widen them (operator-ceilings.ts).
+      const fetching = fetchCeiling(args.allow_fetch);
+      const domains = domainCeiling(args.domain_allowlist);
+      const cost = citationCostCeiling(args.max_cost_usd_total);
+      const warnings = [fetching.warning, domains.warning, cost.warning].filter((w) => w !== undefined);
 
       // Refused before any fetch or judge call spends anything (#376).
       if (args.trace_id) {
@@ -190,9 +191,9 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
         provider,
         model: args.model,
         apiKey,
-        allowFetch,
-        domainAllowlist,
-        maxCostUsdTotal: args.max_cost_usd_total,
+        allowFetch: fetching.allowFetch && !domains.none,
+        domainAllowlist: domains.allowlist,
+        maxCostUsdTotal: cost.value,
         maxCitations: args.max_citations,
         perSourceTimeoutMs: args.per_source_timeout_ms,
         perSourceMaxBytes: args.per_source_max_bytes,
@@ -243,7 +244,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
         rules_skipped: 0,
         insufficient_data: result.overallScore === null,
         eval_cost_usd: result.totalCostUsd,
-      }, evidenceOf({ output: args.output, recordedBy: 'agent' }));
+      }, evidenceOf({ output: args.output, recordedBy: 'agent' }), warnings.map(asRecord));
       /*
        * The one sentence the fields do not already carry: a citation check
        * that judged nothing is not a pass, and a caller who reads only
@@ -328,6 +329,7 @@ export function registerVerifyCitationsTool(server: McpServer, storage: IStorage
                 }
               : undefined,
           })),
+          ...(warnings.length > 0 ? { warnings: warnings.map(asWarning) } : {}),
         },
         evaluationLinks(evalId, args.trace_id),
       );
