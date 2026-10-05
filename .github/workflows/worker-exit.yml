@@ -6,8 +6,10 @@ name: Worker exit
 # pull request or merge:
 #   - pull requests, and pushes to main, that touch storage (the workers and
 #     the SQLite seam live in src/storage), the worker fixtures, the search
-#     worker's test, or the dependencies. Every push to main used to run it:
-#     six cells for 34 to 77 minutes after a merge that touched none of this,
+#     worker's test, or the dependencies (the lockfile; a package.json change
+#     without one is scripts and tooling, which never reach a worker). Every
+#     push to main used to run it: six cells for 34 to 77 minutes after a
+#     merge that touched none of this,
 #     holding the runners (two of them macOS, the scarcest) that the next
 #     pull request's checks then queued behind;
 #   - nightly, because a runner's Node can change under an unchanged repository
@@ -24,7 +26,6 @@ on:
       - 'src/storage/**'
       - 'tests/fixtures/worker-exit/**'
       - 'tests/unit/storage/search-worker.test.ts'
-      - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/worker-exit.yml'
   push:
@@ -33,7 +34,6 @@ on:
       - 'src/storage/**'
       - 'tests/fixtures/worker-exit/**'
       - 'tests/unit/storage/search-worker.test.ts'
-      - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/worker-exit.yml'
   schedule:
