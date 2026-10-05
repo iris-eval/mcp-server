@@ -89,7 +89,7 @@ Match the formatting of the file you are editing. CI does not run Prettier, and 
   | `Real clients (ubuntu-latest)` | Claude Code and Gemini CLI connect to this commit through the config `iris-eval install` writes |
   | `Real clients (macos-latest)` | The same, on macOS |
   | `Real clients (windows-latest)` | The same, on Windows |
-  | `security-exposure` | Every open dependency advisory has an assessed row in `SECURITY-EXPOSURE.md` |
+  | `security-exposure` | On a pull request: no dependency it adds carries an advisory of moderate or above, unless `SECURITY-EXPOSURE.md` already triages it. On main: every open advisory has an assessed row there |
   | `website-lint-and-typecheck` | Lint, typecheck and production build of `website/` |
   | `Hardcoded-claim scanner` | No number/claim restated outside the truthbase |
   | `Truthbase regen vs committed` | `.claims.json` and the rendered files regenerate identical to what you committed |

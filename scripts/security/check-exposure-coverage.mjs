@@ -34,6 +34,14 @@
 // not have permission to read Dependabot alerts, so an API-based gate
 // would require a PAT secret per repo.
 //
+// Where it runs (0.21.0): on every push to main (ci.yml's security-exposure
+// job) and daily (advisory-inventory.yml), not on pull requests. There it
+// turned every open PR red whenever an advisory was published, about
+// changes none of them made; a pull request is now gated by GitHub's
+// dependency review on the dependencies it adds, with the GHSA ids triaged
+// in SECURITY-EXPOSURE.md allowed. Both remain satisfiable inside the
+// change they block.
+//
 // Run locally:  node scripts/security/check-exposure-coverage.mjs
 // Run in CI:    same — no secrets needed
 //
