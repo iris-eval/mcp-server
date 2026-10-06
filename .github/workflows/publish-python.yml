@@ -39,6 +39,9 @@ jobs:
   build:
     name: Build the sdist and the wheel
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: read           # the tagged commit's check runs on main
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -55,6 +58,14 @@ jobs:
             echo "FATAL: $GITHUB_REF_NAME points at $GITHUB_SHA, which is not on main. Tag a commit that is on main."
             exit 1
           fi
+      # On main is not enough, as in release.yml: main's own CI must have
+      # passed on that commit. A tag pushed while those runs are still going
+      # waits for them; one that failed refuses the publish.
+      - name: Main's required checks passed on the tagged commit
+        if: startsWith(github.ref, 'refs/tags/py-v')
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci/require-checks-passed.mjs "$GITHUB_SHA"
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: '3.12'
