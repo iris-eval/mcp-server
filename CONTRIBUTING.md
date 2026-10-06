@@ -71,7 +71,7 @@ Match the formatting of the file you are editing. CI does not run Prettier, and 
 
 ### What to expect after you open a PR
 
-- **CI must pass.** Branch protection blocks merge until every required check is green. These are the exact context names, as GitHub reports them; the list is [`.github/required-checks.json`](.github/required-checks.json), which CI compares on every run with what the live settings require (branch protection and rulesets together):
+- **CI must pass.** A ruleset blocks merge until every required check is green, and nobody can bypass it, maintainers included. These are the exact context names, as GitHub reports them; the list is [`.github/required-checks.json`](.github/required-checks.json), which CI compares on every run with what the live settings require (branch protection and rulesets together):
 
   | Check | What it covers |
   |---|---|
