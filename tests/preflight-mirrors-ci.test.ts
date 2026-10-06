@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CI_ONLY, REACHED_CAP, STEPS, stepsFor, testsToRun } from '../scripts/preflight.mjs';
+import { CI_ONLY, NEXT_TYPES, REACHED_CAP, STEPS, stepsFor, testsToRun } from '../scripts/preflight.mjs';
 
 /*
  * `npm run preflight` is only worth running if it says what CI will say.
@@ -128,6 +128,16 @@ describe('the default preflight is the fast one', () => {
     expect(full).toContain('every test, with the coverage floors');
     expect(full).not.toContain('the tests this change reaches');
     expect(full).not.toContain('website lint and types');
+  });
+
+  it("type-checks the website without the route types a local build left behind, as CI's fresh checkout does", () => {
+    const tsconfig = readFileSync(join(root, 'website', 'tsconfig.json'), 'utf-8');
+    const generated = [...tsconfig.matchAll(/"(\.next\/[^"*]+?)\/\*\*/g)].map((m) => m[1]).sort();
+    expect(generated.length).toBeGreaterThan(0);
+    expect([...NEXT_TYPES].sort()).toEqual(generated);
+    const websiteTypeChecks = STEPS.filter((s: { cwd?: string; run?: string }) => s.cwd === 'website' && s.run?.includes('tsc'));
+    expect(websiteTypeChecks.length).toBe(2);
+    for (const s of websiteTypeChecks) expect(s.fresh).toEqual(NEXT_TYPES);
   });
 });
 
