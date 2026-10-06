@@ -52,6 +52,8 @@ const TEST_FILES = '{test-files}';
  * on a desktop; 105, which one storage change reached, in about 4.
  */
 export const REACHED_CAP = 60;
+/** The route types `next build` and `next dev` generate, which the website's tsconfig includes. */
+export const NEXT_TYPES = ['.next/types', '.next/dev/types'];
 const ACTIONLINT = 'rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667';
 
 /** Checks the pack list carries the dashboard, as the build job does with jq. */
@@ -72,7 +74,9 @@ function packageIntegrity() {
 /**
  * The steps, cheapest first. `ci` names the job each one stands for, as
  * `<workflow file>#<job id>`. A step is a shell command run from `cwd`, or a
- * function returning { ok, why }.
+ * function returning { ok, why }. `fresh` lists generated folders under `cwd`
+ * a step deletes first: CI runs on a fresh checkout, and a local `next build`
+ * leaves route types behind that fail the type check once a route is gone.
  */
 export const STEPS = [
   { name: 'versions agree', ci: ['ci.yml#lint-and-typecheck'], run: 'bash scripts/check-version.sh' },
@@ -91,8 +95,8 @@ export const STEPS = [
   { name: 'dashboard typecheck and lint', fast: ['dashboard/', 'src/'], ci: ['ci.yml#lint-and-typecheck'], cwd: 'dashboard', run: 'npm run -s typecheck && npm run -s lint' },
   { name: 'dashboard tests', fast: ['dashboard/', 'src/'], ci: ['ci.yml#lint-and-typecheck'], cwd: 'dashboard', run: 'npm test --silent' },
   { name: 'dashboard Storybook build', ci: ['ci.yml#lint-and-typecheck'], cwd: 'dashboard', run: 'npm run -s build-storybook' },
-  { name: 'website lint and types', fast: 'website/', fastOnly: true, ci: ['ci.yml#website-lint-and-typecheck'], cwd: 'website', run: 'npm run -s lint && npx tsc --noEmit' },
-  { name: 'website lint, types and build', ci: ['ci.yml#website-lint-and-typecheck'], cwd: 'website', run: 'npm run -s lint && npx tsc --noEmit && npm run -s build' },
+  { name: 'website lint and types', fast: 'website/', fastOnly: true, ci: ['ci.yml#website-lint-and-typecheck'], cwd: 'website', fresh: NEXT_TYPES, run: 'npm run -s lint && npx tsc --noEmit' },
+  { name: 'website lint, types and build', ci: ['ci.yml#website-lint-and-typecheck'], cwd: 'website', fresh: NEXT_TYPES, run: 'npm run -s lint && npx tsc --noEmit && npm run -s build' },
   { name: 'build', ci: ['ci.yml#build'], run: 'npm run -s build' },
   { name: 'the pack carries the dashboard', ci: ['ci.yml#build'], check: packCarriesDashboard },
   { name: 'exports', ci: ['ci.yml#build'], run: 'node scripts/check-exports.mjs' },
@@ -220,6 +224,7 @@ function main(scratch) {
     process.stdout.write(`\npreflight ${i + 1}/${steps.length} — ${step.name}\n`);
     let ok;
     let why = '';
+    for (const dir of step.fresh ?? []) rmSync(join(root, step.cwd ?? '', dir), { recursive: true, force: true });
     if (step.check) {
       const r = step.check();
       ok = r.ok;
