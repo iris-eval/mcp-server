@@ -130,9 +130,11 @@ describe('the workflows do what the classification says', () => {
    * wherever it pointed, and built with an unpinned `build` that fetched an
    * unpinned backend. The PyPI path now matches release.yml's rules.
    */
-  it('publish-python.yml publishes only a tag on main, built with hash-pinned tools and no second download', () => {
+  it('publish-python.yml publishes only a tag on main whose required checks passed, built with hash-pinned tools and no second download', () => {
     const py = read('.github/workflows/publish-python.yml');
     expect(py).toContain('git merge-base --is-ancestor "$GITHUB_SHA" origin/main');
+    expect(py).toContain('node scripts/ci/require-checks-passed.mjs "$GITHUB_SHA"');
+    expect(py).toContain('checks: read');
     expect(py).toContain('fetch-depth: 0');
     expect(py).toContain('python -m pip install --require-hashes --only-binary :all: -r .github/requirements/build.txt');
     expect(py).not.toMatch(/pip install (--upgrade )?build\b/);
