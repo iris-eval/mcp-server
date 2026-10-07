@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A shutdown that has to stop a storage thread says why.** `close()` gives the checkpoint thread and the search thread 5 s to end on their own. When one has not, Iris now writes one line to stderr before stopping it, naming the thread and what it was doing: still starting, in a request this process made (and for how long), or in its own periodic checkpoint. A shutdown that waited was silent before.
 - **Links to the old roadmap resolve.** `docs/roadmap.md` points at the capability map, which replaced it, so links to it in published posts and on other sites land somewhere current; the editor's notes on three posts link the map directly.
 - **The homepage's research section leads with published research:** the four-way comparison of Iris, Langfuse, Phoenix and Promptfoo, and each rule's measured precision and recall on /proof, in place of a survey card marked "Coming Soon". The terms add how a hosted or paid service would be offered: under its own terms, published before it starts, with no change to the open-source software's license.
+- **iris-eval.com counts page views with Vercel Web Analytics**, as its privacy page describes: cookie-free, no personal data, no cross-site tracking. The script runs under the site's nonce-based Content Security Policy.
 
 ### Security
 
