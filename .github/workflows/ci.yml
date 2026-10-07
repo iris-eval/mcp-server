@@ -980,11 +980,12 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    # Longer than the 20 every other job gets: the browser download is the one
+    # Longer than the 20 every other job gets: the browser download is a
     # step here that depends on someone else's server. On 2026-10-05 it took
     # 976 s against about a minute normally, and the 20-minute limit
     # cancelled a run whose tests were passing. The cache below makes the
-    # download rare; this limit lets a slow day finish.
+    # download rare; this limit lets a slow day finish. The system libraries
+    # (apt) have their own 10-minute bound below.
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -1011,9 +1012,21 @@ jobs:
         # macOS-only). We run Chromium + Firefox for real evergreen
         # coverage; Safari-real would require macOS CI as a later
         # decision. See playwright.config.ts for the full rationale.
-        # With the browsers cached this only installs the system libraries
-        # they need (--with-deps), which come from the runner's own mirror.
-        run: npx playwright install --with-deps chromium firefox
+        # A cache hit makes this instant; a miss (a Playwright bump)
+        # downloads from Playwright's server, which can be slow, so it has
+        # no bound of its own.
+        run: npx playwright install chromium firefox
+      - name: Install the browsers' system libraries
+        # These come through apt from the runner's mirror list. On 2026-10-07
+        # the first mirror stopped answering and apt waited on it for 39
+        # minutes, until the job limit cancelled a run whose code was fine.
+        # apt now gives up on a silent mirror after 30 seconds and moves to
+        # the next, and the step stops at 10 minutes, so a bad mirror day
+        # fails in minutes with a clear cause instead of hanging the job.
+        timeout-minutes: 10
+        run: |
+          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/80-ci-timeouts > /dev/null
+          npx playwright install-deps chromium firefox
       - name: Run Playwright E2E (Chromium + Firefox)
         run: npm run test:e2e
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
