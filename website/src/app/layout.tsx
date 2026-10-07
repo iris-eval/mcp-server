@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Space_Grotesk, Manrope, JetBrains_Mono } from "next/font/google";
 import { OG_IMAGE_URL } from "@/lib/og";
 import { FEED_TITLE, FEED_URL } from "@/lib/feed";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
@@ -94,6 +95,12 @@ export default async function RootLayout({
             page. React hoists a <link> into <head> wherever it renders. */}
         <link rel="alternate" type="application/rss+xml" title={FEED_TITLE} href={FEED_URL} />
         <ThemeProvider>{children}</ThemeProvider>
+        {/* Page views for the privacy page's "Vercel Web Analytics" line:
+            cookie-free, no personal data. The component adds its script with
+            createElement from Next's own nonce'd bundle, which the policy's
+            'strict-dynamic' trusts, and reports to /_vercel/insights on this
+            origin, which connect-src 'self' allows. */}
+        <Analytics />
       </body>
     </html>
   );
