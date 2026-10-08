@@ -2,7 +2,7 @@
 title: "Why Every MCP Agent Needs an Independent Observer"
 description: "Why self-reported agent logs are structurally untrustworthy and how MCP enables architecturally independent observability for AI agents."
 date: 2026-03-15
-updated: 2026-09-03
+updated: 2026-10-08
 seoTitle: "Why Every MCP Agent Needs an Independent Observer"
 author: Ian Parent
 tags: [observability, agents, mcp, architecture, trust]
@@ -139,7 +139,9 @@ But observability that is bolted on inherits the agent's failure modes. Observab
 
 There is a deeper point here about trust in agent systems. As agents take on more consequential tasks — managing customer data, making financial decisions, controlling infrastructure — the question "can we verify what this agent did?" becomes critical.
 
-Self-reported logs do not provide verification. They provide the agent's account of events. An independent observer provides corroboration. The distinction matters for debugging, for auditing, and increasingly for compliance (the EU AI Act's traceability requirements take effect in August 2026).
+Self-reported logs do not provide verification. They provide the agent's account of events. An independent observer provides corroboration. The distinction matters for debugging, for auditing, and increasingly for compliance (the EU AI Act's requirements for high-risk systems apply from December 2027).
+
+> **Correction (2026-10-08):** This post first gave August 2026, the date in the Act when it was written. An amendment in July 2026 moved the requirements for high-risk systems: they apply from 2 December 2027 for the systems listed in Annex III and from 2 August 2028 for those covered by Annex I.
 
 The pattern is the same one that makes independent audits credible in finance, independent testing credible in engineering, and independent monitoring credible in infrastructure. Independence is not about distrust. It is about structural integrity.
 
