@@ -14,6 +14,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /*
@@ -29,6 +30,7 @@ vi.setConfig({ testTimeout: 60_000 });
 const ROOT = resolve(__dirname, '..', '..', '..');
 const SCRIPT = join(ROOT, 'scripts', 'check-tools-listed.mjs');
 const STAND_IN = join(ROOT, 'tests', 'fixtures', 'check-tools-listed', 'stand-in-server.mjs');
+const HOLD_AFTER_SPAWN = join(ROOT, 'tests', 'fixtures', 'check-tools-listed', 'hold-after-spawn.mjs');
 const TOOLS = JSON.parse(readFileSync(join(ROOT, '.claims.json'), 'utf8')).mcpTools.names as string[];
 
 let scratch: string;
@@ -43,9 +45,10 @@ afterEach(() => {
   rmSync(scratch, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
-function check(mode: 'ok' | 'short' | 'exit') {
+function check(mode: 'ok' | 'short' | 'exit', opts: { serverExitsBeforeTheFirstWrite?: boolean } = {}) {
   const envOut = join(scratch, 'env.json');
-  const run = spawnSync(process.execPath, [SCRIPT, STAND_IN], {
+  const preload = opts.serverExitsBeforeTheFirstWrite ? ['--import', pathToFileURL(HOLD_AFTER_SPAWN).href] : [];
+  const run = spawnSync(process.execPath, [...preload, SCRIPT, STAND_IN], {
     cwd: ROOT,
     encoding: 'utf8',
     timeout: 60_000,
@@ -95,5 +98,22 @@ describe('check-tools-listed starts the server on a throwaway Iris home', () => 
     expect(existsSync(seen!.IRIS_HOME!)).toBe(false);
     const after = readdirSync(tmpdir()).filter((n) => n.startsWith('iris-tools-listed-') && !n.startsWith('iris-tools-listed-test-'));
     expect(after.filter((n) => !before.includes(n))).toEqual([]);
+  });
+
+  /*
+   * The script writes to the server's stdin in the tick it starts it. Held
+   * long enough on a busy machine, it wrote to a server that had already
+   * exited: the write failed with EPIPE, nothing listened for it, and Node
+   * ended the script with a stack trace before it removed its temp home.
+   * main's macOS job failed on that once (2026-10-08), on a tree that had
+   * just passed the same job on its pull request. The preload makes the
+   * order certain.
+   */
+  it('says the server exited, and removes its temp home, when the server is gone before the first write', () => {
+    const { run, seen } = check('exit', { serverExitsBeforeTheFirstWrite: true });
+    expect(run.status).toBe(1);
+    expect(run.stderr).toMatch(/server exited \(5\) before answering tools\/list/);
+    expect(run.stderr).not.toMatch(/Unhandled 'error' event|EPIPE/);
+    expect(existsSync(seen!.IRIS_HOME!)).toBe(false);
   });
 });
