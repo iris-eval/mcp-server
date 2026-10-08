@@ -348,7 +348,9 @@ async function doFetch(url: string, opts: ResolveOptions, redirectsLeft: number)
       parsed.protocol,
     );
   }
-  await resolveAndCheckHost(parsed.hostname);
+  // The allowlist is checked before the host is resolved: the hostname comes
+  // from the text being judged, and a DNS query for a host the operator did
+  // not list is itself a request leaving the machine.
   if (!matchesAllowlist(parsed.hostname, opts.domainAllowlist)) {
     throw new CitationResolveError(
       `Host ${parsed.hostname} not in IRIS_CITATION_DOMAINS allowlist`,
@@ -356,6 +358,7 @@ async function doFetch(url: string, opts: ResolveOptions, redirectsLeft: number)
       parsed.hostname,
     );
   }
+  await resolveAndCheckHost(parsed.hostname);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);

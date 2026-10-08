@@ -326,6 +326,38 @@ describe('resolveSource', () => {
     ).rejects.toMatchObject({ kind: 'not_allowed_domain' });
   });
 
+  it('does not resolve a host the allowlist refuses', async () => {
+    // The hostname comes from the output being judged. A lookup for a host
+    // outside the operator's list would carry that name off the machine.
+    global.fetch = vi.fn(async () => textResponse('x')) as typeof fetch;
+    let lookups = 0;
+    __setDnsLookupForTests(async () => {
+      lookups++;
+      return [{ address: '8.8.8.8', family: 4 }];
+    });
+    await expect(
+      resolveSource('https://a-name-chosen-by-the-output.not-allowed.com/x', {
+        allowFetch: true,
+        domainAllowlist: ['doi.org'],
+      }),
+    ).rejects.toMatchObject({ kind: 'not_allowed_domain' });
+    expect(lookups).toBe(0);
+    expect((global.fetch as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
+  });
+
+  it('still resolves and checks a host that is on the allowlist', async () => {
+    global.fetch = vi.fn(async () => textResponse('x')) as typeof fetch;
+    let lookups = 0;
+    __setDnsLookupForTests(async () => {
+      lookups++;
+      return [{ address: '127.0.0.1', family: 4 }];
+    });
+    await expect(
+      resolveSource('https://rebinds.doi.org/x', { allowFetch: true, domainAllowlist: ['doi.org'] }),
+    ).rejects.toMatchObject({ kind: 'ssrf' });
+    expect(lookups).toBe(1);
+  });
+
   it('allows domain when on allowlist (suffix match)', async () => {
     global.fetch = vi.fn(async () => textResponse('doi content')) as typeof fetch;
     const res = await resolveSource('https://papers.doi.org/10.1/x', {
