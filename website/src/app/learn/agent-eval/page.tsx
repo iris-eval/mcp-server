@@ -665,7 +665,7 @@ export default function AgentEvalGuide(): React.ReactElement {
                 <li>IBM/Microsoft joint study — Test-driven development reduces production defects 40-90%</li>
                 <li>Gartner (2025) — 40% of agentic AI projects projected to be canceled by 2027</li>
                 <li>LangChain State of AI Agents (2025) — Production evaluation adoption rates</li>
-                <li>EU AI Act — Article 14 human oversight requirements, effective August 2026</li>
+                <li>EU AI Act — Article 14 human oversight requirements for high-risk systems, applying from 2 December 2027 (Annex III) and 2 August 2028 (Annex I)</li>
               </ul>
 
               <p className="mt-8 text-[13px] text-text-muted">

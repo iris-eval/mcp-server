@@ -2,7 +2,7 @@
 title: "The State of MCP Agent Observability (March 2026)"
 description: "A comprehensive analysis of the MCP agent observability landscape in 2026, covering market trends, security gaps, and eval approaches."
 date: 2026-03-14
-updated: 2026-08-11
+updated: 2026-10-08
 author: Ian Parent
 tags: [observability, mcp, agents, report, evaluation, cost-tracking]
 relatedPosts: [mcp-observability-specification, mcp-observability-is-the-new-apm, closing-the-eval-gap]
@@ -149,7 +149,9 @@ Per-execution cost tracking isn't a nice-to-have. It's the difference between "o
 
 ## 9. Regulatory Context
 
-The EU AI Act's traceability requirements take effect in August 2026. Article 14 requires "human oversight" measures for high-risk AI systems, including the ability to understand and trace system behavior.
+The EU AI Act's requirements for high-risk AI systems apply from December 2027. Article 14 requires "human oversight" measures for those systems, including the ability to understand and trace system behavior.
+
+> **Correction (2026-10-08):** This post first gave August 2026, the date in the Act when it was written. An amendment in July 2026 moved the requirements for high-risk systems: they apply from 2 December 2027 for the systems listed in Annex III and from 2 August 2028 for those covered by Annex I.
 
 For teams building AI agents that make consequential decisions — customer support, financial analysis, healthcare triage — the ability to log every execution with full traceability isn't just good engineering. It's becoming a legal requirement.
 
