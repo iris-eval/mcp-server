@@ -40,15 +40,29 @@ const timer = setTimeout(() => fail('no tools/list answer within 30 s'), 30_000)
 
 let finished = false;
 
+// The child may hold the database a moment longer on Windows; a leftover temp directory is harmless.
+function removeHome() {
+  try {
+    rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  } catch {}
+}
+
+// Every way out removes the temp home, an uncaught error included.
+process.on('exit', removeHome);
+
+// A server that has already exited closes its end of the pipe, and the next
+// write to it fails. That is not this script's failure to report: the 'exit'
+// handler below says the server exited, and with which code. Without a
+// listener the write error would end the script first, with a stack trace
+// instead of that sentence.
+child.stdin.on('error', () => {});
+
 function done(code) {
   if (finished) return;
   finished = true;
   clearTimeout(timer);
   const exit = () => {
-    // The child may hold the database a moment longer on Windows; a leftover temp directory is harmless.
-    try {
-      rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-    } catch {}
+    removeHome();
     process.exit(code);
   };
   if (child.exitCode !== null || child.signalCode !== null) return exit();
