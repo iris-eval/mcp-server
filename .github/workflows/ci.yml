@@ -235,8 +235,8 @@ jobs:
   # fails, `prebuild-install || node-gyp rebuild` compiles it here instead,
   # against this Node's headers, and a binary compiled against Node 24.19+
   # headers aborts the process the first time V8 frees one of its statements
-  # ("Assertion failed: (env) != nullptr", nodejs/node#65446; every 24.x
-  # release so far). A user whose download failed gets that binary too.
+  # ("Assertion failed: (env) != nullptr", nodejs/node#65446; on 24.19 to
+  # 24.21, fixed in 24.22.0). A user whose download failed gets that binary too.
   # This job compiles it on purpose on Linux, macOS and Windows and requires: the binary
   # aborts under collection exactly when Iris predicts it; Iris never loads
   # it there (it holds the store with node:sqlite, and says why); and the
@@ -292,7 +292,8 @@ jobs:
       - name: The self-test names the driver and why
         run: |
           IRIS_HOME="$RUNNER_TEMP/iris-home" IRIS_DB_PATH="$RUNNER_TEMP/iris-home/iris.db" node --import tsx src/index.ts --self-test | tee self-test.txt
-          if [ "${{ matrix.node-version }}" = 24 ]; then
+          # The driver follows Iris's own prediction for this binary on this Node; the collect test above checks that prediction against the binary.
+          if node --import tsx -e "import('./src/storage/driver.ts').then((d) => process.exit(d.nativeAbortsOnCollect(d.nativeBinaryPath()) ? 0 : 1))"; then
             grep -q "driver node: better-sqlite3 here was compiled against Node headers that abort" self-test.txt
           else
             grep -q "driver better-sqlite3" self-test.txt

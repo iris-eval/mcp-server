@@ -278,15 +278,17 @@ export const OBJECTWRAP_HOOK_SYMBOL = 'RemoveEnvironmentCleanupHook';
  * Whether this Node keeps the global list of addon cleanup hooks
  * (nodejs/node 1723773d), so an ObjectWrap freed during a collection is
  * safe. 26.x has it from 26.4.0, the release that also changed the header.
- * On 24.x it is on the v24.x-staging branch (nodejs/node#65943) and in no
- * release up to 24.21.0; the CI job `native addon built from source`
- * fails when a 24.x runtime stops aborting, which is when this line moves.
+ * 24.x has it from 24.22.0 (nodejs/node abe1b673e9, from #63985); a binary
+ * built from source on 24.22.0 survives a collection. The CI job `native
+ * addon built from source` fails when a runtime's behaviour and this list
+ * disagree, which is when this line moves.
  * Older lines never changed the header, so their binaries never carry the mark.
  */
 export function runtimeKeepsAddonHooks(version: string = process.versions.node): boolean {
   const [major, minor] = version.split('.').map(Number);
   if (major > 26) return true;
   if (major === 26) return minor >= 4;
+  if (major === 24) return minor >= 22;
   return false;
 }
 
