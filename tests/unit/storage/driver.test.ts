@@ -344,14 +344,16 @@ describe('a native binary that would abort on a collected statement', () => {
     return file;
   };
 
-  it('the runtimes that keep the cleanup-hook list: 26.4.0 and later, and no 24.x release yet', () => {
-    const table = ['22.13.0', '22.23.3', '24.18.1', '24.19.0', '24.21.0', '26.3.1', '26.4.0', '26.10.0', '27.0.0'].map((v) => [v, runtimeKeepsAddonHooks(v)]);
+  it('the runtimes that keep the cleanup-hook list: 26.4.0 and later, and 24.22.0 and later on 24.x', () => {
+    const table = ['22.13.0', '22.23.3', '24.18.1', '24.19.0', '24.21.0', '24.22.0', '24.30.1', '26.3.1', '26.4.0', '26.10.0', '27.0.0'].map((v) => [v, runtimeKeepsAddonHooks(v)]);
     expect(Object.fromEntries(table)).toEqual({
       '22.13.0': false,
       '22.23.3': false,
       '24.18.1': false,
       '24.19.0': false,
       '24.21.0': false,
+      '24.22.0': true,
+      '24.30.1': true,
       '26.3.1': false,
       '26.4.0': true,
       '26.10.0': true,
