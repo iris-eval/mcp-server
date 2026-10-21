@@ -44,7 +44,10 @@ const tempDb = (): string => {
 };
 
 const DRIVERS = (['native', ...(nodeSqliteAvailable() ? ['node'] : [])] as Array<'native' | 'node'>).filter((d) => driverHasFts5(d));
-const at = (minute: number) => new Date(Date.UTC(2026, 8, 20, 12, minute)).toISOString();
+// A week ago: inside every retention window these tests sweep with, at any date the suite runs on.
+// The traces meant to be swept set their own 2020 timestamps.
+const RECENT = Date.now() - 7 * 24 * 60 * 60 * 1000;
+const at = (minute: number) => new Date(RECENT + minute * 60_000).toISOString();
 const trace = (trace_id: string, output: string, minute = 0, extra: Partial<Trace> = {}): Trace => ({ trace_id, agent_name: 'bot', output, timestamp: at(minute), ...extra });
 
 const rawDb = (s: SqliteAdapter) => (s as unknown as { db: Driver }).db;
