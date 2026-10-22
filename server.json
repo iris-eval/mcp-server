@@ -224,6 +224,13 @@
           "name": "IRIS_ALLOWED_ORIGINS"
         },
         {
+          "description": "The most array elements and object keys one tool call's arguments may hold (default 100000); a call over it gets an error result before its arguments are validated",
+          "isRequired": false,
+          "format": "number",
+          "isSecret": false,
+          "name": "IRIS_MAX_TOOL_INPUT_ELEMENTS"
+        },
+        {
           "description": "Bind host for the dashboard (default 127.0.0.1); same as --dashboard-host",
           "isRequired": false,
           "format": "string",

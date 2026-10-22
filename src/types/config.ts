@@ -275,5 +275,13 @@ export interface IrisConfig {
       mcpKeyBy?: 'ip' | 'apiKey';
     };
     requestSizeLimit: string;
+    /**
+     * The most array elements and object keys one tool call's arguments
+     * may hold, on every transport (IRIS_MAX_TOOL_INPUT_ELEMENTS). A call
+     * over it gets an isError result before its arguments are validated.
+     * Default 100,000: see DEFAULT_MAX_TOOL_INPUT_ELEMENTS in
+     * src/config/defaults.ts for the measurements behind it.
+     */
+    maxToolInputElements: number;
   };
 }
