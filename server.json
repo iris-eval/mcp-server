@@ -224,7 +224,14 @@
           "name": "IRIS_ALLOWED_ORIGINS"
         },
         {
-          "description": "The most array elements and object keys one tool call's arguments may hold (default 100000); a call over it gets an error result before its arguments are validated",
+          "description": "The most array elements and object keys one input may hold before it is validated (default 100000): a tool call's arguments, and a dashboard or OTLP JSON request body. A tool call over it gets an error result; a body, 413. OTLP protobuf has its own ceiling, one element per 5 bytes of the request size limit",
+          "isRequired": false,
+          "format": "number",
+          "isSecret": false,
+          "name": "IRIS_MAX_INPUT_ELEMENTS"
+        },
+        {
+          "description": "The name of IRIS_MAX_INPUT_ELEMENTS before 0.21.0, read when the new name is unset",
           "isRequired": false,
           "format": "number",
           "isSecret": false,

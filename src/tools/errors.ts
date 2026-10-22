@@ -25,6 +25,7 @@ import { LLMJudgeError } from '../eval/llm-judge/client.js';
 import { CAPABILITIES_RESOURCE_URI } from '../resources/uris.js';
 import { JUDGE_COST_CAP_VAR } from '../judge-enablement.js';
 import { DAILY_BUDGET_VAR } from '../eval/llm-judge/budget.js';
+import { issuesText, MAX_LISTED_ISSUES } from '../utils/validation-errors.js';
 
 export const ERROR_CODE_CATALOGUE = [
   'IRIS_INVALID_ARGUMENT',
@@ -178,7 +179,8 @@ export function toIrisError(err: unknown): IrisError {
     // inside a handler is the rule store rejecting a definition.
     const first = err.issues[0];
     const field = first?.path?.length ? first.path.map(String).join('.') : undefined;
-    return irisError('IRIS_INVALID_RULE_CONFIG', `The rule definition was rejected: ${err.issues.map((i) => `${i.path.map(String).join('.') || 'definition'}: ${i.message}`).join('; ')}`, {
+    // At most 20 issues, then how many more (utils/validation-errors.ts).
+    return irisError('IRIS_INVALID_RULE_CONFIG', `The rule definition was rejected: ${issuesText(err.issues, { max: MAX_LISTED_ISSUES, root: 'definition' })}`, {
       ...(field ? { field } : {}),
       recovery: ['Fix the named field and deploy again. Nothing was deployed.'],
     });

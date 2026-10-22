@@ -12,7 +12,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { decodeExportTraceServiceRequest, OtlpProtobufError } from '../../../src/otel/protobuf.js';
+import { decodeExportTraceServiceRequest, OtlpProtobufError, OtlpTooManyElementsError } from '../../../src/otel/protobuf.js';
+import { countElements } from '../../../src/utils/element-count.js';
 import { fromOtlp, otlpTraceRequestSchema } from '../../../src/otel/ingest.js';
 
 const dir = resolve(import.meta.dirname, '../../fixtures/otlp');
@@ -57,5 +58,13 @@ describe('OTLP protobuf → OTLP/JSON', () => {
 
   it('an empty request is an empty resourceSpans list', () => {
     expect(decodeExportTraceServiceRequest(new Uint8Array())).toEqual({ resourceSpans: [] });
+  });
+
+  it('stops once it has read more nested messages than maxElements, and decodes a request that fits whole', () => {
+    const body = pb('python-genai');
+    const elements = countElements(decodeExportTraceServiceRequest(body), Infinity);
+    // Every nested message is at least one element, so a limit of the element count always decodes whole.
+    expect(decodeExportTraceServiceRequest(body, { maxElements: elements })).toEqual(twin('python-genai'));
+    expect(() => decodeExportTraceServiceRequest(body, { maxElements: 5 })).toThrow(OtlpTooManyElementsError);
   });
 });

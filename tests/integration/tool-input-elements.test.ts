@@ -1,5 +1,5 @@
 /*
- * The tool-input element limit (security.maxToolInputElements).
+ * The tool-input element limit (security.maxInputElements).
  *
  * The MCP SDK can count the array elements and object keys in a tool
  * call's arguments before it validates them, and answer a call over a
@@ -23,7 +23,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { createIrisServer } from '../../src/server.js';
 import { createHttpTransport } from '../../src/transport/http.js';
-import { DEFAULT_MAX_TOOL_INPUT_ELEMENTS, defaultConfig } from '../../src/config/defaults.js';
+import { DEFAULT_MAX_INPUT_ELEMENTS, defaultConfig } from '../../src/config/defaults.js';
 import { requestSizeLimitBytes } from '../../src/utils/size-limit.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
 import type { IrisConfig } from '../../src/types/config.js';
@@ -52,9 +52,9 @@ function trace(calls: number) {
   };
 }
 
-const withLimit = (maxToolInputElements: number): IrisConfig => ({
+const withLimit = (maxInputElements: number): IrisConfig => ({
   ...defaultConfig,
-  security: { ...defaultConfig.security, maxToolInputElements },
+  security: { ...defaultConfig.security, maxInputElements },
 });
 
 const refusal = (limit: number) => new RegExp(`arguments contain more than the maximum of ${limit} elements`);
@@ -116,7 +116,7 @@ describe('the element limit on the MCP server stdio serves', () => {
     expect(request(calls)).toBeLessThanOrEqual(limitBytes);
     // About 67,000 here (the paths lengthen as they count up); the proof corpus case it copies reaches 68,506 at 1 MB.
     expect(elements(args)).toBeGreaterThan(60_000);
-    expect(elements(args)).toBeLessThan(DEFAULT_MAX_TOOL_INPUT_ELEMENTS);
+    expect(elements(args)).toBeLessThan(DEFAULT_MAX_INPUT_ELEMENTS);
 
     const result = (await client.callTool({ name: 'log_trace', arguments: args })) as ToolResult;
     expect(result.isError).toBeFalsy();
@@ -125,27 +125,36 @@ describe('the element limit on the MCP server stdio serves', () => {
 
   it('at the default, refuses a payload built to be dense before validating it', async () => {
     const { client, storage } = await connect(defaultConfig);
-    expect(DEFAULT_MAX_TOOL_INPUT_ELEMENTS).toBe(100_000);
+    expect(DEFAULT_MAX_INPUT_ELEMENTS).toBe(100_000);
     // 100,001 zeros where spans are expected: 200 KB, and one validation error each without the limit.
     const result = (await client.callTool({
       name: 'log_trace',
-      arguments: { agent_name: 'a', output: 'x', spans: Array(DEFAULT_MAX_TOOL_INPUT_ELEMENTS + 1).fill(0) },
+      arguments: { agent_name: 'a', output: 'x', spans: Array(DEFAULT_MAX_INPUT_ELEMENTS + 1).fill(0) },
     })) as ToolResult;
     expect(result.isError).toBe(true);
-    expect(textOf(result)).toMatch(refusal(DEFAULT_MAX_TOOL_INPUT_ELEMENTS));
+    expect(textOf(result)).toMatch(refusal(DEFAULT_MAX_INPUT_ELEMENTS));
     expect(await stored(storage)).toBe(0);
   });
 
   it('gives a config built without the key (an embedder\'s) the default', async () => {
     const security: Partial<IrisConfig['security']> = { ...defaultConfig.security };
-    delete security.maxToolInputElements;
+    delete security.maxInputElements;
     const { client } = await connect({ ...defaultConfig, security } as IrisConfig);
     const result = (await client.callTool({
       name: 'log_trace',
-      arguments: { agent_name: 'a', output: 'x', spans: Array(DEFAULT_MAX_TOOL_INPUT_ELEMENTS + 1).fill(0) },
+      arguments: { agent_name: 'a', output: 'x', spans: Array(DEFAULT_MAX_INPUT_ELEMENTS + 1).fill(0) },
     })) as ToolResult;
     expect(result.isError).toBe(true);
-    expect(textOf(result)).toMatch(refusal(DEFAULT_MAX_TOOL_INPUT_ELEMENTS));
+    expect(textOf(result)).toMatch(refusal(DEFAULT_MAX_INPUT_ELEMENTS));
+  });
+
+  it('reads the limit from a config object that still carries its name before 0.21.0', async () => {
+    const security: Record<string, unknown> = { ...defaultConfig.security, maxToolInputElements: 50 };
+    delete security.maxInputElements;
+    const { client } = await connect({ ...defaultConfig, security } as unknown as IrisConfig);
+    const result = (await client.callTool({ name: 'log_trace', arguments: trace(10) })) as ToolResult;
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toMatch(refusal(50));
   });
 });
 

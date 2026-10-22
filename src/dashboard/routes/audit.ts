@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { strictQuery } from '../validation.js';
 import { readAuditLog } from '../../audit-log-reader.js';
 import type { CustomRuleStore } from '../../custom-rule-store.js';
+import { validationErrorBody } from '../../utils/validation-errors.js';
 
 const QuerySchema = strictQuery({
   action: z.enum(['rule.deploy', 'rule.delete', 'rule.toggle', 'rule.update', 'trace.delete']).optional(),
@@ -31,7 +32,7 @@ export function registerAuditRoutes(router: Router, store?: CustomRuleStore): vo
       res.json(result);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        res.status(400).json({ error: 'Invalid audit query', details: err.issues });
+        res.status(400).json(validationErrorBody('Invalid audit query', err.issues));
         return;
       }
       throw err;

@@ -3,6 +3,7 @@ import { logTraceInputShape } from '../tools/log-trace.js';
 import { isoTimestamp, addTraceRangeIssues, traceSearchText } from '../tools/get-traces.js';
 import { EXPORT_FORMATS } from '../export/format.js';
 import { CAPTURE_FIELDS } from '../types/trace.js';
+import { listKeys } from '../utils/validation-errors.js';
 
 /*
  * Strict request-body schema for the dashboard's MUTATING routes.
@@ -32,7 +33,7 @@ export function strictBody<T extends z.ZodRawShape>(
         .map((k) => ` ${opts!.reserved![k]}`)
         .join('');
       return (
-        `Unknown key(s): ${issue.keys.map((k) => `"${k}"`).join(', ')}. ` +
+        `Unknown key(s): ${listKeys(issue.keys)}. ` +
         `Valid keys: ${validKeys}. ` +
         'Unknown keys are rejected rather than silently dropped, so a misspelled field ' +
         'cannot change what gets stored or evaluated — check the spelling and retry.' +
@@ -56,7 +57,7 @@ export function strictQuery<T extends z.ZodRawShape>(shape: T) {
   return z.strictObject(shape, {
     error: (issue) =>
       issue.code === 'unrecognized_keys'
-        ? `Unknown query parameter(s): ${issue.keys.map((k) => `"${k}"`).join(', ')}. ` +
+        ? `Unknown query parameter(s): ${listKeys(issue.keys)}. ` +
           `Valid parameters: ${validKeys}. ` +
           'Unknown parameters are rejected rather than silently ignored, so a misspelled filter ' +
           'cannot widen what is returned — check the spelling and retry.'

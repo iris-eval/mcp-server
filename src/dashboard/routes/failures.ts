@@ -6,6 +6,7 @@ import { deriveMoment, historyBefore } from '../../eval/decision-moment.js';
 import { regressionAlarmsByTrace, type RegressionAlarm } from '../../eval/cusum.js';
 import { isFailureMoment, rankFailureScore } from '../../eval/failure-rank.js';
 import { failuresQuerySchema } from '../validation.js';
+import { validationErrorBody } from '../../utils/validation-errors.js';
 
 /*
  * How many recent traces to scan when building the failure list. On a
@@ -93,10 +94,7 @@ export function registerFailureRoutes(router: Router, storage: IStorageAdapter):
       res.json(result);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({
-          error: 'Invalid query parameters',
-          details: (err as unknown as { issues: unknown }).issues,
-        });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;

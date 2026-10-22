@@ -3,6 +3,7 @@ import type { IStorageAdapter } from '../../types/query.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import { evalStatsPeriodSchema, evalStatsFailuresSchema, evalStatsTrendSchema, driftSchema } from '../validation.js';
 import { newcombeDifference, smallestDetectableDifference, wilson, Z_95 } from '../../eval/stats.js';
+import { validationErrorBody } from '../../utils/validation-errors.js';
 
 /*
  * Below this many evaluations on a side, the comparison is reported as
@@ -36,7 +37,7 @@ export function registerEvalStatsRoutes(router: Router, storage: IStorageAdapter
       res.json(stats);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;
@@ -57,7 +58,7 @@ export function registerEvalStatsRoutes(router: Router, storage: IStorageAdapter
       res.json(trend);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;
@@ -122,7 +123,7 @@ export function registerEvalStatsRoutes(router: Router, storage: IStorageAdapter
       });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;
@@ -142,7 +143,7 @@ export function registerEvalStatsRoutes(router: Router, storage: IStorageAdapter
       res.json(rules);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;
@@ -161,7 +162,7 @@ export function registerEvalStatsRoutes(router: Router, storage: IStorageAdapter
       res.json(failures);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;

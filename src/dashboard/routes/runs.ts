@@ -5,6 +5,7 @@ import { requireTenant } from '../../middleware/tenant.js';
 import { runsQuerySchema, caseQuerySchema } from '../validation.js';
 import { compareStoredRuns } from '../../tools/compare-runs.js';
 import { IrisError } from '../../tools/errors.js';
+import { validationErrorBody } from '../../utils/validation-errors.js';
 
 /** The body of POST /compare: the compare_runs tool's input, and nothing the tool would not take. */
 const compareBodySchema = z
@@ -46,7 +47,7 @@ export function registerRunRoutes(router: Router, storage: IStorageAdapter): voi
       res.json({ runs, count: runs.length });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;
@@ -90,7 +91,7 @@ export function registerRunRoutes(router: Router, storage: IStorageAdapter): voi
       res.json({ run_id: req.params.id, baseline: body.baseline });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid request body', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid request body', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;
@@ -116,7 +117,7 @@ export function registerRunRoutes(router: Router, storage: IStorageAdapter): voi
       res.json(await compareStoredRuns(storage, tenantId, body));
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid request body', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid request body', (err as unknown as { issues: unknown }).issues));
         return;
       }
       // An unknown dataset is the caller's argument, not a server fault.
@@ -158,7 +159,7 @@ export function registerRunRoutes(router: Router, storage: IStorageAdapter): voi
       });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;

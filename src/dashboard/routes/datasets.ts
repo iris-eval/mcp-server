@@ -19,6 +19,7 @@ import type { IStorageAdapter } from '../../types/query.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import { strictBody } from '../validation.js';
 import { DatasetExistsError } from '../../storage/sqlite-adapter.js';
+import { validationErrorBody } from '../../utils/validation-errors.js';
 
 const caseKey = z.string().trim().min(1).max(200);
 
@@ -70,7 +71,7 @@ export function registerDatasetRoutes(router: Router, storage: IStorageAdapter):
       res.status(201).json({ dataset });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid request body', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid request body', (err as unknown as { issues: unknown }).issues));
         return;
       }
       if (err instanceof DatasetExistsError) {

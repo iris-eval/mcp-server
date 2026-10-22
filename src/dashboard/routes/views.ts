@@ -20,6 +20,7 @@ import type { TenantId } from '../../types/tenant.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import { regressionAlarms, describeRegressionAlarm } from '../../eval/cusum.js';
 import { deriveCoverage } from '../../eval/verdict.js';
+import { validationErrorBody } from '../../utils/validation-errors.js';
 
 export const VIEW_NAMES = ['failures_by_rule', 'cost_by_agent', 'flaky_cases', 'unjudged_questions', 'regression_alarms'] as const;
 export type ViewName = (typeof VIEW_NAMES)[number];
@@ -201,7 +202,7 @@ export function registerViewRoutes(router: Router, storage: IStorageAdapter): vo
       });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;

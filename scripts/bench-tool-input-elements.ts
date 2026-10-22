@@ -1,6 +1,6 @@
 /*
  * What one tool call's arguments cost the server, with and without the
- * element limit (security.maxToolInputElements, GHSA-46jr-4wx8-v453).
+ * element limit (security.maxInputElements, GHSA-46jr-4wx8-v453).
  *
  *   node --import tsx scripts/bench-tool-input-elements.ts
  *   node --import tsx scripts/bench-tool-input-elements.ts --limits off,10000,100000 --concurrency 20 --runs 3
@@ -54,7 +54,7 @@ if (args[0] === '--serve') {
     security: {
       ...defaultConfig.security,
       // Infinity is the SDK's "no limit"; the config file cannot say it, a benchmark can.
-      maxToolInputElements: limit,
+      maxInputElements: limit,
       rateLimit: { ...defaultConfig.security.rateLimit, mcp: 1_000_000 },
     },
   };

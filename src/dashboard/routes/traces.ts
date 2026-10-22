@@ -15,6 +15,7 @@ import { traceEncoder } from '../../export/format.js';
 import { searchOf } from '../../tools/get-traces.js';
 import { costFieldsOf, resolveTraceCost } from '../../cost/trace-cost.js';
 import { canonicalCapture } from '../../eval/evidence.js';
+import { validationErrorBody } from '../../utils/validation-errors.js';
 
 export interface TraceRouteOptions {
   /**
@@ -114,7 +115,7 @@ export function registerTraceRoutes(
       res.status(201).json({ trace_id: traceId, status: 'stored', ...costFieldsOf(trace), evaluation: response });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid trace payload', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid trace payload', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;
@@ -145,7 +146,7 @@ export function registerTraceRoutes(
       res.json(result);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;
@@ -179,7 +180,7 @@ export function registerTraceRoutes(
       await sendExport(res, 'traces', query.format, traceEncoder(query.format), batches);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;
@@ -199,7 +200,7 @@ export function registerTraceRoutes(
       res.json({ trace, spans, evals });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;

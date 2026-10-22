@@ -26,7 +26,7 @@ import type { CustomRuleStore } from '../../custom-rule-store.js';
 import type { Trace } from '../../types/trace.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import { fromOtlp, otlpTraceRequestSchema } from '../../otel/ingest.js';
-import { decodeExportTraceServiceRequest, OtlpProtobufError } from '../../otel/protobuf.js';
+import { decodeExportTraceServiceRequest, OtlpProtobufError, OtlpTooManyElementsError } from '../../otel/protobuf.js';
 import { toSteps } from '../../eval/steps.js';
 import { evaluateStoredTrace } from '../../eval/ingest.js';
 import { dormantRulesFrom } from '../../eval/dormant.js';
@@ -34,6 +34,10 @@ import type { IngestEvalType } from '../../eval/ingest.js';
 import { logTraceInputShape } from '../../tools/log-trace.js';
 import { costFieldsOf } from '../../cost/trace-cost.js';
 import { newJudgeRequest } from '../../eval/llm-judge/budget.js';
+import { issuesText } from '../../utils/validation-errors.js';
+import { countElements, tooManyElementsBody } from '../../utils/element-count.js';
+import { DEFAULT_MAX_INPUT_ELEMENTS, defaultConfig, protobufElementCeiling } from '../../config/defaults.js';
+import { requestSizeLimitBytes } from '../../utils/size-limit.js';
 
 /**
  * The most traces one OTLP request may store. A collector's default batch is
@@ -54,6 +58,11 @@ export interface OtlpRouteOptions {
   customRuleStore?: CustomRuleStore;
   /** `otel.evaluateOnIngest` from the config: score each stored trace that carries an output. */
   evaluateOnIngest: boolean;
+  /**
+   * The element ceiling for a protobuf body, counted as it decodes: protobufElementCeiling in
+   * src/config/defaults.ts (JSON bodies are counted by the app against security.maxInputElements).
+   */
+  maxProtobufElements?: number;
 }
 
 export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, options: OtlpRouteOptions): void {
@@ -81,11 +90,22 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
         res.status(400).json({ error: 'An application/x-protobuf request must carry the bytes of an ExportTraceServiceRequest; the body was empty or not bytes' });
         return;
       }
+      // Decoded protobuf fails validation element by element as JSON does, and is denser: it is counted
+      // while it decodes (one element at least per nested message) and once decoded, before the schema reads it.
+      const max = options.maxProtobufElements ?? protobufElementCeiling(DEFAULT_MAX_INPUT_ELEMENTS, requestSizeLimitBytes(defaultConfig.security.requestSizeLimit));
       try {
-        payload = decodeExportTraceServiceRequest(body);
+        payload = decodeExportTraceServiceRequest(body, { maxElements: max });
       } catch (err) {
+        if (err instanceof OtlpTooManyElementsError) {
+          res.status(413).json(tooManyElementsBody(max));
+          return;
+        }
         const message = err instanceof OtlpProtobufError ? err.message : err instanceof Error ? err.message : String(err);
         res.status(400).json({ error: `Not a protobuf ExportTraceServiceRequest: ${message}` });
+        return;
+      }
+      if (countElements(payload, max) > max) {
+        res.status(413).json(tooManyElementsBody(max));
         return;
       }
     } else if (type.includes('application/json')) {
@@ -98,7 +118,8 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
     if (!parsed.success) {
       res.status(400).json({
         error: 'Not an OTLP ExportTraceServiceRequest: expected { resourceSpans: [{ resource, scopeSpans: [{ spans: [...] }] }] }',
-        details: parsed.error.issues.slice(0, 5).map((i) => `${i.path.map(String).join('.') || '(root)'}: ${i.message}`),
+        details: parsed.error.issues.slice(0, 5).map((i) => issuesText([i], { max: 1, root: '(root)' })),
+        issueCount: parsed.error.issues.length,
       });
       return;
     }
