@@ -31,8 +31,9 @@ import { parseSizeLimit } from '../utils/size-limit.js';
  * waiting behind it are not left for minutes (#703).
  */
 export const SEARCH_BUDGET_RANGE_MS = [50, 60_000] as const;
-/** What security.maxToolInputElements and IRIS_MAX_TOOL_INPUT_ELEMENTS accept. */
-export const TOOL_INPUT_ELEMENTS_RULE = 'a whole number of at least 1, e.g. 100000';
+/** What security.maxInputElements and IRIS_MAX_INPUT_ELEMENTS accept, and their names before 0.21.0. */
+export const INPUT_ELEMENTS_RULE = 'a whole number of at least 1, e.g. 100000';
+const inputElements = z.number().int(INPUT_ELEMENTS_RULE).min(1, INPUT_ELEMENTS_RULE);
 const port = z.number().int().min(1).max(65535);
 const nonNegativeInt = z.number().int().min(0);
 const nonNegative = z.number().min(0);
@@ -152,11 +153,13 @@ export const configFileSchema = z.strictObject({
       requestSizeLimit: name
         .refine((v) => parseSizeLimit(v) !== null, 'a size: a number of bytes, or a number with kb, mb or gb, e.g. "1mb"')
         .optional(),
-      maxToolInputElements: z
-        .number()
-        .int(TOOL_INPUT_ELEMENTS_RULE)
-        .min(1, TOOL_INPUT_ELEMENTS_RULE)
-        .optional(),
+      maxInputElements: inputElements.optional(),
+      // Its name before 0.21.0, when it bounded tool calls only: still read, and loadConfig moves it to maxInputElements.
+      maxToolInputElements: inputElements.optional(),
+    })
+    .refine((s) => s.maxInputElements === undefined || s.maxToolInputElements === undefined, {
+      message: 'set maxInputElements only: maxToolInputElements is its name before 0.21.0, and the two cannot both be set',
+      path: ['maxToolInputElements'],
     })
     .optional(),
 });

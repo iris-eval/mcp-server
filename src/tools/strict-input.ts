@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { listKeys } from '../utils/validation-errors.js';
 
 /*
  * Wraps a tool's input shape in a STRICT object schema so unknown argument
@@ -27,7 +28,7 @@ export function strictInput<T extends z.ZodRawShape>(shape: T) {
   return z.strictObject(shape, {
     error: (issue) =>
       issue.code === 'unrecognized_keys'
-        ? `Unknown argument(s): ${issue.keys.map((k) => `"${k}"`).join(', ')}. ` +
+        ? `Unknown argument(s): ${listKeys(issue.keys)}. ` +
           `Valid arguments: ${validKeys}. ` +
           'Unknown arguments are rejected rather than silently ignored, so a misspelled ' +
           'argument name cannot change what gets evaluated — check the spelling against ' +
@@ -55,7 +56,7 @@ export function strictNested<T extends z.ZodRawShape>(shape: T, container: strin
   return z.strictObject(shape, {
     error: (issue) =>
       issue.code === 'unrecognized_keys'
-        ? `Unknown key(s) in ${container}: ${issue.keys.map((k) => `"${k}"`).join(', ')}. ` +
+        ? `Unknown key(s) in ${container}: ${listKeys(issue.keys)}. ` +
           `Valid keys: ${validKeys}. ` +
           'Unknown keys are rejected rather than silently dropped, so a misspelled key ' +
           'cannot change how the rule scores — check the spelling and retry.'

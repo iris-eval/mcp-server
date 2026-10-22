@@ -17,11 +17,18 @@ try {
 export const PKG_VERSION = pkgVersion;
 
 /*
- * The most array elements and object keys one tool call's arguments may
- * hold (security.maxToolInputElements). The MCP SDK counts them before it
- * validates the arguments, and refuses a call over the limit with an
- * isError result (GHSA-46jr-4wx8-v453); the SDK leaves the count unlimited
- * unless the server sets one.
+ * The most array elements and object keys one input may hold before it is
+ * validated (security.maxInputElements; its name before 0.21.0 was
+ * maxToolInputElements, and that name is still read). It bounds two doors:
+ *
+ * - a tool call's arguments, on stdio and HTTP. The MCP SDK counts them
+ *   before it validates them, and answers a call over the limit with an
+ *   isError result (GHSA-46jr-4wx8-v453); it counts nothing unless the
+ *   server sets a limit.
+ * - a request body on the dashboard port: the API's JSON bodies and
+ *   POST /v1/traces, JSON or protobuf (counted as it is decoded). A body over
+ *   the limit is answered 413 before any schema reads it
+ *   (src/utils/element-count.ts).
  *
  * The bytes were already bounded (requestSizeLimit, 1 MB on both
  * transports); the element count was not, and it is what costs memory.
@@ -43,8 +50,26 @@ export const PKG_VERSION = pkgVersion;
  * shape somewhere past 700 KB. An operator who raises requestSizeLimit for
  * denser data raises this with it. The bursts are measured by
  * scripts/bench-tool-input-elements.ts.
+ *
+ * The dashboard's bodies have the same shapes (POST /api/v1/traces takes
+ * the log_trace arguments), and OpenTelemetry exports sent as JSON hold at
+ * most 62,755 elements at 1 MB (the fixtures in tests/fixtures/otlp).
+ * Protobuf is denser: decoded, the same exports hold 17 to 26 bytes per
+ * element from the agent frameworks and 7.5 to 10 from the plain Python
+ * exporter, so a protobuf batch of minimal spans reaches 100,000 past
+ * about 730 KB. A collector that sends batches that dense and that large
+ * raises this.
  */
-export const DEFAULT_MAX_TOOL_INPUT_ELEMENTS = 100_000;
+export const DEFAULT_MAX_INPUT_ELEMENTS = 100_000;
+
+/**
+ * The element limit a config sets: maxInputElements, else its name before
+ * 0.21.0 (an embedder's config object may still carry it), else the
+ * default. A config built without either still gets the limit.
+ */
+export function maxInputElementsOf(security: { maxInputElements?: number; maxToolInputElements?: number } | undefined): number {
+  return security?.maxInputElements ?? security?.maxToolInputElements ?? DEFAULT_MAX_INPUT_ELEMENTS;
+}
 
 export const defaultConfig: IrisConfig = {
   storage: {
@@ -163,6 +188,6 @@ export const defaultConfig: IrisConfig = {
       mcp: 20,
     },
     requestSizeLimit: '1mb',
-    maxToolInputElements: DEFAULT_MAX_TOOL_INPUT_ELEMENTS,
+    maxInputElements: DEFAULT_MAX_INPUT_ELEMENTS,
   },
 };

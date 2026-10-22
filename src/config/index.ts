@@ -5,7 +5,7 @@ import { assertWebhookConfig } from '../notify/config.js';
 import { defaultConfig } from './defaults.js';
 import { assertValidCriticality } from '../eval/criticality.js';
 import { irisHome } from '../utils/iris-home.js';
-import { validateConfigFile, SEARCH_BUDGET_RANGE_MS, TOOL_INPUT_ELEMENTS_RULE } from './schema.js';
+import { validateConfigFile, SEARCH_BUDGET_RANGE_MS, INPUT_ELEMENTS_RULE } from './schema.js';
 import { setPricingSettings } from '../cost/model-lookup.js';
 
 /*
@@ -79,7 +79,14 @@ function loadConfigFile(path: string): Partial<IrisConfig> {
   }
   // Strict: a key Iris does not read, or a value of the wrong
   // type, refuses startup naming it — see schema.ts for why.
-  return validateConfigFile(parsed, path);
+  const file = validateConfigFile(parsed, path);
+  // security.maxToolInputElements is security.maxInputElements's name before 0.21.0 (the schema refuses both at once).
+  const security = file.security as (Partial<IrisConfig['security']> & { maxToolInputElements?: number }) | undefined;
+  if (security?.maxToolInputElements !== undefined) {
+    const { maxToolInputElements, ...rest } = security;
+    file.security = { ...rest, maxInputElements: maxToolInputElements } as IrisConfig['security'];
+  }
+  return file;
 }
 
 function parsePortEnv(value: string, name: string): number {
@@ -100,11 +107,11 @@ function parseSearchBudgetEnv(value: string): number {
   return n;
 }
 
-/** IRIS_MAX_TOOL_INPUT_ELEMENTS: what config.json's security.maxToolInputElements accepts; anything else refuses startup. */
-function parseToolInputElementsEnv(value: string): number {
+/** IRIS_MAX_INPUT_ELEMENTS, or its name before 0.21.0: what config.json's security.maxInputElements accepts; anything else refuses startup. */
+function parseInputElementsEnv(value: string, name: string): number {
   const n = /^\s*\d+\s*$/.test(value) ? Number(value) : NaN;
   if (!Number.isSafeInteger(n) || n < 1) {
-    throw new Error(`IRIS_MAX_TOOL_INPUT_ELEMENTS=${JSON.stringify(value)} is not valid (must be ${TOOL_INPUT_ELEMENTS_RULE})`);
+    throw new Error(`${name}=${JSON.stringify(value)} is not valid (must be ${INPUT_ELEMENTS_RULE})`);
   }
   return n;
 }
@@ -202,10 +209,16 @@ function loadEnvVars(): Partial<IrisConfig> {
       allowedOrigins: process.env.IRIS_ALLOWED_ORIGINS.split(',').map((s) => s.trim()),
     };
   }
-  if (process.env.IRIS_MAX_TOOL_INPUT_ELEMENTS) {
+  // IRIS_MAX_TOOL_INPUT_ELEMENTS is its name before 0.21.0, when it bounded tool calls only: read when the new name is unset.
+  const inputElements = process.env.IRIS_MAX_INPUT_ELEMENTS
+    ? { name: 'IRIS_MAX_INPUT_ELEMENTS', value: process.env.IRIS_MAX_INPUT_ELEMENTS }
+    : process.env.IRIS_MAX_TOOL_INPUT_ELEMENTS
+      ? { name: 'IRIS_MAX_TOOL_INPUT_ELEMENTS', value: process.env.IRIS_MAX_TOOL_INPUT_ELEMENTS }
+      : undefined;
+  if (inputElements) {
     config.security = {
       ...(config.security as object),
-      maxToolInputElements: parseToolInputElementsEnv(process.env.IRIS_MAX_TOOL_INPUT_ELEMENTS),
+      maxInputElements: parseInputElementsEnv(inputElements.value, inputElements.name),
     };
   }
 

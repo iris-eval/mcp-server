@@ -62,6 +62,7 @@ import { generateTraceId, generateSpanId } from '../utils/ids.js';
 import { canonicalCapture } from '../eval/evidence.js';
 import { AGGREGATED_INPUT_KEYS, AGGREGATED_OUTPUT_KEYS, CACHE_READ_KEYS, CACHE_WRITE_1H_KEYS, CACHE_WRITE_KEYS, INPUT_TOKEN_KEYS, OUTPUT_TOKEN_KEYS } from './usage-keys.js';
 import { resolveTraceCost } from '../cost/trace-cost.js';
+import { issuesText } from '../utils/validation-errors.js';
 
 /* ---- OTLP JSON, loosely typed (unknown fields pass; what we read is checked) ---- */
 
@@ -683,7 +684,8 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
         const parsed = otlpSpan.safeParse(raw);
         if (!parsed.success) {
           rejectedSpans += 1;
-          if (rejections.length < 5) rejections.push(parsed.error.issues.map((i) => `${i.path.join('.') || 'span'}: ${i.message}`).join('; '));
+          // Five spans' reasons, three issues each, and how many more: the answer stays small however many issues a span had.
+          if (rejections.length < 5) rejections.push(issuesText(parsed.error.issues, { max: 3, root: 'span' }));
           continue;
         }
         const s = parsed.data;

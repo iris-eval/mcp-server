@@ -13,6 +13,7 @@ import type { CustomRuleDefinition } from '../../types/eval.js';
 import { DuplicateRuleNameError, replacedRulesWarning, retireSameNamedRules } from '../../tools/deploy-rule.js';
 import { strictBody } from '../validation.js';
 import { costContextOf } from '../../eval/cost-basis.js';
+import { validationErrorBody } from '../../utils/validation-errors.js';
 
 const SeveritySchema = z.enum(['low', 'medium', 'high', 'critical']);
 const EvalTypeSchema = z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom']);
@@ -192,7 +193,7 @@ export function registerRuleRoutes(
       });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        res.status(400).json({ error: 'Invalid rule definition', details: err.issues });
+        res.status(400).json(validationErrorBody('Invalid rule definition', err.issues));
         return;
       }
       if (err instanceof DuplicateRuleNameError) {
@@ -244,7 +245,7 @@ export function registerRuleRoutes(
       res.json({ rule });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        res.status(400).json({ error: 'Invalid toggle request', details: err.issues });
+        res.status(400).json(validationErrorBody('Invalid toggle request', err.issues));
         return;
       }
       throw err;
@@ -274,7 +275,7 @@ export function registerRuleRoutes(
       res.json(result);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        res.status(400).json({ error: 'Invalid preview request', details: err.issues });
+        res.status(400).json(validationErrorBody('Invalid preview request', err.issues));
         return;
       }
       const status = (err as { status?: number }).status;

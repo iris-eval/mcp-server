@@ -12,7 +12,7 @@ function makeConfig(apiKey?: string): Pick<IrisConfig, 'security'> {
       allowedOrigins: ['http://localhost:*'],
       rateLimit: { api: 100, mcp: 20 },
       requestSizeLimit: '1mb',
-      maxToolInputElements: 100_000,
+      maxInputElements: 100_000,
     },
   };
 }
@@ -113,7 +113,7 @@ describe('auth middleware — the key ring', () => {
         allowedOrigins: ['http://localhost:*'],
         rateLimit: { api: 100, mcp: 20 },
         requestSizeLimit: '1mb',
-        maxToolInputElements: 100_000,
+        maxInputElements: 100_000,
       },
     };
   }

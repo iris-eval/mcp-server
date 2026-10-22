@@ -4,6 +4,7 @@ import { requireTenant } from '../../middleware/tenant.js';
 import { evalQuerySchema, evalExportQuerySchema } from '../validation.js';
 import { sendExport } from '../export-response.js';
 import { evalEncoder } from '../../export/format.js';
+import { validationErrorBody } from '../../utils/validation-errors.js';
 
 export function registerEvaluationRoutes(router: Router, storage: IStorageAdapter): void {
   // Every evaluation the list's filters admit, as CSV or JSON Lines, streamed (#4).
@@ -20,7 +21,7 @@ export function registerEvaluationRoutes(router: Router, storage: IStorageAdapte
       await sendExport(res, 'evaluations', query.format, evalEncoder(query.format), batches);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;
@@ -42,7 +43,7 @@ export function registerEvaluationRoutes(router: Router, storage: IStorageAdapte
       res.json(result);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;

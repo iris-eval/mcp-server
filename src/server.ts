@@ -17,7 +17,7 @@ import { judgeBudgetFromEnv } from './eval/llm-judge/budget.js';
 import type { StoreGate } from './storage/ready.js';
 import { errorResult } from './tools/respond.js';
 import { toIrisError } from './tools/errors.js';
-import { DEFAULT_MAX_TOOL_INPUT_ELEMENTS } from './config/defaults.js';
+import { maxInputElementsOf } from './config/defaults.js';
 
 export interface IrisServer {
   mcpServer: McpServer;
@@ -141,7 +141,7 @@ export function createIrisServer(
    * src/config/defaults.ts. A config built without the key (an embedder's)
    * still gets the default.
    */
-  const maxToolInputElements = config.security.maxToolInputElements ?? DEFAULT_MAX_TOOL_INPUT_ELEMENTS;
+  const maxToolInputElements = maxInputElementsOf(config.security);
 
   const newMcpServer = (): McpServer => {
     const server = new McpServer(

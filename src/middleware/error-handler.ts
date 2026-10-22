@@ -1,14 +1,12 @@
 import type { ErrorRequestHandler } from 'express';
 import type { Logger } from '../utils/logger.js';
+import { validationErrorBody } from '../utils/validation-errors.js';
 
 export function createErrorHandler(logger: Logger): ErrorRequestHandler {
   return (err, _req, res, _next) => {
-    // Handle Zod validation errors
+    // Handle Zod validation errors: at most 20 issues, and how many there were (utils/validation-errors.ts).
     if (err?.name === 'ZodError' || err?.constructor?.name === 'ZodError') {
-      res.status(400).json({
-        error: 'Validation error',
-        details: err.errors ?? err.issues,
-      });
+      res.status(400).json(validationErrorBody('Validation error', err.issues ?? err.errors));
       return;
     }
 

@@ -30,6 +30,7 @@ import { toEvaluationResponse } from '../../eval/response.js';
 import { insertLinkedEvalResult } from '../../tools/trace-link.js';
 import { costContextOf } from '../../eval/cost-basis.js';
 import { recordOfTrace } from '../../eval/evidence.js';
+import { validationErrorBody } from '../../utils/validation-errors.js';
 
 const LabelBody = strictBody({
   eval_id: z.string().min(1).max(200),
@@ -126,7 +127,7 @@ export function registerLabelRoutes(router: Router, storage: IStorageAdapter, op
       res.status(201).json({ label, rule: stats.rules.find((r) => r.rule === body.rule) ?? null, min: LOCAL_LABEL_MIN, estimatedPrior: stats.estimatedPrior, suggestion: stats.suggestion });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid request body', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid request body', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;
@@ -141,7 +142,7 @@ export function registerLabelRoutes(router: Router, storage: IStorageAdapter, op
       res.json({ labels });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;
@@ -164,7 +165,7 @@ export function registerLabelRoutes(router: Router, storage: IStorageAdapter, op
       res.json({ issues, window: LOCAL_LABEL_WINDOW });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid query parameters', details: (err as unknown as { issues: unknown }).issues });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;

@@ -4,6 +4,7 @@ import { MOMENT_SIGNIFICANCE_KINDS } from '../../types/decision-moment.js';
 import { basename, isAbsolute, relative, sep } from 'node:path';
 import type { PreferenceStore } from '../../preferences.js';
 import { irisHome } from '../../utils/iris-home.js';
+import { validationErrorBody } from '../../utils/validation-errors.js';
 
 /* PATCH body schema. Every field optional + strict (rejects unknown keys
  * to catch typos at the API boundary). Inner schemas mirror preferences.ts. */
@@ -75,7 +76,7 @@ export function registerPreferencesRoutes(
       res.json({ preferences: updated, displayPath: preferencesDisplayPath(store.path) });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        res.status(400).json({ error: 'Invalid preferences patch', details: err.issues });
+        res.status(400).json(validationErrorBody('Invalid preferences patch', err.issues));
         return;
       }
       throw err;

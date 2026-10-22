@@ -20,6 +20,7 @@ import {
   MOMENT_RANK_WINDOW_MAX,
   rankBySignificance,
 } from '../../eval/moment-rank.js';
+import { validationErrorBody } from '../../utils/validation-errors.js';
 
 const VERDICT_VALUES: MomentVerdict[] = ['pass', 'fail', 'partial', 'unevaluated'];
 const SIGNIFICANCE_KINDS: readonly MomentSignificanceKind[] = MOMENT_SIGNIFICANCE_KINDS;
@@ -195,10 +196,7 @@ export function registerMomentRoutes(router: Router, storage: IStorageAdapter): 
       res.json(result);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({
-          error: 'Invalid query parameters',
-          details: (err as unknown as { issues: unknown }).issues,
-        });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;
@@ -224,10 +222,7 @@ export function registerMomentRoutes(router: Router, storage: IStorageAdapter): 
       res.json(detail);
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
-        res.status(400).json({
-          error: 'Invalid query parameters',
-          details: (err as unknown as { issues: unknown }).issues,
-        });
+        res.status(400).json(validationErrorBody('Invalid query parameters', (err as unknown as { issues: unknown }).issues));
         return;
       }
       throw err;

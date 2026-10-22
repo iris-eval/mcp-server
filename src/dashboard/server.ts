@@ -41,6 +41,8 @@ import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
 import type { PreferenceStore } from '../preferences.js';
 import { requestSizeLimitBytes } from '../utils/size-limit.js';
+import { countElements, tooManyElementsBody } from '../utils/element-count.js';
+import { maxInputElementsOf } from '../config/defaults.js';
 import { compressJsonResponses, findPrecompressed, precompressedFile, servePrecompressed } from './compression.js';
 
 export interface DashboardServer {
@@ -143,6 +145,22 @@ export function createDashboardServer(
   app.use(express.json({ limit: sizeLimit }));
   // OTLP/HTTP protobuf bodies — raw bytes, same size limit; the route decodes them.
   app.use(express.raw({ type: 'application/x-protobuf', limit: sizeLimit }));
+  /*
+   * The element limit on every JSON body (security.maxInputElements), counted
+   * before any route's schema reads it. Validation reports a body element
+   * by element, so what it costs grows with the elements, which the byte
+   * limit above does not bound. Protobuf arrives as bytes here, counts 0,
+   * and is counted by the OTLP route as it is decoded.
+   */
+  const maxElements = maxInputElementsOf(config.security);
+  app.use((req, res, next) => {
+    const body: unknown = req.body;
+    if (body !== null && typeof body === 'object' && countElements(body, maxElements) > maxElements) {
+      res.status(413).json(tooManyElementsBody(maxElements));
+      return;
+    }
+    next();
+  });
 
   // CORS
   app.use(createCorsMiddleware(config.security.allowedOrigins));
@@ -227,7 +245,7 @@ export function createDashboardServer(
    */
   const otlp = express.Router();
   otlp.use(createApiRateLimiter(config));
-  registerOtlpRoutes(otlp, storage, { evalEngine: options?.evalEngine, customRuleStore: options?.customRuleStore, evaluateOnIngest: config.otel.evaluateOnIngest });
+  registerOtlpRoutes(otlp, storage, { evalEngine: options?.evalEngine, customRuleStore: options?.customRuleStore, evaluateOnIngest: config.otel.evaluateOnIngest, maxInputElements: maxElements });
   app.use('/v1', otlp);
 
   // Serve static dashboard files if built (rate limited).

@@ -27,11 +27,34 @@ export class OtlpProtobufError extends Error {
   }
 }
 
+/**
+ * A body holds more nested messages than the element limit allows
+ * (security.maxInputElements). Every nested message decodes to at least one
+ * array element or object key, so the decode stops there instead of
+ * building the whole tree only to refuse it.
+ */
+export class OtlpTooManyElementsError extends Error {
+  constructor(readonly limit: number) {
+    super(`more than ${limit} nested messages`);
+    this.name = 'OtlpTooManyElementsError';
+  }
+}
+
 type JsonObject = Record<string, unknown>;
+
+/** Nested messages one decode may still read; shared by every reader of one request. */
+interface Budget {
+  left: number;
+  readonly limit: number;
+}
 
 class Reader {
   pos = 0;
-  constructor(readonly buf: Uint8Array, readonly end: number = buf.length) {}
+  constructor(
+    readonly buf: Uint8Array,
+    readonly end: number = buf.length,
+    readonly budget: Budget = { left: Infinity, limit: Infinity },
+  ) {}
 
   get done(): boolean {
     return this.pos >= this.end;
@@ -104,8 +127,9 @@ class Reader {
   }
 
   sub(): Reader {
+    if (--this.budget.left < 0) throw new OtlpTooManyElementsError(this.budget.limit);
     const b = this.bytes();
-    return new Reader(b, b.length);
+    return new Reader(b, b.length, this.budget);
   }
 }
 
@@ -304,10 +328,13 @@ function resourceSpans(r: Reader): JsonObject {
 /**
  * Decode an OTLP ExportTraceServiceRequest (protobuf wire format) into the
  * OTLP/JSON object: `{ resourceSpans: [...] }`. Throws OtlpProtobufError on
- * a malformed buffer.
+ * a malformed buffer, and OtlpTooManyElementsError once it has read more
+ * than `maxElements` nested messages (a body that decodes to more elements
+ * than the limit allows; the route answers 413).
  */
-export function decodeExportTraceServiceRequest(bytes: Uint8Array): { resourceSpans: JsonObject[] } {
-  const r = new Reader(bytes);
+export function decodeExportTraceServiceRequest(bytes: Uint8Array, options: { maxElements?: number } = {}): { resourceSpans: JsonObject[] } {
+  const limit = options.maxElements ?? Infinity;
+  const r = new Reader(bytes, bytes.length, { left: limit, limit });
   const out: { resourceSpans: JsonObject[] } = { resourceSpans: [] };
   while (!r.done) {
     const [field, wt] = r.tag();
