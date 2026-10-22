@@ -5,7 +5,7 @@ import { assertWebhookConfig } from '../notify/config.js';
 import { defaultConfig } from './defaults.js';
 import { assertValidCriticality } from '../eval/criticality.js';
 import { irisHome } from '../utils/iris-home.js';
-import { validateConfigFile, SEARCH_BUDGET_RANGE_MS } from './schema.js';
+import { validateConfigFile, SEARCH_BUDGET_RANGE_MS, TOOL_INPUT_ELEMENTS_RULE } from './schema.js';
 import { setPricingSettings } from '../cost/model-lookup.js';
 
 /*
@@ -96,6 +96,15 @@ function parseSearchBudgetEnv(value: string): number {
   const [min, max] = SEARCH_BUDGET_RANGE_MS;
   if (!Number.isInteger(n) || n < min || n > max) {
     throw new Error(`IRIS_SEARCH_BUDGET_MS=${JSON.stringify(value)} is not a valid search budget (must be a whole number of milliseconds, ${min}-${max})`);
+  }
+  return n;
+}
+
+/** IRIS_MAX_TOOL_INPUT_ELEMENTS: what config.json's security.maxToolInputElements accepts; anything else refuses startup. */
+function parseToolInputElementsEnv(value: string): number {
+  const n = /^\s*\d+\s*$/.test(value) ? Number(value) : NaN;
+  if (!Number.isSafeInteger(n) || n < 1) {
+    throw new Error(`IRIS_MAX_TOOL_INPUT_ELEMENTS=${JSON.stringify(value)} is not valid (must be ${TOOL_INPUT_ELEMENTS_RULE})`);
   }
   return n;
 }
@@ -191,6 +200,12 @@ function loadEnvVars(): Partial<IrisConfig> {
     config.security = {
       ...(config.security as object),
       allowedOrigins: process.env.IRIS_ALLOWED_ORIGINS.split(',').map((s) => s.trim()),
+    };
+  }
+  if (process.env.IRIS_MAX_TOOL_INPUT_ELEMENTS) {
+    config.security = {
+      ...(config.security as object),
+      maxToolInputElements: parseToolInputElementsEnv(process.env.IRIS_MAX_TOOL_INPUT_ELEMENTS),
     };
   }
 

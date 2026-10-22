@@ -17,6 +17,7 @@ import { judgeBudgetFromEnv } from './eval/llm-judge/budget.js';
 import type { StoreGate } from './storage/ready.js';
 import { errorResult } from './tools/respond.js';
 import { toIrisError } from './tools/errors.js';
+import { DEFAULT_MAX_TOOL_INPUT_ELEMENTS } from './config/defaults.js';
 
 export interface IrisServer {
   mcpServer: McpServer;
@@ -130,13 +131,25 @@ export function createIrisServer(
   const capabilities = (): Capabilities =>
     buildCapabilities({ config, evalEngine, customRuleStore: ruleStore, mode: options?.mode });
 
+  /*
+   * The element limit (GHSA-46jr-4wx8-v453). The SDK counts a tool call's
+   * array elements and object keys before it validates the arguments, and
+   * answers a call over the limit with an isError result. It applies no
+   * limit unless the server sets one, so every MCP server built here sets
+   * it, for stdio and HTTP alike: one limit everywhere, as with
+   * requestSizeLimit. The default and the measurements behind it are in
+   * src/config/defaults.ts. A config built without the key (an embedder's)
+   * still gets the default.
+   */
+  const maxToolInputElements = config.security.maxToolInputElements ?? DEFAULT_MAX_TOOL_INPUT_ELEMENTS;
+
   const newMcpServer = (): McpServer => {
     const server = new McpServer(
       {
         name: config.server.name,
         version: config.server.version,
       },
-      { instructions },
+      { instructions, maxToolInputElements },
     );
     if (options?.gate) gateRequests(server, options.gate);
     registerAllTools(server, storage, evalEngine, ruleStore);

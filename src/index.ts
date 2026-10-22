@@ -266,6 +266,9 @@ Environment variables (CLI flags take precedence):
   IRIS_ALLOWED_ORIGINS                 Comma-separated origin allowlist. Dashboard: CORS headers (supports globs, e.g. http://localhost:*).
                                        HTTP transport: exact-match Origin allowlist for DNS-rebinding protection (globs ignored;
                                        this server's own loopback origins are always allowed).
+  IRIS_MAX_TOOL_INPUT_ELEMENTS         The most array elements and object keys one tool call's arguments may hold, on every
+                                       transport (default: 100000); a call over it gets an error result before its arguments
+                                       are validated. Also security.maxToolInputElements in config.json
   IRIS_NO_AUTO_LAUNCH                  Set to 1 to disable first-run dashboard auto-launch
   IRIS_ANTHROPIC_API_KEY               Required by evaluate_with_llm_judge + verify_citations (provider=anthropic)
   IRIS_OPENAI_API_KEY                  Required by evaluate_with_llm_judge + verify_citations (provider=openai)

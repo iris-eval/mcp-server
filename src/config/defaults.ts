@@ -16,6 +16,36 @@ try {
 // instead of hardcoding a literal (OTel resource attrs, health, banners).
 export const PKG_VERSION = pkgVersion;
 
+/*
+ * The most array elements and object keys one tool call's arguments may
+ * hold (security.maxToolInputElements). The MCP SDK counts them before it
+ * validates the arguments, and refuses a call over the limit with an
+ * isError result (GHSA-46jr-4wx8-v453); the SDK leaves the count unlimited
+ * unless the server sets one.
+ *
+ * The bytes were already bounded (requestSizeLimit, 1 MB on both
+ * transports); the element count was not, and it is what costs memory.
+ * Arguments that fail validation are reported element by element, 63 to
+ * 148 characters of error text each, so one 1 MB request of 524,229 bad
+ * elements cost the server 260 MB, and 20 requests of 1 MB at once (the
+ * MCP endpoint's per-minute rate limit) up to 1,148 MB and 41 s to answer.
+ *
+ * The number is the first power of ten above every legitimate input
+ * measured, even one that fills the whole 1 MB request. The largest tool
+ * call in the test suite holds 39 elements, the largest stored case (a
+ * proof corpus trace of 201 tool calls) 1,009. Scaled up to 1 MB, real
+ * agent transcripts hold 12,615, OpenTelemetry spans exported by agent
+ * frameworks up to 14,889, Iris's own tools/list 34,474, and that
+ * 201-call case, the densest shape found, 68,506. At 100,000 the worst
+ * burst measured cost 530 to 690 MB across runs, and 9 to 11 s. An
+ * operator who exposes HTTP beyond loopback can go lower: 10,000 holds the
+ * same burst to about 250 MB and 1 s, and refuses a trace of real agent
+ * shape somewhere past 700 KB. An operator who raises requestSizeLimit for
+ * denser data raises this with it. The bursts are measured by
+ * scripts/bench-tool-input-elements.ts.
+ */
+export const DEFAULT_MAX_TOOL_INPUT_ELEMENTS = 100_000;
+
 export const defaultConfig: IrisConfig = {
   storage: {
     type: 'sqlite',
@@ -133,5 +163,6 @@ export const defaultConfig: IrisConfig = {
       mcp: 20,
     },
     requestSizeLimit: '1mb',
+    maxToolInputElements: DEFAULT_MAX_TOOL_INPUT_ELEMENTS,
   },
 };

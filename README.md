@@ -480,6 +480,7 @@ Every variable `--help` documents. CLI flags take precedence over environment va
 | `IRIS_API_KEY_FILE` | Path to a file whose trimmed contents are the API key — the secret-file pattern Docker and Kubernetes mount, so the key never sits in an environment block. Set this or `IRIS_API_KEY`, not both |
 | `IRIS_ALLOW_UNAUTHENTICATED` | Set to `1` to run a non-loopback bind with **no** key on purpose (lifts the refusal; the network is then your boundary) |
 | `IRIS_ALLOWED_ORIGINS` | Comma-separated origin allowlist. Dashboard: CORS headers (supports globs, e.g. `http://localhost:*`). HTTP transport: exact-match `Origin` allowlist for DNS-rebinding protection (globs ignored; the server's own loopback origins are always allowed) |
+| `IRIS_MAX_TOOL_INPUT_ELEMENTS` | The most array elements and object keys one tool call's arguments may hold, on every transport (a whole number, default `100000`). A call over it gets an error result before its arguments are validated. The default clears every legitimate input measured, even one that fills the whole 1 MB request; raise it if you raise `security.requestSizeLimit` for denser data. Also `security.maxToolInputElements` in `config.json` |
 | `IRIS_NO_AUTO_LAUNCH` | Set to `1` to disable the first-run dashboard auto-launch |
 | `IRIS_ANTHROPIC_API_KEY` | Required by `evaluate_with_llm_judge` + `verify_citations` with `provider=anthropic` |
 | `IRIS_OPENAI_API_KEY` | Required by `evaluate_with_llm_judge` + `verify_citations` with `provider=openai` |
@@ -509,6 +510,7 @@ When using HTTP transport, Iris includes:
 - Zod input validation on all routes
 - ReDoS-safe regex for custom eval rules
 - One 1MB request size limit on every transport (`security.requestSizeLimit`): HTTP answers `413`, stdio answers a JSON-RPC error and keeps the session open
+- One limit of 100,000 array elements and object keys in a tool call's arguments on every transport (`security.maxToolInputElements`), counted before the arguments are validated: a call over it gets an error result
 
 ```bash
 # Production deployment

@@ -16,6 +16,7 @@ function makeConfig(apiLimit: number, mcpLimit = 20): Pick<IrisConfig, 'security
       allowedOrigins: ['*'],
       rateLimit: { api: apiLimit, mcp: mcpLimit },
       requestSizeLimit: '1mb',
+      maxToolInputElements: 100_000,
     },
   };
 }
