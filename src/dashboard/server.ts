@@ -42,7 +42,7 @@ import type { EvalEngine } from '../eval/engine.js';
 import type { PreferenceStore } from '../preferences.js';
 import { requestSizeLimitBytes } from '../utils/size-limit.js';
 import { countElements, tooManyElementsBody } from '../utils/element-count.js';
-import { maxInputElementsOf } from '../config/defaults.js';
+import { maxInputElementsOf, protobufElementCeiling } from '../config/defaults.js';
 import { compressJsonResponses, findPrecompressed, precompressedFile, servePrecompressed } from './compression.js';
 
 export interface DashboardServer {
@@ -150,7 +150,8 @@ export function createDashboardServer(
    * before any route's schema reads it. Validation reports a body element
    * by element, so what it costs grows with the elements, which the byte
    * limit above does not bound. Protobuf arrives as bytes here, counts 0,
-   * and is counted by the OTLP route as it is decoded.
+   * and is counted by the OTLP route as it is decoded, against a ceiling
+   * derived from the byte limit (protobufElementCeiling).
    */
   const maxElements = maxInputElementsOf(config.security);
   app.use((req, res, next) => {
@@ -245,7 +246,7 @@ export function createDashboardServer(
    */
   const otlp = express.Router();
   otlp.use(createApiRateLimiter(config));
-  registerOtlpRoutes(otlp, storage, { evalEngine: options?.evalEngine, customRuleStore: options?.customRuleStore, evaluateOnIngest: config.otel.evaluateOnIngest, maxInputElements: maxElements });
+  registerOtlpRoutes(otlp, storage, { evalEngine: options?.evalEngine, customRuleStore: options?.customRuleStore, evaluateOnIngest: config.otel.evaluateOnIngest, maxProtobufElements: protobufElementCeiling(maxElements, sizeLimit) });
   app.use('/v1', otlp);
 
   // Serve static dashboard files if built (rate limited).

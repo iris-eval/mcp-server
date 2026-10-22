@@ -14,7 +14,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadConfig } from '../../src/config/index.js';
-import { DEFAULT_MAX_INPUT_ELEMENTS, defaultConfig, maxInputElementsOf } from '../../src/config/defaults.js';
+import { DEFAULT_MAX_INPUT_ELEMENTS, defaultConfig, maxInputElementsOf, PROTOBUF_BYTES_PER_ELEMENT, protobufElementCeiling } from '../../src/config/defaults.js';
 
 const VARS = ['IRIS_HOME', 'IRIS_DB_PATH', 'IRIS_MAX_INPUT_ELEMENTS', 'IRIS_MAX_TOOL_INPUT_ELEMENTS'] as const;
 let scratch: string;
@@ -103,5 +103,18 @@ describe('its names before 0.21.0', () => {
     expect(maxInputElementsOf({ maxToolInputElements: 7 })).toBe(7);
     expect(maxInputElementsOf({ maxInputElements: 9, maxToolInputElements: 7 })).toBe(9);
     expect(maxInputElementsOf(undefined)).toBe(DEFAULT_MAX_INPUT_ELEMENTS);
+  });
+});
+
+describe('the protobuf ceiling', () => {
+  it('is one element per 5 bytes of the request size limit, or the shared limit when that is higher', () => {
+    expect(PROTOBUF_BYTES_PER_ELEMENT).toBe(5);
+    // The default 1 MB: above the 139,641 per MB of the densest real exporter body measured (python-plain.pb).
+    expect(protobufElementCeiling(DEFAULT_MAX_INPUT_ELEMENTS, 1024 ** 2)).toBe(209_716);
+    // It rises with the byte limit, so a larger request size keeps taking whole batches.
+    expect(protobufElementCeiling(DEFAULT_MAX_INPUT_ELEMENTS, 10 * 1024 ** 2)).toBe(2_097_152);
+    // And never falls below the shared limit.
+    expect(protobufElementCeiling(500_000, 1024 ** 2)).toBe(500_000);
+    expect(protobufElementCeiling(10_000, 1024 ** 2)).toBe(209_716);
   });
 });

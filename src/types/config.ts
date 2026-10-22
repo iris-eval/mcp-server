@@ -279,8 +279,9 @@ export interface IrisConfig {
      * The most array elements and object keys one input may hold before it
      * is validated (IRIS_MAX_INPUT_ELEMENTS): a tool call's arguments on
      * every transport, and a request body on the dashboard port (the API's
-     * JSON bodies, POST /v1/traces as JSON or decoded protobuf). Over it, a
-     * tool call gets an isError result and a body a 413. Default 100,000:
+     * JSON bodies, POST /v1/traces as JSON). Over it, a tool call gets an
+     * isError result and a body a 413. Protobuf on POST /v1/traces has its
+     * own ceiling, protobufElementCeiling in src/config/defaults.ts. Default 100,000:
      * see DEFAULT_MAX_INPUT_ELEMENTS in src/config/defaults.ts for the
      * measurements behind it. Its name before 0.21.0, maxToolInputElements,
      * is still read from config.json and the environment.

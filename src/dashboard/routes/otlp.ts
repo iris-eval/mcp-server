@@ -36,7 +36,8 @@ import { costFieldsOf } from '../../cost/trace-cost.js';
 import { newJudgeRequest } from '../../eval/llm-judge/budget.js';
 import { issuesText } from '../../utils/validation-errors.js';
 import { countElements, tooManyElementsBody } from '../../utils/element-count.js';
-import { DEFAULT_MAX_INPUT_ELEMENTS } from '../../config/defaults.js';
+import { DEFAULT_MAX_INPUT_ELEMENTS, defaultConfig, protobufElementCeiling } from '../../config/defaults.js';
+import { requestSizeLimitBytes } from '../../utils/size-limit.js';
 
 /**
  * The most traces one OTLP request may store. A collector's default batch is
@@ -57,8 +58,11 @@ export interface OtlpRouteOptions {
   customRuleStore?: CustomRuleStore;
   /** `otel.evaluateOnIngest` from the config: score each stored trace that carries an output. */
   evaluateOnIngest: boolean;
-  /** security.maxInputElements: a decoded protobuf body over it is answered 413 before the schema reads it (JSON bodies are counted by the app). */
-  maxInputElements?: number;
+  /**
+   * The element ceiling for a protobuf body, counted as it decodes: protobufElementCeiling in
+   * src/config/defaults.ts (JSON bodies are counted by the app against security.maxInputElements).
+   */
+  maxProtobufElements?: number;
 }
 
 export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, options: OtlpRouteOptions): void {
@@ -88,7 +92,7 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
       }
       // Decoded protobuf fails validation element by element as JSON does, and is denser: it is counted
       // while it decodes (one element at least per nested message) and once decoded, before the schema reads it.
-      const max = options.maxInputElements ?? DEFAULT_MAX_INPUT_ELEMENTS;
+      const max = options.maxProtobufElements ?? protobufElementCeiling(DEFAULT_MAX_INPUT_ELEMENTS, requestSizeLimitBytes(defaultConfig.security.requestSizeLimit));
       try {
         payload = decodeExportTraceServiceRequest(body, { maxElements: max });
       } catch (err) {

@@ -16,7 +16,10 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { createDashboardServer } from '../../src/dashboard/server.js';
 import { createIrisServer } from '../../src/server.js';
-import { defaultConfig } from '../../src/config/defaults.js';
+import { defaultConfig, protobufElementCeiling } from '../../src/config/defaults.js';
+import { decodeExportTraceServiceRequest } from '../../src/otel/protobuf.js';
+import { countElements } from '../../src/utils/element-count.js';
+import { requestSizeLimitBytes } from '../../src/utils/size-limit.js';
 import { MAX_LISTED_ISSUES } from '../../src/utils/validation-errors.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
 import { readFileSync } from 'node:fs';
@@ -161,22 +164,51 @@ describe('a request body over the element limit', () => {
     expect(((await res.json()) as { limit: number }).limit).toBe(50);
   });
 
-  it('is answered 413 on POST /v1/traces, JSON or protobuf as it is decoded', async () => {
+  it('is answered 413 on POST /v1/traces as JSON over the shared limit, and as protobuf over its own ceiling as it decodes', async () => {
     const base = await dashboard();
     const span = { traceId: '0af7651916cd43dd8448eb211c80319c', spanId: 'b7ad6b7169203331', name: 's', startTimeUnixNano: '1', endTimeUnixNano: '2', attributes: Array(100_001).fill(0) };
     const json = await fetch(`${base}/v1/traces`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [span] }] }] }) });
     expect(json.status).toBe(413);
-    // 100,001 empty attributes (field 9, length 0) in one span: 200 KB of protobuf.
+    // One empty attribute (field 9, length 0) more than the protobuf ceiling, in one span.
+    const ceiling = protobufElementCeiling(defaultConfig.security.maxInputElements, requestSizeLimitBytes(defaultConfig.security.requestSizeLimit));
+    expect(ceiling).toBe(209_716);
     const varint = (n: number) => { const out: number[] = []; while (n > 127) { out.push((n & 127) | 128); n >>>= 7; } out.push(n); return Buffer.from(out); };
     const wrap = (tag: number, inner: Buffer) => Buffer.concat([Buffer.from([tag]), varint(inner.length), inner]);
-    const attributes = Buffer.alloc(100_001 * 2);
-    for (let i = 0; i < 100_001; i++) attributes[i * 2] = 0x4a;
+    const attributes = Buffer.alloc((ceiling + 1) * 2);
+    for (let i = 0; i <= ceiling; i++) attributes[i * 2] = 0x4a;
     const pb = wrap(0x0a, wrap(0x12, wrap(0x12, attributes)));
     const proto = await fetch(`${base}/v1/traces`, { method: 'POST', headers: { 'content-type': 'application/x-protobuf' }, body: pb });
     expect(proto.status).toBe(413);
-    expect(((await proto.json()) as { error: string }).error).toContain(tooMany(100_000));
+    expect(((await proto.json()) as { error: string }).error).toContain(tooMany(ceiling));
     expect(await stored()).toBe(0);
   });
+
+  it('accepts a 1 MB protobuf batch from the plain Python exporter, which holds more elements than the shared limit', async () => {
+    // python-plain.pb (a real exporter body) repeated to just under 1 MB, ten spans to a trace, every id its own.
+    const one = readFileSync(resolve(__dirname, '..', 'fixtures', 'otlp', 'python-plain.pb'));
+    const first = (decodeExportTraceServiceRequest(one).resourceSpans[0] as { scopeSpans: Array<{ spans: Array<{ traceId: string; spanId: string }> }> }).scopeSpans[0].spans[0];
+    const traceAt = one.indexOf(Buffer.from(first.traceId, 'hex'));
+    const spanAt = one.indexOf(Buffer.from(first.spanId, 'hex'));
+    expect(traceAt).toBeGreaterThan(-1);
+    expect(spanAt).toBeGreaterThan(-1);
+    const copies = Math.floor(requestSizeLimitBytes(defaultConfig.security.requestSizeLimit) / one.length);
+    const batch = Buffer.alloc(copies * one.length);
+    for (let i = 0; i < copies; i++) {
+      const copy = Buffer.from(one);
+      copy.writeUInt32BE(Math.floor(i / 10) + 1, traceAt + 12);
+      copy.writeUInt32BE(i + 1, spanAt + 4);
+      copy.copy(batch, i * one.length);
+    }
+    expect(batch.length).toBeGreaterThan(1_000_000);
+    expect(countElements(decodeExportTraceServiceRequest(batch), Infinity)).toBeGreaterThan(defaultConfig.security.maxInputElements);
+
+    const base = await dashboard();
+    const res = await fetch(`${base}/v1/traces`, { method: 'POST', headers: { 'content-type': 'application/x-protobuf' }, body: batch });
+    const body = (await res.json()) as { partialSuccess?: unknown };
+    expect(res.status).toBe(200);
+    expect(body.partialSuccess).toBeUndefined();
+    expect(await stored()).toBe(Math.ceil(copies / 10));
+  }, 30_000);
 
   it('lets the real protobuf exports in tests/fixtures/otlp through at the default', async () => {
     const base = await dashboard();

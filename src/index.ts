@@ -268,8 +268,11 @@ Environment variables (CLI flags take precedence):
                                        this server's own loopback origins are always allowed).
   IRIS_MAX_INPUT_ELEMENTS              The most array elements and object keys one input may hold before it is validated
                                        (default: 100000): a tool call's arguments on every transport, and a request body on the
-                                       dashboard port (the API's JSON bodies and POST /v1/traces, JSON or protobuf). A tool call
-                                       over it gets an error result; a body, 413. Also security.maxInputElements in config.json
+                                       dashboard port (the API's JSON bodies and POST /v1/traces as JSON). A tool call over it
+                                       gets an error result; a body, 413. Protobuf on POST /v1/traces has its own ceiling: one
+                                       element per 5 bytes of security.requestSizeLimit, or this when higher, so an exporter's
+                                       batch within the request size is not refused for its density. Also
+                                       security.maxInputElements in config.json
   IRIS_MAX_TOOL_INPUT_ELEMENTS         Its name before 0.21.0, read when IRIS_MAX_INPUT_ELEMENTS is unset
   IRIS_NO_AUTO_LAUNCH                  Set to 1 to disable first-run dashboard auto-launch
   IRIS_ANTHROPIC_API_KEY               Required by evaluate_with_llm_judge + verify_citations (provider=anthropic)
