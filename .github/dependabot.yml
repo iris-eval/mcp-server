@@ -330,6 +330,15 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "deps(examples)"
+    ignore:
+      # The LlamaIndex recipe cannot take openai 3: llama-index-llms-openai 0.8.2 (pinned)
+      # and 0.8.3 (its newest, re-checked 2026-10-25) both declare openai<3, so pip refuses
+      # the install (#851). Dependabot treats the openai pins of both recipes in this
+      # directory as one dependency, so this also holds the OpenAI Agents recipe's
+      # openai (already on 3.x) at its pin: bump that one by hand. Lift this when a
+      # llama-index-llms-openai release admits openai 3.
+      - dependency-name: "openai"
+        versions: [">=3.0.0"]
     groups:
       all:
         patterns:
