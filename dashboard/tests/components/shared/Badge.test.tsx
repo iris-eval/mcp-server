@@ -11,6 +11,6 @@ describe('Badge', () => {
   it('applies variant-specific background when variant prop is set', () => {
     render(<Badge label="pass" variant="OK" />);
     const el = screen.getByText('pass');
-    expect(el).toHaveStyle({ background: '#052e16' });
+    expect(el).toHaveStyle({ backgroundColor: '#052e16' });
   });
 });

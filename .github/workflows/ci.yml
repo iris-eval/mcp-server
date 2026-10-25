@@ -974,17 +974,29 @@ jobs:
   # pnpm run build`, then starts the server and reads tools/list) failed for
   # three weeks after the dashboard joined `build`, and no job here built
   # that way. This one does, from the fresh checkout, with pnpm and no
-  # dashboard install of its own, then requires every tool to be listed.
+  # dashboard install of its own, then requires the native SQLite module to
+  # have been built and every tool to be listed.
+  # On pnpm 10 and on the newest pnpm: pnpm 11 stopped reading settings from
+  # package.json, so on pnpm 11 and 12 `pnpm install` refused the two install
+  # scripts (ERR_PNPM_IGNORED_BUILDS) and the build never ran, while this job,
+  # on pnpm 10 alone, stayed green. The allow-list is in pnpm-workspace.yaml.
   fresh-clone-build:
+    name: fresh-clone-build (pnpm ${{ matrix.pnpm }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        pnpm: ['10', latest]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 22
-      - run: npm install -g pnpm@10
+      - run: npm install -g pnpm@${{ matrix.pnpm }}
       - run: pnpm install && pnpm run build
+      - name: The native SQLite module was built
+        run: node -e "new (require('better-sqlite3'))(':memory:').close()"
       - run: node scripts/check-tools-listed.mjs
 
   e2e:

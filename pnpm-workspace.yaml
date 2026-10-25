@@ -1,0 +1,12 @@
+# pnpm reads its settings from this file, not from package.json, since pnpm 11.
+# Iris installs with npm (package-lock.json); this file is for directories that
+# build Iris from a clone with pnpm, such as Glama (`pnpm install && pnpm run build`).
+# It declares no workspace packages. Two native dependencies need their install
+# scripts: better-sqlite3 (the SQLite driver) and esbuild (the dashboard build).
+# allowBuilds is how pnpm 11 and later allow them; onlyBuiltDependencies is pnpm 10's.
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+onlyBuiltDependencies:
+  - better-sqlite3
+  - esbuild
