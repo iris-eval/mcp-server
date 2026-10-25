@@ -9,9 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@radix-ui/react-tabs": "^1.1.21",
-    "@radix-ui/react-toggle": "^1.1.18",
-    "@radix-ui/react-visually-hidden": "^1.2.11",
+    "@radix-ui/react-tabs": "^1.2.1",
+    "@radix-ui/react-toggle": "^1.2.1",
+    "@radix-ui/react-visually-hidden": "^1.2.13",
     "@upstash/redis": "^1.39.0",
     "@vercel/analytics": "^2.0.1",
     "clsx": "^2.1.1",
@@ -30,7 +30,7 @@
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.3.8",
+    "eslint-config-next": "16.4.2",
     "sharp": "^0.35.5",
     "tailwindcss": "^4",
     "typescript": "^6"
