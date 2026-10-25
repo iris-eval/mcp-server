@@ -2,13 +2,13 @@
 // process of its own (its native SQLite module is then never loaded into the
 // test runner, where Windows would keep the file locked).
 //
-//   node previous-writer.mjs <package dir> <database> <estimated trace id>
+//   node previous-writer.mjs <package dir> <database> <estimated trace id> <retention days>
 //
 // Prints one JSON line with what each call returned.
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const [pkg, file, estimatedId] = process.argv.slice(2);
+const [pkg, file, estimatedId, retentionDays] = process.argv.slice(2);
 const { SqliteAdapter } = await import(pathToFileURL(join(pkg, 'dist', 'storage', 'sqlite-adapter.js')).href);
 const now = new Date().toISOString();
 const store = new SqliteAdapter(file);
@@ -20,6 +20,6 @@ await store.insertTraces('local', [
 ]);
 const patched = await store.updateTraceMetadata('local', estimatedId, { patched: 'by the previous release' });
 const deleted = await store.deleteTrace('local', '0190a000000000000000000000000001');
-const swept = await store.deleteTracesOlderThan('local', 30);
+const swept = await store.deleteTracesOlderThan('local', Number(retentionDays));
 await store.close();
 process.stdout.write(`${JSON.stringify({ patched, deleted, swept })}\n`);
