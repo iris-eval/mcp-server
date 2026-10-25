@@ -83,12 +83,17 @@ describe('the preflight says what the pull-request workflows say', () => {
       'test:coverage': 'the preflight runs the same vitest --coverage, adding a JSON report the capture reads',
       'test:integration': 'tests/integration is inside the root suite the preflight runs',
     };
+    // Steps that finish a runner's fresh install rather than check the tree, and why the preflight leaves them out.
+    const installStep: Record<string, string> = {
+      'scripts/ci/native-sqlite-installed.sh':
+        "confirms the runner's npm ci kept the optional native SQLite module and, when it did not, runs npm ci again; a local checkout already has its install, and npm ci must not run in one whose node_modules other worktrees share",
+    };
     const missing: string[] = [];
     for (const job of mirrored) {
       const body = jobs.get(job) ?? '';
       for (const m of body.matchAll(/npm run(?: -s)? ([\w:-]+)|(?:node|bash) (scripts\/[\w./-]+)|--config (tests\/[\w./-]+)/g)) {
         const script = m[1] ?? m[2] ?? m[3];
-        if (script in sameCheck) continue;
+        if (script in sameCheck || script in installStep) continue;
         const ran = m[1] ? runsScript(script) : runs.includes(script);
         if (!ran) missing.push(`${job}: ${m[0]}`);
       }
