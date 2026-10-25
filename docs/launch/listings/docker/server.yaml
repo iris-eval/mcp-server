@@ -33,7 +33,7 @@ about:
   icon: https://iris-eval.com/iris-logo-white-bg.png
 source:
   project: https://github.com/iris-eval/mcp-server
-  commit: 51ee1355fb486998c40f820ef4d984d53487b69a
+  commit: c24e80aaece3a5032280a83c06a86c43065e6f24
 run:
   volumes:
     - iris-eval-data:/data
