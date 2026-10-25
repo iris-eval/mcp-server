@@ -28,6 +28,7 @@ on:
       - 'tests/unit/storage/search-worker.test.ts'
       - 'package-lock.json'
       - '.github/workflows/worker-exit.yml'
+      - 'scripts/ci/native-sqlite-installed.sh'
   push:
     branches: [main]
     paths:
@@ -36,6 +37,7 @@ on:
       - 'tests/unit/storage/search-worker.test.ts'
       - 'package-lock.json'
       - '.github/workflows/worker-exit.yml'
+      - 'scripts/ci/native-sqlite-installed.sh'
   schedule:
     - cron: '23 5 * * *'
   workflow_dispatch:
@@ -88,6 +90,8 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      # npm drops this optional native module silently when its download fails; the script says why it checks.
+      - run: bash scripts/ci/native-sqlite-installed.sh
       - run: npm run build:server
       - name: Workers started and ended every way, on both drivers, raw and as Iris's two workers
         env:

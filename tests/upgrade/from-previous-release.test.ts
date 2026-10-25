@@ -326,7 +326,10 @@ describe(`the later migrations are safe for ${PREVIOUS} to write through`, () =>
     raw.prepare("DELETE FROM _iris_migrations WHERE id > '014-trace-session'").run();
     raw.close();
 
-    const writer = await run([join(repoRoot, 'tests', 'upgrade', 'previous-writer.mjs'), join(root, 'previous', 'node_modules', '@iris-eval', 'mcp-server'), file, estimated.trace_id]);
+    // The sweep's cutoff is 2026-01-01 on whatever day this runs: past the fixture's 2025 trace, before its
+    // traces of 2026-09-24. It was a fixed 30 days, and from 2026-10-24 that also swept a 2026-09-24 trace.
+    const retentionDays = Math.floor((Date.now() - Date.parse('2026-01-01T00:00:00.000Z')) / 86_400_000);
+    const writer = await run([join(repoRoot, 'tests', 'upgrade', 'previous-writer.mjs'), join(root, 'previous', 'node_modules', '@iris-eval', 'mcp-server'), file, estimated.trace_id, String(retentionDays)]);
     expect(writer.code, writer.stderr).toBe(0);
     // The patch and the delete found their rows; the sweep took the expired trace it stored and the fixture's trace from 2025.
     expect(JSON.parse(writer.stdout)).toEqual({ patched: true, deleted: true, swept: 2 });
