@@ -160,6 +160,8 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      # npm drops this optional native module silently when its download fails; the script says why it checks.
+      - run: bash scripts/ci/native-sqlite-installed.sh
       # Coverage gate: enforces the ratchet floors in vitest.config.ts
       # (a plain `npm test` run would leave the thresholds unenforced).
       - run: npm run test:coverage
@@ -200,6 +202,9 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      # npm drops this optional native module silently when its download fails; the script says why it checks.
+      - if: matrix.driver == 'native'
+        run: bash scripts/ci/native-sqlite-installed.sh
       - run: npx vitest run tests/unit/storage/migration-015.test.ts tests/unit/storage/trace-search.test.ts tests/unit/storage/search-query.test.ts tests/unit/tools/get-traces-search.test.ts tests/unit/storage/stepped-maintenance.test.ts tests/unit/storage/checkpointer.test.ts tests/unit/storage/driver.test.ts tests/unit/storage/erasure.test.ts
 
   # The retention sweep, the merge it owes, the erasure of a retired search
@@ -229,6 +234,9 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      # npm drops this optional native module silently when its download fails; the script says why it checks.
+      - if: matrix.driver == 'native'
+        run: bash scripts/ci/native-sqlite-installed.sh
       - run: npx vitest run --config tests/stall/vitest.config.ts
 
   # The test jobs install better-sqlite3's prebuilt binary. When that download
@@ -1000,9 +1008,14 @@ jobs:
       - run: npm run build
       # The browsers Playwright downloads, kept per Playwright version: the
       # version is in the key, so a bump downloads the matching browsers once.
-      - name: Playwright version
+      - name: Playwright version, and the runner image
         id: playwright
-        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+        run: |
+          {
+            echo "version=$(node -p "require('@playwright/test/package.json').version")"
+            echo "os=${ImageOS}"
+            echo "image=${ImageVersion}"
+          } >> "$GITHUB_OUTPUT"
       - name: Cache the Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
@@ -1017,6 +1030,21 @@ jobs:
         # downloads from Playwright's server, which can be slow, so it has
         # no bound of its own.
         run: npx playwright install chromium firefox
+      # The .deb files the browsers' system libraries come in, kept per runner
+      # image and Playwright version. On 2026-10-22 the mirror served apt's
+      # package index at 9.7 MB/s and the 54 MB of packages at about 50 KB/s,
+      # and the step below hit its 10-minute bound on main and on three pull
+      # requests. With the packages cached, apt reads only the index from the
+      # mirror and installs from here ("Need to get 0 B"). A new runner image
+      # restores the previous image's packages and downloads only what changed.
+      - name: Cache the system libraries' packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/apt-archives
+          key: apt-${{ steps.playwright.outputs.os }}-${{ steps.playwright.outputs.image }}-playwright-${{ steps.playwright.outputs.version }}
+          restore-keys: |
+            apt-${{ steps.playwright.outputs.os }}-${{ steps.playwright.outputs.image }}-
+            apt-${{ steps.playwright.outputs.os }}-
       - name: Install the browsers' system libraries
         # These come through apt from the runner's mirror list. On 2026-10-07
         # the first mirror stopped answering and apt waited on it for 39
@@ -1024,10 +1052,17 @@ jobs:
         # apt now gives up on a silent mirror after 30 seconds and moves to
         # the next, and the step stops at 10 minutes, so a bad mirror day
         # fails in minutes with a clear cause instead of hanging the job.
+        # apt downloads into the cached folder above; autoclean drops the
+        # packages a newer image no longer offers, so the cache stays small.
         timeout-minutes: 10
         run: |
-          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/80-ci-timeouts > /dev/null
+          mkdir -p ~/.cache/apt-archives/partial
+          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nDir::Cache::Archives "%s/.cache/apt-archives/";\n' "$HOME" | sudo tee /etc/apt/apt.conf.d/80-ci > /dev/null
           npx playwright install-deps chromium firefox
+          sudo apt-get autoclean -qq
+          # apt wrote the packages as root; the cache step saves them as this user.
+          sudo chown -R "$(id -u):$(id -g)" ~/.cache/apt-archives
+          echo "$(find ~/.cache/apt-archives -maxdepth 1 -name '*.deb' | wc -l) packages in the apt cache"
       - name: Run Playwright E2E (Chromium + Firefox)
         run: npm run test:e2e
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
