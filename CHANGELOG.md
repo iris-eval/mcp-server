@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-10-25
+
+**A security release: what an agent or a client sends Iris is bounded before Iris reads it, and a tool argument can narrow what the operator allows but never widen it.** 0.21.0:
+- A tool call, a dashboard API body and an OTLP batch are each held to `security.maxInputElements` (100,000 array elements and object keys by default) before any schema reads them, and a validation error lists at most 20 issues and the total.
+- `verify_citations` and `evaluate_with_llm_judge` take the operator's fetch setting, domain list and cost caps as ceilings; every judge call on a key draws on one daily budget; and stored text comes back inside a fence that marks it as text someone else wrote.
+- With an allowlist set, the citation fetcher looks up only the hosts on it.
+- The lowest versions Iris accepts are now `@modelcontextprotocol/sdk` 1.32.0, `body-parser` 2.4.0 and `zod` 4.6.7, and the Docker image runs Node.js 24.22.1.
+- Also: `npm run preflight`, which runs what CI will run before you push, and proof measured on agent runs Iris did not write.
+
+**Check before upgrading.** Three entries under Security are marked BREAKING. Read them if an agent passes `allow_fetch`, `domain_allowlist`, `max_cost_usd` or `max_cost_usd_total` to Iris's tools, if the judge tools spend more than 1 USD a day on your key (`IRIS_LLM_JUDGE_DAILY_BUDGET_USD`), or if a script reads stored text from `get_traces`, `list_rules` or a trace resource.
+
 ### Added
 
 - **`npm run preflight`: what CI will say, before you push.** It runs, in CI's order, every check a pull request's workflows run that can run on your machine: the lint, the type checks, the proof checks, the builds, every test with the coverage floors, and the truthbase regenerated and compared with the committed one, then records the tree it verified. `git config core.hooksPath scripts/git-hooks` turns on a pre-push hook that refuses a branch the preflight has not passed at that tree. A test holds it to the workflows: every job a pull request runs is a step or is listed as CI-only with the reason (Playwright, the real MCP clients, Docker, the Python client and the other jobs that install or start something this machine would have to set up).

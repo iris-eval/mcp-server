@@ -443,7 +443,7 @@
       }
     }
   ],
-  "commit": "370e5513",
+  "commit": "56ed5577",
   "detectors": [
     {
       "caught": {
@@ -661,7 +661,7 @@
       "runs": 2
     }
   ],
-  "generatedAt": "2026-10-04T18:17:12.546Z",
+  "generatedAt": "2026-10-25T20:30:19.892Z",
   "headline": {
     "wrongFail": {
       "ci95": [
@@ -10769,5 +10769,5 @@
     "license": "MIT (proof/outside/agentdojo/LICENSE)",
     "repository": "https://github.com/ethz-spylab/agentdojo"
   },
-  "version": "0.20.0"
+  "version": "0.21.0"
 }
