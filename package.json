@@ -127,7 +127,7 @@
   },
   "overrides": {
     "brace-expansion": "^5.0.12",
-    "fast-uri": "^3.1.8",
+    "fast-uri": "^3.1.9",
     "ip-address": "^10.7.4",
     "postcss": "^8.5.25",
     "@hono/node-server": "^2.1.0",
@@ -136,12 +136,13 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.0",
     "ajv": "^8.17.1",
+    "body-parser": "^2.4.0",
     "express": "^5.1.0",
     "express-rate-limit": "^8.3.2",
     "helmet": "^8.1.0",
     "pino": "^10.3.1",
     "safe-regex2": "^5.1.0",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "optionalDependencies": {
     "better-sqlite3": "^12.8.0"
