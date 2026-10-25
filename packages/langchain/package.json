@@ -70,7 +70,7 @@
   },
   "devDependencies": {
     "@iris-eval/sdk": "file:../sdk",
-    "@langchain/core": "^1.2.17",
+    "@langchain/core": "^1.2.20",
     "@langchain/langgraph": "^1.5.1",
     "@types/node": "^22.19.0",
     "typescript": "^6.0.3",
