@@ -315,6 +315,22 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "deps(examples)"
+    ignore:
+      # OpenTelemetry JS's next line is half published (re-checked 2026-10-25):
+      # @opentelemetry/core and resources 3.0.0, the OTLP exporters 0.300.0 and
+      # @opentelemetry/api 1.10.0 shipped on 2026-10-20, but sdk-trace-base and
+      # sdk-trace-node are still 2.12.0, whose peer range is api <1.10.0, and
+      # OpenInference's instrumentation needs core ^2.8.0. Mixing the lines does
+      # not install (ERESOLVE, #914). The recipe stays on the 2.x line at its
+      # newest; lift these when sdk-trace-base and sdk-trace-node publish 3.x.
+      - dependency-name: "@opentelemetry/api"
+        versions: [">=1.10.0"]
+      - dependency-name: "@opentelemetry/core"
+        versions: [">=3.0.0"]
+      - dependency-name: "@opentelemetry/resources"
+        versions: [">=3.0.0"]
+      - dependency-name: "@opentelemetry/exporter-trace-otlp-proto"
+        versions: [">=0.300.0"]
     groups:
       all:
         patterns:
@@ -339,6 +355,12 @@ updates:
       # llama-index-llms-openai release admits openai 3.
       - dependency-name: "openai"
         versions: [">=3.0.0"]
+      # With openinference-instrumentation-llama-index 4.6.0 and 4.6.1 the
+      # LlamaIndex recipe's traces stop reaching Iris (tests/otel-recipes: 0
+      # matching traces); 4.5.2 with the same other pins passes (re-checked
+      # 2026-10-25). #919 tracks the cause; lift this when it is fixed.
+      - dependency-name: "openinference-instrumentation-llama-index"
+        versions: [">=4.6.0"]
     groups:
       all:
         patterns:
