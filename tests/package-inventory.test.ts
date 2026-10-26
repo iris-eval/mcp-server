@@ -2,8 +2,8 @@
  * Every package in the repository is exactly one thing.
  *
  * scripts/claims/packages.mjs walks every package.json and pyproject.toml
- * (not node_modules, not anything git ignores, and not website/, dashboard/
- * or examples/, which ship nothing on a registry of their own) and classifies each from its
+ * (not node_modules, not anything git ignores, and not website/, dashboard/,
+ * examples/ or tests/, which ship nothing on a registry of their own) and classifies each from its
  * own manifest: the server release.yml publishes to npm, the Python client
  * publish-python.yml publishes to PyPI, an npm library release.yml's
  * publish-packages job publishes, a "private": true package, or the
@@ -41,7 +41,7 @@ describe('the package inventory', () => {
     expect(manifests).toContain('package.json');
     expect(manifests).toContain(`${PYPI_DIR}/pyproject.toml`);
     expect(manifests).toContain(`${LAUNCHER_DIR}/package.json`);
-    for (const m of manifests) expect(m, m).not.toMatch(/^(website|dashboard|examples)\/|(^|\/)node_modules\//);
+    for (const m of manifests) expect(m, m).not.toMatch(/^(website|dashboard|examples|tests)\/|(^|\/)node_modules\//);
   });
 
   it('leaves out a manifest git ignores, and keeps one that is new and not ignored', () => {

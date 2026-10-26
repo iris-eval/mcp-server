@@ -196,7 +196,10 @@ updates:
           - "patch"
 
   - package-ecosystem: "npm"
-    directory: "/.github/real-clients"
+    # Under .github/ Dependabot found each update and GitHub refused the pull
+    # request ("invalid or unauthorized changes", 2026-10-01 to 10-26); the
+    # clients live under tests/ for that reason.
+    directory: "/tests/real-clients/clients"
     schedule:
       interval: "monthly"
     cooldown:
