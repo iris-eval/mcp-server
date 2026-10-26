@@ -60,6 +60,13 @@ const nextConfig: NextConfig = {
       destination: "/capabilities",
       permanent: true,
     },
+    // The old file's name at the site root, which search engines found
+    // through relative links: the map too.
+    {
+      source: "/roadmap.md",
+      destination: "/capabilities",
+      permanent: true,
+    },
     // The dashboard's command palette ("Open Iris docs") and older listings
     // link to iris-eval.com/docs. The docs live in the repo; send readers
     // there until a hosted docs site exists. Temporary on purpose.
