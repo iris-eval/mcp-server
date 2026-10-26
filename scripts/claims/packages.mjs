@@ -63,8 +63,12 @@ export const NPM_PUBLISHED = { 'packages/sdk': false, 'packages/langchain': fals
  */
 export const RELEASED_WITH_SERVER = { 'packages/sdk': false, 'packages/langchain': false, [LAUNCHER_DIR]: false };
 
-/** Top-level directories that are not packages Iris ships: the site, the dashboard SPA (built into the server) and examples. */
-export const EXCLUDED_TOP_LEVEL = new Set(['website', 'dashboard', 'examples']);
+/**
+ * Top-level directories that are not packages Iris ships: the site, the
+ * dashboard SPA (built into the server), examples, and tests (whose one
+ * manifest, tests/real-clients/clients, pins the MCP clients CI drives).
+ */
+export const EXCLUDED_TOP_LEVEL = new Set(['website', 'dashboard', 'examples', 'tests']);
 const SKIP_ANYWHERE = new Set(['node_modules', 'dist', 'build', 'coverage']);
 
 const MANIFESTS = new Set(['package.json', 'pyproject.toml']);
