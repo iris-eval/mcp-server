@@ -70,11 +70,12 @@ describe('the roadmap is the capability map', () => {
     expect(allow.entries.filter((e) => e.file === 'docs/roadmap.md')).toEqual([]);
   });
 
-  it('/roadmap redirects to /capabilities, permanently', () => {
+  it.each(['/roadmap', '/roadmap.md'])('%s redirects to /capabilities, permanently', (path) => {
     const config = read('website/next.config.ts');
     const block = config.slice(config.indexOf('redirects:'));
-    const match = /\{\s*source: "\/roadmap",\s*destination: "([^"]+)",\s*permanent: (true|false),\s*\}/.exec(block);
-    expect(match, 'a /roadmap redirect in next.config.ts').not.toBeNull();
+    const source = path.replace(/[/.]/g, (c) => `\\${c}`);
+    const match = new RegExp(`\\{\\s*source: "${source}",\\s*destination: "([^"]+)",\\s*permanent: (true|false),\\s*\\}`).exec(block);
+    expect(match, `a ${path} redirect in next.config.ts`).not.toBeNull();
     expect(match![1]).toBe('/capabilities');
     expect(match![2]).toBe('true');
   });

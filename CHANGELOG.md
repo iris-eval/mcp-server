@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`iris-eval.com/roadmap.md` lands on the capability map.** Search engines had found the old roadmap file's name at the site root through relative links, and it answered 404; it now redirects permanently to `/capabilities`, as `/roadmap` already did.
+
 ## [0.21.0] - 2026-10-25
 
 **A security release: what an agent or a client sends Iris is bounded before Iris reads it, and a tool argument can narrow what the operator allows but never widen it.** 0.21.0:

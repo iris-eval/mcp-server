@@ -355,12 +355,13 @@ updates:
       # llama-index-llms-openai release admits openai 3.
       - dependency-name: "openai"
         versions: [">=3.0.0"]
-      # With openinference-instrumentation-llama-index 4.6.0 and 4.6.1 the
-      # LlamaIndex recipe's traces stop reaching Iris (tests/otel-recipes: 0
-      # matching traces); 4.5.2 with the same other pins passes (re-checked
-      # 2026-10-25). #919 tracks the cause; lift this when it is fixed.
+      # From openinference-instrumentation-llama-index 4.5.3 (4.5.3, 4.5.4,
+      # 4.6.0 and 4.6.1 checked) the LlamaIndex recipe's traces stop reaching
+      # Iris (tests/otel-recipes: 0 matching traces); 4.5.2 with the same
+      # other pins passes (re-checked 2026-10-26). #919 tracks the cause;
+      # lift this when it is fixed.
       - dependency-name: "openinference-instrumentation-llama-index"
-        versions: [">=4.6.0"]
+        versions: [">=4.5.3"]
     groups:
       all:
         patterns:
