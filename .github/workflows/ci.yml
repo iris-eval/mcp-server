@@ -545,14 +545,14 @@ jobs:
           npm init -y > /dev/null
           npm install --no-audit --no-fund "$RUNNER_TEMP/pack/$tarball"
           ./node_modules/.bin/iris-eval --version
-      # Exact versions, from a committed lockfile: .github/real-clients pins
-      # each client and its whole tree by integrity hash, and `npm ci`
+      # Exact versions, from a committed lockfile: tests/real-clients/clients
+      # pins each client and its whole tree by integrity hash, and `npm ci`
       # installs exactly that on every OS. A client release that changes
       # what it reads is found by bumping one there (Dependabot proposes
       # it), not by a red run.
       - name: Install the clients from their lockfile
         run: |
-          cd .github/real-clients
+          cd tests/real-clients/clients
           npm ci --no-audit --no-fund
           bin="$PWD/node_modules/.bin"
           # Windows runners: a native path, so cmd.exe (which the tests spawn through for .cmd shims) resolves it.

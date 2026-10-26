@@ -299,7 +299,7 @@ describe('the image keeps the whole Iris home in its volume', () => {
 
 describe('the real-clients job installs its MCP clients from a lockfile', () => {
   const ci = workflow('.github/workflows/ci.yml');
-  const dir = '.github/real-clients';
+  const dir = 'tests/real-clients/clients';
 
   it('uses npm ci in its own directory, and nothing in ci.yml installs globally with npm', () => {
     expect(ci).toContain(`cd ${dir}\n          npm ci --no-audit --no-fund`);
