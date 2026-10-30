@@ -124,7 +124,7 @@
     "fast-uri": "^3.1.9",
     "ip-address": "^10.7.4",
     "postcss": "^8.5.25",
-    "@hono/node-server": "^2.1.0",
+    "@hono/node-server": "^2.1.5",
     "tmp": "^0.2.6"
   },
   "dependencies": {
