@@ -224,11 +224,19 @@ All four are transitive-only (`brace-expansion` via dev-tooling globs, `fast-uri
 
 #### [GHSA-frvp-7c67-39w9](https://github.com/advisories/GHSA-frvp-7c67-39w9) — @hono/node-server serveStatic path traversal on Windows via encoded backslash (`%5C`)
 
-- **Severity:** moderate — **Package:** `@hono/node-server` (2.1.0 installed — the MCP SDK's 1.30.0 bump carried it past the advisory's 2.0.5 fix; `npm audit` no longer reports this advisory for this tree. The row stays as the record of the assessment made while it was open; the installed version above is checked against `package-lock.json` by `scripts/security/check-exposure-coverage.mjs`)
+- **Severity:** moderate — **Package:** `@hono/node-server` (2.1.5 installed — the MCP SDK's 1.30.0 bump carried it to 2.1.0, past the advisory's 2.0.5 fix, and the root `overrides` entry raised it to 2.1.5 on 2026-10-30 for GHSA-rmxm-3fg6-px4f below; `npm audit` no longer reports this advisory for this tree. The row stays as the record of the assessment made while it was open; the installed version above is checked against `package-lock.json` by `scripts/security/check-exposure-coverage.mjs`)
 - **Load-graph reachable:** **Yes on HTTP transport** (see correction above); no on stdio.
 - **Code-path reachable:** **No.** The vulnerability is in `serveStatic`; iris calls only `getRequestListener`. iris serves no static files through this package — dashboard assets go through Express `express.static`.
 - **Decision:** **Resolved 2026-09-05 by the SDK upgrade** (while open: dismiss as `tolerable_risk`) — loaded, but the vulnerable static-file handler is off iris's call graph. Cannot be overridden locally without forcing a major version on the SDK's bridge; tracks the SDK upgrade.
 - **Assessed:** 2026-08-06; re-verified against the lockfile 2026-09-05 (the record had said 1.19.13 for a month after the upgrade).
+
+#### [GHSA-rmxm-3fg6-px4f](https://github.com/advisories/GHSA-rmxm-3fg6-px4f) — @hono/node-server `serveStatic` decodes the request path a second time (middleware bypass on static paths)
+
+- **Severity:** moderate — **Package:** `@hono/node-server` (2.1.5 installed — vulnerable range >= 1.19.10, < 2.1.3; fixed in 2.1.3; published 2026-10-28). The tree had 2.1.0 through `@modelcontextprotocol/sdk@1.32.1` (`^1.19.9 || ^2.0.5`); the root `overrides` entry is now `^2.1.5` and the lockfile resolves 2.1.5 (regenerated on Linux, node 24; the one lockfile change).
+- **Load-graph reachable:** **Yes on HTTP transport**, no on stdio — the same path as GHSA-frvp-7c67-39w9 above (`getRequestListener` only).
+- **Code-path reachable:** **No.** The defect is in `serveStatic`, which has zero call sites in `src/` (re-verified 2026-10-30). iris serves no static files through this package.
+- **Decision:** **Patched 2026-10-30** (override to 2.1.5; while open it was `tolerable_risk` for the reason above). The Advisory inventory failed on main on 2026-10-29 and 2026-10-30 because this row did not yet exist; this row and the bump are the fix.
+- **Assessed:** 2026-10-30.
 
 #### [GHSA-8j4g-w8fx-2239](https://github.com/advisories/GHSA-8j4g-w8fx-2239), [GHSA-hvrm-45r6-mjfj](https://github.com/advisories/GHSA-hvrm-45r6-mjfj), [GHSA-w62v-xxxg-mg59](https://github.com/advisories/GHSA-w62v-xxxg-mg59), [GHSA-xgm2-5f3f-mvvc](https://github.com/advisories/GHSA-xgm2-5f3f-mvvc) — hono core (CORS-middleware ReDoS, hono/jsx cross-request context leak, `cx()` JSX XSS, API-Gateway v1 adapter header de-dup)
 
