@@ -25,6 +25,30 @@ CI runs `scripts/security/check-exposure-coverage.mjs` on every PR. If a new ≥
 
 ## Currently open advisories
 
+### [GHSA-3g3m-2fjr-6pw4](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4) — glob: AbortSignal cancellation bypass allows post-timeout filesystem traversal (CVE-2026-118773)
+
+- **Severity:** medium
+- **Package:** `glob` (9.0.0 through 14.0.1; fixed in 14.0.2, a major release above the range the tooling declares)
+- **Load path:** `dashboard/` only: `glob@13.0.6` ← `@joshwooding/vite-plugin-react-docgen-typescript@0.7.0` ← `@storybook/react-vite@10.6.3`, Storybook's Vite builder, a devDependency used to build component stories. `npm ls glob --omit=dev` is empty in the root, `dashboard/` and `website/`: nothing in the published npm package, the Docker image (`npm ci --omit=dev`), the dashboard's production bundle or the site loads it.
+- **Load-graph reachable:** In a Storybook build only (`npm run storybook` / the story build). Never at runtime.
+- **Code-path reachable:** The advisory is in glob's handling of an aborted `AbortSignal` during a timed-out walk. The docgen plugin walks this repository's own source tree with no timeout or signal; the vulnerable branch is never entered.
+- **Untrusted input reachable:** No. The walk is over committed source files on the machine that runs Storybook; no user, trace or agent output reaches a glob call.
+- **Downstream guards:** At worst a Storybook build continues a directory walk past a cancellation it was never given.
+- **Decision:** **Track**, dev tooling behind commit access. Take glob 14 when the Storybook builder or the docgen plugin moves its range (14.0.2 is a major release), by a Linux-regenerated lockfile bump, and retire this row.
+- **Assessed:** 2026-10-31 against iris commit `4acd9a53` (the merge of #938).
+
+### [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249) — minimatch: potential denial of service via globparts amplification (CVE-2026-118764)
+
+- **Severity:** medium
+- **Package:** `minimatch` (every release before 11.0.1; fixed in 11.0.1, a major release)
+- **Load path:** root: `minimatch@10.2.6` ← `eslint@10.13.0` and `@typescript-eslint/typescript-estree@8.72.0` (devDependencies). `dashboard/`: `minimatch@10.2.5` ← the same ESLint tooling. `website/`: `minimatch@10.2.4` ← `typescript-eslint@8.57.1`, and `minimatch@3.1.5` ← `eslint@9.39.4` and the plugins of `eslint-config-next@16.4.2`. `npm ls minimatch --omit=dev` is empty in all three packages: nothing in the published npm package, the Docker image (`npm ci --omit=dev`) or the site's runtime loads it.
+- **Load-graph reachable:** In lint only (`npm run lint` locally and CI's lint job). Never at runtime.
+- **Code-path reachable:** The advisory is in the expansion of glob patterns. ESLint hands minimatch the ignore and override patterns of this repository's own configuration, which are committed here.
+- **Untrusted input reachable:** No. The patterns come from files behind commit access; no user, trace or agent output reaches a minimatch call.
+- **Downstream guards:** A pathological pattern could at most slow a lint run over patterns this repository defines.
+- **Decision:** **Track**, dev tooling behind commit access. Take minimatch 11 when `eslint`, `@typescript-eslint/*` and `eslint-config-next` move their ranges (11.0.1 is a major release; an `overrides` pin would force it on packages that have not tested against it), by a Linux-regenerated lockfile bump, and retire this row.
+- **Assessed:** 2026-10-31 against iris commit `4acd9a53` (the merge of #938).
+
 ### [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) — braces stack-exhaustion denial of service through deeply nested patterns
 
 - **Severity:** high
