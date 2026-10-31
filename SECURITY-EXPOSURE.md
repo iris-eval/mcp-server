@@ -49,6 +49,7 @@ CI runs `scripts/security/check-exposure-coverage.mjs` on every PR. If a new ≥
 - **Downstream guards:** A forged MCPB signature could at most make `mcpb verify` report a bundle as signed. No step in CI or the release reads that answer.
 - **Decision:** **Track** — waiting on an upstream fix — and dismiss as `tolerable_risk` meanwhile. When `node-forge` publishes a fixed version, pin it with an `overrides` entry, as was done for `tmp` when this tooling was locked.
 - **Assessed:** 2026-10-01 against iris commit `78a0781`.
+- **Closed 2026-10-31:** `node-forge` 1.4.1 and 1.4.2 were published on 2026-10-30 alongside eleven advisories for versions through 1.4.0; the lockfile was regenerated on Linux to 1.4.2 (`@anthropic-ai/mcpb`'s own range `^1.3.2` reaches it, so no `overrides` entry was needed). GitHub's advisory database lists no advisory covering 1.4.2 (read 2026-10-31, every page of the `securityVulnerabilities` query). This row is history.
 
 ### [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5) — Zod can exhaust memory while validating oversized constrained collections (the copy inside the MCPB tooling)
 
