@@ -4,8 +4,8 @@
   "description": "The OpenAI Agents SDK (JavaScript) recipe in docs/otel-recipes.md, pinned to the versions it was proven against.",
   "type": "module",
   "dependencies": {
-    "@arizeai/openinference-core": "2.8.0",
-    "@arizeai/openinference-instrumentation-openai-agents": "0.3.2",
+    "@arizeai/openinference-core": "2.8.1",
+    "@arizeai/openinference-instrumentation-openai-agents": "0.3.3",
     "@openai/agents": "0.21.0",
     "@opentelemetry/api": "1.9.1",
     "@opentelemetry/exporter-trace-otlp-proto": "0.223.0",
