@@ -10,6 +10,8 @@ By submitting a pull request, you agree to our [Contributor License Agreement](.
 
 You are welcome to use AI tools (Copilot, Claude, etc.) to assist with your contributions. However, by submitting a PR, you represent that you have reviewed all code for correctness and security, and that you accept full responsibility for the contribution under the CLA — regardless of how it was generated.
 
+If a coding agent is doing the work, point it at [AGENTS.md](AGENTS.md): the build, test and pull-request rules on this page, condensed for an agent.
+
 ## Security
 
 If you discover a security vulnerability, **do not open a public issue**. Please email security@iris-eval.com instead. See [SECURITY.md](SECURITY.md) for details.

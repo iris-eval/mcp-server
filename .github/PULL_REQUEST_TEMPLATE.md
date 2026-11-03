@@ -18,7 +18,6 @@
 
 ## Checklist
 
-- [ ] `npm run typecheck` passes
-- [ ] `npm run lint` passes
-- [ ] `npm test` passes
+- [ ] `npm run preflight` passes (lint, types, claims and renders, and the tests this change reaches)
+- [ ] A change a caller can observe has a **Behaviour change:** sentence in `CHANGELOG.md` ([VERSIONING.md](../VERSIONING.md))
 - [ ] Documentation updated (if applicable)

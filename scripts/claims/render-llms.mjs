@@ -358,7 +358,7 @@ export function clientsTable(claims) {
       const meaning =
         r.status === 'verified'
           ? 'a test drives the real client on every CI run'
-          : 'the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect';
+          : "configured from the client's own MCP documentation; the installer's path and format for it are unit-tested";
       return `| ${r.name} | ${r.status} | ${meaning} | [${r.lastChecked}](${r.source}) |`;
     }),
     '',

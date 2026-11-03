@@ -1,17 +1,12 @@
 # Iris — stop shipping agents on vibes
 
-[![Glama Score](https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/iris-eval/mcp-server)
-[![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=iris-eval&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBpcmlzLWV2YWwvbWNwLXNlcnZlciJdfQ==)
-[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Iris-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=iris-eval&config=%7B%22name%22%3A%22iris-eval%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40iris-eval%2Fmcp-server%22%5D%7D)
-[![npm version](https://img.shields.io/npm/v/@iris-eval/mcp-server)](https://npmjs.com/package/@iris-eval/mcp-server)
-[![GitHub stars](https://img.shields.io/github/stars/iris-eval/mcp-server?style=social)](https://github.com/iris-eval/mcp-server)
 [![CI](https://github.com/iris-eval/mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/iris-eval/mcp-server/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/iris-eval/mcp-server/badge)](https://securityscorecards.dev/viewer/?uri=github.com/iris-eval/mcp-server)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12849/badge)](https://www.bestpractices.dev/projects/12849)
+[![npm version](https://img.shields.io/npm/v/@iris-eval/mcp-server)](https://npmjs.com/package/@iris-eval/mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/iris-eval/mcp-server/blob/main/LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://github.com/iris-eval/mcp-server/pkgs/container/mcp-server)
-[![PulseMCP](https://img.shields.io/badge/PulseMCP-Listed-blue?style=flat-square)](https://www.pulsemcp.com/servers/iris-eval)
-[![mcp.so](https://img.shields.io/badge/mcp.so-Listed-blue?style=flat-square)](https://mcp.so/servers/mcp-server-iris-eval)
+[![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=iris-eval&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBpcmlzLWV2YWwvbWNwLXNlcnZlciJdfQ==)
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Iris-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=iris-eval&config=%7B%22name%22%3A%22iris-eval%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40iris-eval%2Fmcp-server%22%5D%7D)
 
 **Iris scores every agent run for quality, safety, and cost — on your machine, with no SDK and no account.** Most agent projects check quality by running a few remembered prompts and eyeballing the output. Iris replaces that with numbers you can audit: your agent's runs land in a SQLite database on your disk, 26 built-in rules score them deterministically — PII, prompt injection, hallucination markers, cost thresholds, and the agent's own tool calls — free, with no LLM calls, and an optional LLM judge with a hard per-eval cost cap handles the semantic questions. Every rule is inspectable and editable, because a judge you can't audit is just vibes with a number on it. MIT licensed, no telemetry. Nothing leaves your machine unless you turn one of these on: an OpenTelemetry endpoint (`IRIS_OTEL_ENDPOINT`), which exports traces to the collector you name; the LLM judge with your own key, which sends the text it judges to that provider, and whose citation check fetches the pages an output cites; or a webhook, which posts ids, the verdict and rule names, never the text, to the address you set.
 
@@ -55,7 +50,7 @@ The clients: `claude-code`, `claude-desktop`, `cursor`, `windsurf`, `continue`, 
 
 **Claude Desktop: one click.** Each release from 0.20.0 on attaches `iris-eval.mcpb`, an [MCP Bundle](https://github.com/modelcontextprotocol/mcpb): download [the latest](https://github.com/iris-eval/mcp-server/releases/latest/download/iris-eval.mcpb), open it, and Claude Desktop shows an install dialog. Nothing on it is required — an Anthropic or OpenAI key for the LLM judge is optional, and the dashboard is a switch that starts off. The bundle holds the npm package and its dependencies, so nothing else needs installing: Claude Desktop runs it under the Node it ships when that Node is 22.13 or newer (Claude Desktop 1.1.6679 ships 24.13), and Iris stores traces with Node's built-in SQLite, in the same `~/.iris` every other install uses. The release notes show how to verify its signature and build attestation.
 
-It runs in any MCP client, and every client it names has a row with what was actually checked. **Verified on every CI run: Claude Code, Gemini CLI** — the real client starts Iris from the config the installer wrote and reports it connected (`claude mcp list`, `gemini mcp list`), on Linux, macOS and Windows; Claude Code's capture plugin hooks are driven through the real scripts too. **Claimed from each client's own MCP documentation** — the installer writes the configuration shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect: Claude Desktop, Cursor, Devin Desktop (Windsurf), Continue, VS Code, Cline, Zed, OpenAI Codex CLI. Every row with its source and the date it was read: https://iris-eval.com/clients. By hand instead, one block, dashboard included:
+It runs in any MCP client, and every client it names has a row saying how it is checked. **Verified on every CI run: Claude Code, Gemini CLI** — the real client starts Iris from the config the installer wrote and reports it connected (`claude mcp list`, `gemini mcp list`), on Linux, macOS and Windows; Claude Code's capture plugin hooks are driven through the real scripts too. **Configured from each client's own MCP documentation** — the installer writes the file each client documents, at its documented path and in its own format (an `mcpServers` block, VS Code's `servers`, Zed's `context_servers`, Codex's TOML), keeping comments and every other server, and unit tests hold each path and every format writer to that documentation: Claude Desktop, Cursor, Devin Desktop (Windsurf), Continue, VS Code, Cline, Zed, OpenAI Codex CLI. Every row with its source and the date it was read: https://iris-eval.com/clients. By hand instead, one block, dashboard included:
 
 ```json
 {
@@ -198,14 +193,14 @@ npx @iris-eval/mcp-server --version     # prints the bare version, e.g. 1.2.3
 | Client | Status | What that means | Read |
 |---|---|---|---|
 | Claude Code | verified | a test drives the real client on every CI run | [2026-09-25](https://code.claude.com/docs/en/mcp) |
-| Claude Desktop | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://modelcontextprotocol.io/docs/2026-07-28/develop/connect-local-servers) |
-| Cursor | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://cursor.com/docs/mcp) |
-| Devin Desktop (Windsurf) | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://docs.devin.ai/desktop/cascade/mcp) |
-| Continue | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://docs.continue.dev/customize/deep-dives/mcp) |
-| VS Code | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://code.visualstudio.com/docs/agent-customization/mcp-servers) |
-| Cline | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://docs.cline.bot/getting-started/config) |
-| Zed | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://zed.dev/docs/ai/mcp) |
-| OpenAI Codex CLI | claimed | the installer writes the shape the client documents, and that writer is tested on the shape; nobody on the Iris side has watched it connect | [2026-09-25](https://learn.chatgpt.com/docs/extend/mcp?surface=cli) |
+| Claude Desktop | claimed | configured from the client's own MCP documentation; the installer's path and format for it are unit-tested | [2026-09-25](https://modelcontextprotocol.io/docs/2026-07-28/develop/connect-local-servers) |
+| Cursor | claimed | configured from the client's own MCP documentation; the installer's path and format for it are unit-tested | [2026-09-25](https://cursor.com/docs/mcp) |
+| Devin Desktop (Windsurf) | claimed | configured from the client's own MCP documentation; the installer's path and format for it are unit-tested | [2026-09-25](https://docs.devin.ai/desktop/cascade/mcp) |
+| Continue | claimed | configured from the client's own MCP documentation; the installer's path and format for it are unit-tested | [2026-09-25](https://docs.continue.dev/customize/deep-dives/mcp) |
+| VS Code | claimed | configured from the client's own MCP documentation; the installer's path and format for it are unit-tested | [2026-09-25](https://code.visualstudio.com/docs/agent-customization/mcp-servers) |
+| Cline | claimed | configured from the client's own MCP documentation; the installer's path and format for it are unit-tested | [2026-09-25](https://docs.cline.bot/getting-started/config) |
+| Zed | claimed | configured from the client's own MCP documentation; the installer's path and format for it are unit-tested | [2026-09-25](https://zed.dev/docs/ai/mcp) |
+| OpenAI Codex CLI | claimed | configured from the client's own MCP documentation; the installer's path and format for it are unit-tested | [2026-09-25](https://learn.chatgpt.com/docs/extend/mcp?surface=cli) |
 | Gemini CLI | verified | a test drives the real client on every CI run | [2026-09-25](https://geminicli.com/docs/tools/mcp-server/) |
 
 Every row with what was checked: [iris-eval.com/clients](https://iris-eval.com/clients). No client is called supported without a row.
@@ -314,6 +309,13 @@ docker run -p 3000:3000 -p 6920:6920 -v iris-data:/data \
 ```
 
 > **Tip:** Global install (`npm install -g`) stores traces persistently at `~/.iris/iris.db`. With `npx`, traces persist in the same location, but startup is slower due to package resolution.
+
+The container image, and the MCP directories that list Iris:
+
+[![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://github.com/iris-eval/mcp-server/pkgs/container/mcp-server)
+[![Glama Score](https://glama.ai/mcp/servers/iris-eval/mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/iris-eval/mcp-server)
+[![PulseMCP](https://img.shields.io/badge/PulseMCP-Listed-blue?style=flat-square)](https://www.pulsemcp.com/servers/iris-eval)
+[![mcp.so](https://img.shields.io/badge/mcp.so-Listed-blue?style=flat-square)](https://mcp.so/servers/mcp-server-iris-eval)
 
 ## What You Get
 
@@ -426,7 +428,9 @@ Two commitments hold: **nothing that is free today will move behind a paywall**,
 
 - [GitHub Issues](https://github.com/iris-eval/mcp-server/issues) — Bug reports and feature requests
 - [GitHub Discussions](https://github.com/iris-eval/mcp-server/discussions) — Questions and ideas
-- [Contributing Guide](https://github.com/iris-eval/mcp-server/blob/main/CONTRIBUTING.md) — How to contribute
+- [Getting help](https://github.com/iris-eval/mcp-server/blob/main/.github/SUPPORT.md) — Where to ask, report a bug, or report a vulnerability
+- [Contributing Guide](https://github.com/iris-eval/mcp-server/blob/main/CONTRIBUTING.md) — How to contribute; [AGENTS.md](https://github.com/iris-eval/mcp-server/blob/main/AGENTS.md) is the same guide for coding agents
+- [Governance](https://github.com/iris-eval/mcp-server/blob/main/GOVERNANCE.md) — Who decides, how a change lands, and how a release is made and verified
 - [HTTP Ingest](https://github.com/iris-eval/mcp-server/blob/main/docs/http-ingest.md) — Deterministic trace capture via `POST /api/v1/traces`
 - [Capability map](https://iris-eval.com/capabilities) — Every question Iris can be asked, and what it lacks
 - [Versioning policy](https://github.com/iris-eval/mcp-server/blob/main/VERSIONING.md) — What each version number promises, and what has to be true before 1.0
