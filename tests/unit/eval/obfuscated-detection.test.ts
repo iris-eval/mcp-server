@@ -234,8 +234,11 @@ describe("hostile input: runs of '=' stay linear", () => {
   // Stripping a run's padding with an end-anchored pattern such as /=+$/
   // costs quadratic time on a long run of '=' that is not at the end: over
   // 100,000 characters that is seconds of CPU. The base64 reading takes the
-  // run from a capture group instead, so these shapes cost one pass.
+  // run from a capture group instead, so these shapes cost one pass. The
+  // budget sits far below the quadratic cost (seconds) and far above one
+  // pass on a slow CI runner (about 100 ms for the densest shape).
   const SIZE = 100_000;
+  const BUDGET_MS = 1_000;
   const shapes: Array<[string, string]> = [
     ["100,000 '='", '='.repeat(SIZE)],
     ["a base64 run, then 100,000 '=', then text", `aB3dE5fG7hJ9kL1mN3pQ${'='.repeat(SIZE)}x`],
@@ -244,9 +247,9 @@ describe("hostile input: runs of '=' stay linear", () => {
     ["a letter and '=' alternating", 'a='.repeat(SIZE / 2)],
   ];
   for (const [name, text] of shapes) {
-    it(`${name}: each rule under 100 ms of CPU`, () => {
-      expect(cpuMs(() => noInjectionPatterns.evaluate({ output: text }))).toBeLessThan(100);
-      expect(cpuMs(() => noPii.evaluate({ output: text }))).toBeLessThan(100);
+    it(`${name}: each rule within its CPU budget`, () => {
+      expect(cpuMs(() => noInjectionPatterns.evaluate({ output: text }))).toBeLessThan(BUDGET_MS);
+      expect(cpuMs(() => noPii.evaluate({ output: text }))).toBeLessThan(BUDGET_MS);
     });
   }
 });
