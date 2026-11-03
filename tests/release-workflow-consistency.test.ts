@@ -34,6 +34,10 @@ const SBOMS = ['iris-npm-sbom.spdx.json', 'iris-docker-sbom.spdx.json'];
 const MCPB = 'iris-eval.mcpb';
 /** Every release asset that has a Sigstore bundle beside it. */
 const SIGNED = [...SBOMS, MCPB];
+/** The build-provenance statement for the MCPB bundle and both SBOMs, attached as a release asset. */
+const PROVENANCE = 'iris-eval.intoto.jsonl';
+/** Every asset a release page carries. */
+const ASSETS = [...SIGNED.flatMap((s) => [s, `${s}${BUNDLE_SUFFIX}`]), PROVENANCE];
 
 describe('release.yml — the SBOM signature bundles', () => {
   it('carries no trace of the unrecognised suffix', () => {
@@ -44,18 +48,18 @@ describe('release.yml — the SBOM signature bundles', () => {
     expect(release).toContain(`--bundle "\${sbom}${BUNDLE_SUFFIX}"`);
   });
 
-  it('uploads both SBOMs, the MCPB bundle, and a signature bundle for each as release assets', () => {
+  it('uploads both SBOMs, the MCPB bundle, a signature bundle for each, and the provenance as release assets', () => {
     const files = release.match(/files: \|\n([\s\S]*?)\n\s+body_path:/);
     expect(files, 'the action-gh-release files block').not.toBeNull();
     const names = files![1].split('\n').map((l) => l.trim().replace(/^\.\/release-assets\//, '')).filter(Boolean);
-    expect(names.sort()).toEqual(SIGNED.flatMap((s) => [s, `${s}${BUNDLE_SUFFIX}`]).sort());
+    expect(names.sort()).toEqual([...ASSETS].sort());
   });
 
-  it('verify-release checks the same six assets are attached', () => {
+  it('verify-release checks the same seven assets are attached', () => {
     const loop = release.match(/for a in ([^;]+); do\n\s+jq -e --arg a "\$a" '\.assets\[\]/);
     expect(loop, 'the asset-presence loop').not.toBeNull();
     const names = loop![1].replace(/\\\n/g, ' ').split(/\s+/).filter(Boolean);
-    expect(names.sort()).toEqual(SIGNED.flatMap((s) => [s, `${s}${BUNDLE_SUFFIX}`]).sort());
+    expect(names.sort()).toEqual([...ASSETS].sort());
   });
 
   it('the release notes tell readers to verify with the same bundle name', () => {
@@ -239,7 +243,7 @@ describe('release.yml — the MCPB bundle', () => {
     expect(gh).toContain('attestations: write');
     expect(gh).toContain('WANT: ${{ needs.build-mcpb.outputs.sha256 }}');
     expect(gh).toContain(`--bundle "${MCPB}${BUNDLE_SUFFIX}"`);
-    expect(gh).toMatch(/actions\/attest-build-provenance@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+subject-path: release-assets\/iris-eval\.mcpb/);
+    expect(gh).toMatch(/actions\/attest-build-provenance@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+subject-path: \|\n\s+release-assets\/iris-eval\.mcpb\n/);
     expect(gh.indexOf('needs.build-mcpb.outputs.sha256')).toBeLessThan(gh.indexOf(`--bundle "${MCPB}${BUNDLE_SUFFIX}"`));
   });
 
@@ -342,5 +346,76 @@ describe('every workflow is linted, and the Python build runs before a tag', () 
     expect(publish).toContain('id-token: write');
     const build = py.slice(py.indexOf('\n  build:\n'), py.indexOf('\n  publish:\n'));
     expect(build).not.toContain('id-token');
+  });
+});
+
+/*
+ * OpenSSF Scorecard's Signed-Releases check scored every release 8 of 10:
+ * each was signed, none carried its provenance as a release asset (an
+ * *.intoto.jsonl file), though GitHub's attestation store held it. The
+ * statement github-release already signs is now attached, and verify-release
+ * verifies the attached copy, not only its presence.
+ */
+describe('release.yml — the build provenance, attached', () => {
+  const steps = (name: string): string =>
+    job(name)
+      .split('\n')
+      .filter((line) => !/^\s*#/.test(line))
+      .join('\n');
+
+  it('one attestation covers the MCPB bundle and both SBOMs, and its bundle becomes the release asset', () => {
+    const gh = steps('github-release');
+    const attest = gh.slice(gh.indexOf('id: provenance'), gh.indexOf('- name: Attach the provenance'));
+    expect(attest).toMatch(/^id: provenance\n\s+uses: actions\/attest-build-provenance@[0-9a-f]{40}/);
+    for (const asset of [MCPB, ...SBOMS]) expect(attest, asset).toContain(`release-assets/${asset}`);
+    expect(gh).toContain('BUNDLE: ${{ steps.provenance.outputs.bundle-path }}');
+    expect(gh).toContain(`cp "$BUNDLE" release-assets/${PROVENANCE}`);
+    expect(gh.indexOf(`cp "$BUNDLE" release-assets/${PROVENANCE}`)).toBeLessThan(gh.indexOf('uses: softprops/action-gh-release'));
+  });
+
+  it('verify-release verifies the attached file, under the release workflow, not only its presence', () => {
+    const verify = steps('verify-release');
+    expect(verify).toContain(`-p ${PROVENANCE}`);
+    expect(verify).toContain(
+      [
+        'gh attestation verify iris-eval.mcpb -R "$GITHUB_REPOSITORY" \\',
+        `            --bundle ${PROVENANCE} \\`,
+        '            --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/release.yml"',
+      ].join('\n'),
+    );
+  });
+
+  it('the release notes tell readers how to verify against it', () => {
+    expect(release).toContain(`--bundle ${PROVENANCE}`);
+    expect(release).toContain('--signer-workflow __REPO__/.github/workflows/release.yml');
+  });
+});
+
+/*
+ * zizmor's cache-poisoning audit: a release job that restores a cache can
+ * build from files another workflow run wrote. And harden-runner records
+ * each release job's outbound connections, the baseline an egress
+ * allow-list would be built from.
+ */
+describe('release.yml — no cache, and every job audited', () => {
+  const jobs = [...release.matchAll(/\n {2}([a-z][a-z0-9-]*):\n/g)].map((m) => m[1]).filter((name) => job(name).includes('\n    steps:\n'));
+
+  it('reads its jobs (guards the parser itself)', () => {
+    expect(jobs).toEqual(expect.arrayContaining(['validate', 'build-npm', 'publish-npm', 'github-release', 'verify-release']));
+  });
+
+  it('no setup-node restores a cache', () => {
+    expect(release).not.toMatch(/^\s+cache: /m);
+    const setups = release.match(/actions\/setup-node@[0-9a-f]{40}[^\n]*\n\s+with:\n(?: {10}[^\n]*\n)+/g) ?? [];
+    expect(setups.length).toBeGreaterThan(0);
+    expect(setups.length).toBe((release.match(/actions\/setup-node@/g) ?? []).length);
+    for (const setup of setups) expect(setup).toContain('package-manager-cache: false');
+  });
+
+  it('every job starts with harden-runner in audit mode, pinned by commit', () => {
+    for (const name of jobs) {
+      const first = job(name).split('\n    steps:\n')[1].split('\n      - ')[0];
+      expect(first, name).toMatch(/^ {6}- name: [^\n]+\n {8}uses: step-security\/harden-runner@[0-9a-f]{40} {2}# v[\d.]+\n {8}with:\n {10}egress-policy: audit(\n|$)/);
+    }
   });
 });

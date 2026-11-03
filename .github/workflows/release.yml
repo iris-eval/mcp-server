@@ -38,6 +38,14 @@ on:
 # Least-privilege: top-level is contents:read (default for all jobs).
 # Each publishing / release job declares its specific writes at job level.
 # Closes Scorecard Token-Permissions (workflow-level minimal default).
+#
+# Every job starts with step-security/harden-runner in audit mode: it
+# records the job's outbound network connections and blocks nothing. That
+# record is the baseline an allow-list (egress-policy: block) is built from.
+#
+# No job restores a cache (package-manager-cache: false on every
+# setup-node): a release installs from the lockfile and the registry, never
+# from a cache another workflow run wrote.
 permissions:
   contents: read
 
@@ -53,8 +61,13 @@ jobs:
       contents: read
       checks: read           # the tagged commit's check runs on main
     steps:
+      - name: Harden the runner (audit outbound network calls)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43  # v2.22.3
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
       # Only reviewed code ships. A tag pushed at a commit that never reached
       # main (an unmerged branch, a local experiment) would otherwise publish
@@ -79,8 +92,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
+          package-manager-cache: false
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
@@ -145,12 +157,17 @@ jobs:
       sbom-path: ${{ steps.sbom.outputs.fileName }}
       tarball: ${{ steps.pack.outputs.tarball }}
     steps:
+      - name: Harden the runner (audit outbound network calls)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43  # v2.22.3
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: package-lock.json
+          package-manager-cache: false
       - run: npm ci
       - run: npm run clean
       # npm ci, as in ci.yml: the dashboard lockfile carries the Linux
@@ -225,12 +242,17 @@ jobs:
     outputs:
       sha256: ${{ steps.pack.outputs.sha256 }}
     steps:
+      - name: Harden the runner (audit outbound network calls)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43  # v2.22.3
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: package-lock.json
+          package-manager-cache: false
       - run: npm ci
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
@@ -276,12 +298,18 @@ jobs:
     outputs:
       sbom-path: ${{ needs.build-npm.outputs.sbom-path }}
     steps:
-      # No checkout and no npm ci: this job runs nothing but npm and the
-      # pinned attest action on files build-npm produced.
+      - name: Harden the runner (audit outbound network calls)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43  # v2.22.3
+        with:
+          egress-policy: audit
+      # No checkout and no npm ci: besides the runner audit above, this job
+      # runs nothing but npm and the pinned attest action on files build-npm
+      # produced.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
       # Node 24 ships npm 11.17+, which satisfies the >= 11.5.1 that npm
       # Trusted Publishing (OIDC) requires — so there is no `npm install -g`
       # step here at all. Installing the npm CLI at tag time was an
@@ -373,14 +401,17 @@ jobs:
     permissions:
       contents: read         # checkout
     steps:
+      - name: Harden the runner (audit outbound network calls)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43  # v2.22.3
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: |
-            packages/sdk/package-lock.json
-            packages/langchain/package-lock.json
+          package-manager-cache: false
       - name: The packages can be published, and agree with each other
         run: node scripts/check-npm-packages.mjs
       # The handler builds against the SDK beside it (a file: devDependency),
@@ -427,11 +458,17 @@ jobs:
     permissions:
       id-token: write        # npm Trusted Publishing + --provenance
     steps:
-      # No checkout and no npm ci: only npm, on the tarballs build-packages packed.
+      - name: Harden the runner (audit outbound network calls)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43  # v2.22.3
+        with:
+          egress-policy: audit
+      # No checkout and no npm ci: besides the runner audit above, only npm,
+      # on the tarballs build-packages packed.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
           name: npm-packages
@@ -481,7 +518,13 @@ jobs:
     outputs:
       image-digest: ${{ steps.build.outputs.digest }}
     steps:
+      - name: Harden the runner (audit outbound network calls)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43  # v2.22.3
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1  # v4.4.0
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
       - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6  # v4.7.0
@@ -550,9 +593,11 @@ jobs:
       - name: Sign Docker image by digest
         env:
           COSIGN_EXPERIMENTAL: 1
+          IMAGE_PATH: ${{ github.repository }}
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           cosign sign --yes \
-            ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
+            "ghcr.io/${IMAGE_PATH}@${DIGEST}"
 
       # Per-image SBOM. We already inlined `sbom: true` on the buildx
       # action above (image-attached SBOM), but a standalone SPDX file
@@ -589,7 +634,13 @@ jobs:
       id-token: write        # cosign sign-blob keyless OIDC for SBOM + bundle sigs; attest-build-provenance
       attestations: write    # attest-build-provenance writes the bundle's attestation
     steps:
+      - name: Harden the runner (audit outbound network calls)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43  # v2.22.3
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       # Pull SBOMs from the publish jobs so the release page exposes them
       # as downloadable assets for security / procurement diligence.
@@ -657,10 +708,36 @@ jobs:
           cosign sign-blob --yes iris-eval.mcpb \
             --bundle "iris-eval.mcpb.sigstore.json"
 
-      - name: Attest the MCPB bundle
+      # One SLSA build-provenance statement, signed with this run's identity,
+      # covers every file the release page carries that is not itself a
+      # signature: the MCPB bundle and both SBOMs. It is recorded in GitHub's
+      # attestation store, and the step below attaches the same statement
+      # to the release.
+      - name: Attest the MCPB bundle and the SBOMs
+        id: provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
         with:
-          subject-path: release-assets/iris-eval.mcpb
+          subject-path: |
+            release-assets/iris-eval.mcpb
+            release-assets/iris-npm-sbom.spdx.json
+            release-assets/iris-docker-sbom.spdx.json
+
+      # The provenance as a release asset, iris-eval.intoto.jsonl: one
+      # Sigstore bundle per line, the form `gh attestation download` writes
+      # and `gh attestation verify --bundle` reads, so a downloaded release
+      # can be checked against the file beside it. The .intoto.jsonl name is
+      # the one SLSA tooling and OpenSSF Scorecard look for on a release.
+      - name: Attach the provenance to the release assets
+        env:
+          BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+        run: |
+          test -s "$BUNDLE" || { echo "FATAL: attest-build-provenance wrote no bundle at '$BUNDLE'" && exit 1; }
+          cp "$BUNDLE" release-assets/iris-eval.intoto.jsonl
+          while IFS= read -r line; do
+            printf '%s' "$line" | jq -e '.dsseEnvelope.payloadType == "application/vnd.in-toto+json"' > /dev/null \
+              || { echo "FATAL: iris-eval.intoto.jsonl holds a line that is not a Sigstore bundle with an in-toto statement" && exit 1; }
+          done < release-assets/iris-eval.intoto.jsonl
+          jq -r '.dsseEnvelope.payload | @base64d | fromjson | .predicateType, (.subject[] | "  \(.name) sha256:\(.digest.sha256)")' release-assets/iris-eval.intoto.jsonl
 
       # Pre-release detection: any tag NOT matching strict vX.Y.Z (e.g.
       # vX.Y.Z-rc.N) is published as a GitHub pre-release so it doesn't
@@ -718,7 +795,7 @@ jobs:
               --certificate-identity='https://github.com/__REPO__/.github/workflows/release.yml@refs/tags/__TAG__' \
               --certificate-oidc-issuer='https://token.actions.githubusercontent.com'
             ```
-          - **Build attestation**: both the npm SBOM and Docker image manifest carry GitHub-signed build-provenance attestations. Inspect with `gh attestation verify` or `cosign verify-attestation`.
+          - **Build attestation**: the npm SBOM, the Docker SBOM, the MCPB bundle and the Docker image manifest carry GitHub-signed build-provenance attestations. Inspect with `gh attestation verify` or `cosign verify-attestation`.
           - **MCPB bundle**: `iris-eval.mcpb` (open it to install in Claude Desktop) is built from the npm tarball above plus the production dependencies in this tag's `package-lock.json`, and holds the tarball's files byte for byte. It is signed (`iris-eval.mcpb.sigstore.json`) and carries a build-provenance attestation. Verify with:
             ```
             cosign verify-blob \
@@ -727,6 +804,12 @@ jobs:
               --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
               iris-eval.mcpb
             gh attestation verify iris-eval.mcpb -R __REPO__
+            ```
+          - **Build provenance, attached**: `iris-eval.intoto.jsonl` is the SLSA build-provenance statement for `iris-eval.mcpb` and both SBOMs, signed by this workflow run (a Sigstore bundle, one per line). Verify a downloaded file against it without querying GitHub's attestation API:
+            ```
+            gh attestation verify iris-eval.mcpb -R __REPO__ \
+              --bundle iris-eval.intoto.jsonl \
+              --signer-workflow __REPO__/.github/workflows/release.yml
             ```
           EOF
           sed -i "s|__REPO__|${REPO}|g; s|__TAG__|${TAG}|g" supply-chain.md
@@ -746,6 +829,7 @@ jobs:
             ./release-assets/iris-docker-sbom.spdx.json.sigstore.json
             ./release-assets/iris-eval.mcpb
             ./release-assets/iris-eval.mcpb.sigstore.json
+            ./release-assets/iris-eval.intoto.jsonl
           body_path: release-body.md
 
   publish-registry:
@@ -776,7 +860,13 @@ jobs:
     env:
       REGISTRY_API: https://registry.modelcontextprotocol.io/v0.1
     steps:
+      - name: Harden the runner (audit outbound network calls)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43  # v2.22.3
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       # Pinned and checksummed — NOT the `releases/latest/download` one-liner
       # the registry's own guide shows. An unpinned binary fetched at tag
@@ -845,15 +935,17 @@ jobs:
       # and left a released version off the registry until a human re-ran it.
       # A slow CDN is not a release failure; a wrong verdict about one is.
       - name: Wait for npm to serve this version
+        env:
+          VERSION: ${{ steps.server.outputs.version }}
         run: |
           attempts=45
           for i in $(seq 1 "$attempts"); do
-            if curl -fsSL "https://registry.npmjs.org/@iris-eval%2Fmcp-server/${{ steps.server.outputs.version }}" > /dev/null; then
-              echo "npm serves @iris-eval/mcp-server@${{ steps.server.outputs.version }} (after $(( (i - 1) * 20 ))s)" && exit 0
+            if curl -fsSL "https://registry.npmjs.org/@iris-eval%2Fmcp-server/${VERSION}" > /dev/null; then
+              echo "npm serves @iris-eval/mcp-server@${VERSION} (after $(( (i - 1) * 20 ))s)" && exit 0
             fi
-            echo "npm does not serve ${{ steps.server.outputs.version }} yet ($i/$attempts) — waiting 20s" && sleep 20
+            echo "npm does not serve ${VERSION} yet ($i/$attempts) — waiting 20s" && sleep 20
           done
-          echo "FATAL: npm never served ${{ steps.server.outputs.version }} within 15 minutes." >&2
+          echo "FATAL: npm never served ${VERSION} within 15 minutes." >&2
           echo "The package publish succeeded; only the registry step is blocked. Re-run this job" >&2
           echo "once npm serves the version: gh run rerun <run-id> --failed" >&2
           exit 1
@@ -865,9 +957,12 @@ jobs:
       # the registry is a real failure.
       - name: Check whether this version is already on the registry
         id: existing
+        env:
+          ENCODED: ${{ steps.server.outputs.encoded }}
+          VERSION: ${{ steps.server.outputs.version }}
         run: |
           code=$(curl -s -o /dev/null -w '%{http_code}' \
-            "${REGISTRY_API}/servers/${{ steps.server.outputs.encoded }}/versions/${{ steps.server.outputs.version }}")
+            "${REGISTRY_API}/servers/${ENCODED}/versions/${VERSION}")
           case "$code" in
             200) echo "published=true" >> "$GITHUB_OUTPUT"
                  echo "Already on the registry — skipping publish (idempotent re-run)" ;;
@@ -887,9 +982,11 @@ jobs:
       # "what is latest?" must be this tag, with isLatest set by the
       # registry, not inferred by us.
       - name: Verify the registry's latest IS this version
+        env:
+          WANT: ${{ steps.server.outputs.version }}
+          ENCODED: ${{ steps.server.outputs.encoded }}
         run: |
-          WANT="${{ steps.server.outputs.version }}"
-          URL="${REGISTRY_API}/servers/${{ steps.server.outputs.encoded }}/versions/latest"
+          URL="${REGISTRY_API}/servers/${ENCODED}/versions/latest"
           for i in $(seq 1 12); do
             body=$(curl -fsSL "$URL" || true)
             got=$(printf '%s' "$body" | jq -r '.server.version // empty')
@@ -921,7 +1018,13 @@ jobs:
       contents: read         # checkout (server.json) + gh release view
       attestations: read     # gh attestation verify on the MCPB bundle
     steps:
+      - name: Harden the runner (audit outbound network calls)
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43  # v2.22.3
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Determine release type
         id: rt
@@ -938,9 +1041,10 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: npm — the dist-tag resolves to this version
+        env:
+          WANT: ${{ steps.rt.outputs.version }}
+          TAG: ${{ steps.rt.outputs.dist_tag }}
         run: |
-          WANT="${{ steps.rt.outputs.version }}"
-          TAG="${{ steps.rt.outputs.dist_tag }}"
           for i in $(seq 1 12); do
             got=$(curl -fsSL "https://registry.npmjs.org/-/package/@iris-eval%2Fmcp-server/dist-tags" | jq -r --arg t "$TAG" '.[$t] // empty')
             if [ "$got" = "$WANT" ]; then
@@ -981,6 +1085,7 @@ jobs:
         env:
           EXPECTED: ${{ needs.publish-docker.outputs.image-digest }}
           IMAGE_PATH: ${{ github.repository }}
+          PRERELEASE: ${{ steps.rt.outputs.prerelease }}
         run: |
           [ -n "$EXPECTED" ] || { echo "✗ FATAL: publish-docker exposed no image digest" && exit 1; }
           TOKEN=$(curl -fsSL "https://ghcr.io/token?scope=repository:${IMAGE_PATH}:pull" | jq -r '.token')
@@ -995,7 +1100,7 @@ jobs:
             fi
           }
           check "${GITHUB_REF_NAME}"
-          if [ "${{ steps.rt.outputs.prerelease }}" = "false" ]; then
+          if [ "$PRERELEASE" = "false" ]; then
             check latest
           fi
 
@@ -1020,7 +1125,8 @@ jobs:
           jq -e --argjson p "$PRERELEASE" '.isPrerelease == $p' release.json > /dev/null || { echo "✗ prerelease flag does not match the tag" && exit 1; }
           for a in iris-npm-sbom.spdx.json iris-npm-sbom.spdx.json.sigstore.json \
                    iris-docker-sbom.spdx.json iris-docker-sbom.spdx.json.sigstore.json \
-                   iris-eval.mcpb iris-eval.mcpb.sigstore.json; do
+                   iris-eval.mcpb iris-eval.mcpb.sigstore.json \
+                   iris-eval.intoto.jsonl; do
             jq -e --arg a "$a" '.assets[] | select(.name == $a)' release.json > /dev/null || { echo "✗ release asset $a is missing" && exit 1; }
           done
           if [ "$PRERELEASE" = "false" ]; then
@@ -1066,6 +1172,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: 24
+          package-manager-cache: false
 
       - name: GitHub release — the MCPB bundle verifies and holds the published package
         env:
@@ -1073,7 +1180,7 @@ jobs:
           VERSION: ${{ steps.rt.outputs.version }}
         run: |
           mkdir -p verify-mcpb && cd verify-mcpb
-          gh release download "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" -p iris-eval.mcpb -p iris-eval.mcpb.sigstore.json
+          gh release download "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" -p iris-eval.mcpb -p iris-eval.mcpb.sigstore.json -p iris-eval.intoto.jsonl
           cosign verify-blob \
             --bundle iris-eval.mcpb.sigstore.json \
             --certificate-identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@${GITHUB_REF}" \
@@ -1082,6 +1189,11 @@ jobs:
           gh attestation verify iris-eval.mcpb -R "$GITHUB_REPOSITORY" \
             --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/release.yml" \
             || { echo "✗ iris-eval.mcpb: the build-provenance attestation does not verify" && exit 1; }
+          # The same statement, read from the release asset instead of the attestation store.
+          gh attestation verify iris-eval.mcpb -R "$GITHUB_REPOSITORY" \
+            --bundle iris-eval.intoto.jsonl \
+            --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/release.yml" \
+            || { echo "✗ iris-eval.intoto.jsonl: the attached provenance does not verify iris-eval.mcpb" && exit 1; }
           curl -fsSL -o package.tgz "$(curl -fsSL "https://registry.npmjs.org/@iris-eval%2Fmcp-server/${VERSION}" | jq -r '.dist.tarball')"
           node ../scripts/mcpb/verify.mjs --bundle iris-eval.mcpb --tarball package.tgz
           echo "✓ iris-eval.mcpb: signed and attested by this workflow; sha256 $(sha256sum iris-eval.mcpb | cut -d' ' -f1)"

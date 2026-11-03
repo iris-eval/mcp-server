@@ -98,7 +98,7 @@ Match the formatting of the file you are editing. CI does not run Prettier, and 
   | `analyze (javascript-typescript)` | CodeQL static analysis |
   | `CodeQL` | GitHub's code-scanning result for that analysis: no new alert of the severity it blocks on |
 
-  Other workflows (Lighthouse, the Vercel preview, the upgrade and bundle jobs) run on PRs and are worth reading, but they do **not** block merge.
+  Other workflows (Lighthouse, the Vercel preview, the upgrade and bundle jobs) run on PRs and are worth reading, but they do **not** block merge. One of them is `Workflows security (zizmor)`: if your change touches `.github/`, fix what it reports (a step that interpolates `${{ }}` into a script, a checkout without `persist-credentials: false`, and so on) or, when a finding is intended, say why in `.github/zizmor.yml` or with a `# zizmor: ignore[...]` comment on the step. `npm run preflight -- --full` runs it too.
 
 - **The two claims checks are the ones docs contributors hit first.** Every public number in Iris — rule counts, pattern counts, tool counts, the current version — is generated into [`.claims.json`](.claims.json) from source. If you change any of those, or any doc that quotes them, run `npm run claims:generate` and commit the regenerated `.claims.json` in the same PR; use `npm run claims:check-hardcoded` locally to see what the scanner sees before you push.
 - **One CODEOWNER approval** is required (see [.github/CODEOWNERS](.github/CODEOWNERS)). Direct pushes to `main` are forbidden — every change goes through the PR cycle, no exceptions, including hotfixes.

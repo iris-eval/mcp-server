@@ -1,0 +1,20 @@
+# zizmor (https://docs.zizmor.sh), the GitHub Actions security linter, run by
+# ci.yml's zizmor job and by `npm run preflight` over the workflows, the gate
+# action and dependabot.yml. Every finding is fixed except the ones below,
+# each kept for the reason beside it. A finding that is only accepted at one
+# site is ignored there, in the workflow, with a `# zizmor: ignore[...]`
+# comment that gives its reason.
+rules:
+  self-repository:
+    ignore:
+      # The gate-action job runs the composite action from this commit's own
+      # checkout, the commit under test. GitHub's `$/` form would load the
+      # same files, but actionlint 1.7.12 (the required workflow lint) rejects
+      # it (rhysd/actionlint#711). Revisit when actionlint parses it.
+      - ci.yml
+  superfluous-actions:
+    ignore:
+      # softprops/action-gh-release (pinned by commit) creates the release, or
+      # updates it in place when a tag's release is re-run by
+      # workflow_dispatch; `gh release create` refuses a release that exists.
+      - release.yml

@@ -52,6 +52,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: 22
@@ -82,10 +84,12 @@ jobs:
             sleep 1
           done
 
+      # Lighthouse CI by exact version, outside a lockfile on purpose: locked,
+      # its tree (Lighthouse, Puppeteer and some 330 packages) would join this
+      # repository's dependency graph and alerts for a job that only reads
+      # the dashboard. Bump the version by hand, in its own pull request.
       - name: Lighthouse CI
-        run: |
-          # scorecard: pinned to exact version for Pinned-Dependencies check.
-          # Bump in lockstep with a deliberate version bump PR, not via caret.
+        run: |  # zizmor: ignore[adhoc-packages] Lighthouse CI by exact version, outside a lockfile on purpose (see above)
           npm install -g @lhci/cli@0.15.0
           lhci autorun
         env:

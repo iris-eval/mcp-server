@@ -11,7 +11,8 @@
  *   F1 npm       the dist-tag (`latest`, or `next` for a pre-release) resolves to it
  *   F2 GHCR      the `v<version>` tag and (production) `:latest` resolve, and to one digest
  *   F3 release   the GitHub release is published, typed right, carries the four SBOM
- *                assets, the MCPB bundle and its signature, and the CHANGELOG section
+ *                assets, the MCPB bundle and its signature, the build provenance
+ *                (iris-eval.intoto.jsonl), and the CHANGELOG section
  *                (signature verification stays the job's: it needs cosign)
  *   F4 registry  the Official MCP Registry's `latest` is this version, isLatest true, and
  *                its MCPB entry names this release's bundle with that file's hash
@@ -118,7 +119,7 @@ try {
   } else {
     const rel = JSON.parse(gh.stdout);
     const names = new Set((rel.assets ?? []).map((a) => a.name));
-    const wanted = ['iris-npm-sbom.spdx.json', 'iris-npm-sbom.spdx.json.sigstore.json', 'iris-docker-sbom.spdx.json', 'iris-docker-sbom.spdx.json.sigstore.json', 'iris-eval.mcpb', 'iris-eval.mcpb.sigstore.json'];
+    const wanted = ['iris-npm-sbom.spdx.json', 'iris-npm-sbom.spdx.json.sigstore.json', 'iris-docker-sbom.spdx.json', 'iris-docker-sbom.spdx.json.sigstore.json', 'iris-eval.mcpb', 'iris-eval.mcpb.sigstore.json', 'iris-eval.intoto.jsonl'];
     const missing = wanted.filter((n) => !names.has(n));
     const notes = prerelease || String(rel.body ?? '').includes(`[${version}]`);
     const ok = rel.isDraft === false && rel.isPrerelease === prerelease && missing.length === 0 && notes;

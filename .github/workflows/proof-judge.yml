@@ -44,6 +44,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       # Map secret presence for the CHOSEN provider to an output. Secrets can't
       # be read in a step `if:`, so resolve it here. Absent key → FAIL RED. It
