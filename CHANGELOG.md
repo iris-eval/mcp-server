@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A LlamaIndex agent traced by `openinference-instrumentation-llama-index` 4.5.3 or later arrives with its question as the input.** From 4.5.3 the instrumentor records `Workflow.run`'s arguments on the root span as `input.value`: JSON of the workflow's runtime state and the start event's repr, `AgentWorkflowStartEvent()`, which prints none of its fields. Iris took that document as the run's input, so the trace was stored with the workflow's state where the question should be. A JSON document that holds only object reprs and single-word values is now passed over like a bare repr, and the input is read from the model call's user message, as it was for 4.5.2. The LlamaIndex recipe in `docs/otel-recipes.md` now pins 4.7.0; 4.5.2 to 4.7.0 all pass its end-to-end test (#919).
 - **`iris-eval.com/roadmap.md` lands on the capability map.** Search engines had found the old roadmap file's name at the site root through relative links, and it answered 404; it now redirects permanently to `/capabilities`, as `/roadmap` already did.
 
 ## [0.21.0] - 2026-10-25
