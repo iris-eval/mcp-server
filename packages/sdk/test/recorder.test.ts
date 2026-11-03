@@ -8,12 +8,19 @@ import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import OpenAI from 'openai';
 import { IrisRecorder, exportRequest, findServer, newSpanId, newTraceId, nowNanos, wrapOpenAI, type TraceRecord } from '../src/index.js';
 import { PACKAGE_ROOT, REPLIES, freePort, startProvider, type Provider } from './helpers.js';
+
+/** Listen on a port the system assigns at bind time, rather than one chosen first and bound later. */
+async function listen(server: Server): Promise<number> {
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+  return (server.address() as AddressInfo).port;
+}
 
 const trace = (text = 'hello'): TraceRecord => ({
   resource: { 'service.name': 'unit' },
@@ -152,8 +159,7 @@ describe('when Iris is not there', () => {
       /* accepts and never answers */
     });
     blackHole.on('connection', (s) => sockets.push(s));
-    const port = await freePort();
-    await new Promise<void>((r) => blackHole.listen(port, '127.0.0.1', () => r()));
+    const port = await listen(blackHole);
     const recorder = new IrisRecorder({ url: `http://127.0.0.1:${port}`, timeoutMs: 200, flushIntervalMs: 1, onError: () => {} });
     recorder.record(trace());
     const started = Date.now();
@@ -165,9 +171,8 @@ describe('when Iris is not there', () => {
   });
 
   it('a refusal (a wrong key) is dropped with the server\'s own sentence', async () => {
-    const port = await freePort();
     const refusing = createServer((_req, res) => res.writeHead(401, { 'content-type': 'application/json' }).end(JSON.stringify({ error: 'A valid API key is required' })));
-    await new Promise<void>((r) => refusing.listen(port, '127.0.0.1', () => r()));
+    const port = await listen(refusing);
     const errors: string[] = [];
     const recorder = new IrisRecorder({ url: `http://127.0.0.1:${port}`, flushIntervalMs: 1, onError: (e) => errors.push(e.message) });
     recorder.record(trace());
@@ -178,17 +183,23 @@ describe('when Iris is not there', () => {
   });
 
   it('a process that ends without flushing still delivers what it recorded before it exits', async () => {
-    const received: unknown[] = [];
-    const port = await freePort();
+    // Each POST /v1/traces as it came; the assertions parse it. Test files run in parallel and another
+    // file's server can be started on a port chosen before this one was bound, so any other request
+    // (such as that file's health check) is answered 404 and not counted.
+    const received: string[] = [];
     const iris = createServer((req, res) => {
-      let body = '';
-      req.on('data', (c) => (body += String(c)));
+      const chunks: Buffer[] = [];
+      req.on('data', (c: Buffer) => chunks.push(c));
       req.on('end', () => {
-        received.push(JSON.parse(body));
+        if (req.method !== 'POST' || req.url !== '/v1/traces') {
+          res.writeHead(404).end();
+          return;
+        }
+        received.push(Buffer.concat(chunks).toString('utf8'));
         res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ 'iris-eval': { stored: [] } }));
       });
     });
-    await new Promise<void>((r) => iris.listen(port, '127.0.0.1', () => r()));
+    const port = await listen(iris);
     const script = join(PACKAGE_ROOT, 'build', 'deliver-child.mjs');
     writeFileSync(
       script,
@@ -206,7 +217,7 @@ describe('when Iris is not there', () => {
     assert.equal(status, 0);
     // The batch interval is a minute; the only way the trace arrived is the send on the way out.
     assert.equal(received.length, 1);
-    assert.match(JSON.stringify(received[0]), /"service.name","value":\{"stringValue":"exiting"\}/);
+    assert.match(JSON.stringify(JSON.parse(received[0])), /"service.name","value":\{"stringValue":"exiting"\}/);
   });
 
   it('a process that recorded a call against a dead server still exits promptly, with its own exit code', async () => {
