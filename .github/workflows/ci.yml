@@ -1153,6 +1153,48 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
+  # The same Playwright suite in WebKit, on macOS: the engine Safari is built
+  # on, on Apple's own text and graphics stack. WebKit's Linux build is a
+  # different port and is not run (playwright.config.ts says why). One cell,
+  # since macOS runners are the scarce ones. macOS needs no system libraries
+  # installed for WebKit, so there is no apt step here.
+  e2e-webkit:
+    name: e2e (webkit, macOS)
+    runs-on: macos-latest
+    # The same bound as e2e, for the same reason: a cache miss downloads the
+    # browser from Playwright's server.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      # npm drops this optional native module silently when its download fails; the script says why it checks.
+      - run: bash scripts/ci/native-sqlite-installed.sh
+      - run: cd dashboard && npm ci --no-audit --no-fund
+      - run: npm run build
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache the Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/Library/Caches/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}-webkit
+      - name: Install Playwright's WebKit
+        run: npx playwright install webkit
+      - name: Run Playwright E2E (WebKit)
+        run: npm run test:e2e:webkit
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: always()
+        with:
+          name: playwright-report-webkit
+          path: playwright-report/
+          retention-days: 30
+
   # proof/results.json and proof/RESULTS.md carry every built-in rule's
   # precision / recall / F1 on the labelled corpus in proof/corpus/. This
   # job regenerates both from the code in the PR and fails on any byte of

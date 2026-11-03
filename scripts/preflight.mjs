@@ -143,6 +143,7 @@ export const CI_ONLY = {
   'ci.yml#docker-build': 'builds the container image and runs it',
   'ci.yml#fresh-clone-build': 'a fresh clone built with pnpm',
   'ci.yml#e2e': 'Playwright drives the dashboard in Chromium and Firefox',
+  'ci.yml#e2e-webkit': "Playwright drives the dashboard in WebKit, on a macOS runner; WebKit's Linux and Windows builds are not Safari's",
   'ci.yml#gate-action': 'runs the gate action itself on a seeded dataset',
   'ci.yml#python-client': 'the Python client against a running server, on each Python',
   'ci.yml#sdk-js': 'the JavaScript SDK, its own install, build and tests, and a packed consumer',
