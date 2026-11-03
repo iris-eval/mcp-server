@@ -10,4 +10,4 @@
 #     'pip install --quiet pip-tools==7.6.1 && pip-compile --generate-hashes --allow-unsafe --strip-extras --output-file build.txt build.in'
 # Dependabot's pip ecosystem watches this directory and proposes the same.
 build
-hatchling>=1.25
+hatchling>=1.33.0
