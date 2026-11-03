@@ -35,8 +35,11 @@ async function pagePolicy(): Promise<string> {
   server = createDashboardServer(storage, config, mockLogger).start();
   await new Promise((r) => server!.once('listening', r));
   const port = (server.address() as { port: number }).port;
-  const page = await fetch(`http://127.0.0.1:${port}/`, { headers: { accept: 'text/html' } });
-  return page.headers.get('content-security-policy') ?? '';
+  // Every response carries the policy helmet sets. The health route answers
+  // whether or not the dashboard bundle is built; `/` without a build is
+  // Express's own 404, which sends a policy of its own.
+  const res = await fetch(`http://127.0.0.1:${port}/api/v1/health`);
+  return res.headers.get('content-security-policy') ?? '';
 }
 
 describe('the dashboard Content-Security-Policy', () => {

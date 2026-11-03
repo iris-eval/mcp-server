@@ -11,15 +11,7 @@
  */
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-
-function consoleErrors(page: Page): string[] {
-  const errors: string[] = [];
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') errors.push(msg.text());
-  });
-  page.on('pageerror', (err) => errors.push(err.message));
-  return errors;
-}
+import { collectConsoleErrors } from './_console.js';
 
 /** The page's own content: something in <main> other than the loading status or an error. */
 const pageContent = (p: Page) => p.locator('main > :not([data-route-loading]):not([data-error-boundary])').first();
@@ -40,7 +32,7 @@ const PAGES: Array<[string, (page: Page) => ReturnType<Page['locator']>]> = [
 
 test.describe('pages load on demand', () => {
   test('every page and every view renders from its own chunk, without console errors', async ({ page }) => {
-    const errors = consoleErrors(page);
+    const errors = collectConsoleErrors(page);
     for (const [path, landmark] of PAGES) {
       await page.goto(path);
       await expect(landmark(page), path).toBeVisible();
