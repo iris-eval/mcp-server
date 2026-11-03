@@ -1948,10 +1948,13 @@ function collapseSpacedLetters(text: string): { text: string; map: number[] } | 
  * valid UTF-8 text with no control characters counts, so binary payloads,
  * hashes, image data and long identifiers — which decode to noise — are
  * skipped rather than scanned. Every limit is fixed so the cost stays
- * linear in the output: a run is at most BASE64_MAX_RUN characters, at most
+ * linear in the output: a run is at most 4,096 characters, at most
  * BASE64_MAX_ATTEMPTS runs are tried and BASE64_MAX_DECODED of them kept.
+ * The '=' padding sits outside the capture group, so the run is read
+ * without it and no second, end-anchored pattern has to strip it (that
+ * shape backtracks quadratically on a long run of '=' that is not at the end).
  */
-const BASE64_RUN = /[A-Za-z0-9+/_-]{20,4096}={0,2}/g;
+const BASE64_RUN = /([A-Za-z0-9+/_-]{20,4096})={0,2}/g;
 const BASE64_MAX_ATTEMPTS = 64;
 const BASE64_MAX_DECODED = 16;
 const BASE64_TEXT = /^[^\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\uFFFD]*$/;
@@ -1961,7 +1964,7 @@ function decodedBase64Runs(text: string): Array<{ start: number; end: number; te
   let attempts = 0;
   for (const match of text.matchAll(BASE64_RUN)) {
     if (attempts++ >= BASE64_MAX_ATTEMPTS || out.length >= BASE64_MAX_DECODED) break;
-    let body = match[0].replace(/=+$/, '').replace(/-/g, '+').replace(/_/g, '/');
+    let body = match[1].replace(/-/g, '+').replace(/_/g, '/');
     // A mixed-case run with a digit is what encoded text looks like; a plain word or number is not worth decoding.
     if (!/[a-z]/.test(body) || !/[A-Z]/.test(body) || !/\d/.test(body)) continue;
     if (body.length % 4 === 1) body = body.slice(0, -1);
