@@ -67,7 +67,17 @@ a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
-[role="button"]:focus-visible {
+[role="button"]:focus-visible,
+/*
+ * A date or time input takes focus in one of its fields (month, day, year,
+ * hour), which Safari on macOS draws inside the input. Under the
+ * :focus-visible rule alone, WebKit on macOS drew no focus indicator on the
+ * trace and evaluation date filters (the keyboard walk in
+ * tests/e2e/a11y.spec.ts). A field you type into shows the ring on any
+ * focus in every browser, so :focus and :focus-within mean the same here
+ * and also match while one of Safari's fields holds the focus.
+ */
+input:is([type="date"], [type="datetime-local"], [type="time"], [type="month"], [type="week"]):is(:focus, :focus-within) {
   outline: 2px solid var(--iris-500);
   outline-offset: 2px;
   border-radius: var(--radius-xs);
