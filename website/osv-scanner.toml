@@ -1,0 +1,10 @@
+# Advisories against website/package-lock.json that OSV-Scanner, and OpenSSF
+# Scorecard's Vulnerabilities check, should report as assessed rather than open.
+# Each entry carries its reason; the full assessment is the advisory's row in
+# SECURITY-EXPOSURE.md, and the entry leaves when that row is closed.
+# ignoreUntil makes each one lapse unless it is reviewed again.
+
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"
+ignoreUntil = 2027-02-03
+reason = "minimatch 3.1.5 is loaded only by the website's ESLint 9 lint tooling (eslint, @eslint/eslintrc, @eslint/config-array and the plugins eslint-config-next bundles), never at runtime, and matches only glob patterns committed to this repository. Those plugins call minimatch 3's CommonJS export as a function; the fixed 11.x line has no default export, so it cannot be overridden in. It moves with the website's ESLint 10 upgrade (issue #54). Every other minimatch copy in the repository is 11.0.4."
