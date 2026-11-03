@@ -1,0 +1,13 @@
+# The test runner ci.yml's otel-recipes job installs for the JavaScript
+# recipe (the Python recipes carry the same two pins in their own
+# requirements-*.txt): pytest runs tests/otel-recipes, httpx reads the server
+# back. The job installs otel-recipe-test.txt, the hash-pinned resolution of
+# this file.
+#
+# Regenerate otel-recipe-test.txt after changing this file, on Linux with the
+# Python the job uses:
+#   docker run --rm -v "$PWD/.github/requirements:/req" -w /req python:3.12-slim sh -c \
+#     'pip install --quiet pip-tools==7.6.1 && pip-compile --generate-hashes --allow-unsafe --strip-extras --output-file otel-recipe-test.txt otel-recipe-test.in'
+# Dependabot's pip ecosystem watches this directory and proposes the same.
+pytest==9.1.1
+httpx==0.28.1

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Each release carries its build provenance as a file, and the workflows are checked by a GitHub Actions security linter on every pull request.** From the next release, `iris-eval.intoto.jsonl` is attached beside the signed SBOMs and the MCPB bundle: the SLSA build-provenance statement for all three, signed by the release workflow, so a downloaded file can be checked against the file beside it with `gh attestation verify iris-eval.mcpb -R iris-eval/mcp-server --bundle iris-eval.intoto.jsonl`. The release workflow runs that check itself before it reports success. [zizmor](https://docs.zizmor.sh) now runs over every workflow, the gate action and `dependabot.yml`, and what it found is fixed: no checkout leaves its token in the clone, no release job restores a cache another run wrote, and the release scripts read step outputs from the environment instead of having them pasted into the script. Every release job starts with StepSecurity's harden-runner in audit mode, which records its outbound connections. The Python CI installs its build tools, the oldest provider SDKs it tests and the recipes' test runner by hash, and Dependabot waits seven days, not five, before it proposes a new release.
+
 ### Fixed
 
 - **A LlamaIndex agent traced by `openinference-instrumentation-llama-index` 4.5.3 or later arrives with its question as the input.** From 4.5.3 the instrumentor records `Workflow.run`'s arguments on the root span as `input.value`: JSON of the workflow's runtime state and the start event's repr, `AgentWorkflowStartEvent()`, which prints none of its fields. Iris took that document as the run's input, so the trace was stored with the workflow's state where the question should be. A JSON document that holds only object reprs and single-word values is now passed over like a bare repr, and the input is read from the model call's user message, as it was for 4.5.2. The LlamaIndex recipe in `docs/otel-recipes.md` now pins 4.7.0; 4.5.2 to 4.7.0 all pass its end-to-end test (#919).

@@ -1,13 +1,17 @@
-# What .github/workflows/publish-python.yml installs to build the Python
-# client: the build frontend, and the build backend packages/python's
-# pyproject.toml names (hatchling). The workflow installs build.txt, the
-# hash-pinned resolution of this file, and builds with --no-isolation, so
-# nothing reaches the sdist or the wheel from an unpinned download.
+# What .github/workflows/publish-python.yml (and ci.yml's python-client job)
+# installs to build the Python client: the build frontend, and the build
+# backend packages/python's pyproject.toml names (hatchling). Both install
+# build.txt, the hash-pinned resolution of this file, and build with
+# --no-isolation, so nothing reaches the sdist or the wheel from an unpinned
+# download.
 #
 # Regenerate build.txt after changing this file, or to take new releases,
-# on Linux with the Python the workflow uses:
+# on Linux with the Python publish-python.yml uses:
 #   docker run --rm -v "$PWD/.github/requirements:/req" -w /req python:3.12-slim sh -c \
 #     'pip install --quiet pip-tools==7.6.1 && pip-compile --generate-hashes --allow-unsafe --strip-extras --output-file build.txt build.in'
 # Dependabot's pip ecosystem watches this directory and proposes the same.
 build
 hatchling>=1.25
+# build and hatchling read pyproject.toml with tomli on Python 3.10, which
+# ci.yml's python-client job covers; listed so the hashed set installs there.
+tomli

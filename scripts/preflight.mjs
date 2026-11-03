@@ -55,6 +55,8 @@ export const REACHED_CAP = 60;
 /** The route types `next build` and `next dev` generate, which the website's tsconfig includes. */
 export const NEXT_TYPES = ['.next/types', '.next/dev/types'];
 const ACTIONLINT = 'rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667';
+/** zizmor 1.31.1, the image ci.yml's zizmor job runs. Offline here: its online audits need a GitHub token, and CI runs them. */
+const ZIZMOR = 'ghcr.io/zizmorcore/zizmor@sha256:42d409dbb851d4c5d35a058cf042b828bea1e3f2884378c526eb0974780e18d9';
 
 /** Checks the pack list carries the dashboard, as the build job does with jq. */
 function packCarriesDashboard() {
@@ -92,6 +94,7 @@ export const STEPS = [
   { name: 'search tokenizer table', ci: ['ci.yml#search-tokenizer-table'], run: 'npm run -s unicode61:check' },
   { name: 'security exposure coverage', ci: ['ci.yml#security-exposure'], run: 'node scripts/security/check-exposure-coverage.mjs' },
   { name: 'workflows lint (actionlint, in Docker)', ci: ['ci.yml#actionlint'], run: `docker run --rm -v "${root.replace(/\\/g, '/')}:/repo" -w /repo ${ACTIONLINT} -color` },
+  { name: 'workflows security (zizmor, in Docker)', ci: ['ci.yml#zizmor'], run: `docker run --rm -v "${root.replace(/\\/g, '/')}:/repo:ro" -w /repo ${ZIZMOR} --offline .` },
   { name: 'dashboard typecheck and lint', fast: ['dashboard/', 'src/'], ci: ['ci.yml#lint-and-typecheck'], cwd: 'dashboard', run: 'npm run -s typecheck && npm run -s lint' },
   { name: 'dashboard tests', fast: ['dashboard/', 'src/'], ci: ['ci.yml#lint-and-typecheck'], cwd: 'dashboard', run: 'npm test --silent' },
   { name: 'dashboard Storybook build', ci: ['ci.yml#lint-and-typecheck'], cwd: 'dashboard', run: 'npm run -s build-storybook' },

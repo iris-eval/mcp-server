@@ -1,0 +1,13 @@
+# The oldest provider SDKs packages/python's test extras admit (openai>=1.66,
+# anthropic>=0.43), which ci.yml's python-client job installs over the newest
+# ones in its "oldest provider SDKs" cell, by hash and with --no-deps: every
+# dependency they declare is already installed by the newer SDKs, so the cell
+# changes the two SDKs and nothing else. The versions move only with the
+# extras' lower bounds (Dependabot ignores both here). The hashes are PyPI's
+# sha256 for each version's wheel and sdist.
+openai==1.66.0 \
+    --hash=sha256:43e4a3c0c066cc5809be4e6aac456a3ebc4ec1848226ef9d1340859ac130d45a \
+    --hash=sha256:8a9e672bc6eadec60a962f0b40d7d1c09050010179c919ed65322e433e2d1025
+anthropic==0.43.0 \
+    --hash=sha256:f748a703f77b3244975e1aace3a935840dc653a4714fb6bba644f97cc76847b4 \
+    --hash=sha256:06801f01d317a431d883230024318d48981758058bf7e079f33fb11f64b5a5c1

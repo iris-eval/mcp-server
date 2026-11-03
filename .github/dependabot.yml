@@ -1,11 +1,13 @@
 version: 2
 # One pull request per directory per week for minor and patch updates (the
-# catch-all group last in each block), majors on their own, and a five-day
+# catch-all group last in each block), majors on their own, and a seven-day
 # cooldown before a new release is proposed. Measured 10-01 to 10-05: 266 of
 # 1,000 Actions runs were on Dependabot branches (31 branches, 21 re-pushes),
 # each running about 73 checks, and the batches were then hand-merged. The
 # cooldown also keeps a release that is pulled within days of publishing (the
-# usual shape of a compromised package) from reaching a PR at all.
+# usual shape of a compromised package) from reaching a PR at all: seven days
+# is the window zizmor's dependabot-cooldown audit asks for. Security updates
+# are not held by it.
 updates:
   - package-ecosystem: "npm"
     directory: "/"
@@ -13,7 +15,7 @@ updates:
       interval: "weekly"
       day: "monday"
     cooldown:
-      default-days: 5
+      default-days: 7
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
@@ -54,7 +56,7 @@ updates:
       interval: "weekly"
       day: "monday"
     cooldown:
-      default-days: 5
+      default-days: 7
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -98,7 +100,7 @@ updates:
       interval: "weekly"
       day: "monday"
     cooldown:
-      default-days: 5
+      default-days: 7
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -134,7 +136,7 @@ updates:
       interval: "weekly"
       day: "monday"
     cooldown:
-      default-days: 5
+      default-days: 7
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -170,7 +172,7 @@ updates:
       interval: "weekly"
       day: "monday"
     cooldown:
-      default-days: 5
+      default-days: 7
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -203,7 +205,7 @@ updates:
     schedule:
       interval: "monthly"
     cooldown:
-      default-days: 5
+      default-days: 7
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -211,8 +213,6 @@ updates:
     commit-message:
       prefix: "ci(real-clients)"
 
-  # The hash-pinned tools publish-python.yml builds the Python client with
-  # (build.in -> build.txt, pip-compile --generate-hashes).
     groups:
       # Everything else that is not a major: one PR.
       minor-and-patch:
@@ -222,18 +222,27 @@ updates:
           - "minor"
           - "patch"
 
+  # The hash-pinned Python tools CI installs: what publish-python.yml builds
+  # the Python client with (build.in -> build.txt) and the OpenTelemetry
+  # recipes' test runner (otel-recipe-test.in -> otel-recipe-test.txt), both
+  # pip-compile --generate-hashes.
   - package-ecosystem: "pip"
     directory: "/.github/requirements"
     schedule:
       interval: "monthly"
     cooldown:
-      default-days: 5
+      default-days: 7
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "ci"
     commit-message:
       prefix: "ci(python-build)"
+    ignore:
+      # oldest-provider-sdks.txt holds the oldest SDKs packages/python's test
+      # extras admit; it moves with those lower bounds, never to a newer release.
+      - dependency-name: "openai"
+      - dependency-name: "anthropic"
     groups:
       # Everything else that is not a major: one PR.
       minor-and-patch:
@@ -249,7 +258,7 @@ updates:
       interval: "weekly"
       day: "monday"
     cooldown:
-      default-days: 5
+      default-days: 7
     labels:
       - "dependencies"
       - "ci"
@@ -284,7 +293,7 @@ updates:
     schedule:
       interval: "monthly"
     cooldown:
-      default-days: 5
+      default-days: 7
     labels:
       - "dependencies"
       - "docker"
@@ -313,7 +322,7 @@ updates:
     schedule:
       interval: "monthly"
     cooldown:
-      default-days: 5
+      default-days: 7
     labels:
       - "dependencies"
     commit-message:
@@ -344,7 +353,7 @@ updates:
     schedule:
       interval: "monthly"
     cooldown:
-      default-days: 5
+      default-days: 7
     labels:
       - "dependencies"
     commit-message:
@@ -368,7 +377,7 @@ updates:
     schedule:
       interval: "monthly"
     cooldown:
-      default-days: 5
+      default-days: 7
     labels:
       - "dependencies"
     commit-message:
