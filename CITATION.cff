@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use Iris in your work, please cite it as below."
+type: software
+title: "Iris: evaluation of AI agent output for quality, safety and cost"
+abstract: >-
+  Iris is an open-source MCP server that evaluates AI agent output for
+  quality, safety and cost. Send Iris a run and ask for a verdict: it judges
+  the run with deterministic built-in rules (PII, prompt injection,
+  hallucination markers, cost, and the agent's own tool calls) and an optional
+  model judge on your own key with a hard per-evaluation cost cap, and answers
+  pass, fail, or not checked when a required check could not run. Runs are
+  stored in SQLite on your own machine. The precision and recall of every
+  built-in rule are measured on a labelled corpus in the repository and
+  published with confidence intervals.
+authors:
+  - given-names: Ian
+    family-names: Parent
+version: "0.21.0"
+license: MIT
+repository-code: "https://github.com/iris-eval/mcp-server"
+repository-artifact: "https://www.npmjs.com/package/@iris-eval/mcp-server"
+url: "https://iris-eval.com"
+keywords:
+  - model-context-protocol
+  - mcp-server
+  - ai-agents
+  - agent-evaluation
+  - llm-evaluation
+  - llm-as-judge
+  - pii-detection
+  - prompt-injection
+  - opentelemetry

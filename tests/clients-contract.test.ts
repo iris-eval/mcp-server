@@ -95,7 +95,7 @@ describe('the prose surfaces render their client lists from the rows', () => {
   it('the README names the verified clients and the claimed clients as the rows have them, and points at the page', () => {
     const readme = read('README.md');
     expect(readme).toContain(`Verified on every CI run: ${verifiedNames.join(', ')}`);
-    expect(readme).toContain(`nobody on the Iris side has watched it connect: ${claimedNames.join(', ')}.`);
+    expect(readme).toContain(`every format writer to that documentation: ${claimedNames.join(', ')}.`);
     expect(readme).toContain('https://iris-eval.com/clients');
     // The works-with table: rendered from clients.json through the truthbase, between markers llms:render rewrites.
     const block = readme.match(/<!-- iris:clients-table:start -->\n([\s\S]*?)\n<!-- iris:clients-table:end -->/);

@@ -137,6 +137,14 @@ check_launcher "claude-plugin/.mcp.json" "@iris-eval/mcp-server@$PKG_VERSION\""
 check_launcher ".cursor-plugin/plugin.json" "@iris-eval/mcp-server@$PKG_VERSION\""
 check_launcher ".github/actions/gate/action.yml" "default: '$PKG_VERSION'"
 
+# CITATION.cff: the version GitHub's "Cite this repository" names.
+if [ -f CITATION.cff ] && tr -d '\r' < CITATION.cff | grep -qx "version: \"$PKG_VERSION\""; then
+  echo "  OK: CITATION.cff ($PKG_VERSION)"
+else
+  echo "MISMATCH: CITATION.cff does not carry version: \"$PKG_VERSION\" (run npm run version:sync)"
+  ERRORS=$((ERRORS + 1))
+fi
+
 # The gate action's tag in every `uses:` line a reader copies (README.md,
 # docs/ci-gate.md, the action's header): each must name this release.
 if node scripts/check-gate-uses.mjs; then

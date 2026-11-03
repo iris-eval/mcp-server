@@ -102,6 +102,9 @@ const LAUNCHERS = [
     pattern: GATE_USES_PATTERN,
     replace: `iris-eval/mcp-server/.github/actions/gate@v${VERSION}`,
   })),
+  // The version a citation names (GitHub's "Cite this repository"). YAML,
+  // not JSON, so a text edit of its one top-level `version:` line.
+  { path: "CITATION.cff", pattern: /^version: "[^"]*"(?=\r?$)/m, replace: `version: "${VERSION}"` },
 ];
 
 console.log(`Syncing all versions to ${VERSION} (from package.json)\n`);
