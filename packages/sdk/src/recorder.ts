@@ -9,7 +9,10 @@
  *   1. It never breaks, slows or changes the application. `record()` is a
  *      synchronous push onto a bounded queue — no I/O, no serialization on
  *      the caller's path; the queue drops its oldest trace when full; every
- *      timer is unref'd; nothing it does can throw into the caller.
+ *      timer is unref'd; nothing it does can throw into the caller. A process
+ *      that finishes its work sends what is queued before it exits; one that
+ *      calls `process.exit()` first says how many traces it did not
+ *      deliver.
  *   2. It speaks plain OTLP. The body is an ExportTraceServiceRequest, the
  *      span attributes are the GenAI semantic conventions, and nothing about
  *      it is specific to Iris except the endpoint and three `iris.*`
@@ -76,7 +79,7 @@ export interface RecorderStats {
   recorded: number;
   /** Traces Iris accepted. */
   sent: number;
-  /** Traces lost to a full queue, an unreachable server or a refusal. */
+  /** Traces lost to a full queue, an unreachable server, a refusal, or the process exiting before they were delivered. */
   dropped: number;
 }
 
@@ -204,8 +207,11 @@ export class IrisRecorder {
   private readonly timeout: number;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private inFlight: Promise<void> | undefined;
+  /** Traces in the request now in flight. */
+  private inFlightTraces = 0;
   private readonly warned = new Set<string>();
   private exitHook: (() => void) | undefined;
+  private exitReport: (() => void) | undefined;
   private closed = false;
   /** Calls whose response is still being read; flush waits for them, so a trace finished a moment ago is not left behind. */
   private readonly settling = new Set<Promise<unknown>>();
@@ -280,7 +286,9 @@ export class IrisRecorder {
     await this.flush(timeoutMs);
     this.closed = true;
     if (this.exitHook) process.removeListener('beforeExit', this.exitHook);
+    if (this.exitReport) process.removeListener('exit', this.exitReport);
     this.exitHook = undefined;
+    this.exitReport = undefined;
   }
 
   private schedule(): void {
@@ -292,13 +300,40 @@ export class IrisRecorder {
     this.timer.unref?.();
   }
 
-  /** A process that is done with its own work sends what is queued before it exits. */
+  /**
+   * A process that is done with its own work sends what is queued before it
+   * exits: `beforeExit` comes when nothing else keeps the event loop alive,
+   * and the request it starts does, until Iris answers or `timeoutMs` passes.
+   * When the queue is longer than one request, each answer lets the loop
+   * drain again and the next `beforeExit` sends the next batch.
+   *
+   * `process.exit()`, a signal handler that calls it, or an uncaught
+   * exception ends the process without `beforeExit`, and nothing can be sent
+   * from `exit`. There the recorder says, synchronously and before the
+   * process ends, how many traces it did not deliver.
+   */
   private installExitHook(): void {
     if (this.exitHook) return;
     this.exitHook = () => {
       if (this.queue.length > 0 && !this.inFlight) void this.drain();
     };
+    this.exitReport = () => this.reportUndelivered();
     process.on('beforeExit', this.exitHook);
+    process.on('exit', this.exitReport);
+  }
+
+  private reportUndelivered(): void {
+    const queued = this.queue.length;
+    const inFlight = this.inFlight ? this.inFlightTraces : 0;
+    const total = queued + inFlight;
+    if (total === 0) return;
+    this.queue.length = 0;
+    this.stats.dropped += total;
+    const parts = [...(inFlight > 0 ? [`${inFlight} in flight`] : []), ...(queued > 0 ? [`${queued} queued`] : [])];
+    this.fail(
+      'exit',
+      new Error(`iris: the process exited before ${total} trace${total === 1 ? ' was' : 's were'} delivered (${parts.join(', ')}). Await the recorder's flush() before process.exit() to send ${total === 1 ? 'it' : 'them'}.`),
+    );
   }
 
   private drain(): Promise<void> {
@@ -321,8 +356,10 @@ export class IrisRecorder {
       batch.push(next.trace);
     }
     if (batch.length === 0) return Promise.resolve();
+    this.inFlightTraces = batch.length;
     this.inFlight = this.send(batch).finally(() => {
       this.inFlight = undefined;
+      this.inFlightTraces = 0;
       if (this.queue.length > 0) this.schedule();
     });
     return this.inFlight;

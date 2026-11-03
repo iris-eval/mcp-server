@@ -1417,6 +1417,40 @@ jobs:
           node -e "const { wrapOpenAI, IrisRecorder } = require('@iris-eval/sdk'); if (typeof wrapOpenAI !== 'function' || typeof IrisRecorder !== 'function') process.exit(1); console.log('require: ok');"
           node -e "const deps = require('./node_modules/@iris-eval/sdk/package.json').dependencies ?? {}; if (Object.keys(deps).length) { console.error('runtime dependencies:', deps); process.exit(1); } console.log('no runtime dependencies');"
 
+  # The JavaScript SDK's delivery at process exit, on every OS (#806). A
+  # script that records calls and ends without flush() relies on the send on
+  # the way out for everything it recorded. packages/sdk/test/exit-delivery
+  # runs each case 20 times, a fresh process each time, against a stand-in
+  # for Iris in the test's own process: a process that ends with traces
+  # queued must deliver every one, whole, across more than one request; one
+  # that calls process.exit() first must say how many it did not deliver. It
+  # needs no server build.
+  sdk-js-exit:
+    name: JavaScript SDK delivery at exit (${{ matrix.os }}, Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [22, 24]
+    defaults:
+      run:
+        shell: bash
+        working-directory: packages/sdk
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: packages/sdk/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Delivery at exit, each case 20 times
+        run: npm test -- exit-delivery
+
   # The LangChain.js integration (packages/langchain, @iris-eval/langchain):
   # a real LangGraph.js app — the tool loop in test/langgraph-app.ts, a
   # scripted chat model — run with IrisCallbackHandler in its callbacks, each

@@ -146,6 +146,7 @@ export const CI_ONLY = {
   'ci.yml#gate-action': 'runs the gate action itself on a seeded dataset',
   'ci.yml#python-client': 'the Python client against a running server, on each Python',
   'ci.yml#sdk-js': 'the JavaScript SDK, its own install, build and tests, and a packed consumer',
+  'ci.yml#sdk-js-exit': "the JavaScript SDK's delivery at process exit, repeated on each OS and Node",
   'ci.yml#langchain-js': 'the LangChain.js handler, its own install, build and tests, and a packed consumer',
   'ci.yml#otel-recipes': 'the OpenTelemetry recipes against a running server, in Python and JavaScript',
   'claims-alignment.yml#required-checks': "reads branch protection, which needs the repository's API",

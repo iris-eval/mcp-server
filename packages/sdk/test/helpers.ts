@@ -48,8 +48,11 @@ async function launch(entry: string, home: string, apiKey: string): Promise<{ ch
   const deadline = Date.now() + 45_000;
   for (;;) {
     try {
-      const res = await fetch(`${url}/api/v1/health`);
-      if (res.status === 200 || res.status === 503) return { child, url };
+      // Bounded, and only Iris's own answer counts: the port was free when chosen, and another
+      // test's server can bind it before this one does.
+      const res = await fetch(`${url}/api/v1/health`, { signal: AbortSignal.timeout(2_000) });
+      const body = (await res.json().catch(() => undefined)) as { status?: unknown; version?: unknown } | undefined;
+      if ((res.status === 200 || res.status === 503) && child.exitCode === null && typeof body?.status === 'string' && typeof body.version === 'string') return { child, url };
     } catch {
       // not up yet
     }
