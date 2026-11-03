@@ -395,6 +395,49 @@ export function isObjectRepr(text: string): boolean {
   return (t.endsWith(')') || t.endsWith('...')) && OBJECT_REPR.test(t);
 }
 
+/**
+ * Python's default printed form of an object, `<FunctionTool object>` or
+ * `<workflows.context.context.Context object at 0x…>`, and the signature a
+ * class prints as, `<ToolCall(*, tool_name: str, …) -> None>`.
+ */
+const ANGLE_REPR = /^<[A-Za-z_][\w.]*(?:\(| object\b)[\s\S]*>$/;
+
+/**
+ * A JSON document that holds printed objects and no words: every string in
+ * it is an object repr, an `<…>` form, or a single token (an id, a name, a
+ * flag), and at least one is a printed object. From
+ * openinference-instrumentation-llama-index 4.5.3, a LlamaIndex workflow's
+ * root span records `Workflow.run`'s arguments as `input.value`:
+ * `{"init_state": {…}, "start_event": "AgentWorkflowStartEvent()", "tags": {…}}`,
+ * the workflow's runtime state and the start event's repr, which prints none
+ * of its fields. The question is not in it. Like a bare repr, a document of
+ * that shape is passed over for the next carrier; one with any words in it
+ * is kept.
+ */
+export function isPrintedObjects(text: string): boolean {
+  const t = text.trimStart();
+  if (!t.startsWith('{') && !t.startsWith('[')) return false;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return false;
+  }
+  let printed = false;
+  const pending: unknown[] = [parsed];
+  while (pending.length > 0) {
+    const v = pending.pop();
+    if (typeof v === 'string') {
+      const s = v.trim();
+      if (isObjectRepr(s) || ANGLE_REPR.test(s)) printed = true;
+      else if (/\s/.test(s)) return false;
+    } else if (v !== null && typeof v === 'object') {
+      for (const child of Array.isArray(v) ? v : Object.values(v)) pending.push(child);
+    }
+  }
+  return printed;
+}
+
 const OI_MESSAGE = /^llm\.(input|output)_messages\.(\d+)\.message\.(role|content|contents\.(\d+)\.message_content\.text)$/;
 
 /**
@@ -451,7 +494,7 @@ function keyText(s: MappedSpan, keys: readonly string[]): string | undefined {
   for (const k of keys) {
     if (s.attrs[k] === undefined) continue;
     const text = asText(s.attrs[k]);
-    if (text !== undefined && !isObjectRepr(text)) return text;
+    if (text !== undefined && !isObjectRepr(text) && !isPrintedObjects(text)) return text;
   }
   return undefined;
 }
@@ -746,8 +789,8 @@ export function fromOtlp(request: OtlpTraceRequest, options: FromOtlpOptions = {
 
     const input = firstText(rootFirst, 'input', 'gen_ai.content.prompt', 'gen_ai.prompt', 'gen_ai.prompt');
     const output = firstText(rootFirst, 'output', 'gen_ai.content.completion', 'gen_ai.completion', 'gen_ai.completion');
-    if (input === undefined) lacked.push('input (no iris.input, gen_ai.input.messages, gen_ai.prompt, input.value, llm.input_messages, traceloop.entity.input or ai.prompt on any span or event; a Python repr is not read as one)');
-    if (output === undefined) lacked.push('output (no iris.output, gen_ai.output.messages, gen_ai.completion, output.value, llm.output_messages, traceloop.entity.output or ai.response.text on any span or event; a Python repr is not read as one — the rules that read the output will not run)');
+    if (input === undefined) lacked.push('input (no iris.input, gen_ai.input.messages, gen_ai.prompt, input.value, llm.input_messages, traceloop.entity.input or ai.prompt on any span or event; a Python repr, or JSON holding nothing but reprs, is not read as one)');
+    if (output === undefined) lacked.push('output (no iris.output, gen_ai.output.messages, gen_ai.completion, output.value, llm.output_messages, traceloop.entity.output or ai.response.text on any span or event; a Python repr, or JSON holding nothing but reprs, is not read as one — the rules that read the output will not run)');
 
     const inputTokens = usageOf(ordered, INPUT_TOKEN_KEYS, AGGREGATED_INPUT_KEYS);
     const outputTokens = usageOf(ordered, OUTPUT_TOKEN_KEYS, AGGREGATED_OUTPUT_KEYS);

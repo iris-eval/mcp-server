@@ -18,13 +18,13 @@
           {
             "key": "telemetry.sdk.version",
             "value": {
-              "stringValue": "1.45.0"
+              "stringValue": "1.45.1"
             }
           },
           {
             "key": "service.instance.id",
             "value": {
-              "stringValue": "d534872b-92d3-47b8-a829-85fb8ee663e6"
+              "stringValue": "522a292c-1858-482f-9466-aadd06f9ce36"
             }
           },
           {
@@ -39,17 +39,17 @@
         {
           "scope": {
             "name": "openinference.instrumentation.llama_index",
-            "version": "4.5.2"
+            "version": "4.7.0"
           },
           "spans": [
             {
-              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
-              "spanId": "8bf29e88ce0eb54a",
-              "parentSpanId": "9cf68f64c6703b3d",
+              "traceId": "de707af738119d7723dd00ae45bcedce",
+              "spanId": "7fb55d6c58952461",
+              "parentSpanId": "32dfcf8319e8c30e",
               "name": "BaseWorkflowAgent.init_run",
               "kind": 1,
-              "startTimeUnixNano": "1790612347444091600",
-              "endTimeUnixNano": "1790612347652499600",
+              "startTimeUnixNano": "1793723740082358500",
+              "endTimeUnixNano": "1793723740230597600",
               "attributes": [
                 {
                   "key": "session.id",
@@ -60,7 +60,7 @@
                 {
                   "key": "input.value",
                   "value": {
-                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA5FC37E30>\", \"ev\": \"AgentWorkflowStartEvent()\"}"
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x0000024B147C9A90>\", \"ev\": \"AgentWorkflowStartEvent()\"}"
                   }
                 },
                 {
@@ -94,13 +94,13 @@
               "flags": 256
             },
             {
-              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
-              "spanId": "27c801a29e4f62d5",
-              "parentSpanId": "9cf68f64c6703b3d",
+              "traceId": "de707af738119d7723dd00ae45bcedce",
+              "spanId": "74fcd71f5b65f6dc",
+              "parentSpanId": "32dfcf8319e8c30e",
               "name": "BaseWorkflowAgent.setup_agent",
               "kind": 1,
-              "startTimeUnixNano": "1790612347654567400",
-              "endTimeUnixNano": "1790612347656576000",
+              "startTimeUnixNano": "1793723740231779600",
+              "endTimeUnixNano": "1793723740232451400",
               "attributes": [
                 {
                   "key": "session.id",
@@ -111,7 +111,7 @@
                 {
                   "key": "input.value",
                   "value": {
-                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA5FC37D40>\", \"ev\": \"AgentInput(input=[ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])], current_agent_name='weather_agent')\"}"
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x0000024B144FE2C0>\", \"ev\": \"AgentInput(input=[ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])], current_agent_name='weather_agent')\"}"
                   }
                 },
                 {
@@ -145,13 +145,13 @@
               "flags": 256
             },
             {
-              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
-              "spanId": "75f3efa7dc4881af",
-              "parentSpanId": "df6dca7e025a3a54",
+              "traceId": "de707af738119d7723dd00ae45bcedce",
+              "spanId": "4289c6113a897c3b",
+              "parentSpanId": "b42987e7fe8034fa",
               "name": "OpenAI._prepare_chat_with_tools",
               "kind": 1,
-              "startTimeUnixNano": "1790612347660595100",
-              "endTimeUnixNano": "1790612347662605100",
+              "startTimeUnixNano": "1793723740233989100",
+              "endTimeUnixNano": "1793723740235521500",
               "attributes": [
                 {
                   "key": "session.id",
@@ -220,13 +220,13 @@
               "flags": 256
             },
             {
-              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
-              "spanId": "dd588c4181ee05f0",
-              "parentSpanId": "df6dca7e025a3a54",
+              "traceId": "de707af738119d7723dd00ae45bcedce",
+              "spanId": "b0bc053232353890",
+              "parentSpanId": "b42987e7fe8034fa",
               "name": "OpenAI.astream_chat",
               "kind": 1,
-              "startTimeUnixNano": "1790612347662605100",
-              "endTimeUnixNano": "1790612347744665200",
+              "startTimeUnixNano": "1793723740235632000",
+              "endTimeUnixNano": "1793723740572813200",
               "attributes": [
                 {
                   "key": "session.id",
@@ -301,6 +301,12 @@
                   }
                 },
                 {
+                  "key": "llm.finish_reason",
+                  "value": {
+                    "stringValue": "tool_calls"
+                  }
+                },
+                {
                   "key": "output.value",
                   "value": {
                     "stringValue": "assistant: "
@@ -369,7 +375,7 @@
               ],
               "events": [
                 {
-                  "timeUnixNano": "1790612348450228100",
+                  "timeUnixNano": "1793723741522524500",
                   "name": "First Token Stream Event"
                 }
               ],
@@ -379,13 +385,13 @@
               "flags": 256
             },
             {
-              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
-              "spanId": "df6dca7e025a3a54",
-              "parentSpanId": "9cf68f64c6703b3d",
+              "traceId": "de707af738119d7723dd00ae45bcedce",
+              "spanId": "b42987e7fe8034fa",
+              "parentSpanId": "32dfcf8319e8c30e",
               "name": "BaseWorkflowAgent.run_agent_step",
               "kind": 1,
-              "startTimeUnixNano": "1790612347658585200",
-              "endTimeUnixNano": "1790612348457934200",
+              "startTimeUnixNano": "1793723740233375900",
+              "endTimeUnixNano": "1793723741527070300",
               "attributes": [
                 {
                   "key": "session.id",
@@ -396,7 +402,7 @@
                 {
                   "key": "input.value",
                   "value": {
-                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA5FAB8350>\", \"ev\": \"AgentSetup(input=[ChatMessage(role=<MessageRole.SYSTEM: 'system'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='Answer questions about the weather. Use get_weather for current conditions.')]), ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])], current_agent_name='weather_agent')\"}"
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x0000024B144FE190>\", \"ev\": \"AgentSetup(input=[ChatMessage(role=<MessageRole.SYSTEM: 'system'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='Answer questions about the weather. Use get_weather for current conditions.')]), ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])], current_agent_name='weather_agent')\"}"
                   }
                 },
                 {
@@ -430,13 +436,13 @@
               "flags": 256
             },
             {
-              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
-              "spanId": "a3739bda1089267a",
-              "parentSpanId": "9cf68f64c6703b3d",
+              "traceId": "de707af738119d7723dd00ae45bcedce",
+              "spanId": "e4b461d0b81af1db",
+              "parentSpanId": "32dfcf8319e8c30e",
               "name": "BaseWorkflowAgent.parse_agent_output",
               "kind": 1,
-              "startTimeUnixNano": "1790612348459682400",
-              "endTimeUnixNano": "1790612348459682400",
+              "startTimeUnixNano": "1793723741528382400",
+              "endTimeUnixNano": "1793723741528954300",
               "attributes": [
                 {
                   "key": "session.id",
@@ -447,7 +453,7 @@
                 {
                   "key": "input.value",
                   "value": {
-                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA5FC37E60>\", \"ev\": \"AgentOutput(response=ChatMessage(role=<MessageRole.ASSISTANT: 'assistant'>, additional_kwargs={'tool_calls': [ChoiceDeltaToolCall(index=0, id='call_1', function=ChoiceDeltaToolCallFunction(arguments='{\\\"city\\\":\\\"Paris\\\"}', name='get_weather'), type='function')]}, blocks=[TextBlock(block_type='text', text=''), ToolCallBlock(block_type='tool_call', tool_call_id='call_1', tool_name='get_weather', tool_kwargs='{\\\"city\\\":\\\"Paris\\\"}')]), structured_response=None, current_agent_name='weather_agent', raw={'id': 'chatcmpl-scripted-1', 'choices': [], 'created': 1790000000, 'model': 'gpt-4o-mini', 'object': 'chat.completion.chunk', 'moderation': None, 'service_tier': None, 'system_fingerprint': 'fp_scripted', 'usage': {'completion_tokens': 12, 'prompt_tokens': 15, 'total_tokens': 27, 'completion_tokens_details': None, 'prompt_tokens_details': None}}, tool_calls=[ToolSelection(tool_id='call_1', tool_name='get_weather', tool_kwargs={'city': 'Paris'})], retry_messages=[])\"}"
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x0000024B17DBEF90>\", \"ev\": \"AgentOutput(response=ChatMessage(role=<MessageRole.ASSISTANT: 'assistant'>, additional_kwargs={'tool_calls': [ChoiceDeltaToolCall(index=0, id='call_1', function=ChoiceDeltaToolCallFunction(arguments='{\\\"city\\\":\\\"Paris\\\"}', name='get_weather'), type='function')]}, blocks=[TextBlock(block_type='text', text=''), ToolCallBlock(block_type='tool_call', tool_call_id='call_1', tool_name='get_weather', tool_kwargs='{\\\"city\\\":\\\"Paris\\\"}')]), structured_response=None, current_agent_name='weather_agent', raw={'id': 'chatcmpl-scripted-1', 'choices': [], 'created': 1790000000, 'model': 'gpt-4o-mini', 'object': 'chat.completion.chunk', 'moderation': None, 'service_tier': None, 'system_fingerprint': 'fp_scripted', 'usage': {'completion_tokens': 12, 'prompt_tokens': 15, 'total_tokens': 27, 'completion_tokens_details': None, 'prompt_tokens_details': None}}, tool_calls=[ToolSelection(tool_id='call_1', tool_name='get_weather', tool_kwargs={'city': 'Paris'})], retry_messages=[])\"}"
                   }
                 },
                 {
@@ -469,13 +475,13 @@
               "flags": 256
             },
             {
-              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
-              "spanId": "4e1606c895e09d8b",
-              "parentSpanId": "7475286b9921e36a",
+              "traceId": "de707af738119d7723dd00ae45bcedce",
+              "spanId": "d239cd0e3b9d1f56",
+              "parentSpanId": "68bd1021b4fec4db",
               "name": "FunctionTool.acall",
               "kind": 1,
-              "startTimeUnixNano": "1790612348461253800",
-              "endTimeUnixNano": "1790612348463276300",
+              "startTimeUnixNano": "1793723741530660500",
+              "endTimeUnixNano": "1793723741532159100",
               "attributes": [
                 {
                   "key": "session.id",
@@ -538,13 +544,13 @@
               "flags": 256
             },
             {
-              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
-              "spanId": "7475286b9921e36a",
-              "parentSpanId": "9cf68f64c6703b3d",
+              "traceId": "de707af738119d7723dd00ae45bcedce",
+              "spanId": "68bd1021b4fec4db",
+              "parentSpanId": "32dfcf8319e8c30e",
               "name": "BaseWorkflowAgent.call_tool",
               "kind": 1,
-              "startTimeUnixNano": "1790612348461253800",
-              "endTimeUnixNano": "1790612348465284000",
+              "startTimeUnixNano": "1793723741530266400",
+              "endTimeUnixNano": "1793723741532381600",
               "attributes": [
                 {
                   "key": "session.id",
@@ -555,7 +561,7 @@
                 {
                   "key": "input.value",
                   "value": {
-                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA5FC992B0>\", \"ev\": \"ToolCall(tool_name='get_weather', tool_kwargs={'city': 'Paris'}, tool_id='call_1')\"}"
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x0000024B17F4F8A0>\", \"ev\": \"ToolCall(tool_name='get_weather', tool_kwargs={'city': 'Paris'}, tool_id='call_1')\"}"
                   }
                 },
                 {
@@ -589,13 +595,13 @@
               "flags": 256
             },
             {
-              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
-              "spanId": "aadd8c4cf06d000e",
-              "parentSpanId": "9cf68f64c6703b3d",
+              "traceId": "de707af738119d7723dd00ae45bcedce",
+              "spanId": "15e2e62e7cea5f5a",
+              "parentSpanId": "32dfcf8319e8c30e",
               "name": "BaseWorkflowAgent.aggregate_tool_results",
               "kind": 1,
-              "startTimeUnixNano": "1790612348465284000",
-              "endTimeUnixNano": "1790612348467291300",
+              "startTimeUnixNano": "1793723741533394900",
+              "endTimeUnixNano": "1793723741534398200",
               "attributes": [
                 {
                   "key": "session.id",
@@ -606,7 +612,7 @@
                 {
                   "key": "input.value",
                   "value": {
-                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA5FC37F20>\", \"ev\": \"ToolCallResult(tool_name='get_weather', tool_kwargs={'city': 'Paris'}, tool_id='call_1', tool_output=ToolOutput(blocks=[TextBlock(block_type='text', text='18 degrees and sunny in Paris')], tool_name='get_weather', raw_input={'args': (), 'kwargs': {'city': 'Paris'}}, raw_output='18 degrees and sunny in Paris', is_error=False), return_direct=False)\"}"
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x0000024B17F4F240>\", \"ev\": \"ToolCallResult(tool_name='get_weather', tool_kwargs={'city': 'Paris'}, tool_id='call_1', tool_output=ToolOutput(blocks=[TextBlock(block_type='text', text='18 degrees and sunny in Paris')], tool_name='get_weather', raw_input={'args': (), 'kwargs': {'city': 'Paris'}}, raw_output='18 degrees and sunny in Paris', is_error=False), return_direct=False)\"}"
                   }
                 },
                 {
@@ -640,13 +646,13 @@
               "flags": 256
             },
             {
-              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
-              "spanId": "5e46c4d3112be8ba",
-              "parentSpanId": "9cf68f64c6703b3d",
+              "traceId": "de707af738119d7723dd00ae45bcedce",
+              "spanId": "1a2d94173c81a889",
+              "parentSpanId": "32dfcf8319e8c30e",
               "name": "BaseWorkflowAgent.setup_agent",
               "kind": 1,
-              "startTimeUnixNano": "1790612348469296000",
-              "endTimeUnixNano": "1790612348469296000",
+              "startTimeUnixNano": "1793723741535378200",
+              "endTimeUnixNano": "1793723741535915400",
               "attributes": [
                 {
                   "key": "session.id",
@@ -657,7 +663,7 @@
                 {
                   "key": "input.value",
                   "value": {
-                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA5FC37C50>\", \"ev\": \"AgentInput(input=[ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])], current_agent_name='weather_agent')\"}"
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x0000024B18044F50>\", \"ev\": \"AgentInput(input=[ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])], current_agent_name='weather_agent')\"}"
                   }
                 },
                 {
@@ -691,13 +697,13 @@
               "flags": 256
             },
             {
-              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
-              "spanId": "27e0729824f0da5c",
-              "parentSpanId": "efb034750d5a5ec8",
+              "traceId": "de707af738119d7723dd00ae45bcedce",
+              "spanId": "b165d4d5d0f1c2bc",
+              "parentSpanId": "5b159a002b883cab",
               "name": "OpenAI._prepare_chat_with_tools",
               "kind": 1,
-              "startTimeUnixNano": "1790612348471300400",
-              "endTimeUnixNano": "1790612348471300400",
+              "startTimeUnixNano": "1793723741537231500",
+              "endTimeUnixNano": "1793723741538183500",
               "attributes": [
                 {
                   "key": "session.id",
@@ -766,13 +772,13 @@
               "flags": 256
             },
             {
-              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
-              "spanId": "79239703c3d1f6a6",
-              "parentSpanId": "efb034750d5a5ec8",
+              "traceId": "de707af738119d7723dd00ae45bcedce",
+              "spanId": "ed420d8b01d89704",
+              "parentSpanId": "5b159a002b883cab",
               "name": "OpenAI.astream_chat",
               "kind": 1,
-              "startTimeUnixNano": "1790612348473357700",
-              "endTimeUnixNano": "1790612348473357700",
+              "startTimeUnixNano": "1793723741538287400",
+              "endTimeUnixNano": "1793723741539122200",
               "attributes": [
                 {
                   "key": "session.id",
@@ -901,6 +907,12 @@
                   }
                 },
                 {
+                  "key": "llm.finish_reason",
+                  "value": {
+                    "stringValue": "stop"
+                  }
+                },
+                {
                   "key": "output.value",
                   "value": {
                     "stringValue": "assistant: It is 18 degrees and sunny in Paris."
@@ -945,7 +957,7 @@
               ],
               "events": [
                 {
-                  "timeUnixNano": "1790612348481493000",
+                  "timeUnixNano": "1793723741544913300",
                   "name": "First Token Stream Event"
                 }
               ],
@@ -955,13 +967,13 @@
               "flags": 256
             },
             {
-              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
-              "spanId": "efb034750d5a5ec8",
-              "parentSpanId": "9cf68f64c6703b3d",
+              "traceId": "de707af738119d7723dd00ae45bcedce",
+              "spanId": "5b159a002b883cab",
+              "parentSpanId": "32dfcf8319e8c30e",
               "name": "BaseWorkflowAgent.run_agent_step",
               "kind": 1,
-              "startTimeUnixNano": "1790612348471300400",
-              "endTimeUnixNano": "1790612348486129700",
+              "startTimeUnixNano": "1793723741536766700",
+              "endTimeUnixNano": "1793723741548958600",
               "attributes": [
                 {
                   "key": "session.id",
@@ -972,7 +984,7 @@
                 {
                   "key": "input.value",
                   "value": {
-                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA62ED57C0>\", \"ev\": \"AgentSetup(input=[ChatMessage(role=<MessageRole.SYSTEM: 'system'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='Answer questions about the weather. Use get_weather for current conditions.')]), ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])], current_agent_name='weather_agent')\"}"
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x0000024B18045450>\", \"ev\": \"AgentSetup(input=[ChatMessage(role=<MessageRole.SYSTEM: 'system'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='Answer questions about the weather. Use get_weather for current conditions.')]), ChatMessage(role=<MessageRole.USER: 'user'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='What is the weather in Paris?')])], current_agent_name='weather_agent')\"}"
                   }
                 },
                 {
@@ -1006,13 +1018,13 @@
               "flags": 256
             },
             {
-              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
-              "spanId": "11ec8f1662e80654",
-              "parentSpanId": "9cf68f64c6703b3d",
+              "traceId": "de707af738119d7723dd00ae45bcedce",
+              "spanId": "89e49786dad93953",
+              "parentSpanId": "32dfcf8319e8c30e",
               "name": "BaseWorkflowAgent.parse_agent_output",
               "kind": 1,
-              "startTimeUnixNano": "1790612348488135500",
-              "endTimeUnixNano": "1790612348490143800",
+              "startTimeUnixNano": "1793723741550139000",
+              "endTimeUnixNano": "1793723741551333900",
               "attributes": [
                 {
                   "key": "session.id",
@@ -1023,7 +1035,7 @@
                 {
                   "key": "input.value",
                   "value": {
-                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x000001DA6307F0E0>\", \"ev\": \"AgentOutput(response=ChatMessage(role=<MessageRole.ASSISTANT: 'assistant'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='It is 18 degrees and sunny in Paris.')]), structured_response=None, current_agent_name='weather_agent', raw={'id': 'chatcmpl-scripted-2', 'choices': [], 'created': 1790000000, 'model': 'gpt-4o-mini', 'object': 'chat.completion.chunk', 'moderation': None, 'service_tier': None, 'system_fingerprint': 'fp_scripted', 'usage': {'completion_tokens': 8, 'prompt_tokens': 35, 'total_tokens': 43, 'completion_tokens_details': None, 'prompt_tokens_details': None}}, tool_calls=[], retry_messages=[])\"}"
+                    "stringValue": "{\"ctx\": \"<workflows.context.context.Context object at 0x0000024B1803DA90>\", \"ev\": \"AgentOutput(response=ChatMessage(role=<MessageRole.ASSISTANT: 'assistant'>, additional_kwargs={}, blocks=[TextBlock(block_type='text', text='It is 18 degrees and sunny in Paris.')]), structured_response=None, current_agent_name='weather_agent', raw={'id': 'chatcmpl-scripted-2', 'choices': [], 'created': 1790000000, 'model': 'gpt-4o-mini', 'object': 'chat.completion.chunk', 'moderation': None, 'service_tier': None, 'system_fingerprint': 'fp_scripted', 'usage': {'completion_tokens': 8, 'prompt_tokens': 35, 'total_tokens': 43, 'completion_tokens_details': None, 'prompt_tokens_details': None}}, tool_calls=[], retry_messages=[])\"}"
                   }
                 },
                 {
@@ -1057,17 +1069,29 @@
               "flags": 256
             },
             {
-              "traceId": "bba7b4719cd7a9a6084e87123f473a65",
-              "spanId": "9cf68f64c6703b3d",
+              "traceId": "de707af738119d7723dd00ae45bcedce",
+              "spanId": "32dfcf8319e8c30e",
               "name": "FunctionAgent.run",
               "kind": 1,
-              "startTimeUnixNano": "1790612347439381700",
-              "endTimeUnixNano": "1790612348491153000",
+              "startTimeUnixNano": "1793723740078324200",
+              "endTimeUnixNano": "1793723741552084500",
               "attributes": [
                 {
                   "key": "session.id",
                   "value": {
                     "stringValue": "session-paris-1"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"init_state\": {\"is_running\": false, \"config\": {\"steps\": {\"aggregate_tool_results\": {\"accepted_events\": [\"<ToolCallResult(*, tool_name: str, tool_kwargs: dict, tool_id: str, tool_output: llama_index.core.tools.types.ToolOutput, return_direct: bool) -> None>\"], \"retry_policy\": null, \"num_workers\": 4, \"accept_event_subclasses\": false, \"collection_param\": null, \"collect_params\": null, \"collection_policy\": null}, \"call_tool\": {\"accepted_events\": [\"<ToolCall(*, tool_name: str, tool_kwargs: dict, tool_id: str) -> None>\"], \"retry_policy\": null, \"num_workers\": 4, \"accept_event_subclasses\": false, \"collection_param\": null, \"collect_params\": null, \"collection_policy\": null}, \"init_run\": {\"accepted_events\": [\"<AgentWorkflowStartEvent() -> None>\"], \"retry_policy\": null, \"num_workers\": 4, \"accept_event_subclasses\": false, \"collection_param\": null, \"collect_params\": null, \"collection_policy\": null}, \"parse_agent_output\": {\"accepted_events\": [\"<AgentOutput(*, response: llama_index.core.base.llms.types.ChatMessage, structured_response: Optional[Dict[str, Any]] = None, current_agent_name: str, raw: Optional[Any] = None, tool_calls: list[llama_index.core.llms.llm.ToolSelection] = <factory>, retry_messages: list[llama_index.core.base.llms.types.ChatMessage] = <factory>) -> None>\"], \"retry_policy\": null, \"num_workers\": 4, \"accept_event_subclasses\": false, \"collection_param\": null, \"collect_params\": null, \"collection_policy\": null}, \"run_agent_step\": {\"accepted_events\": [\"<AgentSetup(*, input: list[llama_index.core.base.llms.types.ChatMessage], current_agent_name: str) -> None>\"], \"retry_policy\": null, \"num_workers\": 4, \"accept_event_subclasses\": false, \"collection_param\": null, \"collect_params\": null, \"collection_policy\": null}, \"setup_agent\": {\"accepted_events\": [\"<AgentInput(*, input: list[llama_index.core.base.llms.types.ChatMessage], current_agent_name: str) -> None>\"], \"retry_policy\": null, \"num_workers\": 4, \"accept_event_subclasses\": false, \"collection_param\": null, \"collect_params\": null, \"collection_policy\": null}}, \"timeout\": null, \"catch_error_handlers\": {}, \"handler_for_step\": {}, \"collection_bindings\": {}}, \"workers\": {\"aggregate_tool_results\": {\"queue\": [], \"config\": {\"accepted_events\": [\"<ToolCallResult(*, tool_name: str, tool_kwargs: dict, tool_id: str, tool_output: llama_index.core.tools.types.ToolOutput, return_direct: bool) -> None>\"], \"retry_policy\": null, \"num_workers\": 4, \"accept_event_subclasses\": false, \"collection_param\": null, \"collect_params\": null, \"collection_policy\": null}, \"in_progress\": [], \"collected_events\": {}, \"collected_waiters\": [], \"static_collect_events\": [], \"collect_generations\": {}}, \"call_tool\": {\"queue\": [], \"config\": {\"accepted_events\": [\"<ToolCall(*, tool_name: str, tool_kwargs: dict, tool_id: str) -> None>\"], \"retry_policy\": null, \"num_workers\": 4, \"accept_event_subclasses\": false, \"collection_param\": null, \"collect_params\": null, \"collection_policy\": null}, \"in_progress\": [], \"collected_events\": {}, \"collected_waiters\": [], \"static_collect_events\": [], \"collect_generations\": {}}, \"init_run\": {\"queue\": [], \"config\": {\"accepted_events\": [\"<AgentWorkflowStartEvent() -> None>\"], \"retry_policy\": null, \"num_workers\": 4, \"accept_event_subclasses\": false, \"collection_param\": null, \"collect_params\": null, \"collection_policy\": null}, \"in_progress\": [], \"collected_events\": {}, \"collected_waiters\": [], \"static_collect_events\": [], \"collect_generations\": {}}, \"parse_agent_output\": {\"queue\": [], \"config\": {\"accepted_events\": [\"<AgentOutput(*, response: llama_index.core.base.llms.types.ChatMessage, structured_response: Optional[Dict[str, Any]] = None, current_agent_name: str, raw: Optional[Any] = None, tool_calls: list[llama_index.core.llms.llm.ToolSelection] = <factory>, retry_messages: list[llama_index.core.base.llms.types.ChatMessage] = <factory>) -> None>\"], \"retry_policy\": null, \"num_workers\": 4, \"accept_event_subclasses\": false, \"collection_param\": null, \"collect_params\": null, \"collection_policy\": null}, \"in_progress\": [], \"collected_events\": {}, \"collected_waiters\": [], \"static_collect_events\": [], \"collect_generations\": {}}, \"run_agent_step\": {\"queue\": [], \"config\": {\"accepted_events\": [\"<AgentSetup(*, input: list[llama_index.core.base.llms.types.ChatMessage], current_agent_name: str) -> None>\"], \"retry_policy\": null, \"num_workers\": 4, \"accept_event_subclasses\": false, \"collection_param\": null, \"collect_params\": null, \"collection_policy\": null}, \"in_progress\": [], \"collected_events\": {}, \"collected_waiters\": [], \"static_collect_events\": [], \"collect_generations\": {}}, \"setup_agent\": {\"queue\": [], \"config\": {\"accepted_events\": [\"<AgentInput(*, input: list[llama_index.core.base.llms.types.ChatMessage], current_agent_name: str) -> None>\"], \"retry_policy\": null, \"num_workers\": 4, \"accept_event_subclasses\": false, \"collection_param\": null, \"collect_params\": null, \"collection_policy\": null}, \"in_progress\": [], \"collected_events\": {}, \"collected_waiters\": [], \"static_collect_events\": [], \"collect_generations\": {}}}, \"stream_seq\": 0, \"work_item_seq\": 0, \"invocation_seq\": 0, \"streams\": {}, \"collection_release_states\": {}, \"children\": {}, \"elapsed_alive\": 0.0, \"last_alive_stamp\": null, \"deliveries\": {}, \"journal_seq\": 0}, \"start_event\": \"AgentWorkflowStartEvent()\", \"tags\": {\"instrument_tags\": {\"llamaindex.run_id\": \"BZjKQeoFj6\"}}}"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
                   }
                 },
                 {

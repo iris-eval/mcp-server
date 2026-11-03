@@ -3,16 +3,19 @@
  * post through their OpenInference instrumentation, and what Iris reads from
  * it.
  *
- * Each `.pb` beside this test's fixtures is a REAL request body, recorded on
- * 2026-09-28 by tests/fixtures/otlp/capture_recipe.py running the recipe
- * scripts in examples/otel-recipes/ (the lines docs/otel-recipes.md gives)
- * against the scripted model provider, with the versions pinned in
- * examples/otel-recipes/requirements-*.txt and examples/otel-recipes/js/package.json:
+ * Each `.pb` beside this test's fixtures is a REAL request body, recorded by
+ * tests/fixtures/otlp/capture_recipe.py running the recipe scripts in
+ * examples/otel-recipes/ (the lines docs/otel-recipes.md gives) against the
+ * scripted model provider, with the versions pinned in
+ * examples/otel-recipes/requirements-*.txt and examples/otel-recipes/js/package.json
+ * when it was recorded:
  *
- *   openai-agents.pb     openai-agents 0.22.3, openinference-instrumentation-openai-agents 2.5.0
- *   openai-agents-js.pb  @openai/agents 0.18.0, @arizeai/openinference-instrumentation-openai-agents 0.2.15
- *   llamaindex.pb        llama-index-core 0.14.25, llama-index-llms-openai 0.8.2,
- *                        openinference-instrumentation-llama-index 4.5.2
+ *   openai-agents.pb       2026-09-28  openai-agents 0.22.3, openinference-instrumentation-openai-agents 2.5.0
+ *   openai-agents-js.pb    2026-09-28  @openai/agents 0.18.0, @arizeai/openinference-instrumentation-openai-agents 0.2.15
+ *   llamaindex-4.5.2.pb    2026-09-28  llama-index-core 0.14.25, llama-index-llms-openai 0.8.2,
+ *                                      openinference-instrumentation-llama-index 4.5.2
+ *   llamaindex.pb          2026-11-03  llama-index-core 0.14.25, llama-index-llms-openai 0.8.3,
+ *                                      openinference-instrumentation-llama-index 4.7.0
  *
  * One run each: "What is the weather in Paris?", one get_weather call, the
  * answer "It is 18 degrees and sunny in Paris.", two model calls (15 in and
@@ -29,19 +32,23 @@
  *     `llm.tools.N.tool.json_schema`, neither of which was read;
  *   - its tool arguments are `input.value` JSON (and, for LlamaIndex, the
  *     Python call's `{"kwargs": {...}}`), which valid_tool_arguments checked
- *     as a string and failed.
+ *     as a string and failed;
+ *   - from openinference-instrumentation-llama-index 4.5.3, LlamaIndex's root
+ *     span carries `Workflow.run`'s arguments as `input.value`, JSON of the
+ *     workflow's runtime state with no words in it, and that was taken as the
+ *     run's input.
  */
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { decodeExportTraceServiceRequest } from '../../../src/otel/protobuf.js';
-import { fromOtlp, isObjectRepr, openInferenceWords, otlpTraceRequestSchema, type OtlpTraceRequest } from '../../../src/otel/ingest.js';
+import { fromOtlp, isObjectRepr, isPrintedObjects, openInferenceWords, otlpTraceRequestSchema, type OtlpTraceRequest } from '../../../src/otel/ingest.js';
 import { toSteps } from '../../../src/eval/steps.js';
 import { validToolArguments } from '../../../src/eval/rules/completeness.js';
 import type { EvalContext } from '../../../src/types/eval.js';
 
 const dir = resolve(import.meta.dirname, '../../fixtures/otlp');
-const CAPTURES = ['openai-agents', 'openai-agents-js', 'llamaindex'] as const;
+const CAPTURES = ['openai-agents', 'openai-agents-js', 'llamaindex', 'llamaindex-4.5.2'] as const;
 
 function load(name: (typeof CAPTURES)[number]) {
   const decoded = decodeExportTraceServiceRequest(new Uint8Array(readFileSync(join(dir, `${name}.pb`))));
@@ -152,6 +159,21 @@ describe('what each capture needed', () => {
     expect(fromOtlp(request).traces[0].trace.output).toBe('It is 18 degrees and sunny in Paris.');
   });
 
+  it("llamaindex: from 4.5.3 the root's input is Workflow.run's arguments, JSON with no words in it, passed over for the model call's user message", () => {
+    const rootInput = (name: 'llamaindex' | 'llamaindex-4.5.2') => {
+      const spans = load(name).request.resourceSpans[0].scopeSpans![0].spans as Array<{ parentSpanId?: string; attributes?: Array<{ key: string; value?: { stringValue?: string } }> }>;
+      return spans.find((s) => !s.parentSpanId)!.attributes?.find((a) => a.key === 'input.value')?.value?.stringValue;
+    };
+    // 4.5.2 could not serialize these arguments and sent no input on the root.
+    expect(rootInput('llamaindex-4.5.2')).toBeUndefined();
+    const sent = rootInput('llamaindex')!;
+    expect(Object.keys(JSON.parse(sent) as Record<string, unknown>).sort()).toEqual(['init_state', 'start_event', 'tags']);
+    expect(sent).toContain('"start_event": "AgentWorkflowStartEvent()"');
+    expect(sent).not.toContain('Paris');
+    expect(isPrintedObjects(sent)).toBe(true);
+    expect(fromOtlp(load('llamaindex').request).traces[0].trace.input).toBe('What is the weather in Paris?');
+  });
+
   it('llamaindex: an app that names no service is not named "unknown_service" — it is unnamed, and the answer says so', () => {
     const { request } = load('llamaindex');
     const { trace, lacked } = fromOtlp(withServiceName(request, 'unknown_service:python.exe')).traces[0];
@@ -200,6 +222,25 @@ describe('the readers the captures needed', () => {
     expect(isObjectRepr('{"topic":"Q4 launch"}')).toBe(false);
     expect(isObjectRepr('f(x=1) is the call')).toBe(false);
     expect(isObjectRepr('Wait for it...')).toBe(false);
+  });
+
+  it('a JSON document of printed objects is recognised; one with any words in it, or with no printed object, is not', () => {
+    expect(isPrintedObjects('{"start_event": "AgentWorkflowStartEvent()", "tags": {"run_id": "kLAQkJCWyZ"}, "init_state": {"is_running": false, "seq": 0, "queue": []}}')).toBe(true);
+    expect(isPrintedObjects('{"ctx": "<workflows.context.context.Context object at 0x7f2a>", "ev": "AgentInput(input=[ChatMessage(role=<MessageRole.USER: \'user\'>)])"}')).toBe(true);
+    expect(isPrintedObjects('{"tools": ["<FunctionTool object>"], "accepted": ["<ToolCall(*, tool_name: str, tool_id: str) -> None>"]}')).toBe(true);
+    expect(isPrintedObjects('["AgentWorkflowStartEvent()"]')).toBe(true);
+    // Any words keep the document: a question beside a repr, or a message list.
+    expect(isPrintedObjects('{"start_event": "AgentWorkflowStartEvent()", "user_msg": "What is the weather in Paris?"}')).toBe(false);
+    expect(isPrintedObjects('{"messages": [{"role": "user", "content": "What is the weather in Paris?"}]}')).toBe(false);
+    // Structured input with no repr in it is input, whatever its strings.
+    expect(isPrintedObjects('{"city": "Paris", "units": "metric"}')).toBe(false);
+    expect(isPrintedObjects('{}')).toBe(false);
+    // Markup is not a printed object.
+    expect(isPrintedObjects('{"html": "<p>What is the weather?</p>", "id": "AgentWorkflowStartEvent()"}')).toBe(false);
+    // Not JSON, or a bare repr (isObjectRepr's case), is not a document.
+    expect(isPrintedObjects('AgentWorkflowStartEvent()')).toBe(false);
+    expect(isPrintedObjects('{not json')).toBe(false);
+    expect(isPrintedObjects('What is the weather in Paris?')).toBe(false);
   });
 
   it('past the root, the output is read from the span that ended last, whatever order they started in', () => {
