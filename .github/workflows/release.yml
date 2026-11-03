@@ -292,6 +292,9 @@ jobs:
   publish-npm:
     needs: build-npm
     runs-on: ubuntu-latest
+    # The release environment admits only v* tags (its deployment policy),
+    # and records each publish as a deployment.
+    environment: release
     permissions:
       id-token: write        # npm --provenance + attest-build-provenance
       attestations: write    # attest-build-provenance writes attestation
@@ -455,6 +458,9 @@ jobs:
   publish-packages:
     needs: [build-packages, publish-npm]
     runs-on: ubuntu-latest
+    # The release environment admits only v* tags (its deployment policy),
+    # and records each publish as a deployment.
+    environment: release
     permissions:
       id-token: write        # npm Trusted Publishing + --provenance
     steps:
@@ -510,6 +516,9 @@ jobs:
   publish-docker:
     needs: validate
     runs-on: ubuntu-latest
+    # The release environment admits only v* tags (its deployment policy),
+    # and records each publish as a deployment.
+    environment: release
     permissions:
       contents: read         # checkout
       packages: write        # GHCR push
@@ -629,6 +638,9 @@ jobs:
   github-release:
     needs: [publish-npm, publish-docker, build-mcpb]
     runs-on: ubuntu-latest
+    # The release environment admits only v* tags (its deployment policy),
+    # and records each publish as a deployment.
+    environment: release
     permissions:
       contents: write        # softprops/action-gh-release creates the release
       id-token: write        # cosign sign-blob keyless OIDC for SBOM + bundle sigs; attest-build-provenance
@@ -822,6 +834,12 @@ jobs:
           generate_release_notes: true
           prerelease: ${{ steps.release-type.outputs.prerelease == 'true' }}
           make_latest: ${{ steps.release-type.outputs.prerelease == 'false' && 'true' || 'false' }}
+          # A release candidate is created as a draft and published by the next
+          # step, after its assets are attached: with immutable releases a
+          # published release takes no new assets. A production release is
+          # draft-first already (the action creates it as a draft, uploads,
+          # then publishes).
+          draft: ${{ steps.release-type.outputs.prerelease == 'true' }}
           files: |
             ./release-assets/iris-npm-sbom.spdx.json
             ./release-assets/iris-npm-sbom.spdx.json.sigstore.json
@@ -831,6 +849,12 @@ jobs:
             ./release-assets/iris-eval.mcpb.sigstore.json
             ./release-assets/iris-eval.intoto.jsonl
           body_path: release-body.md
+
+      - name: Publish the release candidate's draft
+        if: ${{ steps.release-type.outputs.prerelease == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft=false --prerelease --latest=false
 
   publish-registry:
     # The Official MCP Registry (registry.modelcontextprotocol.io) is the
@@ -854,6 +878,9 @@ jobs:
     # every downstream directory advertises. RCs stay on npm's `next`.
     if: ${{ !contains(github.ref_name, '-') }}
     runs-on: ubuntu-latest
+    # The release environment admits only v* tags (its deployment policy),
+    # and records each publish as a deployment.
+    environment: release
     permissions:
       contents: read         # checkout (server.json)
       id-token: write        # mcp-publisher login github-oidc
