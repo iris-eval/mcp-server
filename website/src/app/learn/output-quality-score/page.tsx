@@ -90,7 +90,7 @@ export default function LearnOQS(): React.ReactElement {
 
         <SectionHeading id="how-iris-helps" level={2}>How Iris Helps</SectionHeading>
         <p className="mt-4 text-text-secondary leading-relaxed">
-          Iris scores every output across all four dimensions. The dashboard shows individual rule results and aggregate quality trends. The composite signal makes it easy to spot when overall quality is declining — even when individual dimensions look acceptable in isolation.
+          Every run you ask Iris to judge is scored across all four dimensions. The dashboard shows individual rule results and aggregate quality trends. The composite signal makes it easy to spot when overall quality is declining — even when individual dimensions look acceptable in isolation.
         </p>
         <CalloutBox variant="definition">
           <strong>What Iris computes, precisely.</strong> &ldquo;Output Quality Score&rdquo; is this page&apos;s name for the <code>score</code> field <code>evaluate_output</code> returns: a weighted mean over the rules that ran (rules with nothing to judge skip and are excluded), with fixed per-rule weights. <code>passed</code> is the verdict, and the score is never consulted for it: a policy you configured gates, a critical detector vetoes, a critical check that could not answer makes the verdict unknown, and what remains is weighed as one risk against the loss ratio you state. Iris computes no other quality index. How often each rule is right, and how often the composed verdict is, are measured and published with intervals on <Link href="/proof" className="text-iris-400 hover:text-iris-300">the proof page</Link>.
