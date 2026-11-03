@@ -42,10 +42,6 @@ The Python client, the JavaScript SDK, the LangChain.js handler and the npm laun
 
 Maintainers are added for sustained, high-quality work on the project: merged pull requests, careful reviews, and triage that others can rely on. A contributor who has done that work is invited by the existing maintainer, usually first as code owner of the area they know best, recorded in [.github/CODEOWNERS](.github/CODEOWNERS), and added to this page. Anyone who wants to work toward it can say so in [Discussions](https://github.com/iris-eval/mcp-server/discussions) or by email to hello@iris-eval.com.
 
-## Continuity
-
-<!-- continuity: to be completed -->
-
 ## Changing this page
 
 This page changes the way everything else does: by pull request, through the same checks.
