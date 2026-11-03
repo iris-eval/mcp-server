@@ -60,11 +60,14 @@ async function closed(s: SqliteAdapter): Promise<void> {
 const dbOf = (s: SqliteAdapter) => (s as unknown as { db: Driver }).db;
 /**
  * The pages of a database file that hold `word`: each page's number, the
- * first byte of its b-tree header (2, 5, 10, 13 for b-tree pages), and
- * whether the file's free list names it. Read from the file itself, so it
- * says where the bytes are, not what the connection believes.
+ * first byte of its b-tree header (2, 5, 10, 13 for b-tree pages), whether
+ * the file's free list names it, and on a b-tree page where in it the word
+ * is: in a cell, in a freeblock, or in the unused space between the cell
+ * pointers and the cells (where a row the b-tree moved to another page can
+ * leave its old copy). Read from the file itself, so it says where the
+ * bytes are, not what the connection believes.
  */
-const pagesHolding = (file: string, word: string): Array<{ page: number; type: number; free: boolean }> => {
+const pagesHolding = (file: string, word: string): Array<{ page: number; type: number; free: boolean; at?: string }> => {
   if (!existsSync(file)) return [];
   const buf = readFileSync(file);
   if (buf.length < 100) return [];
@@ -80,12 +83,24 @@ const pagesHolding = (file: string, word: string): Array<{ page: number; type: n
     for (let i = 0; i < leaves && base + 12 + 4 * i <= buf.length; i++) free.add(buf.readUInt32BE(base + 8 + 4 * i));
     trunk = buf.readUInt32BE(base);
   }
-  const out: Array<{ page: number; type: number; free: boolean }> = [];
+  const out: Array<{ page: number; type: number; free: boolean; at?: string }> = [];
   const needle = Buffer.from(word);
   for (let at = buf.indexOf(needle); at !== -1 && out.length < 8; at = buf.indexOf(needle, at + 1)) {
     const page = Math.floor(at / pageSize) + 1;
     if (out.some((p) => p.page === page)) continue;
-    out.push({ page, type: buf[(page - 1) * pageSize + (page === 1 ? 100 : 0)], free: free.has(page) });
+    const base = (page - 1) * pageSize;
+    const header = base + (page === 1 ? 100 : 0);
+    const type = buf[header];
+    const entry: { page: number; type: number; free: boolean; at?: string } = { page, type, free: free.has(page) };
+    if ([2, 5, 10, 13].includes(type) && !entry.free) {
+      const offset = at - base;
+      const pointersEnd = header - base + (type === 2 || type === 5 ? 12 : 8) + 2 * buf.readUInt16BE(header + 3);
+      const cellsStart = buf.readUInt16BE(header + 5) || 65536;
+      let inFreeblock = false;
+      for (let fb = buf.readUInt16BE(header + 1), n = 0; fb !== 0 && n < 1000; fb = buf.readUInt16BE(base + fb), n++) if (offset >= fb && offset < fb + buf.readUInt16BE(base + fb + 2)) inFreeblock = true;
+      entry.at = offset >= pointersEnd && offset < cellsStart ? 'unused space' : inFreeblock ? 'freeblock' : 'cell';
+    }
+    out.push(entry);
   }
   return out;
 };
@@ -93,7 +108,15 @@ const pagesHolding = (file: string, word: string): Array<{ page: number; type: n
 const residue = (s: SqliteAdapter, path: string, word: string): string => {
   const w = (s as unknown as { checkpointer?: { active: boolean; stopped: string; truncateInProgress: boolean } }).checkpointer;
   const has = (file: string) => existsSync(file) && readFileSync(file).includes(Buffer.from(word));
-  return JSON.stringify({ inDb: has(path), inWal: has(`${path}-wal`), walBytes: existsSync(`${path}-wal`) ? readFileSync(`${path}-wal`).length : -1, worker: w ? { active: w.active, stopped: w.stopped, truncating: w.truncateInProgress } : null, retrying: (s as unknown as { eraseRetry?: unknown }).eraseRetry !== undefined, passive: dbOf(s).pragma('wal_checkpoint(PASSIVE)'), pages: pagesHolding(path, word), secureDelete: dbOf(s).pragma('secure_delete'), freelist: dbOf(s).pragma('freelist_count'), owedMerge: owedRows(s) });
+  return JSON.stringify({ inDb: has(path), inWal: has(`${path}-wal`), walBytes: existsSync(`${path}-wal`) ? readFileSync(`${path}-wal`).length : -1, worker: w ? { active: w.active, stopped: w.stopped, truncating: w.truncateInProgress } : null, retrying: (s as unknown as { eraseRetry?: unknown }).eraseRetry !== undefined, passive: dbOf(s).pragma('wal_checkpoint(PASSIVE)'), pages: pagesHolding(path, word).map((p) => ({ ...p, table: tableOf(s, p.page) })), secureDelete: dbOf(s).pragma('secure_delete'), freelist: dbOf(s).pragma('freelist_count'), owedMerge: owedRows(s) });
+};
+/** The table or index a page belongs to, from SQLite's dbstat table, or null where this SQLite has none. */
+const tableOf = (s: SqliteAdapter, page: number): string | null => {
+  try {
+    return (dbOf(s).prepare('SELECT name FROM dbstat WHERE pageno = ?').get(page) as { name: string } | undefined)?.name ?? null;
+  } catch {
+    return null;
+  }
 };
 /** Rows of the merge a sweep owes, or null when the store has no such table. */
 const owedRows = (s: SqliteAdapter): number | null => {
