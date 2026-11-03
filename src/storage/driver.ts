@@ -34,6 +34,11 @@
  * seam finds it absent and uses the built-in. Every driver says why it was
  * chosen (`reason`), and the self-test and the startup log print it.
  *
+ * Every connection either driver opens for writing runs with
+ * `secure_delete = ON` (ERASE_ON_FREE, below): the adapter's, the checkpoint
+ * worker's, and any other that may free a page, so none leaves the text of
+ * a deleted row on a free page of iris.db.
+ *
  * Both drivers return the same shapes the adapter reads: `run()` gives
  * `{ changes }`, `get()` one row or undefined, `all()` rows; positional `?`
  * parameters; `transaction(fn)` returns a callable with `.immediate()`
@@ -214,12 +219,26 @@ function defaultLoadNative(): NativeModule {
   return require('better-sqlite3') as NativeModule;
 }
 
+/*
+ * secure_delete overwrites freed content with zeros instead of leaving it
+ * in place until the page is reused. Without it, a DELETE (the retention
+ * sweep, delete_trace, --purge) removed the row from every query while the
+ * text stayed byte-for-byte readable in the file with `strings iris.db`
+ * (#372). It is a setting of the connection, not of the file, so it is set
+ * here, on every connection that can write, and not by each caller: the
+ * checkpoint worker's connection also writes (the migrations of an upgrade
+ * after the start), and a page it frees is zeroed like one the adapter
+ * frees. Deletes are rare here, so the write cost is negligible.
+ */
+const ERASE_ON_FREE = 'secure_delete = ON';
+
 function nativeDriver(Database: NativeModule, path: string, options: OpenOptions, reason: string): Driver {
   const db = new Database(path, {
     ...(options.timeout !== undefined ? { timeout: options.timeout } : {}),
     ...(options.fileMustExist ? { fileMustExist: true } : {}),
     ...(options.readOnly ? { readonly: true } : {}),
   });
+  if (!options.readOnly) db.pragma(ERASE_ON_FREE);
   const statements = statementCache((sql) => db.prepare(sql));
   return {
     name: 'better-sqlite3',
@@ -358,6 +377,7 @@ function nodeDriver(mod: NodeSqliteModule, path: string, options: OpenOptions, r
   if (options.timeout !== undefined) db.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(options.timeout))}`);
   // The hardening the built-in exposes: schema text is never trusted to run functions or virtual tables.
   db.exec('PRAGMA trusted_schema = OFF');
+  if (!options.readOnly) db.exec(`PRAGMA ${ERASE_ON_FREE}`);
   let depth = 0;
   let savepoints = 0;
   const runIn = <A extends unknown[], R>(mode: 'DEFERRED' | 'IMMEDIATE', fn: (...args: A) => R, args: A): R => {

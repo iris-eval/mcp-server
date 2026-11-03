@@ -1097,15 +1097,18 @@ export function mergeOwed(db: Driver): boolean {
 /**
  * One step of the merge owed, under one write lock: about `pages` pages of
  * each owing index merged ('merge' with a negative count merges whatever
- * segments there are, down to one). An index with nothing left to merge is
- * one segment and owes nothing more. Returns whether a merge is still owed,
- * and the rows the step wrote (what the next step is sized from).
+ * segments there are, down to one). An index FTS5 has nothing left to merge
+ * in is one segment, and owes nothing more once that segment is the oldest
+ * (deletesKept); one that is not is padded (padForOldestMerge) and merged
+ * again by the next step. Returns whether a merge is still owed, and the
+ * rows the step wrote (what the next step is sized from).
  */
-export function mergeOwedStep(db: Driver, pages: number): { owed: boolean; written: number } {
+export function mergeOwedStep(db: Driver, pages: number): { owed: boolean; written: number; padded: number } {
   return db
-    .transaction((): { owed: boolean; written: number } => {
+    .transaction((): { owed: boolean; written: number; padded: number } => {
       const paid = db.prepare(`DELETE FROM ${ERASE_OWED_TABLE} WHERE fts = ?`);
       let written = 0;
+      let padded = 0;
       for (const { fts } of db.prepare(`SELECT fts FROM ${ERASE_OWED_TABLE}`).all() as Array<{ fts: string }>) {
         if (!objectExists(db, 'table', fts)) {
           paid.run(fts);
@@ -1115,12 +1118,125 @@ export function mergeOwedStep(db: Driver, pages: number): { owed: boolean; writt
         db.exec(`INSERT INTO ${fts} (${fts}, rank) VALUES ('merge', ${-Math.max(1, Math.floor(pages))})`);
         // FTS5's own test for a merge that found nothing to do: it changes fewer than two rows.
         const d = totalChanges(db) - before;
-        if (d < 2) paid.run(fts);
-        else written += d;
+        if (d >= 2) written += d;
+        else if (deletesKept(db, fts)) {
+          padForOldestMerge(db, fts);
+          padded += 1;
+        } else paid.run(fts);
       }
-      return { owed: db.prepare(`SELECT 1 FROM ${ERASE_OWED_TABLE} LIMIT 1`).get() !== undefined, written };
+      return { owed: db.prepare(`SELECT 1 FROM ${ERASE_OWED_TABLE} LIMIT 1`).get() !== undefined, written, padded };
     })
     .immediate();
+}
+
+/*
+ * Where a merge drops what was deleted. A delete made with secure-delete
+ * off leaves the row's entries in the segment that holds them and writes,
+ * in a newer segment, an entry per word that marks the row deleted. FTS5
+ * drops the two only when it merges into the index's oldest segment: the
+ * one segment on the last of its levels (fts5IndexMergeLevel in SQLite's
+ * fts5_index.c, bOldest). Any other merge keeps the marks, and with them
+ * each word. Segments also move down a level when one written below them
+ * is as large (fts5StructurePromote), and the count of levels never
+ * shrinks, so the index can end up with every segment on a level below the
+ * last. Merging those writes one segment that still holds every mark; and
+ * to FTS5 a single segment is merged already, so neither 'merge' nor
+ * 'optimize' rewrites it again. The swept words then stay in the file,
+ * found by no search (#758).
+ */
+
+/** The record FTS5 keeps its segments in: `<table>_data`, id 10 (FTS5_STRUCTURE_ROWID). */
+const STRUCTURE_ROWID = 10;
+/** The marker a version-2 structure record carries after its cookie (FTS5_STRUCTURE_V2). */
+const STRUCTURE_V2 = [0xff, 0x00, 0x00, 0x01];
+
+/**
+ * The segments of `fts`, level by level, each as its count of leaf pages:
+ * read from its structure record the way fts5StructureDecode reads it. A
+ * 4-byte cookie, the version-2 marker if present, then varints: the
+ * levels, the segments, the write counter, and per level the segments in a
+ * merge, the segment count and each segment's fields (id, first and last
+ * leaf page; five more in version 2).
+ */
+export function segmentsByLevel(db: Driver, fts: string): number[][] {
+  const row = db.prepare(`SELECT block FROM ${fts}_data WHERE id = ?`).get(STRUCTURE_ROWID) as { block: Uint8Array } | undefined;
+  if (row === undefined) return [];
+  const b = row.block;
+  let at = 4;
+  const v2 = STRUCTURE_V2.every((x, i) => b[at + i] === x);
+  if (v2) at += 4;
+  // SQLite's varint: seven bits a byte, high bit set while more follow, the ninth byte whole. Only small values are read as numbers; the rest are skipped.
+  const varint = (): number => {
+    let v = 0;
+    for (let k = 0; k < 9; k++) {
+      const c = b[at++] ?? 0;
+      if (k === 8) return v * 256 + c;
+      v = v * 128 + (c & 0x7f);
+      if ((c & 0x80) === 0) break;
+    }
+    return v;
+  };
+  const levels = varint();
+  varint(); // segments
+  varint(); // write counter
+  const out: number[][] = [];
+  for (let l = 0; l < levels && at < b.length; l++) {
+    varint(); // segments in a merge
+    const n = varint();
+    const sizes: number[] = [];
+    for (let i = 0; i < n; i++) {
+      varint(); // id
+      const first = varint();
+      const last = varint();
+      sizes.push(last - first + 1);
+      if (v2) for (let k = 0; k < 5; k++) varint();
+    }
+    out.push(sizes);
+  }
+  return out;
+}
+
+/** Whether an index FTS5 has nothing left to merge in may still hold deleted entries: it has a segment on a level below its last. */
+export function deletesKept(db: Driver, fts: string): boolean {
+  const levels = segmentsByLevel(db, fts);
+  return levels.some((sizes, l) => sizes.length > 0 && l < levels.length - 1);
+}
+
+/**
+ * How many pads one index is given before a merge must be one into its
+ * oldest segment. It needs two at most (one of many words against a
+ * segment of one page, then one of one word); a merge that needs more than
+ * this stops with an error rather than merging without end.
+ */
+export const MAX_PADS = 4;
+
+/** The rowid of the entry padForOldestMerge indexes and deletes again: no trace's (doc ids start at 1). */
+const PAD_ROWID = -1;
+/** Words in a pad that must fill more than one leaf page: its deleted entries alone take about 15 bytes a word, against FTS5's 4,050-byte page. */
+const PAD_WORDS = 1000;
+
+/**
+ * Make a later merge of `fts` one into its oldest segment. One entry is
+ * indexed and deleted again, with secure-delete and automerge off, which
+ * writes two segments on level 0. With segments on two levels, a 'merge'
+ * with a negative count moves every segment to a new last level and merges
+ * them there (fts5IndexOptimizeStruct), dropping every deleted entry, the
+ * pad's too. A segment of one page is moved down beside the pad instead
+ * (fts5StructurePromote), so against one the pad is many words long: the
+ * merge of that level then writes a segment of several pages, which the
+ * next pad of one word leaves where it is. The pad cancels itself: no
+ * search finds it, and the index's row and token totals are what they were.
+ */
+function padForOldestMerge(db: Driver, fts: string): void {
+  const onePage = segmentsByLevel(db, fts).some((sizes) => sizes.some((pages) => pages <= 1));
+  const text = onePage ? Array.from({ length: PAD_WORDS }, (_, i) => `pad${i}`).join(' ') : '0';
+  db.exec(`INSERT INTO ${fts} (${fts}, rank) VALUES ('secure-delete', 0); INSERT INTO ${fts} (${fts}, rank) VALUES ('automerge', 0)`);
+  try {
+    db.prepare(`INSERT INTO ${fts} (rowid, input) VALUES (?, ?)`).run(PAD_ROWID, text);
+    db.prepare(`INSERT INTO ${fts} (${fts}, rowid, input) VALUES ('delete', ?, ?)`).run(PAD_ROWID, text);
+  } finally {
+    db.exec(`INSERT INTO ${fts} (${fts}, rank) VALUES ('secure-delete', 1); INSERT INTO ${fts} (${fts}, rank) VALUES ('automerge', ${AUTOMERGE})`);
+  }
 }
 
 /**
@@ -1159,7 +1275,14 @@ export function bulkIndexDelete<T>(db: Driver, going: number, remove: () => T): 
   for (const t of tables) db.exec(`INSERT INTO ${t} (${t}, rank) VALUES ('secure-delete', 0)`);
   try {
     const out = remove();
-    for (const t of tables) db.exec(`INSERT INTO ${t} (${t}) VALUES ('optimize')`);
+    for (const t of tables) {
+      db.exec(`INSERT INTO ${t} (${t}) VALUES ('optimize')`);
+      // 'optimize' stops at one segment, which need not be the oldest (deletesKept): padded and optimized again until it is.
+      for (let i = 0; i < MAX_PADS && deletesKept(db, t); i++) {
+        padForOldestMerge(db, t);
+        db.exec(`INSERT INTO ${t} (${t}) VALUES ('optimize')`);
+      }
+    }
     return out;
   } finally {
     for (const t of tables) db.exec(`INSERT INTO ${t} (${t}, rank) VALUES ('secure-delete', 1)`);

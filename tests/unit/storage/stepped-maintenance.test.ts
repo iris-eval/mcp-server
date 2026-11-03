@@ -16,8 +16,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { openDriver, type Driver } from '../../../src/storage/driver.js';
-import { deleteOwingMerge, eraseRetiredStep, levelMergeStep, mergeOwedStep, nextStepSize, retiredRemain, sweepEraseMode, ERASE_OWED_TABLE, SEARCH_FILTER_INDEX, STEP_TARGET_MS } from '../../../src/storage/search-index.js';
-import { LOCAL_TENANT } from '../../../src/types/tenant.js';
+import { deleteOwingMerge, deletesKept, eraseRetiredStep, levelMergeStep, mergeOwedStep, nextStepSize, retiredRemain, segmentsByLevel, sweepEraseMode, ERASE_OWED_TABLE, SEARCH_FILTER_INDEX, STEP_TARGET_MS } from '../../../src/storage/search-index.js';
+import { LOCAL_TENANT, asTenantId, type TenantId } from '../../../src/types/tenant.js';
 import type { Trace } from '../../../src/types/trace.js';
 import { SEARCH_DRIVER } from './fts5-here.js';
 
@@ -60,11 +60,14 @@ async function closed(s: SqliteAdapter): Promise<void> {
 const dbOf = (s: SqliteAdapter) => (s as unknown as { db: Driver }).db;
 /**
  * The pages of a database file that hold `word`: each page's number, the
- * first byte of its b-tree header (2, 5, 10, 13 for b-tree pages), and
- * whether the file's free list names it. Read from the file itself, so it
- * says where the bytes are, not what the connection believes.
+ * first byte of its b-tree header (2, 5, 10, 13 for b-tree pages), whether
+ * the file's free list names it, and on a b-tree page where in it the word
+ * is: in a cell, in a freeblock, or in the unused space between the cell
+ * pointers and the cells (where a row the b-tree moved to another page can
+ * leave its old copy). Read from the file itself, so it says where the
+ * bytes are, not what the connection believes.
  */
-const pagesHolding = (file: string, word: string): Array<{ page: number; type: number; free: boolean }> => {
+const pagesHolding = (file: string, word: string): Array<{ page: number; type: number; free: boolean; at?: string }> => {
   if (!existsSync(file)) return [];
   const buf = readFileSync(file);
   if (buf.length < 100) return [];
@@ -80,12 +83,24 @@ const pagesHolding = (file: string, word: string): Array<{ page: number; type: n
     for (let i = 0; i < leaves && base + 12 + 4 * i <= buf.length; i++) free.add(buf.readUInt32BE(base + 8 + 4 * i));
     trunk = buf.readUInt32BE(base);
   }
-  const out: Array<{ page: number; type: number; free: boolean }> = [];
+  const out: Array<{ page: number; type: number; free: boolean; at?: string }> = [];
   const needle = Buffer.from(word);
   for (let at = buf.indexOf(needle); at !== -1 && out.length < 8; at = buf.indexOf(needle, at + 1)) {
     const page = Math.floor(at / pageSize) + 1;
     if (out.some((p) => p.page === page)) continue;
-    out.push({ page, type: buf[(page - 1) * pageSize + (page === 1 ? 100 : 0)], free: free.has(page) });
+    const base = (page - 1) * pageSize;
+    const header = base + (page === 1 ? 100 : 0);
+    const type = buf[header];
+    const entry: { page: number; type: number; free: boolean; at?: string } = { page, type, free: free.has(page) };
+    if ([2, 5, 10, 13].includes(type) && !entry.free) {
+      const offset = at - base;
+      const pointersEnd = header - base + (type === 2 || type === 5 ? 12 : 8) + 2 * buf.readUInt16BE(header + 3);
+      const cellsStart = buf.readUInt16BE(header + 5) || 65536;
+      let inFreeblock = false;
+      for (let fb = buf.readUInt16BE(header + 1), n = 0; fb !== 0 && n < 1000; fb = buf.readUInt16BE(base + fb), n++) if (offset >= fb && offset < fb + buf.readUInt16BE(base + fb + 2)) inFreeblock = true;
+      entry.at = offset >= pointersEnd && offset < cellsStart ? 'unused space' : inFreeblock ? 'freeblock' : 'cell';
+    }
+    out.push(entry);
   }
   return out;
 };
@@ -93,7 +108,15 @@ const pagesHolding = (file: string, word: string): Array<{ page: number; type: n
 const residue = (s: SqliteAdapter, path: string, word: string): string => {
   const w = (s as unknown as { checkpointer?: { active: boolean; stopped: string; truncateInProgress: boolean } }).checkpointer;
   const has = (file: string) => existsSync(file) && readFileSync(file).includes(Buffer.from(word));
-  return JSON.stringify({ inDb: has(path), inWal: has(`${path}-wal`), walBytes: existsSync(`${path}-wal`) ? readFileSync(`${path}-wal`).length : -1, worker: w ? { active: w.active, stopped: w.stopped, truncating: w.truncateInProgress } : null, retrying: (s as unknown as { eraseRetry?: unknown }).eraseRetry !== undefined, passive: dbOf(s).pragma('wal_checkpoint(PASSIVE)'), pages: pagesHolding(path, word), secureDelete: dbOf(s).pragma('secure_delete'), freelist: dbOf(s).pragma('freelist_count'), owedMerge: owedRows(s) });
+  return JSON.stringify({ inDb: has(path), inWal: has(`${path}-wal`), walBytes: existsSync(`${path}-wal`) ? readFileSync(`${path}-wal`).length : -1, worker: w ? { active: w.active, stopped: w.stopped, truncating: w.truncateInProgress } : null, retrying: (s as unknown as { eraseRetry?: unknown }).eraseRetry !== undefined, passive: dbOf(s).pragma('wal_checkpoint(PASSIVE)'), pages: pagesHolding(path, word).map((p) => ({ ...p, table: tableOf(s, p.page) })), secureDelete: dbOf(s).pragma('secure_delete'), freelist: dbOf(s).pragma('freelist_count'), owedMerge: owedRows(s) });
+};
+/** The table or index a page belongs to, from SQLite's dbstat table, or null where this SQLite has none. */
+const tableOf = (s: SqliteAdapter, page: number): string | null => {
+  try {
+    return (dbOf(s).prepare('SELECT name FROM dbstat WHERE pageno = ?').get(page) as { name: string } | undefined)?.name ?? null;
+  } catch {
+    return null;
+  }
 };
 /** Rows of the merge a sweep owes, or null when the store has no such table. */
 const owedRows = (s: SqliteAdapter): number | null => {
@@ -128,7 +151,54 @@ function integrity(s: SqliteAdapter): void {
   expect(Number(row.docs)).toBe(Number(row.traces));
 }
 
+/** 'merge' with a negative count until FTS5 has nothing left to merge in the index: every segment merged into one. */
+function mergeIntoOne(db: Driver): void {
+  const changes = () => Number((db.prepare('SELECT total_changes() AS n').get() as { n: number }).n);
+  for (let i = 0; i < 100; i++) {
+    const before = changes();
+    db.exec("INSERT INTO trace_search (trace_search, rank) VALUES ('merge', -64)");
+    if (changes() - before < 2) return;
+  }
+}
+
+/**
+ * An index of several pages, merged into one segment, then nearly all of it
+ * swept: the sweep's merge leaves one segment of one page on the last of
+ * four levels. Leaves four traces of `tenant`, none older than the window.
+ */
+async function oneSmallSegmentOnLevelFour(s: SqliteAdapter, tenant: TenantId): Promise<void> {
+  await s.insertTraces(tenant, Array.from({ length: 300 }, (_, i) => ({ trace_id: `f-${i}`, agent_name: 'a', output: `filler${i} text${i * 7} more${i * 13}`, timestamp: i < 297 ? OLD : recent() })));
+  await s.insertTraces(tenant, [{ trace_id: 'k', agent_name: 'a', output: 'kept text', timestamp: recent() }]);
+  await s.checkpoint();
+  mergeIntoOne(dbOf(s));
+  expect(await s.deleteTracesOlderThan(tenant, 30)).toBe(297);
+  expect(segmentsByLevel(dbOf(s), 'trace_search')).toEqual([[], [], [], [1]]);
+}
+
+/** Whether every segment of an index is on its last level: where a merge drops what was deleted. */
+const onlyLast = (levels: number[][]) => levels.every((l, i) => l.length === 0 || i === levels.length - 1);
+
 const owed = (s: SqliteAdapter) => Number((dbOf(s).prepare(`SELECT COUNT(*) AS n FROM ${ERASE_OWED_TABLE}`).get() as { n: number }).n);
+
+/**
+ * Make the next `times` steps of the merge a sweep owes throw, as a lock
+ * another process held past the busy timeout does: each step's merge
+ * statement fails inside its transaction. Returns how many have thrown, and
+ * a way to stop.
+ */
+function failMergeSteps(s: SqliteAdapter, times: number): { thrown: () => number; restore: () => void } {
+  const db = dbOf(s);
+  const exec = db.exec;
+  let thrown = 0;
+  db.exec = (sql: string) => {
+    if (thrown < times && /VALUES \('merge', -\d+\)/.test(sql)) {
+      thrown += 1;
+      throw Object.assign(new Error('database is locked'), { code: 'SQLITE_BUSY' });
+    }
+    exec(sql);
+  };
+  return { thrown: () => thrown, restore: () => void (db.exec = exec) };
+}
 
 /** Counts the event loop's turns until `work` settles. */
 async function turnsDuring<T>(work: Promise<T>): Promise<{ value: T; turns: number }> {
@@ -235,6 +305,100 @@ describe('the retention sweep runs in steps', () => {
     integrity(next);
   });
 
+  it('a merge that leaves the index one segment on a level below its last merges it again, into its oldest segment: none of the swept words are left (#758)', async () => {
+    const path = tempDb();
+    const s = await started(path);
+    const db = dbOf(s);
+    const levels = () => segmentsByLevel(db, 'trace_search');
+    await oneSmallSegmentOnLevelFour(s, LOCAL_TENANT);
+
+    // A segment written below one that size moves it down a level (FTS5's promotion), so the traces stored next put every segment on level 0 of four.
+    const word = 'lkjhgfdsapoiuytrewqmnbvcxz';
+    await s.insertTraces(LOCAL_TENANT, [
+      { trace_id: 'a', agent_name: 'a', output: `old ${word} one`, timestamp: OLD },
+      { trace_id: 'b', agent_name: 'a', output: `old ${word} two`, timestamp: OLD },
+    ]);
+    await s.checkpoint();
+    expect(levels().length).toBe(4);
+    expect(levels().slice(1).every((l) => l.length === 0)).toBe(true);
+    expect(onDisk(path, word)).toBe(true);
+
+    // Merging level 0 writes level 1, not the oldest segment: FTS5 keeps what was deleted there, and calls one segment merged.
+    expect(await s.deleteTracesOlderThan(LOCAL_TENANT, 30)).toBe(2);
+    expect(owed(s)).toBe(0);
+    expect(deletesKept(db, 'trace_search')).toBe(false);
+    expect(onlyLast(levels())).toBe(true);
+    await s.checkpoint();
+    expect(onDisk(path, word), residue(s, path, word)).toBe(false);
+    integrity(s);
+    expect((await s.queryTraces(LOCAL_TENANT, { search: 'kept' })).total).toBe(1);
+    expect((await s.queryTraces(LOCAL_TENANT, { search: 'pad0' })).total).toBe(0);
+  });
+
+  it('--purge of one tenant, whose index FTS5 calls merged while it is one segment below its last level, merges it into its oldest segment: none of the purged words are left', async () => {
+    const path = tempDb();
+    const s = await started(path);
+    const db = dbOf(s);
+    await oneSmallSegmentOnLevelFour(s, LOCAL_TENANT);
+    const other = asTenantId('acme');
+    const word = 'mnbvcxzlkjhgfdsapoiuytrewq';
+    await s.insertTraces(other, [
+      { trace_id: 'a', agent_name: 'a', output: `${word} one`, timestamp: recent() },
+      { trace_id: 'b', agent_name: 'a', output: `${word} two`, timestamp: recent() },
+    ]);
+    await s.checkpoint();
+    // Every segment on level 0 of four: 'optimize' merges them into level 1, not into the oldest segment.
+    expect(segmentsByLevel(db, 'trace_search').slice(1).every((l) => l.length === 0)).toBe(true);
+    expect(onDisk(path, word)).toBe(true);
+
+    expect(await s.purge(other)).toEqual({ traces: 2, evalResults: 0 });
+    expect(deletesKept(db, 'trace_search')).toBe(false);
+    expect(onDisk(path, word), residue(s, path, word)).toBe(false);
+    integrity(s);
+    expect((await s.queryTraces(LOCAL_TENANT, { search: 'kept' })).total).toBe(1);
+  });
+
+  it('a merge step that throws is run again: the sweep returns once the merge it owes is done, and leaves none of the swept words', async () => {
+    const path = tempDb();
+    const log: Log = [];
+    const s = await started(path, { log });
+    const word = 'ikmjunhybgtvfrcdexswzaqlop';
+    await s.insertTraces(LOCAL_TENANT, traces(600, 300, word));
+    await s.checkpoint();
+    expect(onDisk(path, word)).toBe(true);
+    const fault = failMergeSteps(s, 2);
+    expect(await s.deleteTracesOlderThan(LOCAL_TENANT, 30)).toBe(300);
+    expect(fault.thrown()).toBe(2);
+    expect(owed(s)).toBe(0);
+    await s.checkpoint();
+    expect(onDisk(path, word), residue(s, path, word)).toBe(false);
+    expect(log.filter(([level]) => level === 'warn')).toEqual([]);
+    integrity(s);
+  });
+
+  it('a merge that keeps failing fails the sweep, which says what it deleted and why; the next sweep finishes the merge and leaves none of the swept words', async () => {
+    const path = tempDb();
+    const log: Log = [];
+    const s = await started(path, { log });
+    const word = 'okmijnuhbygvtfcrdxeszwaqpl';
+    await s.insertTraces(LOCAL_TENANT, traces(600, 300, word));
+    const fault = failMergeSteps(s, Infinity);
+    await expect(s.deleteTracesOlderThan(LOCAL_TENANT, 30)).rejects.toThrow(/^the sweep deleted 300 trace\(s\), but merging the search index after it failed \(database is locked\)/);
+    // Three attempts at the step, then the merge stopped: it is still owed, and the swept words are still in the index's pages.
+    expect(fault.thrown()).toBe(3);
+    expect(owed(s)).toBeGreaterThan(0);
+    expect(log).toContainEqual(['warn', expect.stringMatching(/^Merging the search index after a retention sweep stopped \(database is locked\)/)]);
+    await s.checkpoint();
+    expect(onDisk(path, word)).toBe(true);
+
+    fault.restore();
+    expect(await s.deleteTracesOlderThan(LOCAL_TENANT, 30)).toBe(0);
+    expect(owed(s)).toBe(0);
+    await s.checkpoint();
+    expect(onDisk(path, word), residue(s, path, word)).toBe(false);
+    integrity(s);
+  });
+
   it('the evaluation sweep deletes in steps too', async () => {
     const s = await started(tempDb());
     const at = OLD;
@@ -247,6 +411,37 @@ describe('the retention sweep runs in steps', () => {
     expect(value).toBe(1500);
     expect(turns).toBeGreaterThanOrEqual(2);
     expect(Number((db.prepare('SELECT COUNT(*) AS n FROM eval_results').get() as { n: number }).n)).toBe(500);
+  });
+});
+
+describe('every connection that writes zeroes what it frees', () => {
+  it('a connection opened for writing has secure_delete on', async () => {
+    const path = tempDb();
+    await started(path);
+    const db = openDriver(path, { driver: SEARCH_DRIVER });
+    try {
+      const out = db.pragma('secure_delete') as { secure_delete: number } | Array<{ secure_delete: number }>;
+      expect(Number((Array.isArray(out) ? out[0] : out).secure_delete)).toBe(1);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("the checkpoint worker's connection: a row it deletes leaves none of its text in iris.db or its WAL", async () => {
+    const path = tempDb();
+    const s = await started(path);
+    // The worker starts at the store's first write.
+    await s.insertTraces(LOCAL_TENANT, traces(1, 0, 'unused'));
+    const worker = (s as unknown as { checkpointer?: { whenStarted(): Promise<boolean>; active: boolean; exec(sql: string): Promise<void> } }).checkpointer;
+    expect(worker !== undefined && (await worker.whenStarted()) && worker.active).toBe(true);
+    const word = 'ujmyhntgbrfvedcwsxqazplkoi';
+    await worker!.exec(`CREATE TABLE scratch (t TEXT); WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 50) INSERT INTO scratch (t) SELECT '${word} ' || i FROM n`);
+    await s.checkpoint();
+    // Anti-theater: the rows reached the file.
+    expect(onDisk(path, word)).toBe(true);
+    await worker!.exec('DELETE FROM scratch');
+    await s.checkpoint();
+    expect(onDisk(path, word), residue(s, path, word)).toBe(false);
   });
 });
 

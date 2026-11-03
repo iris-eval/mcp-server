@@ -64,7 +64,7 @@ import { backupDatabase, backupDatabaseWith, type BackupResult } from './backup.
 import { PKG_VERSION } from '../config/defaults.js';
 import { Checkpointer, AUTOCHECKPOINT_PAGES, TAIL_CHECKPOINT_PAGES, STEP_TRUNCATE_PAGES } from './checkpointer.js';
 import { readPathsMissing, DROP_REPLACED, READ_PATH_INDEX_NAMES } from './read-paths.js';
-import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, nextStepSize, eraseRetiredStep, isShadowWriteRefused, retiredRemain, ERASE_ROWS, ERASE_ROWS_RANGE, sweepEraseMode, deleteOwingMerge, mergeOwed, mergeOwedStep, levelMergeStep, filterIndexMissing, CREATE_FILTER_INDEX, MERGE_PAGES, MERGE_PAGES_RANGE, searchIndexProgress, type SearchIndexStatus, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState, BUILD_BATCH_RANGE, enqueueTraces, indexQueued, queueWaiting, queuedUpTo, searchFilterIndexExists, dropSearchFilterIndex, QUEUE_TABLE } from './search-index.js';
+import { assumeFts5, fts5Available, reconcileSearchIndex, indexNextBatch, nextBuildBatch, nextStepSize, eraseRetiredStep, isShadowWriteRefused, retiredRemain, ERASE_ROWS, ERASE_ROWS_RANGE, sweepEraseMode, deleteOwingMerge, mergeOwed, mergeOwedStep, MAX_PADS, levelMergeStep, filterIndexMissing, CREATE_FILTER_INDEX, MERGE_PAGES, MERGE_PAGES_RANGE, searchIndexProgress, type SearchIndexStatus, BUILD_BATCH, unindexedRemain, indexInsertedTraces, bulkIndexDelete, indexCjk, indexCjkPending, CJK_PENDING_TABLE, SEARCH_DOCS_TABLE, type SearchIndexState, BUILD_BATCH_RANGE, enqueueTraces, indexQueued, queueWaiting, queuedUpTo, searchFilterIndexExists, dropSearchFilterIndex, QUEUE_TABLE } from './search-index.js';
 import { parseSearch, searchRefusal, describeTerm, mayHoldCjk, type ParsedSearch, type TraceMatch } from './search.js';
 import { installSearchFunctions, matchSearch, type MatchRequest, type MatchResult, type SearchPlan } from './search-match.js';
 import { SearchWorkerClient, SearchWorkerUnavailable, warnSearchWorkerUnavailable } from './search-worker-client.js';
@@ -260,6 +260,9 @@ const ERASE_WAIT_MS = 250;
  */
 const NOT_THE_BASELINE_RUN = (runExpr: string): string => `NOT EXISTS (SELECT 1 FROM runs b WHERE b.tenant_id = ? AND b.baseline = 1 AND b.run_id = ${runExpr})`;
 
+/** How many times the merge a sweep owes runs a step that threw before it stops (settleOwedMerge), and the pause before each retry, times the attempt. */
+const MERGE_STEP_ATTEMPTS = 3;
+const MERGE_RETRY_MS = 100;
 /** The retention sweep's step, in traces: from one, because erasing one trace row by row can take 120 ms by itself. */
 const SWEEP_BATCH = 1;
 const SWEEP_BATCH_RANGE = [1, 1024] as const;
@@ -529,7 +532,7 @@ export class SqliteAdapter implements IStorageAdapter {
   private filterIndex: Promise<void> | undefined;
   private riskFill: Promise<void> | undefined;
   /** The merge a sweep owes, while one runs; see settleOwedMerge. */
-  private merging: Promise<void> | undefined;
+  private merging: Promise<Error | undefined> | undefined;
   /** Retention sweeps in progress: close() waits for each to stop at its next step. */
   private readonly sweeps = new Set<Promise<unknown>>();
   /** The worker thread that checkpoints the WAL off the event loop (checkpointer.ts); none for a database in memory. */
@@ -686,16 +689,7 @@ export class SqliteAdapter implements IStorageAdapter {
      * config says, NORMAL unless it says `full`.
      */
     this.db.pragma(`synchronous = ${this.synchronous === 'full' ? 'FULL' : 'NORMAL'}`);
-    /*
-     * secure_delete overwrites freed content with zeros instead of leaving
-     * it in place until the page is reused. Without it, a DELETE — the
-     * retention sweep, delete_trace, --purge — removed the row from every
-     * query while the text stayed byte-for-byte readable in the file with
-     * `strings iris.db`. Deletes are rare here (startup sweep, explicit
-     * deletes), so the write cost is negligible; the privacy cost of the
-     * alternative is the whole point of #372.
-     */
-    this.db.pragma('secure_delete = ON');
+    // secure_delete is on for this connection from the moment it opened (driver.ts, ERASE_ON_FREE; #372).
     if (this.fts5Override !== undefined) assumeFts5(this.db, this.fts5Override);
     /*
      * iris.db holds agent inputs and outputs verbatim, and a tool that
@@ -1432,25 +1426,47 @@ export class SqliteAdapter implements IStorageAdapter {
    * Run the merge a sweep owes to its end, in steps (search-index.ts, the
    * retention sweep). One at a time: a second caller waits for the one in
    * progress, which merges whatever is owed when each step runs.
+   *
+   * A step is one transaction, so one that throws (a lock another process
+   * held past the busy timeout, a full disk) changed nothing and can run
+   * again: it is tried MERGE_STEP_ATTEMPTS times, with a pause between,
+   * before the merge stops. Resolves with the error that stopped it, or
+   * undefined when it ran to its end or the store closed; it never rejects,
+   * since close() and whenIdle() wait on it.
    */
-  private settleOwedMerge(): Promise<void> {
-    this.merging ??= (async () => {
+  private settleOwedMerge(): Promise<Error | undefined> {
+    this.merging ??= (async (): Promise<Error | undefined> => {
       await yieldToRequests();
       this.ensureCheckpointer();
-      if (this.filterIndex || this.readPaths) await this.indexesAfterStart();
       try {
+        if (this.filterIndex || this.readPaths) await this.indexesAfterStart();
         let pages = MERGE_PAGES;
+        let failed = 0;
+        let padded = 0;
         while (!this.closing) {
           await this.beforeWriteStep();
           const started = performance.now();
-          const { owed, written } = mergeOwedStep(this.db, pages);
-          if (!owed) break;
+          let step: { owed: boolean; written: number; padded: number };
+          try {
+            step = mergeOwedStep(this.db, pages);
+          } catch (err) {
+            if (++failed >= MERGE_STEP_ATTEMPTS) throw err;
+            await new Promise((resolve) => setTimeout(resolve, MERGE_RETRY_MS * failed));
+            continue;
+          }
+          failed = 0;
+          if (!step.owed) break;
+          // Each pad makes the next merge one into the oldest segment (search-index.ts, padForOldestMerge), MAX_PADS at most for each of the two indexes: one that does not settle is an error, not a loop.
+          if ((padded += step.padded) > 2 * MAX_PADS) throw new Error(`the search index was still not one segment on its last level after ${padded} merges into its oldest`);
           // Sized by what it did: its budget, or less when the merge finished early (the rows it wrote), never a budget it did not use.
-          if (written > 0) pages = nextStepSize(Math.min(pages, written), performance.now() - started, MERGE_PAGES_RANGE);
+          if (step.written > 0) pages = nextStepSize(Math.min(pages, step.written), performance.now() - started, MERGE_PAGES_RANGE);
           await yieldToRequests();
         }
+        return undefined;
       } catch (err) {
-        this.log('warn', `Merging the search index after a retention sweep stopped (${err instanceof Error ? err.message : String(err)}); the next start carries it on. Until then the swept traces' words are still in the index's pages, though no search finds them.`);
+        const error = err instanceof Error ? err : new Error(String(err));
+        this.log('warn', `Merging the search index after a retention sweep stopped (${error.message}); the next sweep or start carries it on. Until then the swept traces' words are still in the index's pages, though no search finds them.`);
+        return error;
       } finally {
         this.merging = undefined;
       }
@@ -3362,7 +3378,21 @@ export class SqliteAdapter implements IStorageAdapter {
       batch = nextStepSize(batch, performance.now() - started, SWEEP_BATCH_RANGE);
       await yieldToRequests();
     }
-    if (indexing && mergeOwed(this.db)) await this.settleOwedMerge();
+    /*
+     * The sweep returns once the merge it owes is done, and not before: a
+     * merge that stopped on an error fails the sweep, which is then never
+     * reported as done while the swept words are still in the index's
+     * pages. A closing store stops it at its next step; the next start
+     * carries it on, as it does the deletes.
+     */
+    while (indexing && !this.closing && mergeOwed(this.db)) {
+      const failed = await this.settleOwedMerge();
+      if (failed) {
+        throw new Error(
+          `the sweep deleted ${deleted} trace(s), but merging the search index after it failed (${failed.message}). Their words stay in the index's pages, where no search finds them, until the next sweep or start finishes the merge.`,
+        );
+      }
+    }
     return deleted;
   }
 
