@@ -48,7 +48,7 @@ CI runs `scripts/security/check-exposure-coverage.mjs` on every PR. If a new ≥
 - **Untrusted input reachable:** No. The patterns come from files behind commit access; no visitor, trace or agent output reaches a minimatch call.
 - **Downstream guards:** A pathological pattern could at most slow a lint run over patterns this repository defines.
 - **Decision:** **Track**, dev tooling behind commit access, for the same upstream reason as [#54](https://github.com/iris-eval/mcp-server/issues/54): the website stays on ESLint 9 because the plugins `eslint-config-next` bundles declare ESLint up to `^9`. Those plugins call minimatch 3's CommonJS export as a function (`require('minimatch')(path, pattern)`, or its `default` through Babel's interop). minimatch 11's CommonJS build exports named functions and no default, so an override would make those calls throw, not patch them. The website's `overrides` entry therefore reaches minimatch only under `@typescript-eslint/typescript-estree`, the one package there that asks for 10.x. `website/osv-scanner.toml` records this advisory as not applying, with this reason, until 2027-02-03, so OSV-Scanner and OpenSSF Scorecard read the same assessment and it is reviewed again by then. Retire this row, and that entry, when the website's lint plugins take a minimatch with the fix, which follows #54.
-- **Assessed:** 2026-11-03 against iris commit `7922c98a` (the merge of #949).
+- **Assessed:** 2026-11-03 against iris commit `409f1134` (the merge of #955).
 
 ### [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) — braces stack-exhaustion denial of service through deeply nested patterns
 
