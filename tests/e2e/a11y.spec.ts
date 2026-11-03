@@ -25,6 +25,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test, expect, type Page, type Locator } from '@playwright/test';
 import { AXE_VERSION, describeViolations, runAxe } from './_axe.js';
+import { nextStopKey } from './_keyboard.js';
 
 /** Rules reported but not yet enforced. None. */
 const CONTRAST_PENDING = new Set<string>();
@@ -154,8 +155,10 @@ async function walkTabStops(page: Page, limit = 500): Promise<{ stops: TabStop[]
   const stops: TabStop[] = [];
   const seen = new Set<string>();
   let repeats = 0;
+  // Option+Tab in WebKit, where plain Tab skips links (tests/e2e/_keyboard.ts).
+  const tab = nextStopKey(page);
   for (let i = 0; i < limit; i++) {
-    await page.keyboard.press('Tab');
+    await page.keyboard.press(tab);
     const stop = await page.evaluate((n) => {
       const el = document.activeElement as HTMLElement | null;
       if (!el || el === document.body || el === document.documentElement || el.dataset.a11yEnd) return null;

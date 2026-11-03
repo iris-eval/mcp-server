@@ -6,11 +6,14 @@
  */
 import { NAV_LABELS } from '../../dashboard/src/components/layout/navLabels.js';
 import { test, expect, type Page } from '@playwright/test';
+import { nextStopKey } from './_keyboard.js';
 
 /** Tab until the focused element has this accessible name, or give up after `budget` presses. */
 async function tabTo(page: Page, name: string, budget = 40): Promise<void> {
+  // Option+Tab in WebKit, where plain Tab skips links (tests/e2e/_keyboard.ts).
+  const tab = nextStopKey(page);
   for (let i = 0; i < budget; i++) {
-    await page.keyboard.press('Tab');
+    await page.keyboard.press(tab);
     const focused = await page.evaluate(() => {
       const el = document.activeElement as HTMLElement | null;
       return el ? (el.getAttribute('aria-label') ?? el.textContent ?? '').trim() : '';
