@@ -15,11 +15,14 @@ test.describe('v2.C chrome persistence', () => {
   test('density toggle applies data-density + persists across reload', async ({ page }) => {
     await page.goto('/');
 
-    // Baseline: data-density is 'compact' (default per R2.3)
-    const initialDensity = await page.evaluate(() =>
-      document.documentElement.getAttribute('data-density'),
-    );
-    expect(initialDensity).toBe('compact');
+    // Baseline: data-density is 'compact' (default per R2.3). DensitySync
+    // sets it once the preferences have loaded, which can be after the
+    // page's load event (it was, in WebKit), so poll as after the reload.
+    await expect
+      .poll(async () =>
+        page.evaluate(() => document.documentElement.getAttribute('data-density')),
+      )
+      .toBe('compact');
 
     // Open AccountMenu, click "Comfortable". Wait for the PATCH response
     // so we know the server persisted before we reload — the AccountMenu

@@ -82,26 +82,23 @@ export default defineConfig({
     },
   },
   /*
-   * Browser matrix: Chromium + Firefox.
+   * Browser matrix: Chromium and Firefox on Linux, WebKit on macOS.
    *
-   * WebKit-on-Linux (Playwright's `webkit` device) is intentionally
-   * excluded, not deferred. It is a Linux build of WebKit — NOT Apple
-   * Safari. Safari uses Apple's WebKit which ships only on macOS
-   * hardware. Testing Playwright's Linux WebKit build gives weak
-   * assurance about actual Safari users and introduces environment-
-   * specific flakiness (React 19 + Vite 8 hydration + WebKit-Linux
-   * interact poorly on GitHub Actions Ubuntu runners).
+   * Chromium covers the largest real-world share; Firefox surfaces Gecko-
+   * specific regressions (focus management, layout-shift interaction).
+   * Both pass reliably on ubuntu-latest, Windows and macOS. CI runs them
+   * together in the `e2e` job (`npm run test:e2e`).
    *
-   * Real Safari coverage would require a macOS CI runner. That's an
-   * honest cost/benefit call for a later decision: Iris is an MCP-
-   * native dev tool consumed via Claude Desktop / Cursor / Windsurf /
-   * IDE plugins — direct Safari dashboard access is a small slice of
-   * usage. When Safari-real becomes material we add macOS to the CI
-   * matrix explicitly rather than simulate it on Linux.
-   *
-   * Chromium covers ~65% real-world share; Firefox surfaces Gecko-
-   * specific regressions (focus-management, layout-shift interaction).
-   * Both pass reliably on ubuntu-latest + Windows + macOS.
+   * WebKit runs on macOS only, in its own `e2e-webkit` job
+   * (`npm run test:e2e:webkit`). On macOS, Playwright's WebKit is the
+   * engine Safari is built on, running on Apple's own text and graphics
+   * stack, so it catches the CSS, date-parsing and DOM API differences a
+   * Safari user would hit. The Linux build is a different port (GTK)
+   * and is not run: it gives weak
+   * assurance about Safari users and flaked on GitHub's Ubuntu runners
+   * (React 19 + Vite 8 hydration). Run the project explicitly, with
+   * `--project=webkit`; `npm run test:e2e` leaves it out, so a Linux or
+   * Windows checkout never needs the WebKit download.
    */
   projects: [
     {
@@ -134,6 +131,10 @@ export default defineConfig({
           },
         },
       },
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
     },
   ],
 });

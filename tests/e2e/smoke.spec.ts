@@ -11,18 +11,15 @@
 import { NAV_LABELS } from '../../dashboard/src/components/layout/navLabels.js';
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { collectConsoleErrors } from './_console.js';
 
 /**
  * Listen for console errors on every test. Playwright's default is
- * lenient; we tighten to fail on any page-level console.error.
+ * lenient; we tighten to fail on any page-level console.error
+ * (tests/e2e/_console.ts names the one WebKit message it leaves out).
  */
 async function failOnConsoleErrors(page: Page): Promise<string[]> {
-  const errors: string[] = [];
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') errors.push(msg.text());
-  });
-  page.on('pageerror', (err) => errors.push(err.message));
-  return errors;
+  return collectConsoleErrors(page);
 }
 
 test.describe('dashboard smoke', () => {

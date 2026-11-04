@@ -118,6 +118,18 @@ export function createDashboardServer(
         // Self-hosted woff2 under /fonts resolves via 'self'.
         fontSrc: ["'self'", "data:"],
         connectSrc: ["'self'"],
+        /*
+         * Off: helmet adds `upgrade-insecure-requests` by default, and
+         * this server speaks plain HTTP. The directive tells the browser
+         * to fetch every subresource over https://, including the page's
+         * own scripts and styles. Chrome and Firefox exempt
+         * http://localhost from it; Safari does not, so on the default
+         * loopback bind Safari requested https://localhost:<port>/assets/…,
+         * got no TLS answer, and showed an empty page. Every asset is
+         * same-origin ('self'), so a deployment behind a TLS proxy loses
+         * nothing without it.
+         */
+        upgradeInsecureRequests: null,
       },
     },
   }));
