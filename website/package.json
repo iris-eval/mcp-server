@@ -16,7 +16,7 @@
     "@vercel/analytics": "^2.0.1",
     "clsx": "^2.1.1",
     "framer-motion": "^14.7.1",
-    "next": "16.4.3",
+    "next": "16.4.4",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-markdown": "^10.1.0",
@@ -30,7 +30,7 @@
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.4.3",
+    "eslint-config-next": "16.4.4",
     "sharp": "^0.35.5",
     "tailwindcss": "^4",
     "typescript": "^6"
