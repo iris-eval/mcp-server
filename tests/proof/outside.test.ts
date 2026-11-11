@@ -3,7 +3,8 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { contextOfRun, type AgentDojoRun } from '../../proof/lib/agentdojo.js';
-import { OUTSIDE_DIR, OUTSIDE_RESULTS_JSON, loadOutsideManifest, loadOutsideRuns, rateOf } from '../../proof/lib/outside.js';
+import { OUTSIDE_DIR, OUTSIDE_RESULTS_JSON, historyFor, loadOutsideManifest, loadOutsideRuns, rateOf, type CaseHistoryRow } from '../../proof/lib/outside.js';
+import { CASE_HISTORY_WINDOW } from '../../src/eval/case-history.js';
 import { wilson } from '../../src/eval/stats.js';
 import { ATTACK, COMMIT, SEED, splitOf } from '../../proof/tools/sample-agentdojo.mjs';
 
@@ -124,6 +125,53 @@ describe('the committed sample is the one AgentDojo published', () => {
       attackFailed: attacked.filter((r) => r.attackSucceeded === false).length,
       noAttack: manifest.runs.filter((r) => r.set === 'benign').length,
     });
+  });
+});
+
+/*
+ * The case-history rules are read three times, against three choices of a
+ * run's earlier runs. What is held: which runs each choice takes, and that
+ * the committed numbers of the three readings are about the same runs.
+ */
+describe('a run against the other runs of its task, three ways', () => {
+  const other = (path: string, set: 'attacked' | 'benign', attackSucceeded: boolean | null) => ({ path, set, attackSucceeded });
+  const task = [other('a', 'benign', null), other('b', 'attacked', true), other('c', 'attacked', false), other('d', 'benign', null), other('e', 'attacked', true)];
+
+  it('every other run, only the ones with no attack in them, or only the ones where no attack succeeded: never the run itself', () => {
+    const self = task[0];
+    expect(historyFor('all', self, task).map((r) => r.path)).toEqual(['b', 'c', 'd', 'e']);
+    expect(historyFor('no_attack', self, task).map((r) => r.path)).toEqual(['d']);
+    expect(historyFor('no_attack_succeeded', self, task).map((r) => r.path)).toEqual(['c', 'd']);
+    // A run where the attack succeeded is read against the clean runs too, and is never among them.
+    expect(historyFor('no_attack', task[1], task).map((r) => r.path)).toEqual(['a', 'd']);
+    expect(historyFor('no_attack_succeeded', task[1], task).map((r) => r.path)).toEqual(['a', 'c', 'd']);
+  });
+
+  it('reads at most the window, in the sample\'s order', () => {
+    const many = Array.from({ length: CASE_HISTORY_WINDOW + 10 }, (_, i) => other(`r${i}`, 'benign', null));
+    const read = historyFor('no_attack', many[0], many);
+    expect(read).toHaveLength(CASE_HISTORY_WINDOW);
+    expect(read[0].path).toBe('r1');
+  });
+
+  it('the committed readings count the same runs: one group size in all three, and a fire only on a run the rule judged', () => {
+    const results = JSON.parse(readFileSync(join(root, OUTSIDE_RESULTS_JSON), 'utf-8')) as {
+      caseHistory: { rows: CaseHistoryRow[]; clean: { readings: Array<{ history: string; rows: CaseHistoryRow[] }> } };
+    };
+    const groups = ['attackSucceeded', 'attackFailed', 'noAttack', 'taskNotDone', 'taskDone'] as const;
+    expect(results.caseHistory.clean.readings.map((r) => r.history)).toEqual(['no_attack', 'no_attack_succeeded']);
+    for (const reading of [{ history: 'all', rows: results.caseHistory.rows }, ...results.caseHistory.clean.readings]) {
+      expect(reading.rows.map((r) => `${r.rule} ${r.half}`)).toEqual(results.caseHistory.rows.map((r) => `${r.rule} ${r.half}`));
+      for (const row of reading.rows) {
+        const full = results.caseHistory.rows.find((r) => r.rule === row.rule && r.half === row.half)!;
+        for (const g of groups) {
+          const where = `${reading.history} ${row.rule} ${row.half} ${g}`;
+          expect(row[g].n, where).toBe(full[g].n);
+          expect(row.judged[g].k, where).toBe(row[g].k);
+          expect(row.judged[g].n, where).toBeLessThanOrEqual(row[g].n);
+        }
+      }
+    }
   });
 });
 
