@@ -400,6 +400,19 @@ How it is scored:
   runs judged. AgentDojo's labels choose those histories, which a
   deployment cannot do: the rows say what the rules do when a history is
   clean. The dev half was read under both first, and the test half once.
+- **And against one agent's own runs.** A deployment's history is one
+  agent's, and the sample above was drawn a run at a time, so the other runs
+  of a task in it are other agents'. A second sample takes whole groups from
+  the same logs: one agent's run of a task with no attack, and its runs of
+  that task under attack (`proof/outside/agentdojo/agents/`, drawn by
+  `proof/tools/sample-agentdojo.mjs --agents` at the same commit, with the
+  same seed and the same halves). Each run is read against that agent's
+  other runs of the task, all of them and then only the ones where no attack
+  succeeded, and each rate is given over runs and over cases, one agent's
+  task counted once. A run where the attack failed can still hold the
+  attacker's action, so the report also counts how many of the fires on such
+  runs were on a call carrying a value from the planted instruction. The dev
+  half was read first, and the test half once.
 
 What it is not: production traffic, or a deployment's own configuration.
 The sample weights every agent alike and holds as many runs where the
