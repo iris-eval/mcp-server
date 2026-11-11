@@ -5323,8 +5323,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-11-11T19:10:07.042Z",
-  "generatedFromCommit": "bdc55bb4",
+  "generatedAt": "2026-11-11T20:16:07.827Z",
+  "generatedFromCommit": "20c83865",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5412,7 +5412,7 @@
     ]
   },
   "proof": {
-    "commit": "bdc55bb4",
+    "commit": "4bd614bf",
     "composite": {
       "compositeVersion": "e42b43d5330f",
       "confidence": {
@@ -7765,7 +7765,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-11-11T19:06:39.971Z",
+    "generatedAt": "2026-11-11T20:12:54.788Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7784,8 +7784,8 @@
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
       "n": 1349,
-      "p50Ms": 1.542,
-      "p95Ms": 8.531
+      "p50Ms": 1.356,
+      "p95Ms": 7.629
     },
     "method": {
       "ci": "wilson-95",
