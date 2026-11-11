@@ -448,6 +448,9 @@ export default function Proof(): React.ReactElement {
                 were produced by the same model family that authored the cases, which means the
                 labels share the author&rsquo;s blind spots. A rule that agrees with those
                 labels agrees with that model, not yet with a human.
+                {OUTSIDE.length > 0
+                  ? ` The exception: ${OUTSIDE.map((r) => r.name).join(", ")} ${OUTSIDE.length === 1 ? "is" : "are"} measured on agent runs Iris did not write, with labels the benchmark that published the runs computed by checking the world after each one.`
+                  : ""}
               </li>
               <li>
                 <strong className="text-text-primary">Human blind label:</strong>{" "}

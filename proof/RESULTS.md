@@ -1,11 +1,11 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-11-11T19:06:39.971Z for v0.21.0 (local generating commit `bdc55bb4` — branch commits are squashed on merge, so cite the version).
+Generated 2026-11-11T20:12:54.788Z for v0.21.0 (local generating commit `4bd614bf` — branch commits are squashed on merge, so cite the version).
 Corpus version `56dab6cc7fe3` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
-**What the 28 measured rules show is three different things.**13 are measured against labels a model gave by reading the failure itself, without running the rule (a synthetic, model-labelled corpus; a human blind label is pending): those numbers measure detection (1 of 13 score F1 1.00). 14 are checked against their own documented definition, applied independently by script or by counting: those numbers show the code implements its formula, not that the formula catches what a reader would call the failure (13 of 14 score F1 1.00). 1 is measured against labels somebody else computed, on agent runs Iris did not write (`no_unusual_action`; proof/OUTSIDE.md): those numbers say what a fire was worth on those runs, at their own mix of good and bad runs, which is not an even one. The "Labels" column says which; each family's `labelling` statement says how.
+**What the 28 measured rules show is three different things.** 13 are measured against labels a model gave by reading the failure itself, without running the rule (a synthetic, model-labelled corpus; a human blind label is pending): those numbers measure detection (1 of 13 score F1 1.00). 14 are checked against their own documented definition, applied independently by script or by counting: those numbers show the code implements its formula, not that the formula catches what a reader would call the failure (13 of 14 score F1 1.00). 1 is measured against labels somebody else computed, on agent runs Iris did not write (`no_unusual_action`; proof/OUTSIDE.md): those numbers say what a fire was worth on those runs, at their own mix of good and bad runs, which is not an even one. The "Labels" column says which; each family's `labelling` statement says how.
 
 | Rule | Bundle | Labels | n | pos | skip | TP | FP | FN | TN | Precision (95% CI) | Recall (95% CI) | F1 (95% CI) | F1 credible | PPV at 5% / 50% |
 |---|---|---|--:|--:|--:|--:|--:|--:|--:|---|---|---|---|---|
@@ -159,7 +159,7 @@ each custom rule type built by createCustomRule under the family's config and ru
 <!-- latency:start -->
 ## How long one evaluation takes
 
-EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1349; p50 1.542 ms, p95 8.531 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
+EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1349; p50 1.356 ms, p95 7.629 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
 
 Re-measured on every `npm run proof` and excluded from `--check`: it is a property of the machine, so CI cannot hold it byte-for-byte.
 
