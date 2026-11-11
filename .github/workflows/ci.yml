@@ -1249,7 +1249,9 @@ jobs:
   # .github/actions/gate runs this checkout's own build against the
   # walk-through fixtures — the leak is caught, the clean file passes, the
   # receipt reaches the job summary, and on a pull request one comment is
-  # posted and then updated in place; on a push it posts nothing, asserted.
+  # posted and then updated in place. A pull request from a fork carries a
+  # read-only token, so there the action leaves the comment and says why;
+  # on a push it posts nothing. All three are asserted.
   gate-action:
     name: Gate action — dogfood
     runs-on: ubuntu-latest
@@ -1314,6 +1316,8 @@ jobs:
           CLEAN_TRIPPED: ${{ steps.clean.outputs.tripped }}
           AGAIN_COMMENT: ${{ steps.again.outputs.comment }}
           EVENT: ${{ github.event_name }}
+          # The action's own test for a fork (comment.mjs): the head is another repository.
+          FROM_FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
         run: |
           fail() { echo "::error::$1"; exit 1; }
           [ "$LEAK_OUTCOME" = "failure" ] || fail "the leak run should fail the step, got outcome $LEAK_OUTCOME"
@@ -1323,7 +1327,10 @@ jobs:
           [ "$LEAK_GATED" = "2" ] || fail "two of three in the dataset's gate, got $LEAK_GATED"
           [ "$CLEAN_EXIT" = "0" ] || fail "the clean run should exit 0, got $CLEAN_EXIT"
           [ "$CLEAN_STORED" = "1" ] && [ "$CLEAN_TRIPPED" = "0" ] || fail "the clean run: $CLEAN_STORED stored, $CLEAN_TRIPPED tripped"
-          if [ "$EVENT" = "pull_request" ]; then
+          if [ "$EVENT" = "pull_request" ] && [ "$FROM_FORK" = "true" ]; then
+            [ "$LEAK_COMMENT" = "skipped-fork" ] || fail "on a pull request from a fork the comment is skipped-fork, got $LEAK_COMMENT"
+            [ "$AGAIN_COMMENT" = "skipped-fork" ] || fail "on a pull request from a fork the comment is skipped-fork, got $AGAIN_COMMENT"
+          elif [ "$EVENT" = "pull_request" ]; then
             case "$LEAK_COMMENT" in posted|updated) ;; *) fail "on a pull request the first run should post or update the comment, got $LEAK_COMMENT" ;; esac
             [ "$AGAIN_COMMENT" = "updated" ] || fail "the second run on the same traces should update the comment in place, got $AGAIN_COMMENT"
           else
