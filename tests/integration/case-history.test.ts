@@ -129,6 +129,40 @@ describe('the case-history rules, through the doors', () => {
     expect(readBack.rule_results.find((r) => r.ruleName === 'no_unusual_action')).toMatchObject({ advisory: true, role: 'advisory', advisoryWhy: why });
   });
 
+  /*
+   * A deployment that names the rule in eval.criticalRules has said every
+   * fire of it decides. Its own server then starts, and the rule vetoes from
+   * the first run it judges, at three earlier runs, with no word about
+   * weighing on the row.
+   */
+  it('on a server whose config makes the rule critical, an action the case never took vetoes from three earlier runs', async () => {
+    const store = new SqliteAdapter(':memory:');
+    await store.initialize();
+    const { mcpServer } = createIrisServer({ ...defaultConfig, eval: { ...defaultConfig.eval, criticalRules: ['no_unusual_action'] } }, store);
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await mcpServer.connect(serverTransport);
+    const promoted = new Client({ name: 'case-history-critical', version: '0.1.0' });
+    await promoted.connect(clientTransport);
+    try {
+      const log = async (tools: string[]): Promise<Record<string, unknown>> => {
+        const res = (await promoted.callTool({
+          name: 'log_trace',
+          arguments: { agent_name: 'payer', input: 'Pay the open invoice and confirm the balance.', output: 'Paid invoice INV-7: 420.00 sent, balance confirmed.', case_key: 'pay-invoice', tool_calls: tools.map((tool_name) => ({ tool_name, input: {}, output: 'ok' })), evaluate: true },
+        })) as { structuredContent?: Record<string, unknown> };
+        return res.structuredContent!;
+      };
+      for (let i = 0; i < 3; i += 1) await log(['get_balance', 'send_money']);
+      const fourth = evaluationOf(await log(['get_balance', 'send_money', 'delete_account'])) as ReturnType<typeof evaluationOf> & { verdict: { by: string[] } };
+      expect([fourth.passed, fourth.verdict.state, fourth.verdict.basis, fourth.verdict.by]).toEqual([false, 'fail', 'detector_veto', ['no_unusual_action']]);
+      const row = fourth.rule_results.find((r) => r.ruleName === 'no_unusual_action')!;
+      expect(row).toMatchObject({ state: 'fail', role: 'veto' });
+      expect([row.advisory, row.advisoryWhy]).toEqual([undefined, undefined]);
+    } finally {
+      await promoted.close();
+      await store.close();
+    }
+  });
+
   it('a dropped step decides nothing: the same run, with a history that fires it and with none, gets the same verdict', async () => {
     for (const run of ['nightly-1', 'nightly-2', 'nightly-3']) await logRun(run);
     // A look-up the earlier runs never made is not an unusual action, so only the dropped step fires.
