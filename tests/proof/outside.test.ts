@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { contextOfRun, type AgentDojoRun } from '../../proof/lib/agentdojo.js';
-import { OUTSIDE_DIR, OUTSIDE_RESULTS_JSON, historyFor, loadOutsideManifest, loadOutsideRuns, rateOf, type CaseHistoryRow } from '../../proof/lib/outside.js';
+import { OUTSIDE_DIR, OUTSIDE_RESULTS_JSON, historyFor, loadOutsideManifest, loadOutsideRuns, rateOf, renderOutsideMarkdown, type CaseHistoryRow, type OutsideResults, type Rate } from '../../proof/lib/outside.js';
 import { CASE_HISTORY_WINDOW } from '../../src/eval/case-history.js';
 import { wilson } from '../../src/eval/stats.js';
 import { ATTACK, COMMIT, SEED, splitOf } from '../../proof/tools/sample-agentdojo.mjs';
@@ -195,5 +195,65 @@ describe('a rate counts runs, and counts each task once', () => {
     expect(r.ci95Tasks?.[0]).toBe(0);
     // Eight tasks earn a wider bound than forty runs would.
     expect(r.ci95Tasks?.[1]).toBeGreaterThan(r.ci95?.[1] ?? 1);
+  });
+});
+
+/*
+ * A percentage printed beside `k of n` is the fraction rounded once. The
+ * stored `rate` is round4(k / n); printing it rounds a second time and can
+ * move the last digit (41 of 71: stored 0.5775 printed 57.8%, one rounding
+ * of 41/71 prints 57.7%). Every rate in the committed results must render
+ * beside its own counts, from the counts.
+ */
+describe('a percentage beside k of n is the fraction rounded once', () => {
+  const results = JSON.parse(readFileSync(join(root, OUTSIDE_RESULTS_JSON), 'utf-8')) as OutsideResults;
+  const markdown = renderOutsideMarkdown(results);
+
+  const rates: Rate[] = [];
+  const collect = (o: unknown): void => {
+    if (Array.isArray(o)) return o.forEach(collect);
+    if (o && typeof o === 'object') {
+      const candidate = o as Partial<Rate>;
+      if (typeof candidate.k === 'number' && typeof candidate.n === 'number' && 'rate' in candidate) {
+        rates.push(candidate as Rate);
+        return;
+      }
+      Object.values(o).forEach(collect);
+    }
+  };
+  collect(results);
+
+  // Every percentage the report actually prints beside a count, keyed by the counts.
+  const printedPairs = new Map<string, string>();
+  for (const [, k, n, shown] of markdown.matchAll(/(\d+) of (\d+) · \*{0,2}(\d+\.\d)%/g)) {
+    printedPairs.set(`${k} of ${n}`, shown);
+  }
+
+  it('every rate in the committed results that renders beside k of n prints the fraction rounded once', () => {
+    expect(rates.length).toBeGreaterThan(0);
+    for (const r of rates) {
+      if (r.n === 0 || r.rate === null) continue;
+      // Some stored groups are not printed in any table today (the unjudged
+      // groups of the clean-history readings); a rate that does not render
+      // has no printed digit to hold.
+      const shown = printedPairs.get(`${r.k} of ${r.n}`);
+      if (shown === undefined) continue;
+      const once = (Math.round((r.k / r.n) * 1000) / 10).toFixed(1);
+      expect(shown, `${r.k} of ${r.n} prints ${once}`).toBe(once);
+    }
+  });
+
+  it('no percentage beside a count anywhere in the report is double-rounded', () => {
+    expect(printedPairs.size).toBeGreaterThan(0);
+    for (const [counts, shown] of printedPairs) {
+      const [k, n] = counts.split(' of ').map(Number);
+      const once = (Math.round((k / n) * 1000) / 10).toFixed(1);
+      expect(shown, counts).toBe(once);
+    }
+  });
+
+  it('the twice-rounded cells: 41 of 71 prints 57.7, not 57.8', () => {
+    expect(markdown).toContain('41 of 71 · 57.7%');
+    expect(markdown).not.toContain('41 of 71 · 57.8%');
   });
 });

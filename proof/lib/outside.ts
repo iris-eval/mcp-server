@@ -190,6 +190,15 @@ export interface OutsideResults {
 
 const round4 = (x: number): number => Math.round(x * 10_000) / 10_000;
 
+/**
+ * A percentage printed beside `k of n`: the fraction k/n rounded once, straight
+ * to one decimal of a percent. The stored `rate` is round4(k / n); printing it
+ * rounds a second time and can move the last digit (41 of 71 stored 0.5775
+ * prints 57.8%, where one rounding of 41/71 prints 57.7%), so every percentage
+ * beside a count is computed from the counts themselves.
+ */
+const pctOf = (k: number, n: number): string => (n === 0 ? '—' : `${(Math.round((k / n) * 1000) / 10).toFixed(1)}%`);
+
 /** The git blob hash of a file's bytes: what the sampler checked against the upstream tree. */
 function blobSha(bytes: Buffer): string {
   return createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
@@ -454,7 +463,7 @@ export async function measureOutside(root: string): Promise<Omit<OutsideResults,
 
 const pct = (x: number | null): string => (x === null ? '—' : `${(x * 100).toFixed(1)}%`);
 const ci = (i: [number, number] | null): string => (i === null ? '—' : `[${(i[0] * 100).toFixed(1)}, ${(i[1] * 100).toFixed(1)}]`);
-const cell = (r: Rate): string => `${r.k} of ${r.n} · **${pct(r.rate)}** ${ci(r.ci95)} | ${pct(r.rateTasks)} ${ci(r.ci95Tasks)} over ${r.tasks} tasks`;
+const cell = (r: Rate): string => `${r.k} of ${r.n} · **${pctOf(r.k, r.n)}** ${ci(r.ci95)} | ${pct(r.rateTasks)} ${ci(r.ci95Tasks)} over ${r.tasks} tasks`;
 
 export function renderOutsideMarkdown(results: OutsideResults): string {
   const L: string[] = [];
@@ -491,7 +500,7 @@ export function renderOutsideMarkdown(results: OutsideResults): string {
   L.push('|---|---|---|---|---|');
   for (const d of results.detectors) {
     const skip = d.detector === 'any injection rule' ? '—' : `${d.skipped.attackSucceeded} / ${d.skipped.attackFailed} / ${d.skipped.noAttack}`;
-    L.push(`| \`${d.detector}\` | ${d.caught.k} of ${d.caught.n} · ${pct(d.caught.rate)} ${ci(d.caught.ci95)} | ${d.firedAttackFailed.k} of ${d.firedAttackFailed.n} · ${pct(d.firedAttackFailed.rate)} | ${d.firedNoAttack.k} of ${d.firedNoAttack.n} · ${pct(d.firedNoAttack.rate)} | ${skip} |`);
+    L.push(`| \`${d.detector}\` | ${d.caught.k} of ${d.caught.n} · ${pctOf(d.caught.k, d.caught.n)} ${ci(d.caught.ci95)} | ${d.firedAttackFailed.k} of ${d.firedAttackFailed.n} · ${pctOf(d.firedAttackFailed.k, d.firedAttackFailed.n)} | ${d.firedNoAttack.k} of ${d.firedNoAttack.n} · ${pctOf(d.firedNoAttack.k, d.firedNoAttack.n)} | ${skip} |`);
   }
   L.push('');
   L.push('## What the wrong fails are made of');
@@ -507,7 +516,7 @@ export function renderOutsideMarkdown(results: OutsideResults): string {
   L.push('');
   L.push('| Suite | Runs | Good | Wrong pass | Wrong fail |');
   L.push('|---|--:|--:|---|---|');
-  for (const b of results.bySuite) L.push(`| ${b.suite} | ${b.runs} | ${b.good} | ${b.wrongPass.k} of ${b.wrongPass.n} · ${pct(b.wrongPass.rate)} | ${b.wrongFail.k} of ${b.wrongFail.n} · ${pct(b.wrongFail.rate)} |`);
+  for (const b of results.bySuite) L.push(`| ${b.suite} | ${b.runs} | ${b.good} | ${b.wrongPass.k} of ${b.wrongPass.n} · ${pctOf(b.wrongPass.k, b.wrongPass.n)} | ${b.wrongFail.k} of ${b.wrongFail.n} · ${pctOf(b.wrongFail.k, b.wrongFail.n)} |`);
   L.push('');
   L.push('## The held-out half');
   L.push('');
@@ -516,11 +525,11 @@ export function renderOutsideMarkdown(results: OutsideResults): string {
   L.push('| Half | Runs | Wrong pass | Wrong fail |');
   L.push('|---|--:|---|---|');
   for (const [name, b] of [['dev', results.bySplit.dev], ['test', results.bySplit.test]] as const) {
-    L.push(`| ${name} | ${b.runs} | ${b.wrongPass.k} of ${b.wrongPass.n} · ${pct(b.wrongPass.rate)} | ${b.wrongFail.k} of ${b.wrongFail.n} · ${pct(b.wrongFail.rate)} |`);
+    L.push(`| ${name} | ${b.runs} | ${b.wrongPass.k} of ${b.wrongPass.n} · ${pctOf(b.wrongPass.k, b.wrongPass.n)} | ${b.wrongFail.k} of ${b.wrongFail.n} · ${pctOf(b.wrongFail.k, b.wrongFail.n)} |`);
   }
   L.push('');
   const ch = results.caseHistory;
-  const both = (r: Rate): string => `${r.k} of ${r.n} · ${pct(r.rate)} ${ci(r.ci95)}; over ${r.tasks} tasks ${pct(r.rateTasks)} ${ci(r.ci95Tasks)}`;
+  const both = (r: Rate): string => `${r.k} of ${r.n} · ${pctOf(r.k, r.n)} ${ci(r.ci95)}; over ${r.tasks} tasks ${pct(r.rateTasks)} ${ci(r.ci95Tasks)}`;
   const declinedOf = (d: Record<string, number>): string => {
     const parts = Object.entries(d).sort(([a], [b]) => a.localeCompare(b)).map(([why, n]) => `${n} ${why.replace(/_/g, ' ')}`);
     return parts.length === 0 ? 'none' : parts.join(', ');
