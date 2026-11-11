@@ -36,6 +36,14 @@ export function openBrowser(url: string): void {
       detached: true,
       stdio: 'ignore',
     });
+    /*
+     * A missing opener is not thrown by spawn(): it arrives later, as an
+     * 'error' event on the child (ENOENT). With no listener Node rethrows
+     * it and the server exits. That was every `--demo` on a Linux machine
+     * with no xdg-open (a container, a server, a minimal WSL install): the
+     * dashboard's address was printed and the process died behind it.
+     */
+    child.on('error', () => {});
     child.unref();
   } catch {
     // Best-effort: if the launch fails (no browser, missing utility,
