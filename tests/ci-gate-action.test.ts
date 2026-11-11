@@ -268,7 +268,7 @@ describe('the comment', () => {
 });
 
 describe('the dogfood job and the fixtures', () => {
-  it('ci.yml runs the action against the walk-through fixtures with the dataset seeded, on this checkout’s build, with the comment permission, and asserts both events', () => {
+  it('ci.yml runs the action against the walk-through fixtures with the dataset seeded, on this checkout’s build, with the comment permission, and asserts each event: a pull request, a pull request from a fork, a push', () => {
     const ci = read('.github/workflows/ci.yml');
     const job = ci.slice(ci.indexOf('  gate-action:'));
     expect(job.length).toBeGreaterThan(0);
@@ -283,6 +283,16 @@ describe('the dogfood job and the fixtures', () => {
     expect(job).toContain('[ "$CLEAN_EXIT" = "0" ]');
     expect(job).toContain('"skipped-not-pr"');
     expect(job).toContain('[ "$AGAIN_COMMENT" = "updated" ]');
+    /*
+     * A fork's token is read-only, so the action leaves the comment there
+     * (decide(), above) and the job must expect that. It expected a posted
+     * comment on every pull request, and so failed on every pull request
+     * from a fork: the first one an outside contributor opened.
+     */
+    expect(job).toContain('FROM_FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository }}');
+    expect(job).toContain('[ "$EVENT" = "pull_request" ] && [ "$FROM_FORK" = "true" ]');
+    expect(job).toContain('[ "$LEAK_COMMENT" = "skipped-fork" ]');
+    expect(job).toContain('[ "$AGAIN_COMMENT" = "skipped-fork" ]');
   });
 
   it('the fixtures are the walk-through: two leaks (one outside the dataset) and one clean answer, each with a case key', () => {
