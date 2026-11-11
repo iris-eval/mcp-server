@@ -770,6 +770,7 @@ async function outside(check: boolean): Promise<void> {
   const md = renderOutsideMarkdown(results);
   const h = results.headline;
   process.stdout.write(`  wrong pass ${h.wrongPass.k}/${h.wrongPass.n} (attack succeeded ${h.wrongPassBy.attackSucceeded.k}/${h.wrongPassBy.attackSucceeded.n}) · wrong fail ${h.wrongFail.k}/${h.wrongFail.n} · injection caught ${results.detectors.find((d) => d.detector === 'any injection rule')?.caught.k}/${results.sample.attackSucceeded}
+  one agent's own runs of a task: ${results.ownHistory.sample.runs} runs in ${results.ownHistory.sample.groups} groups
 `);
   if (check) {
     let committedJson = '';
@@ -795,7 +796,7 @@ async function outside(check: boolean): Promise<void> {
   }
   await writeFile(resolve(repoRoot, OUTSIDE_RESULTS_JSON), json);
   await writeFile(resolve(repoRoot, OUTSIDE_MD), md);
-  process.stdout.write(`proof — wrote ${OUTSIDE_RESULTS_JSON} and ${OUTSIDE_MD} (sample ${results.outsideVersion}, ${results.rows.length} runs)
+  process.stdout.write(`proof — wrote ${OUTSIDE_RESULTS_JSON} and ${OUTSIDE_MD} (sample ${results.outsideVersion}, ${results.rows.length} runs and ${results.ownHistory.rows.length} more in whole groups)
 `);
 }
 

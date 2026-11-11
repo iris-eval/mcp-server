@@ -25,6 +25,26 @@
  * Each task, (suite, user task), is put in a `dev` or `test` half by the
  * seed. A change to a rule made after reading these runs may read the dev
  * half only; the test half stays held out.
+ *
+ * A SECOND DRAW: ONE AGENT'S OWN RUNS OF A TASK.
+ *
+ *   node proof/tools/sample-agentdojo.mjs --agents
+ *
+ * The draw above takes runs one at a time, so the runs it holds of one task
+ * come from many agents. A deployment's history is one agent's. AgentDojo
+ * ran every agent on every task once with no attack and once for each goal
+ * an attacker could have, so the benchmark also holds, for each agent and
+ * task, that agent's own runs of that task. This draw takes whole groups:
+ *   1. A group is one agent (pipeline) on one of a user's tasks: its run
+ *      with no attack and its runs under the headline attack. A group needs
+ *      the first and at least MIN_ATTACKED of the second.
+ *   2. Each agent's groups are ordered by sha256(seed + "agents" + group),
+ *      and the first GROUPS_PER_HALF whose task is in the dev half and the
+ *      first GROUPS_PER_HALF whose task is in the test half are taken, with
+ *      every run in them. The halves are the ones above: a task is in the
+ *      same half in both draws.
+ *   3. Every file is checked against its git blob hash and written byte for
+ *      byte to proof/outside/agentdojo/agents/, beside its own manifest.
  */
 import { createHash } from 'node:crypto';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -37,11 +57,17 @@ export const SEED = 'iris-outside-agentdojo-v1';
 export const ATTACK = 'important_instructions';
 export const ATTACKED_PER_LABEL = 200;
 export const BENIGN = 300;
+/** The second draw: groups taken per agent from each half, and the fewest attacked runs a group needs. */
+export const GROUPS_PER_HALF = 3;
+export const MIN_ATTACKED = 3;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve(here, '..', 'outside', 'agentdojo');
+const OUT_AGENTS = join(OUT, 'agents');
 
 const order = (path) => createHash('sha256').update(`${SEED}\n${path}`).digest('hex');
+/** The order an agent's groups are taken in: a fixed function of the seed and the group (`pipeline/suite/user_task`). */
+export const groupOrder = (group) => createHash('sha256').update(`${SEED}\nagents\n${group}`).digest('hex');
 /** The half a task belongs to: a fixed function of the seed and the task. */
 export const splitOf = (suite, userTask) => (parseInt(createHash('sha256').update(`${SEED}\nsplit\n${suite}/${userTask}`).digest('hex').slice(0, 8), 16) % 2 === 0 ? 'dev' : 'test');
 const blobSha = (bytes) => createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
@@ -155,9 +181,69 @@ async function main() {
   process.stdout.write(`sample-agentdojo — wrote ${manifestRuns.length} runs (${a.kept.length} attacked of ${a.read} read, ${b.kept.length} with no attack) and manifest.json to ${OUT}\n`);
 }
 
+/** The second draw: whole groups, each one agent's own runs of one task. */
+async function agents() {
+  const tree = JSON.parse((await get(`https://api.github.com/repos/${REPOSITORY}/git/trees/${COMMIT}?recursive=1`, 'application/vnd.github+json')).toString('utf-8'));
+  if (tree.truncated) throw new Error('the tree listing came back truncated');
+  const runs = tree.tree.filter((e) => e.type === 'blob' && e.path.startsWith('runs/') && e.path.endsWith('.json') && e.path.split('/').length === 6);
+
+  const groups = new Map();
+  for (const e of runs) {
+    const [, pipeline, suite, userTask, attack] = e.path.split('/');
+    if (!userTask.startsWith('user_task_') || (attack !== ATTACK && attack !== 'none')) continue;
+    const key = `${pipeline}/${suite}/${userTask}`;
+    if (!groups.has(key)) groups.set(key, { key, pipeline, suite, task: `${suite}/${userTask}`, split: splitOf(suite, userTask), attacked: [], clean: [] });
+    (attack === 'none' ? groups.get(key).clean : groups.get(key).attacked).push(e);
+  }
+  const eligible = [...groups.values()].filter((g) => g.clean.length === 1 && g.attacked.length >= MIN_ATTACKED);
+  const byPipeline = new Map();
+  for (const g of eligible) {
+    if (!byPipeline.has(g.pipeline)) byPipeline.set(g.pipeline, []);
+    byPipeline.get(g.pipeline).push(g);
+  }
+  const chosen = [];
+  for (const pipeline of [...byPipeline.keys()].sort()) {
+    const inOrder = byPipeline.get(pipeline).sort((a, b) => (groupOrder(a.key) < groupOrder(b.key) ? -1 : 1));
+    for (const half of ['dev', 'test']) chosen.push(...inOrder.filter((g) => g.split === half).slice(0, GROUPS_PER_HALF));
+  }
+
+  const entries = chosen.flatMap((g) => [...g.clean, ...g.attacked].map((entry) => ({ entry, group: g })));
+  const { kept } = await draw(entries.map((x) => x.entry), () => true, () => false);
+  const groupOf = new Map(entries.map((x) => [x.entry.path, x.group]));
+
+  rmSync(join(OUT_AGENTS, 'runs'), { recursive: true, force: true });
+  const manifestRuns = [];
+  for (const { entry, bytes, run } of kept) {
+    const local = join(OUT_AGENTS, entry.path);
+    mkdirSync(dirname(local), { recursive: true });
+    writeFileSync(local, bytes);
+    const g = groupOf.get(entry.path);
+    const attacked = entry.path.split('/')[4] !== 'none';
+    manifestRuns.push({ path: entry.path, blob: entry.sha, group: g.key, set: attacked ? 'attacked' : 'benign', pipeline: g.pipeline, split: g.split, ...(attacked ? { attackSucceeded: run.security === true } : {}) });
+  }
+  manifestRuns.sort((x, y) => (x.path < y.path ? -1 : 1));
+  const manifest = {
+    source: { repository: `https://github.com/${REPOSITORY}`, commit: COMMIT, license: 'MIT (proof/outside/agentdojo/LICENSE)', directory: 'runs/' },
+    sampling: {
+      tool: 'proof/tools/sample-agentdojo.mjs --agents',
+      seed: SEED,
+      attack: ATTACK,
+      groupsPerAgentPerHalf: GROUPS_PER_HALF,
+      minAttacked: MIN_ATTACKED,
+      method: `whole groups: a group is one agent on one of a user's tasks, its run with no attack and its runs under the ${ATTACK} attack (one with no attack and at least ${MIN_ATTACKED} attacked, or the group is left out); each agent's groups ordered by sha256(seed + "agents" + group), the first ${GROUPS_PER_HALF} whose task is in the dev half and the first ${GROUPS_PER_HALF} whose task is in the test half taken with every run in them; every file checked against the git blob hash at the commit and kept byte for byte`,
+      split: 'each task (suite, user task) is in the dev or the test half by sha256(seed + "split" + task), the same halves as proof/outside/agentdojo/manifest.json',
+    },
+    population: { runs: runs.length, groups: groups.size, eligibleGroups: eligible.length, pipelines: byPipeline.size },
+    groups: chosen.map((g) => ({ key: g.key, pipeline: g.pipeline, task: g.task, split: g.split, runs: g.clean.length + g.attacked.length })).sort((x, y) => (x.key < y.key ? -1 : 1)),
+    runs: manifestRuns,
+  };
+  writeFileSync(join(OUT_AGENTS, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  process.stdout.write(`sample-agentdojo --agents — wrote ${manifestRuns.length} runs in ${chosen.length} groups (of ${eligible.length} a draw could take) and manifest.json to ${OUT_AGENTS}\n`);
+}
+
 const invokedDirectly = process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedDirectly) {
-  main().catch((err) => {
+  (process.argv.includes('--agents') ? agents() : main()).catch((err) => {
     process.stderr.write(`sample-agentdojo — ${err.stack ?? err}\n`);
     process.exit(1);
   });
