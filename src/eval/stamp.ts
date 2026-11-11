@@ -187,7 +187,7 @@ export function uncertaintyOf(rule: EvalRule, raw: EvalRuleResult, options: Stam
       }
       const published = publishedAccuracyFor(rule.name);
       if (!published) return { basis: 'unmeasured', why: 'no proof family for this rule' };
-      const prov = publishedProvenance();
+      const prov = publishedProvenance(rule.name);
       const corpus = { n: published.n, tp: published.tp, fp: published.fp, fn: published.fn, tn: published.tn, version: prov.corpusVersion, release: prov.release, labelling: prov.labelling };
       const interval = fired ? ppvInterval(rule.name, prior.pi) : missRateInterval(rule.name, prior.pi);
       if (!interval) return { basis: 'unmeasured', why: 'the proof family has no positives or no negatives' };

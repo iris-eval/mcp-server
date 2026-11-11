@@ -76,7 +76,7 @@ export function describeUncertainty(u: Uncertainty | undefined): UncertaintyText
   if (!u) return null;
   switch (u.basis) {
     case 'published_accuracy': {
-      const corpus = `Measured on ${u.corpus.n} labelled cases (corpus ${u.corpus.version}, release ${u.corpus.release}, ${u.corpus.labelling === 'human-verified' ? 'human-verified labels' : 'same-model labels'}).`;
+      const corpus = `Measured on ${u.corpus.n} labelled cases (corpus ${u.corpus.version}, release ${u.corpus.release}, ${u.corpus.labelling === 'human-verified' ? 'human-verified labels' : u.corpus.labelling === 'outside' ? 'labels computed outside Iris, on runs it did not write' : 'same-model labels'}).`;
       const prior = `at a prior of ${u.prior.pi.toFixed(2)} (${u.prior.source})`;
       if (u.fired) {
         return {

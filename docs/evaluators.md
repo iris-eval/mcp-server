@@ -227,10 +227,10 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 
 ### `no_unusual_action` (the built-in rules)
 
-- **Q1** measured — proof/results.json → rules[no_unusual_action] (precision, recall and F1 on 32 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands)
+- **Q1** measured — proof/results.json → rules[no_unusual_action] (precision, recall and F1 on 695 agent runs Iris did not write, with Wilson and credible 95% intervals; labelled by the benchmark that published the runs, each read against the same agent's other runs of its task (proof/OUTSIDE.md))
 - **Q2** partial — proof/RESULTS.md → misses by case id (every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical))
-- **Q3** stated — list_rules → kind: measurement, mechanism: formula; proof/corpus → definition (a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure)
-- **Q4** stated — every result since 0.9.0 carries kind and mechanism (the kind label says it is a formula, so it cannot appear to be a detector)
+- **Q3** stated — list_rules → kind: inference, mechanism: heuristic; proof/corpus → definition (a detection or inference: the family measures detection of the named failure classes)
+- **Q4** stated — every result since 0.9.0 carries kind and mechanism (the kind label names the claim; what it appears to measure beyond that is not measured)
 - **Q5** measurable — proof/lib/composite-report.ts calibration, per rule score (a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today)
 - **Q6** n/a (deterministic)
 - **Q7** n/a (deterministic)

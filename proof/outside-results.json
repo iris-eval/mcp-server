@@ -2387,7 +2387,7 @@
       }
     ]
   },
-  "commit": "299c563c",
+  "commit": "bdc55bb4",
   "detectors": [
     {
       "caught": {
@@ -2605,7 +2605,7 @@
       "runs": 2
     }
   ],
-  "generatedAt": "2026-11-11T18:40:01.085Z",
+  "generatedAt": "2026-11-11T19:06:32.579Z",
   "headline": {
     "wrongFail": {
       "ci95": [
@@ -3370,6 +3370,202 @@
               "tasks": 52
             }
           }
+        ],
+        "verdict": [
+          {
+            "alone": {
+              "attackShipped": {
+                "ci95": [
+                  0.6289,
+                  0.8266
+                ],
+                "ci95Tasks": [
+                  0.4911,
+                  0.852
+                ],
+                "k": 54,
+                "n": 73,
+                "rate": 0.7397,
+                "rateTasks": 0.6929,
+                "tasks": 28
+              },
+              "goodBlocked": {
+                "ci95": [
+                  0.2227,
+                  0.3271
+                ],
+                "ci95Tasks": [
+                  0.1626,
+                  0.4086
+                ],
+                "k": 75,
+                "n": 276,
+                "rate": 0.2717,
+                "rateTasks": 0.2731,
+                "tasks": 56
+              },
+              "taskNotDoneShipped": {
+                "ci95": [
+                  0.6866,
+                  0.7836
+                ],
+                "ci95Tasks": [
+                  0.5942,
+                  0.8358
+                ],
+                "k": 231,
+                "n": 313,
+                "rate": 0.738,
+                "rateTasks": 0.7271,
+                "tasks": 58
+              }
+            },
+            "half": "dev",
+            "withHistory": {
+              "attackShipped": {
+                "ci95": [
+                  0.3178,
+                  0.539
+                ],
+                "ci95Tasks": [
+                  0.2078,
+                  0.5856
+                ],
+                "k": 31,
+                "n": 73,
+                "rate": 0.4247,
+                "rateTasks": 0.3839,
+                "tasks": 28
+              },
+              "goodBlocked": {
+                "ci95": [
+                  0.2294,
+                  0.3347
+                ],
+                "ci95Tasks": [
+                  0.1802,
+                  0.4314
+                ],
+                "k": 77,
+                "n": 276,
+                "rate": 0.279,
+                "rateTasks": 0.2945,
+                "tasks": 56
+              },
+              "taskNotDoneShipped": {
+                "ci95": [
+                  0.6799,
+                  0.7777
+                ],
+                "ci95Tasks": [
+                  0.5728,
+                  0.8192
+                ],
+                "k": 229,
+                "n": 313,
+                "rate": 0.7316,
+                "rateTasks": 0.707,
+                "tasks": 58
+              }
+            }
+          },
+          {
+            "alone": {
+              "attackShipped": {
+                "ci95": [
+                  0.6728,
+                  0.8438
+                ],
+                "ci95Tasks": [
+                  0.5888,
+                  0.9078
+                ],
+                "k": 70,
+                "n": 91,
+                "rate": 0.7692,
+                "rateTasks": 0.7772,
+                "tasks": 30
+              },
+              "goodBlocked": {
+                "ci95": [
+                  0.2248,
+                  0.3178
+                ],
+                "ci95Tasks": [
+                  0.1553,
+                  0.3872
+                ],
+                "k": 93,
+                "n": 346,
+                "rate": 0.2688,
+                "rateTasks": 0.259,
+                "tasks": 61
+              },
+              "taskNotDoneShipped": {
+                "ci95": [
+                  0.5951,
+                  0.7104
+                ],
+                "ci95Tasks": [
+                  0.497,
+                  0.7701
+                ],
+                "k": 169,
+                "n": 258,
+                "rate": 0.655,
+                "rateTasks": 0.642,
+                "tasks": 52
+              }
+            },
+            "half": "test",
+            "withHistory": {
+              "attackShipped": {
+                "ci95": [
+                  0.2913,
+                  0.4873
+                ],
+                "ci95Tasks": [
+                  0.2042,
+                  0.5674
+                ],
+                "k": 35,
+                "n": 91,
+                "rate": 0.3846,
+                "rateTasks": 0.3727,
+                "tasks": 30
+              },
+              "goodBlocked": {
+                "ci95": [
+                  0.2275,
+                  0.3209
+                ],
+                "ci95Tasks": [
+                  0.1688,
+                  0.4048
+                ],
+                "k": 94,
+                "n": 346,
+                "rate": 0.2717,
+                "rateTasks": 0.2754,
+                "tasks": 61
+              },
+              "taskNotDoneShipped": {
+                "ci95": [
+                  0.5872,
+                  0.703
+                ],
+                "ci95Tasks": [
+                  0.4834,
+                  0.7584
+                ],
+                "k": 167,
+                "n": 258,
+                "rate": 0.6473,
+                "rateTasks": 0.6285,
+                "tasks": 52
+              }
+            }
+          }
         ]
       },
       {
@@ -4025,6 +4221,202 @@
               "rate": 0.0504,
               "rateTasks": 0.1016,
               "tasks": 52
+            }
+          }
+        ],
+        "verdict": [
+          {
+            "alone": {
+              "attackShipped": {
+                "ci95": [
+                  0.6289,
+                  0.8266
+                ],
+                "ci95Tasks": [
+                  0.4911,
+                  0.852
+                ],
+                "k": 54,
+                "n": 73,
+                "rate": 0.7397,
+                "rateTasks": 0.6929,
+                "tasks": 28
+              },
+              "goodBlocked": {
+                "ci95": [
+                  0.2227,
+                  0.3271
+                ],
+                "ci95Tasks": [
+                  0.1626,
+                  0.4086
+                ],
+                "k": 75,
+                "n": 276,
+                "rate": 0.2717,
+                "rateTasks": 0.2731,
+                "tasks": 56
+              },
+              "taskNotDoneShipped": {
+                "ci95": [
+                  0.6866,
+                  0.7836
+                ],
+                "ci95Tasks": [
+                  0.5942,
+                  0.8358
+                ],
+                "k": 231,
+                "n": 313,
+                "rate": 0.738,
+                "rateTasks": 0.7271,
+                "tasks": 58
+              }
+            },
+            "half": "dev",
+            "withHistory": {
+              "attackShipped": {
+                "ci95": [
+                  0.3053,
+                  0.5255
+                ],
+                "ci95Tasks": [
+                  0.1808,
+                  0.5523
+                ],
+                "k": 30,
+                "n": 73,
+                "rate": 0.411,
+                "rateTasks": 0.35,
+                "tasks": 28
+              },
+              "goodBlocked": {
+                "ci95": [
+                  0.2294,
+                  0.3347
+                ],
+                "ci95Tasks": [
+                  0.1802,
+                  0.4314
+                ],
+                "k": 77,
+                "n": 276,
+                "rate": 0.279,
+                "rateTasks": 0.2945,
+                "tasks": 56
+              },
+              "taskNotDoneShipped": {
+                "ci95": [
+                  0.6766,
+                  0.7747
+                ],
+                "ci95Tasks": [
+                  0.5698,
+                  0.8168
+                ],
+                "k": 228,
+                "n": 313,
+                "rate": 0.7284,
+                "rateTasks": 0.7041,
+                "tasks": 58
+              }
+            }
+          },
+          {
+            "alone": {
+              "attackShipped": {
+                "ci95": [
+                  0.6728,
+                  0.8438
+                ],
+                "ci95Tasks": [
+                  0.5888,
+                  0.9078
+                ],
+                "k": 70,
+                "n": 91,
+                "rate": 0.7692,
+                "rateTasks": 0.7772,
+                "tasks": 30
+              },
+              "goodBlocked": {
+                "ci95": [
+                  0.2248,
+                  0.3178
+                ],
+                "ci95Tasks": [
+                  0.1553,
+                  0.3872
+                ],
+                "k": 93,
+                "n": 346,
+                "rate": 0.2688,
+                "rateTasks": 0.259,
+                "tasks": 61
+              },
+              "taskNotDoneShipped": {
+                "ci95": [
+                  0.5951,
+                  0.7104
+                ],
+                "ci95Tasks": [
+                  0.497,
+                  0.7701
+                ],
+                "k": 169,
+                "n": 258,
+                "rate": 0.655,
+                "rateTasks": 0.642,
+                "tasks": 52
+              }
+            },
+            "half": "test",
+            "withHistory": {
+              "attackShipped": {
+                "ci95": [
+                  0.2126,
+                  0.3972
+                ],
+                "ci95Tasks": [
+                  0.1369,
+                  0.4794
+                ],
+                "k": 27,
+                "n": 91,
+                "rate": 0.2967,
+                "rateTasks": 0.286,
+                "tasks": 30
+              },
+              "goodBlocked": {
+                "ci95": [
+                  0.2329,
+                  0.3269
+                ],
+                "ci95Tasks": [
+                  0.187,
+                  0.428
+                ],
+                "k": 96,
+                "n": 346,
+                "rate": 0.2775,
+                "rateTasks": 0.2973,
+                "tasks": 61
+              },
+              "taskNotDoneShipped": {
+                "ci95": [
+                  0.5793,
+                  0.6957
+                ],
+                "ci95Tasks": [
+                  0.4698,
+                  0.7467
+                ],
+                "k": 165,
+                "n": 258,
+                "rate": 0.6395,
+                "rateTasks": 0.615,
+                "tasks": 52
+              }
             }
           }
         ]

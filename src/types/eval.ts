@@ -660,14 +660,14 @@ export type Uncertainty =
       fired: true;
       ppv: Interval;
       prior: { pi: number; source: 'default' | 'config' | 'estimated' };
-      corpus: { n: number; tp: number; fp: number; fn: number; tn: number; version: string; release: string; labelling: 'same-model' | 'human-verified' };
+      corpus: { n: number; tp: number; fp: number; fn: number; tn: number; version: string; release: string; labelling: 'same-model' | 'human-verified' | 'outside' };
     }
   | {
       basis: 'published_accuracy';
       fired: false;
       missRate: Interval;
       prior: { pi: number; source: 'default' | 'config' | 'estimated' };
-      corpus: { n: number; tp: number; fp: number; fn: number; tn: number; version: string; release: string; labelling: 'same-model' | 'human-verified' };
+      corpus: { n: number; tp: number; fp: number; fn: number; tn: number; version: string; release: string; labelling: 'same-model' | 'human-verified' | 'outside' };
     }
   | { basis: 'definition'; conformance: { n: number; matched: number } }
   | { basis: 'self_consistency'; samples: number; voteFraction: number; scoreSd: number }

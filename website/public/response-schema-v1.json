@@ -724,7 +724,8 @@
                         "type": "string",
                         "enum": [
                           "same-model",
-                          "human-verified"
+                          "human-verified",
+                          "outside"
                         ]
                       }
                     },

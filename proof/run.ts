@@ -42,7 +42,7 @@ import { CREDIBLE_METHOD } from './lib/intervals.js';
 import { contextFor } from './lib/context.js';
 import { TRANSCRIPTS_MD, TRANSCRIPT_RESULTS_JSON, measureTranscripts, renderTranscriptMarkdown, type TranscriptResults } from './lib/transcripts.js';
 import { INVARIANTS_MD, INVARIANT_RESULTS_JSON, measureInvariants, renderInvariantsMarkdown, type InvariantResults } from './lib/invariants.js';
-import { OUTSIDE_MD, OUTSIDE_RESULTS_JSON, measureOutside, renderOutsideMarkdown, type OutsideResults } from './lib/outside.js';
+import { OUTSIDE_MD, OUTSIDE_RESULTS_JSON, UNUSUAL_ACTION_FAMILY, measureOutside, renderOutsideMarkdown, renderUnusualActionFamily, type OutsideResults } from './lib/outside.js';
 import { measureTransforms, type TransformResults } from './lib/transforms.js';
 import { loadCustomCorpus, validateCustomCorpusFile, measureCustom, type CustomRow } from './lib/custom-corpus.js';
 import { wilson } from './judge/lib/wilson.js';
@@ -251,6 +251,8 @@ export async function corpusContexts(root: string): Promise<EvalContext[]> {
   const { files } = await loadCorpus(root);
   const out: EvalContext[] = [];
   for (const file of [...files].sort((a, b) => a.rule.localeCompare(b.rule))) {
+    // A family labelled outside carries only what its rule reads (tool names, no answer), so it is not an output anyone would time an evaluation on.
+    if (file.labelBasis === 'outside') continue;
     for (const raw of file.cases) out.push(contextFor(materialiseCase(raw), file.config));
   }
   return out;
@@ -445,13 +447,18 @@ export function renderMarkdown(rows: RuleRow[], corpusVersion: string, generated
   const perfect = (rs: RuleRow[]): number => rs.filter((r) => r.f1 === 1).length;
   const read = byBasis('reading');
   const defined = byBasis('definition');
-  L.push(`**What the ${rows.length} measured rules show is two different things.** ${read.length} are measured against labels a model gave by reading the failure itself, without running the rule (a synthetic, model-labelled corpus; a human blind label is pending): those numbers measure detection (${perfect(read)} of ${read.length} score F1 1.00). ${defined.length} are checked against their own documented definition, applied independently by script or by counting: those numbers show the code implements its formula, not that the formula catches what a reader would call the failure (${perfect(defined)} of ${defined.length} score F1 1.00). The "Labels" column says which; each family's \`labelling\` statement says how.`);
+  const outsideLabelled = byBasis('outside');
+  const outsideSentence =
+    outsideLabelled.length === 0
+      ? ''
+      : ` ${outsideLabelled.length} ${outsideLabelled.length === 1 ? 'is' : 'are'} measured against labels somebody else computed, on agent runs Iris did not write (${outsideLabelled.map((r) => `\`${r.name}\``).join(', ')}; proof/OUTSIDE.md): those numbers say what a fire was worth on those runs, at their own mix of good and bad runs, which is not an even one.`;
+  L.push(`**What the ${rows.length} measured rules show is ${outsideLabelled.length > 0 ? 'three' : 'two'} different things.**${read.length} are measured against labels a model gave by reading the failure itself, without running the rule (a synthetic, model-labelled corpus; a human blind label is pending): those numbers measure detection (${perfect(read)} of ${read.length} score F1 1.00). ${defined.length} are checked against their own documented definition, applied independently by script or by counting: those numbers show the code implements its formula, not that the formula catches what a reader would call the failure (${perfect(defined)} of ${defined.length} score F1 1.00).${outsideSentence} The "Labels" column says which; each family's \`labelling\` statement says how.`);
   L.push('');
   L.push('| Rule | Bundle | Labels | n | pos | skip | TP | FP | FN | TN | Precision (95% CI) | Recall (95% CI) | F1 (95% CI) | F1 credible | PPV at 5% / 50% |');
   L.push('|---|---|---|--:|--:|--:|--:|--:|--:|--:|---|---|---|---|---|');
   for (const r of rows) {
     L.push(
-      `| \`${r.name}\` | ${r.category} | ${r.labelBasis === 'reading' ? 'reader' : 'own definition'} | ${r.n} | ${r.positives} | ${r.skipped} | ${r.tp} | ${r.fp} | ${r.fn} | ${r.tn} | ${pct(r.precision)} ${ci(r.ci95.precision)} | ${pct(r.recall)} ${ci(r.ci95.recall)} | ${r.f1 === null ? '—' : r.f1.toFixed(3)} ${ci(r.ci95.f1)} | ${ci(r.credible95.f1)} | ${pct(ppvFromCounts(r, 0.05))} / ${pct(ppvFromCounts(r, 0.5))} |`,
+      `| \`${r.name}\` | ${r.category} | ${r.labelBasis === 'reading' ? 'reader' : r.labelBasis === 'outside' ? 'outside' : 'own definition'} | ${r.n} | ${r.positives} | ${r.skipped} | ${r.tp} | ${r.fp} | ${r.fn} | ${r.tn} | ${pct(r.precision)} ${ci(r.ci95.precision)} | ${pct(r.recall)} ${ci(r.ci95.recall)} | ${r.f1 === null ? '—' : r.f1.toFixed(3)} ${ci(r.ci95.f1)} | ${ci(r.credible95.f1)} | ${pct(ppvFromCounts(r, 0.05))} / ${pct(ppvFromCounts(r, 0.5))} |`,
     );
   }
   if (missing.length > 0) {
@@ -541,6 +548,8 @@ export function renderPublishedAccuracy(results: ProofResults): string {
   L.push(`export const PUBLISHED_ACCURACY_CORPUS_VERSION = '${results.corpusVersion}';`);
   L.push(`export const PUBLISHED_ACCURACY_RELEASE = '${results.version}';`);
   L.push(`export const PUBLISHED_ACCURACY_LABELLING = '${results.humanAgreement.status === 'pending' ? 'same-model' : 'human-verified'}' as const;`);
+  // The rules whose family somebody else labelled, on runs Iris did not write: their numbers do not carry the tag above.
+  L.push(`export const PUBLISHED_ACCURACY_OUTSIDE_LABELLED: readonly string[] = [${results.rules.filter((r) => r.labelBasis === 'outside').map((r) => `'${r.name}'`).join(', ')}];`);
   L.push('');
   L.push('export const PUBLISHED_ACCURACY = {');
   for (const r of results.rules) {
@@ -768,6 +777,8 @@ async function outside(check: boolean): Promise<void> {
   const results: OutsideResults = { ...partial, generatedAt, commit, version };
   const json = stableJson(results);
   const md = renderOutsideMarkdown(results);
+  // The proof family of no_unusual_action is the held-out half of the second sample, so it is written and checked with the report it comes from.
+  const family = renderUnusualActionFamily(repoRoot);
   const h = results.headline;
   process.stdout.write(`  wrong pass ${h.wrongPass.k}/${h.wrongPass.n} (attack succeeded ${h.wrongPassBy.attackSucceeded.k}/${h.wrongPassBy.attackSucceeded.n}) · wrong fail ${h.wrongFail.k}/${h.wrongFail.n} · injection caught ${results.detectors.find((d) => d.detector === 'any injection rule')?.caught.k}/${results.sample.attackSucceeded}
   one agent's own runs of a task: ${results.ownHistory.sample.runs} runs in ${results.ownHistory.sample.groups} groups
@@ -775,27 +786,30 @@ async function outside(check: boolean): Promise<void> {
   if (check) {
     let committedJson = '';
     let committedMd = '';
+    let committedFamily = '';
     try {
       committedJson = await readFile(resolve(repoRoot, OUTSIDE_RESULTS_JSON), 'utf-8');
       committedMd = await readFile(resolve(repoRoot, OUTSIDE_MD), 'utf-8');
+      committedFamily = (await readFile(resolve(repoRoot, UNUSUAL_ACTION_FAMILY), 'utf-8')).replace(/\r\n/g, '\n');
     } catch {
-      process.stderr.write(`proof --check --outside — ${OUTSIDE_RESULTS_JSON} or ${OUTSIDE_MD} is missing; run npm run proof -- --outside and commit both.
+      process.stderr.write(`proof --check --outside — ${OUTSIDE_RESULTS_JSON}, ${OUTSIDE_MD} or ${UNUSUAL_ACTION_FAMILY} is missing; run npm run proof -- --outside and commit all three.
 `);
       process.exit(1);
     }
     const fresh = normaliseForCheck(json, md);
     const committed = normaliseForCheck(committedJson, committedMd);
-    if (fresh.json === committed.json && fresh.md === committed.md) {
-      process.stdout.write(`proof --check --outside — OK: ${OUTSIDE_RESULTS_JSON} and ${OUTSIDE_MD} match this code on sample ${results.outsideVersion}
+    if (fresh.json === committed.json && fresh.md === committed.md && family === committedFamily) {
+      process.stdout.write(`proof --check --outside — OK: ${OUTSIDE_RESULTS_JSON}, ${OUTSIDE_MD} and ${UNUSUAL_ACTION_FAMILY} match this code on sample ${results.outsideVersion}
 `);
       return;
     }
-    process.stderr.write(`proof --check --outside — FAIL: ${[fresh.json !== committed.json && OUTSIDE_RESULTS_JSON, fresh.md !== committed.md && OUTSIDE_MD].filter(Boolean).join(' and ')} differ from what this code produces. Run npm run proof -- --outside and commit the result.
+    process.stderr.write(`proof --check --outside — FAIL: ${[fresh.json !== committed.json && OUTSIDE_RESULTS_JSON, fresh.md !== committed.md && OUTSIDE_MD, family !== committedFamily && UNUSUAL_ACTION_FAMILY].filter(Boolean).join(' and ')} differ from what this code produces. Run npm run proof -- --outside and commit the result.
 `);
     process.exit(1);
   }
   await writeFile(resolve(repoRoot, OUTSIDE_RESULTS_JSON), json);
   await writeFile(resolve(repoRoot, OUTSIDE_MD), md);
+  await writeFile(resolve(repoRoot, UNUSUAL_ACTION_FAMILY), family);
   process.stdout.write(`proof — wrote ${OUTSIDE_RESULTS_JSON} and ${OUTSIDE_MD} (sample ${results.outsideVersion}, ${results.rows.length} runs and ${results.ownHistory.rows.length} more in whole groups)
 `);
 }

@@ -8,6 +8,7 @@ import {
   OUTSIDE_AGENTS_DIR,
   OUTSIDE_DIR,
   OUTSIDE_RESULTS_JSON,
+  UNUSUAL_ACTION_FAMILY,
   carriesPlantedValue,
   historyFor,
   loadAgentsManifest,
@@ -17,12 +18,15 @@ import {
   plantedText,
   rateOf,
   renderOutsideMarkdown,
+  renderUnusualActionFamily,
   type CaseHistoryRow,
   type OutsideResults,
   type OwnHistoryResults,
   type Rate,
 } from '../../proof/lib/outside.js';
+import { OUTSIDE_MIN_PER_CLASS, validateCorpusFile, type CorpusFile } from '../../proof/lib/corpus.js';
 import { defaultConfig } from '../../src/config/defaults.js';
+import { publishedAccuracyFor, publishedProvenance } from '../../src/eval/accuracy.js';
 import { CASE_HISTORY_WINDOW } from '../../src/eval/case-history.js';
 import { EvalEngine } from '../../src/eval/engine.js';
 import { wilson } from '../../src/eval/stats.js';
@@ -367,6 +371,58 @@ describe('a run read against its own agent\'s runs, and nobody else\'s', () => {
     expect(carriesPlantedValue({ recipient: 'GB29NWBK60161331926819' }, text)).toBe(false);
     // No planted text, nothing to carry.
     expect(carriesPlantedValue({ recipient: 'US133000000121212121212' }, plantedText({ toolCalls: [] }))).toBe(false);
+  });
+});
+
+/*
+ * The proof family of no_unusual_action is not written here: it is the
+ * held-out half of the second sample, as AgentDojo labelled it. What is
+ * held: that the committed file is exactly what the sample generates, and
+ * that the counts a verdict weighs are the counts the report prints.
+ */
+describe('the proof family of no_unusual_action is the held-out half of the second sample', () => {
+  const committed = readFileSync(join(root, UNUSUAL_ACTION_FAMILY), 'utf-8').replace(/\r\n/g, '\n');
+  const family = JSON.parse(committed) as CorpusFile;
+
+  it('the committed family is what the sample generates, byte for byte', () => {
+    expect(committed).toBe(renderUnusualActionFamily(root));
+  });
+
+  it('is labelled outside, one case a test-half run, positive where the attack succeeded', () => {
+    const manifest = loadAgentsManifest(root);
+    const test = manifest.runs.filter((r) => r.split === 'test');
+    expect(family.labelBasis).toBe('outside');
+    expect(family.cases).toHaveLength(test.length);
+    expect(family.cases.filter((c) => c.label === 'positive')).toHaveLength(test.filter((r) => r.attackSucceeded === true).length);
+    expect(family.counts).toEqual({ n: test.length, positive: test.filter((r) => r.attackSucceeded === true).length, negative: test.filter((r) => r.attackSucceeded !== true).length });
+    // A case carries tool names and nothing a run's answer, arguments or tool outputs held.
+    for (const c of family.cases) {
+      expect(c.output).toBe('');
+      expect(Object.keys(c.context ?? {}).sort()).toEqual(['caseHistory', 'toolCalls']);
+      for (const call of (c.context?.toolCalls ?? []) as Array<Record<string, unknown>>) expect(Object.keys(call)).toEqual(['tool_name']);
+    }
+  });
+
+  it('the counts a verdict weighs are the counts the report prints for the same reading', () => {
+    const { ownHistory } = JSON.parse(readFileSync(join(root, OUTSIDE_RESULTS_JSON), 'utf-8')) as { ownHistory: OwnHistoryResults };
+    const row = ownHistory.readings.find((r) => r.history === 'all')!.rows.find((r) => r.rule === 'no_unusual_action' && r.half === 'test')!;
+    const published = publishedAccuracyFor('no_unusual_action')!;
+    expect(published.tp).toBe(row.attackSucceeded.k);
+    expect(published.fn).toBe(row.attackSucceeded.n - row.attackSucceeded.k);
+    expect(published.fp).toBe(row.attackFailed.k + row.noAttack.k);
+    expect(published.tn).toBe(row.attackFailed.n + row.noAttack.n - row.attackFailed.k - row.noAttack.k);
+    // And a result that carries them says who labelled them.
+    expect(publishedProvenance('no_unusual_action').labelling).toBe('outside');
+    expect(publishedProvenance('no_pii').labelling).toBe(publishedProvenance().labelling);
+  });
+
+  it('a family labelled outside is held to enough of each class, not to an even split', () => {
+    const registry = new Map([[family.rule, family.category]]);
+    expect(validateCorpusFile(family, 'no_unusual_action.json', registry)).toEqual([]);
+    const thin = { ...family, cases: [...family.cases.filter((c) => c.label === 'negative'), ...family.cases.filter((c) => c.label === 'positive').slice(0, OUTSIDE_MIN_PER_CLASS - 1)], counts: undefined };
+    expect(validateCorpusFile(thin, 'no_unusual_action.json', registry).join(' ')).toContain(`needs at least ${OUTSIDE_MIN_PER_CLASS} of each`);
+    // The same cases under a model's label would be refused as unbalanced: the exemption is the label's, not the file's.
+    expect(validateCorpusFile({ ...family, labelBasis: 'reading' }, 'no_unusual_action.json', registry).join(' ')).toContain('must be balanced');
   });
 });
 

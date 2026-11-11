@@ -30,9 +30,10 @@
  * WHAT THIS DOES NOT KNOW. A departure is not a fault: the case may have
  * changed, a tool may have been renamed (each rule then fires once, on the
  * first run after), or the earlier runs may all have been wrong together.
- * So the two rules that read this (src/eval/rules/case-history.ts) are
- * measurements, and what a fire is worth is published per release, measured
- * on runs somebody else labelled (proof/OUTSIDE.md).
+ * So what a fire is worth is measured on runs somebody else labelled, and
+ * published per release (proof/OUTSIDE.md). The two rules that read this
+ * are held to that measurement, and src/eval/rules/case-history.ts says
+ * what each became by it: one is weighed in the verdict, one reports.
  *
  * A LOOK-UP IS NOT AN ACTION. Two runs of one task search differently and
  * act alike, so a look-up no earlier run made is exploration, while an

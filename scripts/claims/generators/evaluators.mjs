@@ -88,7 +88,10 @@ function ruleCells(row, meta, results, composite) {
   const kind = meta?.kind ?? 'unknown';
   const isFormula = kind === 'measurement' || kind === 'policy';
   return {
-    q1: cell('measured', `${RESULTS} → rules[${name}]`, `precision, recall and F1 on ${row.n} labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands`),
+    // A family labelled outside Iris is neither in-sample nor same-model labelled, and its cell says what it is instead.
+    q1: row.labelBasis === 'outside'
+      ? cell('measured', `${RESULTS} → rules[${name}]`, `precision, recall and F1 on ${row.n} agent runs Iris did not write, with Wilson and credible 95% intervals; labelled by the benchmark that published the runs, each read against the same agent's other runs of its task (proof/OUTSIDE.md)`)
+      : cell('measured', `${RESULTS} → rules[${name}]`, `precision, recall and F1 on ${row.n} labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands`),
     q2: transformRows.length > 0
       ? cell('measured', `${RESULTS} → transforms.rows[rule=${name}]`, `recall under ${transformRows.length} evasion transforms inside the evidence span, plus the false-positive and false-negative ids in proof/RESULTS.md`)
       : cell('partial', 'proof/RESULTS.md → misses by case id', 'every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)'),

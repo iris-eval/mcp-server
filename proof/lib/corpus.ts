@@ -32,8 +32,11 @@ import { hasUnfilledSlots, materialiseCase, type CorpusCaseRaw } from './materia
 export const CORPUS_DIR = 'proof/corpus';
 
 export type Label = 'positive' | 'negative';
-export type LabelBasis = 'reading' | 'definition';
-export const LABEL_BASES: readonly LabelBasis[] = ['reading', 'definition'];
+export type LabelBasis = 'reading' | 'definition' | 'outside';
+export const LABEL_BASES: readonly LabelBasis[] = ['reading', 'definition', 'outside'];
+
+/** The fewest cases of each class a family labelled outside must hold: what the size rule asks of a whole family. */
+export const OUTSIDE_MIN_PER_CLASS = 24;
 
 export interface CorpusFile {
   schemaVersion: 1;
@@ -60,6 +63,11 @@ export interface CorpusFile {
    *                  (by script or by counting): agreement shows the code
    *                  implements its definition, not that the definition
    *                  catches what a reader would call the failure.
+   *   `outside`    — a label somebody else computed, on runs Iris did not
+   *                  write: a benchmark's environment checking the world
+   *                  after each run. Agreement measures what a fire is
+   *                  worth on those runs. The cases are generated from the
+   *                  committed sample and carry only what the rule reads.
    * The `labelling` statement above says which, in words; this is the same
    * fact as data, so every surface that counts measured rules can split them.
    */
@@ -126,7 +134,7 @@ export function validateCorpusFile(file: CorpusFile, fileName: string, registry:
   if (!file.definition) issues.push(`${where}: definition missing (state the documented definition the labels were judged against)`);
   if (!file.source) issues.push(`${where}: source missing`);
   if (!file.labelling) issues.push(`${where}: labelling statement missing`);
-  if (!LABEL_BASES.includes(file.labelBasis)) issues.push(`${where}: labelBasis must be "reading" (a reader's judgement of the failure) or "definition" (the rule's documented definition applied independently)`);
+  if (!LABEL_BASES.includes(file.labelBasis)) issues.push(`${where}: labelBasis must be "reading" (a reader's judgement of the failure), "definition" (the rule's documented definition applied independently) or "outside" (a label somebody else computed on runs Iris did not write)`);
   if (!Array.isArray(file.cases)) {
     issues.push(`${where}: cases is not an array`);
     return issues;
@@ -179,7 +187,17 @@ export function validateCorpusFile(file: CorpusFile, fileName: string, registry:
   const n = file.cases.length;
   const positives = file.cases.filter((c) => c.label === 'positive').length;
   if (n < 24) issues.push(`${where}: ${n} cases; a family needs at least 24`);
-  if (n > 0 && (positives / n < 0.3 || positives / n > 0.7)) {
+  if (file.labelBasis === 'outside') {
+    /*
+     * A family labelled outside is as balanced as the runs it came from, and
+     * cutting it to an even split would throw measured runs away. What the
+     * balance rule protects (neither class resting on a handful) is asked
+     * for directly.
+     */
+    if (positives < OUTSIDE_MIN_PER_CLASS || n - positives < OUTSIDE_MIN_PER_CLASS) {
+      issues.push(`${where}: ${positives} positive and ${n - positives} negative; a family labelled outside needs at least ${OUTSIDE_MIN_PER_CLASS} of each`);
+    }
+  } else if (n > 0 && (positives / n < 0.3 || positives / n > 0.7)) {
     issues.push(`${where}: ${positives}/${n} labelled positive; a family must be balanced (30–70% positive)`);
   }
   if (file.counts) {

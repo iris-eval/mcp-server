@@ -10,6 +10,8 @@
  * says they do.
  */
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   CASE_HISTORY_MIN,
   CASE_HISTORY_WINDOW,
@@ -192,9 +194,9 @@ describe('an agent that has not changed cannot keep firing', () => {
 describe('the two rules', () => {
   const base: EvalContext = { output: 'The transfer is done.', input: 'Pay the invoice.', toolCalls: calls('get_balance', 'send_money') };
 
-  it('are measurements in the completeness bundle, both answering the tool-use question', () => {
+  it('sit in the completeness bundle and answer the tool-use question: the unusual action is an inference, the dropped step a measurement', () => {
     expect(caseHistoryRules.map((r) => [r.name, r.kind, r.evalType, r.question, r.needs])).toEqual([
-      ['no_unusual_action', 'measurement', 'completeness', 'tool_use_correct', ['tool_calls']],
+      ['no_unusual_action', 'inference', 'completeness', 'tool_use_correct', ['tool_calls']],
       ['no_dropped_step', 'measurement', 'completeness', 'tool_use_correct', ['tool_calls']],
     ]);
   });
@@ -270,6 +272,33 @@ describe('the two rules', () => {
   });
 });
 
+/*
+ * The rule against its written definition, case by case. These thirty-two
+ * were the rule's proof family while it was a measurement: synthetic
+ * histories chosen so that every label follows from a count stated in the
+ * case's note. The proof family is now AgentDojo's runs, which say what a
+ * fire is worth; these still say the code does what the definition says,
+ * so they are held here.
+ */
+describe('no_unusual_action does what its definition says, on thirty-two cases labelled by counting', () => {
+  const file = JSON.parse(readFileSync(join(__dirname, '..', '..', 'fixtures', 'case-history', 'no_unusual_action.definition.json'), 'utf-8')) as {
+    cases: Array<{ id: string; label: 'positive' | 'negative'; input?: string; output: string; context?: Partial<EvalContext>; notes: string }>;
+  };
+
+  it('holds every case, with both labels well represented', () => {
+    expect(file.cases).toHaveLength(32);
+    expect(file.cases.filter((c) => c.label === 'positive').length).toBe(17);
+  });
+
+  for (const c of file.cases) {
+    it(`${c.id}: ${c.label === 'positive' ? 'fails' : 'does not fail'}`, () => {
+      const result = noUnusualAction.evaluate({ output: c.output, ...(c.input !== undefined ? { input: c.input } : {}), ...c.context });
+      // A case the rule declines to judge is not a fire.
+      expect(result.skipped !== true && result.passed === false, c.notes).toBe(c.label === 'positive');
+    });
+  }
+});
+
 describe('through the engine', () => {
   const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
   const ctx: EvalContext = { output: 'The transfer of 420 is done and confirmed for the account.', input: 'Pay the open invoice and confirm it.', toolCalls: calls('get_balance', 'send_money') };
@@ -282,14 +311,49 @@ describe('through the engine', () => {
     for (const rule of caseHistoryRules) expect(row(result, rule.name).state, rule.name).toBe('not_checked');
   });
 
-  it('a fired rule is reported and decides nothing: on one context, the verdict with a history and without is the same verdict', async () => {
+  /*
+   * What each rule does to a verdict. An action the case's earlier runs
+   * never took is weighed: on a context that passes alone, the same context
+   * with a history fails on the risk it carries. A dropped step is reported
+   * and decides nothing.
+   */
+  it('an unusual action is weighed in the verdict: the context that passes alone fails with its history, on the risk layer, and says what it rests on', async () => {
     const alone = await engine.evaluateAll(ctx);
+    expect(decided(alone)).toMatchObject({ state: 'pass', passed: true });
     const unusual = await engine.evaluateAll({ ...ctx, caseHistory: history(6) });
-    expect(row(unusual, 'no_unusual_action')).toMatchObject({ passed: false, kind: 'measurement', role: 'advisory', state: 'fail' });
-    expect(decided(unusual)).toEqual(decided(alone));
+    expect(row(unusual, 'no_unusual_action')).toMatchObject({ passed: false, kind: 'inference', role: 'risk', state: 'fail' });
+    expect(decided(unusual)).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['wrong_trajectory'], passed: false });
+    // The number it is weighed by is one somebody else labelled, and the result says so.
+    expect(row(unusual, 'no_unusual_action').uncertainty).toMatchObject({ basis: 'published_accuracy', fired: true, corpus: { labelling: 'outside' } });
+    // And the operator is told what the failure rests on and the two things that can be done about it.
+    const note = unusual.interpretations?.find((i) => i.configKey === 'eval.advisoryRules');
+    expect(note?.text).toContain('rests on no_unusual_action');
+    expect(note?.text).toContain('label them');
+  });
+
+  it('a run the history does not depart from is not failed by it, and its silence is weighed too', async () => {
+    const usual = await engine.evaluateAll({ ...ctx, caseHistory: history(6, 'send_money', 6) });
+    expect(row(usual, 'no_unusual_action')).toMatchObject({ passed: true, role: 'risk' });
+    expect(usual.passed).toBe(true);
+    expect(usual.verdict?.risk?.perClass.wrong_trajectory).not.toBeNull();
+  });
+
+  it('a deployment that names it in eval.advisoryRules has it report only', async () => {
+    const quiet = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, { ...defaultConfig.eval, advisoryRules: ['no_unusual_action'] });
+    const result = await quiet.evaluateAll({ ...ctx, caseHistory: history(6) });
+    expect(row(result, 'no_unusual_action')).toMatchObject({ passed: false, state: 'fail', advisory: true, role: 'advisory' });
+    expect(result.passed).toBe(true);
+  });
+
+  it('a dropped step is reported and decides nothing: the verdict with a history and without is the same verdict', async () => {
+    const alone = await engine.evaluateAll(ctx);
     const dropped = await engine.evaluateAll({ ...ctx, caseHistory: history(6, 'delete_file', 6) });
-    expect(row(dropped, 'no_dropped_step').state).toBe('fail');
-    expect(decided(dropped)).toEqual(decided(alone));
+    expect(row(dropped, 'no_dropped_step')).toMatchObject({ kind: 'measurement', role: 'advisory', state: 'fail' });
+    // The history holds send_money in none of its runs here, so the unusual action is set aside to read the dropped step alone.
+    const quiet = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, { ...defaultConfig.eval, advisoryRules: ['no_unusual_action'] });
+    const droppedOnly = await quiet.evaluateAll({ ...ctx, caseHistory: history(6, 'delete_file', 6) });
+    expect(row(droppedOnly, 'no_dropped_step').state).toBe('fail');
+    expect(decided(droppedOnly)).toMatchObject({ state: decided(alone).state, passed: decided(alone).passed });
   });
 
   it('the tool-use question is judged by the rules that already judged it, so a history changes no coverage', async () => {

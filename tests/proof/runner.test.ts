@@ -39,7 +39,7 @@ describe('proof corpus', () => {
   it('states what every family\'s labels are, and refuses a family that does not', async () => {
     const { files } = await loadCorpus(repoRoot);
     const registry = new Map(registryRules().map((r) => [r.name, r.evalType]));
-    for (const f of files) expect(['reading', 'definition'], `${f.family}: labelBasis`).toContain(f.labelBasis);
+    for (const f of files) expect(['reading', 'definition', 'outside'], `${f.family}: labelBasis`).toContain(f.labelBasis);
     const unstated: Partial<(typeof files)[0]> = { ...files[0] };
     delete unstated.labelBasis;
     const issues = validateCorpusFile(unstated as (typeof files)[0], 'x.json', registry);

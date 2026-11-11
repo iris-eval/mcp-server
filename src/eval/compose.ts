@@ -42,6 +42,7 @@ import { riskEstimate, detectorsOf, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_F
 import { verdictConfidence, MIN_BIN_N, MIN_BIN_PATTERNS, type ConfidenceCall } from './confidence.js';
 import { PUBLISHED_CALIBRATION } from './published-calibration.js';
 import { decides, isCritical } from './gate.js';
+import { LOCAL_LABEL_MIN } from './labels.js';
 import { RELEVANCE_JUDGE_MODEL_VAR } from './llm-judge/relevance-judge.js';
 import { sameFamilyWarning } from './llm-judge/family.js';
 import { brokenOf, captureLabel } from './evidence.js';
@@ -715,6 +716,27 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
         rule: r.ruleName,
         text: `${r.ruleName} failed but the verdict passed: on its published accuracy this rule alone does not carry the risk past your loss threshold. Raise eval.falsePassCost to block on weaker evidence (the loss threshold is 1 / (1 + falsePassCost)).`,
         configKey: 'eval.falsePassCost',
+      });
+    }
+  }
+  /*
+   * A verdict the risk layer failed names failure classes, and said nothing
+   * about what a deployment can do when the rules behind them are wrong
+   * about its own traffic. Two things can be done: label the fires (at
+   * LOCAL_LABEL_MIN labels on a rule's fires the estimate reads the
+   * precision the deployment measured), or name the rule in
+   * eval.advisoryRules and have it report only. Said once, to the operator,
+   * naming the weighed rules that fired. A veto is not weighed, so a
+   * verdict a critical rule decided gets no such sentence.
+   */
+  if (verdict.basis === 'risk_over_loss') {
+    const weighedFires = result.rule_results.filter((r) => fired(r) && r.advisory !== true && !isCritical(r) && (r.kind === 'detection' || r.kind === 'inference')).map((r) => r.ruleName);
+    if (weighedFires.length > 0) {
+      out.push({
+        severity: 'note',
+        addressee: 'operator',
+        text: `The risk estimate that failed this verdict rests on ${weighedFires.join(', ')}. If ${weighedFires.length === 1 ? 'its fires are' : 'their fires are'} not failures on your traffic, label them (from ${LOCAL_LABEL_MIN} labels on a rule's fires the estimate uses the precision you measured), or name the rule in eval.advisoryRules to have it report and take no part in the verdict.`,
+        configKey: 'eval.advisoryRules',
       });
     }
   }

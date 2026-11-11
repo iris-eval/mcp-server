@@ -156,9 +156,11 @@ export interface ProofRule {
    * What the family's labels are: `reading` — a judgement made by reading the
    * failure (in this corpus, a model's), without running the rule, so agreement measures detection;
    * `definition` — the rule's own documented definition applied
-   * independently, so agreement shows the code implements its formula.
+   * independently, so agreement shows the code implements its formula;
+   * `outside` — a label somebody else computed on agent runs Iris did not
+   * write, so agreement says what a fire was worth on those runs.
    */
-  labelBasis?: "reading" | "definition";
+  labelBasis?: "reading" | "definition" | "outside";
   n: number;
   positives: number;
   negatives: number;

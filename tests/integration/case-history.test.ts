@@ -77,14 +77,41 @@ describe('the case-history rules, through the doors', () => {
     expect(r.get('no_dropped_step')).toMatchObject({ state: 'fail', message: 'Dropped step for this case: send_money, called in every one of its 5 earlier runs and not in this one' });
   });
 
-  it('they decide nothing: the same run, with a history that fires both and with none, gets the same verdict', async () => {
+  /*
+   * Through the real doors: the unusual action is weighed, so the run that
+   * passes under a case of its own fails under the case whose earlier runs
+   * never took the action. The next run that takes it passes again, because
+   * the action is then in the case's history.
+   */
+  it('an action the case never took fails the verdict that passes without a history, once, and the result reads back the same', async () => {
     for (const run of ['nightly-1', 'nightly-2', 'nightly-3']) await logRun(run);
-    const odd = ['get_balance', 'delete_account'];
-    const withHistory = evaluationOf(await logRun('nightly-4', odd));
+    const odd = ['get_balance', 'send_money', 'delete_account'];
+    const stored = await logRun('nightly-4', odd);
+    const withHistory = evaluationOf(stored);
     // The same agent, ask, answer and calls under a case of its own, so with no earlier run.
     const alone = evaluationOf(await logRun('nightly-4', odd, { case_key: 'a-case-run-once' }));
-    expect(rows(withHistory as unknown as Record<string, unknown>).get('no_unusual_action')?.state).toBe('fail');
     expect(rows(alone as unknown as Record<string, unknown>).get('no_unusual_action')?.state).toBe('not_checked');
+    expect([alone.passed, alone.verdict.state, alone.verdict.basis]).toEqual([true, 'pass', 'clean']);
+    expect(rows(withHistory as unknown as Record<string, unknown>).get('no_unusual_action')).toMatchObject({ state: 'fail', kind: 'inference', role: 'risk' });
+    expect([withHistory.passed, withHistory.verdict.state, withHistory.verdict.basis]).toEqual([false, 'fail', 'risk_over_loss']);
+    // Stored, the evaluation re-composes to the verdict the caller was given.
+    const traceId = (stored as { trace_id: string }).trace_id;
+    const [readBack] = await storage.getEvalsByTraceId(LOCAL_TENANT, traceId);
+    expect([readBack.passed, readBack.verdict?.state, readBack.verdict?.basis]).toEqual([false, 'fail', 'risk_over_loss']);
+    // The action is in the history now: the next run that takes it is not a departure.
+    const next = evaluationOf(await logRun('nightly-5', odd));
+    expect(rows(next as unknown as Record<string, unknown>).get('no_unusual_action')?.state).toBe('pass');
+    expect(next.passed).toBe(true);
+  });
+
+  it('a dropped step decides nothing: the same run, with a history that fires it and with none, gets the same verdict', async () => {
+    for (const run of ['nightly-1', 'nightly-2', 'nightly-3']) await logRun(run);
+    // A look-up the earlier runs never made is not an unusual action, so only the dropped step fires.
+    const short = ['get_balance'];
+    const withHistory = evaluationOf(await logRun('nightly-4', short));
+    const alone = evaluationOf(await logRun('nightly-4', short, { case_key: 'a-case-run-once' }));
+    expect(rows(withHistory as unknown as Record<string, unknown>).get('no_dropped_step')?.state).toBe('fail');
+    expect(rows(withHistory as unknown as Record<string, unknown>).get('no_unusual_action')?.state).toBe('pass');
     expect([withHistory.passed, withHistory.verdict.state, withHistory.verdict.basis]).toEqual([alone.passed, alone.verdict.state, alone.verdict.basis]);
   });
 

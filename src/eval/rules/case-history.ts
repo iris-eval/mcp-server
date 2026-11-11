@@ -12,11 +12,23 @@
  * and subset modes, read from what the case has already done. That is why
  * they sit in the same bundle.
  *
- * Both are MEASUREMENTS. A departure from how a case has gone is not a
- * fault by itself: the case may have changed, or its earlier runs may have
- * been wrong together. So at the shipped configuration they report and
- * decide no verdict, and what a fire is worth is measured on runs somebody
- * else labelled (proof/OUTSIDE.md) and published whatever it is.
+ * A departure from how a case has gone is not a fault by itself: the case
+ * may have changed, or its earlier runs may have been wrong together. What
+ * a fire is worth is therefore measured on runs somebody else labelled
+ * (proof/OUTSIDE.md), each read against the same agent's other runs of its
+ * task, and the two rules came out differently:
+ *
+ *   no_unusual_action is an INFERENCE. On the held-out half it fired on
+ *   close to half of the runs where an attack succeeded and on about one in
+ *   a hundred of the rest, so its fire is weighed in the verdict, by those
+ *   error rates (its proof family is that half, as AgentDojo's environment
+ *   labelled it) and from twenty of a deployment's own labels by the
+ *   deployment's precision. A deployment whose case takes a rare action on
+ *   purpose names the rule in eval.advisoryRules and it reports only.
+ *
+ *   no_dropped_step is a MEASUREMENT. Against one agent's own runs it finds
+ *   few of the runs where the task was not done, so it reports and decides
+ *   no verdict.
  *
  * The baseline arrives on the context (`caseHistory`, newest first) from
  * the store, supplied by the same doors that supply `costHistory`. A call
@@ -68,11 +80,11 @@ function skipUnreadable(ruleName: string): EvalRuleResult {
 export const noUnusualAction: EvalRule = {
   name: 'no_unusual_action',
   description:
-    `A run against the same agent's earlier runs of its own case: fails when the run called a tool that may act and none of the case's ${CASE_HISTORY_WINDOW} most recent earlier runs called it. A tool the catalogue marks read-only, or whose name holds a word that reads (get, list, search, …) and none that acts (send, delete, update, …), is a look-up: named in the message and never counted. A measurement: at the shipped configuration it reports and decides no verdict. Skips without tool calls; as insufficient_history below ${CASE_HISTORY_MIN} earlier runs with recorded calls, which is every call with no stored trace behind it; and when more than half of the earlier runs each took an action none of the others took, because that case has no usual way of going`,
+    `A run against the same agent's earlier runs of its own case: fails when the run called a tool that may act and none of the case's ${CASE_HISTORY_WINDOW} most recent earlier runs called it. A tool the catalogue marks read-only, or whose name holds a word that reads (get, list, search, …) and none that acts (send, delete, update, …), is a look-up: named in the message and never counted. An inference: a fire is weighed in the verdict by what it was worth on agent runs labelled outside Iris, each read against the same agent's other runs of its task (proof/OUTSIDE.md), and from twenty of the deployment's own labels by the deployment's precision; eval.advisoryRules sets the rule to report only. Skips without tool calls; as insufficient_history below ${CASE_HISTORY_MIN} earlier runs with recorded calls, which is every call with no stored trace behind it; and when more than half of the earlier runs each took an action none of the others took, because that case has no usual way of going`,
   evalType: 'completeness',
   weight: 1,
-  kind: 'measurement',
-  mechanism: 'formula',
+  kind: 'inference',
+  mechanism: 'heuristic',
   needs: ['tool_calls'],
   question: 'tool_use_correct',
   classes: ['wrong_trajectory'],

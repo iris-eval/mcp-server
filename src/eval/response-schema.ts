@@ -28,7 +28,7 @@ const corpusSchema = z.looseObject({
     tn: z.number().int(),
     version: z.string(),
     release: z.string(),
-    labelling: z.enum(['same-model', 'human-verified']),
+    labelling: z.enum(['same-model', 'human-verified', 'outside']),
   });
 
 export const uncertaintySchema = z.discriminatedUnion('basis', [

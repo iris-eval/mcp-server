@@ -18,7 +18,10 @@ documented", not "catches what goes wrong in the wild". Where the definition
 names a judgement (PII, prompt injection, hallucination signals, stub answers,
 blocklisted phrases, staying on topic), the corpus measures detection against
 cases written to evade it, and those are the numbers to weigh before trusting
-a verdict. The provenance line cites the release version the numbers were
+a verdict. One rule has a third kind: `no_unusual_action` is measured on agent
+runs Iris did not write, against labels the benchmark that published them
+computed (see "Runs Iris did not write", below), so its numbers say what a
+fire was worth on those runs. The provenance line cites the release version the numbers were
 generated for, not a commit: branch commits are squashed on merge, so a commit
 hash on a public surface would be one a reader cannot resolve.
 
@@ -65,7 +68,7 @@ For each rule the results carry the confusion matrix and three rates:
 | `skipped` | Cases where the rule declined to judge (missing context, output too brief). A skip is counted as "did not fail". |
 | `ci95` | 95% intervals: Wilson score for precision and recall; a seeded percentile bootstrap for F1 (`method.f1Ci` names the exact procedure). |
 | `credible95` | The same three rates with a Dirichlet credible interval (`method.credible`): the confusion counts get a half-count prior each and the rates are read off 2,000 seeded draws. Where a family has zero errors the bootstrap's F1 interval is `[1, 1]` — every resample of zero errors has zero errors — and the credible interval still reaches below 1, which is the honest reading of thirteen positives. |
-| `labelBasis` | What a label in this family is, copied from the family file. `reading`: a judgement made by reading the failure itself, without running the rule, so the rates measure detection; in this corpus the reader is a model (some families by two independent contexts of the same model), and a human blind label is pending. `definition`: the rule's documented definition applied independently (by script or by counting), so the rates show the code implements its definition, and a perfect score says nothing about whether the definition catches what a reader would call the failure. Every surface that counts measured rules counts the two separately. |
+| `labelBasis` | What a label in this family is, copied from the family file. `reading`: a judgement made by reading the failure itself, without running the rule, so the rates measure detection; in this corpus the reader is a model (some families by two independent contexts of the same model), and a human blind label is pending. `definition`: the rule's documented definition applied independently (by script or by counting), so the rates show the code implements its definition, and a perfect score says nothing about whether the definition catches what a reader would call the failure. `outside`: a label somebody else computed on runs Iris did not write (AgentDojo's environment, checking the world after each run), on a family generated from the committed sample by `npm run proof -- --outside` and never written by hand; the rates say what a fire was worth on those runs, at their own mix of good and bad runs. Every surface that counts measured rules counts the three separately. |
 | `ppvAt` | What a fire is worth at four prevalences (1%, 5%, 20%, 50%): the share of fires that are real violations when violations are that common, from this rule's sensitivity and specificity. The corpus is roughly half positive; a deployment where one output in a hundred leaks reads the 1% column. |
 
 **How to read an interval.** A family holds a few dozen cases, so an observed
@@ -413,6 +416,18 @@ How it is scored:
   attacker's action, so the report also counts how many of the fires on such
   runs were on a call carrying a value from the planted instruction. The dev
   half was read first, and the test half once.
+- **What the two rules became.** The measurement decided it. Against one
+  agent's own runs `no_unusual_action` separates the runs where an attack
+  succeeded from the rest, so it is an inference and its fire is weighed in
+  the verdict; `no_dropped_step` finds few of the runs where the task was
+  not done, so it stays a measurement and decides nothing. The test half of
+  the second sample, read against all of the agent's other runs, is
+  `no_unusual_action`'s proof family (`proof/corpus/no_unusual_action.json`,
+  `labelBasis: outside`): the counts in `proof/RESULTS.md`, the counts a
+  verdict weighs a fire by, and the counts in this report are the same
+  counts, and a test holds them equal. The report also judges every run of
+  that sample alone and with its history, and gives the verdict's two error
+  rates both ways.
 
 What it is not: production traffic, or a deployment's own configuration.
 The sample weights every agent alike and holds as many runs where the
