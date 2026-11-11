@@ -10,6 +10,7 @@ import {
   describeEvidence,
   describeUncertainty,
   isPreStamp,
+  roleText,
   ruleState,
 } from '../../../src/components/evals/ruleResultText';
 import type { Evidence } from '../../../src/api/types';
@@ -67,6 +68,26 @@ describe('ruleResultText', () => {
     expect(describeUncertainty({ basis: 'policy' })!.sentence).toContain('no error rate');
     expect(describeUncertainty({ basis: 'unmeasured', why: 'no family' })!.sentence).toBe('No published error rate: no family');
     expect(describeUncertainty(undefined)).toBeNull();
+  });
+
+  it('a number measured on runs labelled outside says who labelled them and that its prior is the mix those runs had', () => {
+    const corpus = { n: 695, tp: 42, fp: 7, fn: 49, tn: 597, version: 'v', release: '0.22.0', labelling: 'outside' as const };
+    const fired = describeUncertainty({ basis: 'published_accuracy', fired: true, ppv: { point: 0.8488, lo: 0.73, hi: 0.93 }, prior: { pi: 0.1309, source: 'family' }, corpus })!;
+    expect(fired.sentence).toBe(
+      'When this rule fires, the output is bad 85% of the time (95% interval 73%–93%) at a prior of 0.13, the share of those labelled cases that were bad. Measured on 695 labelled cases (corpus v, release 0.22.0, labels computed outside Iris, on runs it did not write).',
+    );
+    // A prior the deployment set or estimated is named by its source, as before.
+    expect(describeUncertainty({ basis: 'published_accuracy', fired: true, ppv: { point: 0.3, lo: 0.2, hi: 0.4 }, prior: { pi: 0.02, source: 'config' }, corpus })!.sentence).toContain('at a prior of 0.02 (config)');
+  });
+
+  it('the role sentence of an advisory result carries the rule\'s own reason when it gave one', () => {
+    expect(roleText({ role: 'advisory' })).toBe(ROLE_TEXT.advisory);
+    expect(roleText({ role: 'advisory', advisoryWhy: 'the case has 4 earlier runs by this agent, and the rule is weighed in the verdict from 5' })).toBe(
+      `${ROLE_TEXT.advisory} Here: the case has 4 earlier runs by this agent, and the rule is weighed in the verdict from 5.`,
+    );
+    // The reason belongs to an advisory result only.
+    expect(roleText({ role: 'risk', advisoryWhy: 'stale' })).toBe(ROLE_TEXT.risk);
+    expect(roleText({})).toBe('');
   });
 
   it('a row is pre-stamp only when none of the composer fields is present', () => {

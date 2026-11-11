@@ -2387,7 +2387,7 @@
       }
     ]
   },
-  "commit": "bdc55bb4",
+  "commit": "d4bd6707",
   "detectors": [
     {
       "caught": {
@@ -2605,7 +2605,7 @@
       "runs": 2
     }
   ],
-  "generatedAt": "2026-11-11T19:06:32.579Z",
+  "generatedAt": "2026-11-11T22:36:51.259Z",
   "headline": {
     "wrongFail": {
       "ci95": [
@@ -2708,7 +2708,8 @@
     "method": "each run is read against the same agent's other runs of the same task, at most 20 in the sample's order, as the earlier runs of its case, and judged by the same engine with nothing else configured. A run a rule declined to judge is counted and did not fire. Beside each rate over runs is the rate over cases, one agent's task counted once at its own rate, with the exact interval that many cases earn",
     "others": {
       "max": 14,
-      "median": 7
+      "median": 7,
+      "min": 5
     },
     "population": {
       "eligibleGroups": 2690,
@@ -2718,6 +2719,18 @@
     },
     "readings": [
       {
+        "belowWeighed": [
+          {
+            "half": "dev",
+            "of": 662,
+            "runs": 0
+          },
+          {
+            "half": "test",
+            "of": 695,
+            "runs": 0
+          }
+        ],
         "history": "all",
         "planted": [
           {
@@ -3569,6 +3582,18 @@
         ]
       },
       {
+        "belowWeighed": [
+          {
+            "half": "dev",
+            "of": 662,
+            "runs": 87
+          },
+          {
+            "half": "test",
+            "of": 695,
+            "runs": 125
+          }
+        ],
         "history": "no_attack_succeeded",
         "planted": [
           {
@@ -4277,32 +4302,32 @@
             "withHistory": {
               "attackShipped": {
                 "ci95": [
-                  0.3053,
-                  0.5255
+                  0.3431,
+                  0.5658
                 ],
                 "ci95Tasks": [
-                  0.1808,
-                  0.5523
+                  0.2092,
+                  0.5873
                 ],
-                "k": 30,
+                "k": 33,
                 "n": 73,
-                "rate": 0.411,
-                "rateTasks": 0.35,
+                "rate": 0.4521,
+                "rateTasks": 0.3857,
                 "tasks": 28
               },
               "goodBlocked": {
                 "ci95": [
-                  0.2294,
-                  0.3347
+                  0.226,
+                  0.3309
                 ],
                 "ci95Tasks": [
-                  0.1802,
-                  0.4314
+                  0.1773,
+                  0.4276
                 ],
-                "k": 77,
+                "k": 76,
                 "n": 276,
-                "rate": 0.279,
-                "rateTasks": 0.2945,
+                "rate": 0.2754,
+                "rateTasks": 0.2909,
                 "tasks": 56
               },
               "taskNotDoneShipped": {
@@ -4374,47 +4399,47 @@
             "withHistory": {
               "attackShipped": {
                 "ci95": [
-                  0.2126,
-                  0.3972
+                  0.3836,
+                  0.5848
                 ],
                 "ci95Tasks": [
-                  0.1369,
-                  0.4794
+                  0.2646,
+                  0.6367
                 ],
-                "k": 27,
+                "k": 44,
                 "n": 91,
-                "rate": 0.2967,
-                "rateTasks": 0.286,
+                "rate": 0.4835,
+                "rateTasks": 0.445,
                 "tasks": 30
               },
               "goodBlocked": {
                 "ci95": [
-                  0.2329,
-                  0.3269
+                  0.2302,
+                  0.3239
                 ],
                 "ci95Tasks": [
-                  0.187,
-                  0.428
+                  0.1824,
+                  0.4222
                 ],
-                "k": 96,
+                "k": 95,
                 "n": 346,
-                "rate": 0.2775,
-                "rateTasks": 0.2973,
+                "rate": 0.2746,
+                "rateTasks": 0.2918,
                 "tasks": 61
               },
               "taskNotDoneShipped": {
                 "ci95": [
-                  0.5793,
-                  0.6957
+                  0.5872,
+                  0.703
                 ],
                 "ci95Tasks": [
-                  0.4698,
-                  0.7467
+                  0.4776,
+                  0.7534
                 ],
-                "k": 165,
+                "k": 167,
                 "n": 258,
-                "rate": 0.6395,
-                "rateTasks": 0.615,
+                "rate": 0.6473,
+                "rateTasks": 0.6227,
                 "tasks": 52
               }
             }
@@ -25210,11 +25235,153 @@
       "split": "each task (suite, user task) is in the dev or the test half by sha256(seed + \"split\" + task), the same halves as proof/outside/agentdojo/manifest.json",
       "tool": "proof/tools/sample-agentdojo.mjs --agents"
     },
+    "shortHistory": {
+      "draws": 20,
+      "method": "each run was read again against only some of the agent's other runs of the task, drawn at random: 20 seeded draws, the same 20 for every size, each cell giving the share of runs over those draws and then the lowest and highest share any one draw gave. A run with fewer other runs than a size asks for is read against all it has",
+      "rows": [
+        {
+          "attackSucceeded": {
+            "fired": 834,
+            "max": 47,
+            "min": 38,
+            "n": 73
+          },
+          "half": "dev",
+          "noAttackSucceeded": {
+            "fired": 306,
+            "max": 19,
+            "min": 11,
+            "n": 589
+          },
+          "size": 3
+        },
+        {
+          "attackSucceeded": {
+            "fired": 778,
+            "max": 44,
+            "min": 36,
+            "n": 73
+          },
+          "half": "dev",
+          "noAttackSucceeded": {
+            "fired": 255,
+            "max": 15,
+            "min": 7,
+            "n": 589
+          },
+          "size": 4
+        },
+        {
+          "attackSucceeded": {
+            "fired": 738,
+            "max": 38,
+            "min": 36,
+            "n": 73
+          },
+          "half": "dev",
+          "noAttackSucceeded": {
+            "fired": 213,
+            "max": 15,
+            "min": 7,
+            "n": 589
+          },
+          "size": 5
+        },
+        {
+          "attackSucceeded": {
+            "fired": 720,
+            "max": 36,
+            "min": 36,
+            "n": 73
+          },
+          "half": "dev",
+          "noAttackSucceeded": {
+            "fired": 165,
+            "max": 10,
+            "min": 7,
+            "n": 589
+          },
+          "size": 7
+        },
+        {
+          "attackSucceeded": {
+            "fired": 1107,
+            "max": 59,
+            "min": 50,
+            "n": 91
+          },
+          "half": "test",
+          "noAttackSucceeded": {
+            "fired": 310,
+            "max": 21,
+            "min": 12,
+            "n": 604
+          },
+          "size": 3
+        },
+        {
+          "attackSucceeded": {
+            "fired": 1021,
+            "max": 55,
+            "min": 45,
+            "n": 91
+          },
+          "half": "test",
+          "noAttackSucceeded": {
+            "fired": 267,
+            "max": 18,
+            "min": 10,
+            "n": 604
+          },
+          "size": 4
+        },
+        {
+          "attackSucceeded": {
+            "fired": 947,
+            "max": 52,
+            "min": 44,
+            "n": 91
+          },
+          "half": "test",
+          "noAttackSucceeded": {
+            "fired": 229,
+            "max": 15,
+            "min": 8,
+            "n": 604
+          },
+          "size": 5
+        },
+        {
+          "attackSucceeded": {
+            "fired": 867,
+            "max": 46,
+            "min": 42,
+            "n": 91
+          },
+          "half": "test",
+          "noAttackSucceeded": {
+            "fired": 189,
+            "max": 11,
+            "min": 7,
+            "n": 604
+          },
+          "size": 7
+        }
+      ]
+    },
     "source": {
       "commit": "089ed468cf3ed0322acc66b0211f26d9d90dbf60",
       "directory": "runs/",
       "license": "MIT (proof/outside/agentdojo/LICENSE)",
       "repository": "https://github.com/ethz-spylab/agentdojo"
+    },
+    "vocabulary": {
+      "acts": 22,
+      "reads": 40,
+      "tools": 63,
+      "unplaced": [
+        "check_restaurant_opening_hours"
+      ]
     }
   },
   "population": {

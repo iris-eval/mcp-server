@@ -711,11 +711,23 @@ export class EvalEngine {
        */
       const effective = this.criticality(rule);
       const { critical, source } = effective;
-      // A rule the deployment set to report only (eval.advisoryRules). Stamped on the row, like `critical`, so a stored row re-composes as it was decided.
-      const advisory = effective.advisory === true && raw.skipped !== true;
       // ruleId / category sit right after the name so a reader scanning
       // rule_results sees WHICH deployed rule (and which bundle) spoke.
-      const { ruleName, ...rest } = raw;
+      const { ruleName, advisoryWhy: ownReason, ...rest } = raw;
+      /*
+       * A result that reports and takes no part in the verdict. Stamped on
+       * the row, like `critical`, so a stored row re-composes as it was
+       * decided. Either the deployment named the rule in eval.advisoryRules,
+       * or the rule itself said this result is below the standing its error
+       * rates were measured at (`advisoryWhy`: no_unusual_action with fewer
+       * earlier runs than it is weighed from). The rule's own reason gives
+       * way twice: to the deployment's list, which is then the standing
+       * reason, and to a deployment that made the rule critical, which has
+       * said every fire of it decides.
+       */
+      const byConfig = effective.advisory === true;
+      const byRule = !byConfig && ownReason !== undefined && !critical;
+      const advisory = (byConfig || byRule) && raw.skipped !== true;
       /*
        * The stamp (0.9.0): what kind of claim this is, what the composer
        * did with it, which question it answers, what it saw, why it skipped,
@@ -732,6 +744,7 @@ export class EvalEngine {
         critical,
         criticalSource: source,
         ...(advisory ? { advisory: true } : {}),
+        ...(advisory && byRule ? { advisoryWhy: ownReason } : {}),
         state: ruleStateOf(raw),
         ...rest,
         ...stampRuleResult(rule, raw, context, effective, {

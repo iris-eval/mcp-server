@@ -644,6 +644,16 @@ export interface NarrowedArgument {
 }
 
 /**
+ * The prior a result's error rate is stated at, and where it came from: the
+ * shipped default, the deployment's `eval.prior`, the estimate its labels
+ * imply, or `family`, the share of the rule's own proof family that is
+ * positive. A family labelled outside Iris holds the mix its runs had, and
+ * while the deployment has neither set nor estimated a prior that rule's
+ * number is stated at that mix, where it is the one that was observed.
+ */
+export type StatedPrior = { pi: number; source: 'default' | 'config' | 'estimated' | 'family' };
+
+/**
  * How wrong this result tends to be, and on what basis. `published_accuracy`
  * carries the rule's measured numbers from the shipped proof (src/eval/
  * published-accuracy.ts): for a fired detection or inference the positive
@@ -659,14 +669,14 @@ export type Uncertainty =
       basis: 'published_accuracy';
       fired: true;
       ppv: Interval;
-      prior: { pi: number; source: 'default' | 'config' | 'estimated' };
+      prior: StatedPrior;
       corpus: { n: number; tp: number; fp: number; fn: number; tn: number; version: string; release: string; labelling: 'same-model' | 'human-verified' | 'outside' };
     }
   | {
       basis: 'published_accuracy';
       fired: false;
       missRate: Interval;
-      prior: { pi: number; source: 'default' | 'config' | 'estimated' };
+      prior: StatedPrior;
       corpus: { n: number; tp: number; fp: number; fn: number; tn: number; version: string; release: string; labelling: 'same-model' | 'human-verified' | 'outside' };
     }
   | { basis: 'definition'; conformance: { n: number; matched: number } }
@@ -740,12 +750,24 @@ export interface EvalRuleResult {
    */
   criticalSource?: 'default' | 'config';
   /**
-   * True when the deployment named this rule in `eval.advisoryRules`: it
-   * reported and took no part in the verdict, neither vetoing nor entering
-   * the risk estimate. Stamped on the row so a stored evaluation re-composes
-   * as it was decided. Absent on every other result.
+   * True when this result reported and took no part in the verdict, neither
+   * vetoing nor entering the risk estimate. Two things set it: the
+   * deployment named the rule in `eval.advisoryRules`, or the rule itself
+   * reported below the standing its error rates were measured at, and then
+   * `advisoryWhy` says so. Stamped on the row so a stored evaluation
+   * re-composes as it was decided. Absent on every other result.
    */
   advisory?: boolean;
+  /**
+   * The rule's own reason a result takes no part in the verdict, in words:
+   * `no_unusual_action` gives it when the case has fewer earlier runs than
+   * the rule is weighed from. Returned by the rule, and kept by the engine
+   * only when it is why `advisory` is true: absent when `eval.advisoryRules`
+   * names the rule (that is then the standing reason), and absent when the
+   * deployment made the rule critical, which is the deployment saying every
+   * fire of it decides.
+   */
+  advisoryWhy?: string;
   /**
    * What this rule says about the output, in one field: `pass`, `fail`, or
    * `not_checked` when it skipped. Read this, not `passed`: a rule that

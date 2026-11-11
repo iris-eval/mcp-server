@@ -132,7 +132,7 @@ const fired = (r: EvalRuleResult): boolean => !r.skipped && r.passed === false;
  * disagree. A skipped rule played no role and keeps none.
  */
 export function roleOf(r: EvalRuleResult, cfg: ComposeConfig): Role {
-  // The deployment set this rule to report only (eval.advisoryRules): it is in no layer below.
+  // The result reports only: the deployment named the rule in eval.advisoryRules, or the rule gave its own reason (advisoryWhy). It is in no layer below.
   if (r.advisory === true) return 'advisory';
   if (r.kind === 'judgment') return 'gate';
   if (r.kind === 'policy') return decides(r, cfg.defaultsGate) ? 'gate' : 'advisory';
@@ -656,6 +656,20 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
   for (const r of result.rule_results) {
     if (!fired(r)) continue;
     if (verdict.by.includes(r.ruleName) || laterRules.has(r.ruleName)) continue;
+    if (r.advisory === true && r.advisoryWhy !== undefined) {
+      /*
+       * A result the rule itself reported below the standing its error
+       * rates were measured at. No setting did this, so none is named: the
+       * rule's own reason is the sentence.
+       */
+      out.push({
+        severity: 'note',
+        addressee: 'operator',
+        rule: r.ruleName,
+        text: `${r.ruleName} failed and took no part in this verdict: ${r.advisoryWhy}. It reports what it found and neither vetoes nor enters the risk estimate.`,
+      });
+      continue;
+    }
     if (r.advisory === true) {
       /*
        * A rule the deployment set to report only. Said whatever the verdict
@@ -728,6 +742,11 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
    * eval.advisoryRules and have it report only. Said once, to the operator,
    * naming the weighed rules that fired. A veto is not weighed, so a
    * verdict a critical rule decided gets no such sentence.
+   *
+   * The sentence says everything labels do. At LOCAL_LABEL_MIN labels the
+   * prior every rule is weighed at is estimated from them too, unless the
+   * deployment set eval.prior (engine.effectivePrior): a reader invited to
+   * label one rule is told that the labels reach the others.
    */
   if (verdict.basis === 'risk_over_loss') {
     const weighedFires = result.rule_results.filter((r) => fired(r) && r.advisory !== true && !isCritical(r) && (r.kind === 'detection' || r.kind === 'inference')).map((r) => r.ruleName);
@@ -735,7 +754,7 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
       out.push({
         severity: 'note',
         addressee: 'operator',
-        text: `The risk estimate that failed this verdict rests on ${weighedFires.join(', ')}. If ${weighedFires.length === 1 ? 'its fires are' : 'their fires are'} not failures on your traffic, label them (from ${LOCAL_LABEL_MIN} labels on a rule's fires the estimate uses the precision you measured), or name the rule in eval.advisoryRules to have it report and take no part in the verdict.`,
+        text: `The risk estimate that failed this verdict rests on ${weighedFires.join(', ')}. If ${weighedFires.length === 1 ? 'its fires are' : 'their fires are'} not failures on your traffic, label them, or name the rule in eval.advisoryRules to have it report and take no part in the verdict. From ${LOCAL_LABEL_MIN} labels on a rule's fires two things change: that rule's fires are weighed by the precision you measured, and the prior every rule is weighed at is estimated from your labels, unless you set eval.prior.`,
         configKey: 'eval.advisoryRules',
       });
     }

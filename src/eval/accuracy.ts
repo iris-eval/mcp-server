@@ -77,6 +77,19 @@ export function publishedAccuracyFor(ruleName: string): PublishedRuleAccuracy | 
   return entry ?? null;
 }
 
+/**
+ * The share of a rule's proof family that is positive: the mix its numbers
+ * were measured at. Null for a rule with no family, or one whose family
+ * holds a single class.
+ */
+export function familyPrevalence(ruleName: string): number | null {
+  const counts = publishedAccuracyFor(ruleName);
+  if (!counts) return null;
+  const positives = counts.tp + counts.fn;
+  const n = positives + counts.fp + counts.tn;
+  return positives > 0 && positives < n ? positives / n : null;
+}
+
 /** Every rule name with published numbers, in the order the proof emitted them. */
 export function publishedRuleNames(): string[] {
   return Object.keys(PUBLISHED_ACCURACY);

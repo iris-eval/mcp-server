@@ -16,11 +16,12 @@
  * stamp could only say veto or "term", and the schema advertised four
  * values nothing produced).
  */
-import type { EvalContext, EvalRule, EvalRuleResult, Need, RuleState, SkipClass, Uncertainty } from '../types/eval.js';
+import type { EvalContext, EvalRule, EvalRuleResult, Need, RuleState, SkipClass, StatedPrior, Uncertainty } from '../types/eval.js';
 import type { CaptureField } from '../types/trace.js';
 import type { EffectiveCriticality } from './criticality.js';
 import { everyCallRecorded, stepsOf } from './steps.js';
-import { DEFAULT_PREVALENCE, missRateInterval, ppvInterval, publishedAccuracyFor, publishedProvenance } from './accuracy.js';
+import { DEFAULT_PREVALENCE, familyPrevalence, missRateInterval, ppvInterval, publishedAccuracyFor, publishedProvenance } from './accuracy.js';
+import { round4 } from './stats.js';
 import type { LocalPrecision } from './labels.js';
 import { thresholdSetBy } from './thresholds.js';
 
@@ -189,9 +190,27 @@ export function uncertaintyOf(rule: EvalRule, raw: EvalRuleResult, options: Stam
       if (!published) return { basis: 'unmeasured', why: 'no proof family for this rule' };
       const prov = publishedProvenance(rule.name);
       const corpus = { n: published.n, tp: published.tp, fp: published.fp, fn: published.fn, tn: published.tn, version: prov.corpusVersion, release: prov.release, labelling: prov.labelling };
-      const interval = fired ? ppvInterval(rule.name, prior.pi) : missRateInterval(rule.name, prior.pi);
+      /*
+       * At what prior the number is stated. A family written here is built
+       * near an even split, and its number is stated at the prior in force.
+       * A family labelled outside holds the mix its runs had, which need not
+       * be even, and at an even prior its positive predictive value can read
+       * far above the precision that was measured: no_unusual_action's did,
+       * because most of its runs are ones where nothing was wrong. So while
+       * the deployment has neither set a prior nor labelled enough to
+       * estimate one, such a rule's number is stated at its family's own
+       * mix, where it is the one that was observed. The verdict is not
+       * weighed by this field (risk.ts spreads the prior in force over the
+       * classes examined); it is what a reader is told a fire, or a silence,
+       * is worth.
+       */
+      const mix = prior.source === 'default' && prov.labelling === 'outside' ? familyPrevalence(rule.name) : null;
+      const stated: StatedPrior = mix !== null ? { pi: round4(mix), source: 'family' } : prior;
+      const interval = fired ? ppvInterval(rule.name, stated.pi) : missRateInterval(rule.name, stated.pi);
       if (!interval) return { basis: 'unmeasured', why: 'the proof family has no positives or no negatives' };
-      return fired ? { basis: 'published_accuracy', fired: true, ppv: interval, prior, corpus } : { basis: 'published_accuracy', fired: false, missRate: interval, prior, corpus };
+      return fired
+        ? { basis: 'published_accuracy', fired: true, ppv: interval, prior: stated, corpus }
+        : { basis: 'published_accuracy', fired: false, missRate: interval, prior: stated, corpus };
     }
     case 'judgment':
       return { basis: 'unmeasured', why: 'judge accuracy is measurable on a key you supply (npm run proof:judge) and not yet published' };

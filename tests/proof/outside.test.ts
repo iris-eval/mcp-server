@@ -8,6 +8,8 @@ import {
   OUTSIDE_AGENTS_DIR,
   OUTSIDE_DIR,
   OUTSIDE_RESULTS_JSON,
+  SHORT_HISTORY_DRAWS,
+  SHORT_HISTORY_SIZES,
   UNUSUAL_ACTION_FAMILY,
   carriesPlantedValue,
   historyFor,
@@ -27,7 +29,8 @@ import {
 import { OUTSIDE_MIN_PER_CLASS, validateCorpusFile, type CorpusFile } from '../../proof/lib/corpus.js';
 import { defaultConfig } from '../../src/config/defaults.js';
 import { publishedAccuracyFor, publishedProvenance } from '../../src/eval/accuracy.js';
-import { CASE_HISTORY_WINDOW } from '../../src/eval/case-history.js';
+import { CASE_HISTORY_MIN, CASE_HISTORY_WEIGH_MIN, CASE_HISTORY_WINDOW, caseRunOf } from '../../src/eval/case-history.js';
+import { noUnusualAction } from '../../src/eval/rules/case-history.js';
 import { EvalEngine } from '../../src/eval/engine.js';
 import { wilson } from '../../src/eval/stats.js';
 import { ATTACK, COMMIT, GROUPS_PER_HALF, MIN_ATTACKED, SEED, splitOf } from '../../proof/tools/sample-agentdojo.mjs';
@@ -271,6 +274,85 @@ describe('the second sample: one agent\'s own runs of a task', () => {
       }
     }
   });
+
+  /*
+   * Where the unusual action is weighed is a statement about this sample,
+   * made in the rule's own source, the docs and the report: from the fewest
+   * earlier runs any measured run was read against, because with fewer it
+   * fires more often where nothing was wrong. Held here against the
+   * committed results, so the constant, the sample and the sentence cannot
+   * come apart.
+   */
+  it('the unusual action is weighed from the fewest earlier runs any measured run had, and with fewer it fires more often where nothing was wrong', () => {
+    const { ownHistory } = JSON.parse(readFileSync(join(root, OUTSIDE_RESULTS_JSON), 'utf-8')) as { ownHistory: OwnHistoryResults };
+    expect(ownHistory.others.min).toBe(CASE_HISTORY_WEIGH_MIN);
+    const all = ownHistory.readings.find((r) => r.history === 'all')!;
+    // Read against all the others, no run falls below it: the verdict rows of that reading are weighed on every run.
+    expect(all.belowWeighed.map((b) => b.runs)).toEqual([0, 0]);
+    // Read against fewer of them, some do, and the report says how many.
+    const clean = ownHistory.readings.find((r) => r.history === 'no_attack_succeeded')!;
+    for (const b of clean.belowWeighed) expect(b.of, b.half).toBe(manifest.runs.filter((r) => r.split === b.half).length);
+    expect(clean.belowWeighed.reduce((sum, b) => sum + b.runs, 0)).toBeGreaterThan(0);
+
+    expect(ownHistory.shortHistory.draws).toBe(SHORT_HISTORY_DRAWS);
+    for (const half of ['dev', 'test'] as const) {
+      const rows = ownHistory.shortHistory.rows.filter((r) => r.half === half);
+      expect(rows.map((r) => r.size)).toEqual([...SHORT_HISTORY_SIZES]);
+      const full = all.rows.find((r) => r.rule === 'no_unusual_action' && r.half === half)!;
+      const none = { k: full.attackFailed.k + full.noAttack.k, n: full.attackFailed.n + full.noAttack.n };
+      for (const r of rows) {
+        expect(r.noAttackSucceeded.n, `${half} ${r.size}`).toBe(none.n);
+        expect(r.attackSucceeded.n, `${half} ${r.size}`).toBe(full.attackSucceeded.n);
+        expect(r.noAttackSucceeded.min, `${half} ${r.size}`).toBeLessThanOrEqual(r.noAttackSucceeded.max);
+      }
+      // The share of fires where no attack succeeded falls as more earlier runs are read, down to the rate read against them all.
+      const shares = [...rows.map((r) => r.noAttackSucceeded.fired / (r.noAttackSucceeded.n * SHORT_HISTORY_DRAWS)), none.k / none.n];
+      for (let i = 1; i < shares.length; i += 1) expect(shares[i], `${half}: size ${i}`).toBeLessThanOrEqual(shares[i - 1]);
+      // At three earlier runs it is more than twice the rate read against all of them, which is why three is reported and not weighed.
+      const atMin = rows.find((r) => r.size === CASE_HISTORY_MIN)!;
+      expect(atMin.noAttackSucceeded.fired / (atMin.noAttackSucceeded.n * SHORT_HISTORY_DRAWS), half).toBeGreaterThan((2 * none.k) / none.n);
+    }
+  });
+
+  /*
+   * The rule counts only tools known to act. It counted a name nothing
+   * places as an action when both halves of this sample were first read,
+   * so the report says the change moved no count here. Held run by run: the
+   * catalogue's word places a tool, so with the unplaced name marked as
+   * acting the rule reads it as it did then, and every run of the sample
+   * must come out the same either way, under both histories.
+   */
+  it('one of the tools these runs call is a name nothing places, and counting it as an action changes no run\'s result', () => {
+    const { ownHistory } = JSON.parse(readFileSync(join(root, OUTSIDE_RESULTS_JSON), 'utf-8')) as { ownHistory: OwnHistoryResults };
+    const v = ownHistory.vocabulary;
+    expect(v.acts + v.reads + v.unplaced.length).toBe(v.tools);
+    expect([v.tools, v.unplaced]).toEqual([63, ['check_restaurant_opening_hours']]);
+    const asActing = v.unplaced.map((name) => ({ name, annotations: { readOnlyHint: false } }));
+    const loaded = loadOutsideRuns(root, manifest, OUTSIDE_AGENTS_DIR);
+    const called = new Map(loaded.map(({ entry, run }) => [entry.path, (contextOfRun(run).toolCalls ?? []).map((c) => ({ tool_name: c.tool_name }))]));
+    type Row = { path: string; set: 'attacked' | 'benign'; attackSucceeded: boolean | null };
+    const rowsOf = new Map<string, Row[]>();
+    for (const { entry } of loaded) {
+      rowsOf.set(entry.group, [...(rowsOf.get(entry.group) ?? []), { path: entry.path, set: entry.set, attackSucceeded: entry.set === 'attacked' ? entry.attackSucceeded === true : null }]);
+    }
+    let read = 0;
+    let calledIt = 0;
+    for (const history of ['all', 'no_attack_succeeded'] as const) {
+      for (const { entry } of loaded) {
+        const group = rowsOf.get(entry.group)!;
+        const caseHistory = historyFor(history, group.find((r) => r.path === entry.path)!, group).map((o) => caseRunOf({ tool_calls: called.get(o.path)! }));
+        const context = { output: '', toolCalls: called.get(entry.path)!, caseHistory };
+        const placed = noUnusualAction.evaluate(context);
+        const counted = noUnusualAction.evaluate({ ...context, tools: asActing });
+        expect([counted.skipped === true, counted.passed], `${history} ${entry.path}`).toEqual([placed.skipped === true, placed.passed]);
+        read += 1;
+        if (history === 'all' && called.get(entry.path)!.some((c) => v.unplaced.includes(c.tool_name))) calledIt += 1;
+      }
+    }
+    expect(read).toBe(2 * manifest.runs.length);
+    // The tool is in real use here, so the equality above is not vacuous.
+    expect(calledIt).toBeGreaterThan(0);
+  });
 });
 
 describe('a run read against its own agent\'s runs, and nobody else\'s', () => {
@@ -343,8 +425,24 @@ describe('a run read against its own agent\'s runs, and nobody else\'s', () => {
 
       expect(own.sample).toMatchObject({ groups: 2, runs: 12, attackSucceeded: 0, attackFailed: 10, noAttack: 2, tasks: 1, pipelines: 2 });
       // Each run is read against the five other runs of its own group.
-      expect(own.others).toEqual({ max: 5, median: 5 });
+      expect(own.others).toEqual({ min: 5, max: 5, median: 5 });
+      // The two tools these runs call, placed by their names: one acts, one reads, none is left unplaced.
+      expect(own.vocabulary).toEqual({ tools: 2, acts: 1, reads: 1, unplaced: [] });
       const all = own.readings.find((r) => r.history === 'all')!;
+      // Five earlier runs is where the unusual action is weighed, so no run of either reading falls below it.
+      for (const reading of own.readings) expect(reading.belowWeighed.find((b) => b.half === 'dev'), reading.history).toEqual({ half: 'dev', runs: 0, of: 12 });
+      /*
+       * At shorter histories: each run read against three, four, five and
+       * seven of its other runs, drawn at random. Whichever are drawn, none
+       * of the careful agent's other runs sent money and every one of the
+       * loose agent's did, so each draw holds the one fire, at every size.
+       */
+      expect(own.shortHistory.draws).toBe(SHORT_HISTORY_DRAWS);
+      expect(own.shortHistory.rows.filter((r) => r.half === 'dev').map((r) => r.size)).toEqual([...SHORT_HISTORY_SIZES]);
+      for (const r of own.shortHistory.rows.filter((x) => x.half === 'dev')) {
+        expect(r.noAttackSucceeded, `read against ${r.size}`).toEqual({ n: 12, fired: SHORT_HISTORY_DRAWS, min: 1, max: 1 });
+        expect(r.attackSucceeded, `read against ${r.size}`).toEqual({ n: 0, fired: 0, min: 0, max: 0 });
+      }
       const unusual = all.rows.find((r) => r.rule === 'no_unusual_action' && r.half === 'dev')!;
       // One fire: the careful agent's departing run. The loose agent's sends are its usual way.
       expect(unusual.attackFailed).toMatchObject({ k: 1, n: 10, tasks: 2 });

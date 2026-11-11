@@ -18,7 +18,7 @@ import { LOCAL_TENANT } from '../../src/types/tenant.js';
  * read.
  */
 
-type RuleRow = { ruleName: string; state: string; passed: boolean; skipped?: boolean; skipReason?: string; message: string };
+type RuleRow = { ruleName: string; state: string; passed: boolean; skipped?: boolean; skipReason?: string; message: string; role?: string; advisory?: boolean; advisoryWhy?: string };
 const RULES = ['no_unusual_action', 'no_dropped_step'];
 
 describe('the case-history rules, through the doors', () => {
@@ -78,18 +78,19 @@ describe('the case-history rules, through the doors', () => {
   });
 
   /*
-   * Through the real doors: the unusual action is weighed, so the run that
-   * passes under a case of its own fails under the case whose earlier runs
-   * never took the action. The next run that takes it passes again, because
-   * the action is then in the case's history.
+   * Through the real doors: the unusual action is weighed once the case has
+   * five earlier runs, so the run that passes under a case of its own fails
+   * under the case whose earlier runs never took the action. The next run
+   * that takes it passes again, because the action is then in the case's
+   * history.
    */
   it('an action the case never took fails the verdict that passes without a history, once, and the result reads back the same', async () => {
-    for (const run of ['nightly-1', 'nightly-2', 'nightly-3']) await logRun(run);
+    for (const run of ['nightly-1', 'nightly-2', 'nightly-3', 'nightly-4', 'nightly-5']) await logRun(run);
     const odd = ['get_balance', 'send_money', 'delete_account'];
-    const stored = await logRun('nightly-4', odd);
+    const stored = await logRun('nightly-6', odd);
     const withHistory = evaluationOf(stored);
     // The same agent, ask, answer and calls under a case of its own, so with no earlier run.
-    const alone = evaluationOf(await logRun('nightly-4', odd, { case_key: 'a-case-run-once' }));
+    const alone = evaluationOf(await logRun('nightly-6', odd, { case_key: 'a-case-run-once' }));
     expect(rows(alone as unknown as Record<string, unknown>).get('no_unusual_action')?.state).toBe('not_checked');
     expect([alone.passed, alone.verdict.state, alone.verdict.basis]).toEqual([true, 'pass', 'clean']);
     expect(rows(withHistory as unknown as Record<string, unknown>).get('no_unusual_action')).toMatchObject({ state: 'fail', kind: 'inference', role: 'risk' });
@@ -99,9 +100,33 @@ describe('the case-history rules, through the doors', () => {
     const [readBack] = await storage.getEvalsByTraceId(LOCAL_TENANT, traceId);
     expect([readBack.passed, readBack.verdict?.state, readBack.verdict?.basis]).toEqual([false, 'fail', 'risk_over_loss']);
     // The action is in the history now: the next run that takes it is not a departure.
-    const next = evaluationOf(await logRun('nightly-5', odd));
+    const next = evaluationOf(await logRun('nightly-7', odd));
     expect(rows(next as unknown as Record<string, unknown>).get('no_unusual_action')?.state).toBe('pass');
     expect(next.passed).toBe(true);
+  });
+
+  /*
+   * Below five earlier runs the same action is reported and not weighed:
+   * the result says what it found and why it takes no part, the verdict is
+   * the one the run gets with no history, and the stored row reads back the
+   * same way, because the reason is on the row.
+   */
+  it('with three earlier runs the action is reported with the reason it takes no part, and the verdict is not failed by it, as given or read back', async () => {
+    for (const run of ['nightly-1', 'nightly-2', 'nightly-3']) await logRun(run);
+    const stored = await logRun('nightly-4', ['get_balance', 'send_money', 'delete_account']);
+    const fourth = evaluationOf(stored);
+    const why = 'the case has 3 earlier runs by this agent, and the rule is weighed in the verdict from 5';
+    expect(rows(fourth as unknown as Record<string, unknown>).get('no_unusual_action')).toMatchObject({
+      state: 'fail',
+      message: 'Unusual action for this case: delete_account, called in none of its 3 earlier runs',
+      role: 'advisory',
+      advisory: true,
+      advisoryWhy: why,
+    });
+    expect([fourth.passed, fourth.verdict.state, fourth.verdict.basis]).toEqual([true, 'pass', 'clean']);
+    const [readBack] = await storage.getEvalsByTraceId(LOCAL_TENANT, (stored as { trace_id: string }).trace_id);
+    expect([readBack.passed, readBack.verdict?.state, readBack.verdict?.basis]).toEqual([true, 'pass', 'clean']);
+    expect(readBack.rule_results.find((r) => r.ruleName === 'no_unusual_action')).toMatchObject({ advisory: true, role: 'advisory', advisoryWhy: why });
   });
 
   it('a dropped step decides nothing: the same run, with a history that fires it and with none, gets the same verdict', async () => {

@@ -23,6 +23,8 @@ const corpusDir = resolve(root, 'proof', 'corpus');
 interface Case { input?: string; output: string; context?: Record<string, unknown>; label: string }
 
 function expectedRole(r: EvalRuleResult, defaultsGate: boolean): string {
+  // A result that reports only, by the deployment's list or for the rule's own reason, is in no layer.
+  if (r.advisory === true) return 'advisory';
   if (r.kind === 'judgment') return 'gate';
   if (r.kind === 'policy') return decides(r, defaultsGate) ? 'gate' : 'advisory';
   if (r.critical === true) return 'veto';
@@ -54,6 +56,26 @@ describe('role matches the composer', () => {
     }
     expect(checked).toBeGreaterThan(100);
     expect([...seen].sort()).toEqual(['advisory', 'gate', 'risk', 'veto']); // every role the schema advertises is produced by something real
+  }, 30_000);
+
+  it('a result is advisory by its own flag only when the deployment listed the rule or the rule gave a reason', async () => {
+    // At the shipped configuration nothing is listed, so every advisory flag on a corpus result must come with the rule's own reason.
+    let flagged = 0;
+    for (const f of files) {
+      const family = JSON.parse(readFileSync(resolve(corpusDir, f), 'utf8')) as { cases?: Case[] };
+      for (const c of (family.cases ?? []).slice(0, 6)) {
+        const ctx = c.context ?? {};
+        const result = await engine.evaluateAll({ output: c.output, input: c.input ?? (ctx.input as string | undefined), ...(ctx as object) } as never);
+        for (const r of result.rule_results) {
+          if (r.advisory !== true) continue;
+          flagged++;
+          expect(typeof r.advisoryWhy, `${f} ${r.ruleName}`).toBe('string');
+          expect(r.critical, `${f} ${r.ruleName}`).not.toBe(true);
+        }
+      }
+    }
+    // The dropped-step family holds cases with three and four earlier runs, where no_unusual_action reports and is not weighed.
+    expect(flagged).toBeGreaterThan(0);
   }, 30_000);
 
   it('a configured policy is a gate, and the role says so', async () => {

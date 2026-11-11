@@ -925,7 +925,7 @@
         "question": "Q8",
         "status": "partial",
         "subject": "S3",
-        "summary": "A run's calls are compared with what the same agent's earlier runs of its own case did, as each trace is evaluated: no_unusual_action fails when the run called a tool that may act and none of the case's twenty most recent earlier runs called it, and no_dropped_step when it never called a tool every one of them called. That says the run did something different, by which tools it called and not by arguments or order, and not whether different is better or worse. Both are measured on agent runs Iris did not write, each read against the same agent's other runs of its task, and the two came out differently: no_unusual_action is an inference whose fire is weighed in the verdict by the error rates it showed there (eval.advisoryRules sets it to report only), and no_dropped_step is a measurement that reports and, at the shipped configuration, decides no verdict. They need three earlier runs stored with the trace's case. Between two runs, a trajectory regression also shows as its rule failing more often, reported per rule, worst first."
+        "summary": "A run's calls are compared with what the same agent's earlier runs of its own case did, as each trace is evaluated: no_unusual_action fails when the run called a tool known to act and none of the case's twenty most recent earlier runs called it, and no_dropped_step when it never called a tool every one of them called. That says the run did something different, by which tools it called and not by arguments or order, and not whether different is better or worse. Both are measured on agent runs Iris did not write, each read against the same agent's other runs of its task, and the two came out differently: no_unusual_action is an inference whose fire is weighed in the verdict by the error rates it showed there (eval.advisoryRules sets it to report only), and no_dropped_step is a measurement that reports and, at the shipped configuration, decides no verdict. They need three earlier runs stored with the trace's case, and no_unusual_action is weighed in the verdict from five. Between two runs, a trajectory regression also shows as its rule failing more often, reported per rule, worst first."
       },
       {
         "evidence": [
@@ -5304,13 +5304,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "e42b43d5330f"
+        "compositeVersion": "3e9ea8853a75"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "56dab6cc7fe3",
+        "corpusVersion": "82bcccd6cc06",
         "customCorpusVersion": "506945ab966b"
       }
     },
@@ -5323,8 +5323,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-11-11T20:16:07.827Z",
-  "generatedFromCommit": "20c83865",
+  "generatedAt": "2026-11-11T22:37:33.936Z",
+  "generatedFromCommit": "d4bd6707",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5412,14 +5412,14 @@
     ]
   },
   "proof": {
-    "commit": "4bd614bf",
+    "commit": "d4bd6707",
     "composite": {
-      "compositeVersion": "e42b43d5330f",
+      "compositeVersion": "3e9ea8853a75",
       "confidence": {
         "changed": {
           "of": 112,
           "toDecisive": 0,
-          "toMarginal": 80
+          "toMarginal": 79
         },
         "intervalOnly": {
           "decisive": {
@@ -5435,23 +5435,23 @@
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.3006,
-                0.9544
+                0.4385,
+                1
               ],
               "k": 3,
-              "n": 4,
-              "patterns": 3,
-              "rate": 0.75
+              "n": 3,
+              "patterns": 2,
+              "rate": 1
             },
             "test": {
               "ci95": [
-                0.3873,
-                0.7674
+                0.4088,
+                0.7925
               ],
               "k": 13,
-              "n": 22,
-              "patterns": 9,
-              "rate": 0.5909
+              "n": 21,
+              "patterns": 8,
+              "rate": 0.619
             }
           },
           "marginal": {
@@ -5467,23 +5467,23 @@
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.2065,
-                1
+                0.0945,
+                0.9055
               ],
               "k": 1,
-              "n": 1,
-              "patterns": 1,
-              "rate": 1
+              "n": 2,
+              "patterns": 2,
+              "rate": 0.5
             },
             "test": {
               "ci95": [
-                0.4093,
-                0.9285
+                0.3542,
+                0.8794
               ],
               "k": 6,
-              "n": 8,
-              "patterns": 5,
-              "rate": 0.75
+              "n": 9,
+              "patterns": 6,
+              "rate": 0.6667
             }
           }
         },
@@ -5638,14 +5638,14 @@
               "to": 1
             }
           ],
-          "compositeVersion": "e42b43d5330f",
+          "compositeVersion": "3e9ea8853a75",
           "prior": 0.5,
           "priorMode": "per-output",
           "split": "dev",
-          "version": "c697c6222f4b"
+          "version": "b7f7ea78386c"
         }
       },
-      "corpusVersion": "56dab6cc7fe3",
+      "corpusVersion": "82bcccd6cc06",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -7140,7 +7140,7 @@
       },
       "version": "0.21.0"
     },
-    "corpusVersion": "56dab6cc7fe3",
+    "corpusVersion": "82bcccd6cc06",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -7765,7 +7765,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-11-11T20:12:54.788Z",
+    "generatedAt": "2026-11-11T22:36:56.479Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7784,8 +7784,8 @@
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
       "n": 1349,
-      "p50Ms": 1.356,
-      "p95Ms": 7.629
+      "p50Ms": 0.849,
+      "p95Ms": 4.941
     },
     "method": {
       "ci": "wilson-95",
