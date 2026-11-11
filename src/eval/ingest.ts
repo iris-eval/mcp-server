@@ -19,11 +19,13 @@ import { toEvaluationResponse } from './response.js';
 import { historyBefore } from './decision-moment.js';
 import type { IStorageAdapter } from '../types/query.js';
 import type { Trace } from '../types/trace.js';
-import type { EvalResult, EvalType } from '../types/eval.js';
+import type { CaseRun, EvalResult, EvalType } from '../types/eval.js';
 import type { TenantId } from '../types/tenant.js';
 import { costContextOf } from './cost-basis.js';
 import { recordOfTrace } from './evidence.js';
 import type { JudgeRequest } from './llm-judge/budget.js';
+import { CASE_HISTORY_WINDOW } from './case-history.js';
+import { resolveCaseKey } from './case-key.js';
 
 export type IngestEvalType = EvalType | 'all';
 
@@ -66,6 +68,21 @@ export async function costHistoryFor(storage: IStorageAdapter, tenantId: TenantI
 }
 
 /**
+ * The earlier runs of a stored trace's case, as the case-history rules read
+ * them (src/eval/case-history.ts): what each called and the specifics its
+ * answer carried, newest first, from the short rows the store keeps beside
+ * each trace. The case is the one the trace was stored under, the caller's
+ * key or the one derived from its input; undefined when it has neither,
+ * because then there is no case to have a history.
+ */
+export async function caseHistoryFor(storage: IStorageAdapter, tenantId: TenantId, trace: Pick<Trace, 'trace_id' | 'timestamp' | 'case_key' | 'input'>): Promise<readonly CaseRun[] | undefined> {
+  const caseKey = resolveCaseKey(trace.case_key, trace.input);
+  if (caseKey === null) return undefined;
+  const rows = await storage.getCaseHistory(tenantId, caseKey, { traceId: trace.trace_id, timestamp: trace.timestamp }, CASE_HISTORY_WINDOW);
+  return rows.map((row) => ({ traceId: row.traceId, tools: row.tools, specifics: row.specifics }));
+}
+
+/**
  * Evaluate a trace that has just been stored, and store the evaluation
  * linked to it. The trace must carry an output — the callers check that
  * before storing anything, so a refusal never leaves a half-done write.
@@ -83,12 +100,15 @@ export async function evaluateStoredTrace(
    * moment classifier does. The trace just stored is excluded by id.
    */
   const costHistory = await costHistoryFor(storage, tenantId, trace);
+  // And the earlier runs of its case, for the rules that read a run against them.
+  const caseHistory = await caseHistoryFor(storage, tenantId, trace);
   const context = {
     output: trace.output,
     input: trace.input,
     // Reported or estimated at ingest; the cost rules say which.
     ...costContextOf(trace),
     costHistory,
+    caseHistory,
     tokenUsage: trace.token_usage,
     // What the agent DID, as this same request stored it. Whole-source
     // precedence in the step layer means spans are only reached when

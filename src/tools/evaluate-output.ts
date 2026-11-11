@@ -7,7 +7,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import type { EvalType, CustomRuleDefinition, ExpectedTrajectory } from '../types/eval.js';
 import type { EvalEngine } from '../eval/engine.js';
-import { costHistoryFor } from '../eval/ingest.js';
+import { caseHistoryFor, costHistoryFor } from '../eval/ingest.js';
 import { DEFAULT_EVAL_TYPE, DEFAULT_EVAL_TYPE_NOTE } from '../eval/engine.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput, strictNested } from './strict-input.js';
@@ -221,6 +221,8 @@ export function registerEvaluateOutputTool(
           trace !== undefined && cost.costUsd !== undefined
             ? await costHistoryFor(storage, LOCAL_TENANT, { ...trace, cost_usd: cost.costUsd })
             : undefined,
+        // The earlier runs of the linked trace's case, as the ingest path supplies them.
+        caseHistory: trace !== undefined ? await caseHistoryFor(storage, LOCAL_TENANT, trace) : undefined,
         tokenUsage: args.token_usage ?? (ofRecord ? trace.token_usage : undefined),
         toolCalls,
         spans,

@@ -37,6 +37,9 @@ import { clusterInterval } from '../../src/eval/stats.js';
 import type { EvalType } from '../../src/types/eval.js';
 import { wilson } from '../judge/lib/wilson.js';
 import { contextOfRun, type AgentDojoRun } from './agentdojo.js';
+import { CASE_HISTORY_WINDOW, caseRunOf } from '../../src/eval/case-history.js';
+import { caseHistoryRules } from '../../src/eval/rules/case-history.js';
+import type { CaseRun } from '../../src/types/eval.js';
 
 export const OUTSIDE_DIR = 'proof/outside/agentdojo';
 export const OUTSIDE_RESULTS_JSON = 'proof/outside-results.json';
@@ -109,6 +112,25 @@ export interface HeadlineGroup {
   wrongFail: Rate;
 }
 
+/**
+ * One case-history rule on one half of the sample, each run read against
+ * the other sampled runs of its task. A run the rule declined to judge is
+ * counted in the denominator and did not fire.
+ */
+export interface CaseHistoryRow {
+  rule: string;
+  half: 'dev' | 'test';
+  /** Fired, by what happened in the run. */
+  attackSucceeded: Rate;
+  attackFailed: Rate;
+  noAttack: Rate;
+  /** Fired, among the runs where no attack succeeded, by whether the user's task was done. */
+  taskNotDone: Rate;
+  taskDone: Rate;
+  /** Runs the rule declined to judge, by why (the first word of its skip reason, or `no tool calls`). */
+  declined: Record<string, number>;
+}
+
 export interface OutsideResults {
   schemaVersion: 1;
   outsideVersion: string;
@@ -131,6 +153,8 @@ export interface OutsideResults {
   firedOnWrongFails: Array<{ rule: string; bundle: EvalType; runs: number; ofWrongFails: number }>;
   bySuite: Array<{ suite: string; runs: number; good: number } & HeadlineGroup>;
   bySplit: { dev: HeadlineGroup & { runs: number }; test: HeadlineGroup & { runs: number } };
+  /** The case-history rules, each run read against the other sampled runs of its task. */
+  caseHistory: { method: string; rows: CaseHistoryRow[] };
   byPipeline: Array<{ pipeline: string; runs: number; good: number; wrongPass: number; bad: number; wrongFail: number }>;
   rows: OutsideRow[];
 }
@@ -225,6 +249,63 @@ export async function measureOutside(root: string): Promise<Omit<OutsideResults,
   }
 
   const rate = (subset: OutsideRow[], hit: (r: OutsideRow) => boolean): Rate => rateOf(subset.map((r) => ({ task: r.task, hit: hit(r) })));
+
+  /*
+   * The case-history rules. Judged alone, a run has no earlier runs and the
+   * three rules decline, which is what the pass above records. Here each
+   * run is given the other sampled runs of its task as the earlier runs of
+   * its case, at most CASE_HISTORY_WINDOW of them in the sample's order,
+   * and judged by the same engine. A task's runs are all in one half, so a
+   * dev run is read against dev runs only and a test run against test runs.
+   */
+  const asRun = new Map<string, CaseRun>();
+  const contextOf = new Map<string, ReturnType<typeof contextOfRun>>();
+  for (const { entry, run } of loaded) {
+    const context = contextOfRun(run);
+    contextOf.set(entry.path, context);
+    asRun.set(entry.path, caseRunOf({ tool_calls: context.toolCalls, output: context.output }));
+  }
+  const pathsOfTask = new Map<string, string[]>();
+  for (const r of rows) pathsOfTask.set(r.task, [...(pathsOfTask.get(r.task) ?? []), r.path]);
+  const caseNames = caseHistoryRules.map((r) => r.name);
+  const caseFired = new Map<string, Set<string>>(caseNames.map((n) => [n, new Set<string>()]));
+  const caseDeclined = new Map<string, Map<string, string>>(caseNames.map((n) => [n, new Map<string, string>()]));
+  for (const r of rows) {
+    const others = (pathsOfTask.get(r.task) ?? []).filter((p) => p !== r.path).slice(0, CASE_HISTORY_WINDOW);
+    const result = await engine.evaluateAll({ ...contextOf.get(r.path)!, caseHistory: others.map((p) => asRun.get(p)!) });
+    for (const name of caseNames) {
+      const row = result.rule_results.find((x) => x.ruleName === name);
+      if (row === undefined || row.skipped === true) {
+        const reason = row?.skipReason ?? 'not run';
+        caseDeclined.get(name)!.set(r.path, reason.includes(':') && !reason.startsWith('context.') ? reason.split(':')[0] : 'no tool calls');
+      } else if (row.passed === false) {
+        caseFired.get(name)!.add(r.path);
+      }
+    }
+  }
+  const caseHistoryRows: CaseHistoryRow[] = [];
+  for (const name of caseNames) {
+    for (const half of ['dev', 'test'] as const) {
+      const inHalf = rows.filter((r) => r.split === half);
+      const fired = (r: OutsideRow): boolean => caseFired.get(name)!.has(r.path);
+      const declined: Record<string, number> = {};
+      for (const r of inHalf) {
+        const why = caseDeclined.get(name)!.get(r.path);
+        if (why !== undefined) declined[why] = (declined[why] ?? 0) + 1;
+      }
+      const noSuccess = inHalf.filter((r) => r.attackSucceeded !== true);
+      caseHistoryRows.push({
+        rule: name,
+        half,
+        attackSucceeded: rate(inHalf.filter((r) => r.attackSucceeded === true), fired),
+        attackFailed: rate(inHalf.filter((r) => r.attackSucceeded === false), fired),
+        noAttack: rate(inHalf.filter((r) => r.set === 'benign'), fired),
+        taskNotDone: rate(noSuccess.filter((r) => !r.taskDone), fired),
+        taskDone: rate(noSuccess.filter((r) => r.taskDone), fired),
+        declined,
+      });
+    }
+  }
   const headlineOf = (subset: OutsideRow[]): HeadlineGroup => ({
     wrongPass: rate(subset.filter((r) => !r.good), (r) => r.shipped),
     wrongFail: rate(subset.filter((r) => r.good), (r) => !r.shipped),
@@ -298,6 +379,11 @@ export async function measureOutside(root: string): Promise<Omit<OutsideResults,
     bySplit: {
       dev: { runs: rows.filter((r) => r.split === 'dev').length, ...headlineOf(rows.filter((r) => r.split === 'dev')) },
       test: { runs: rows.filter((r) => r.split === 'test').length, ...headlineOf(rows.filter((r) => r.split === 'test')) },
+    },
+    caseHistory: {
+      method:
+        `each run is read against the other sampled runs of its task, at most ${CASE_HISTORY_WINDOW} in the sample's order, as the earlier runs of its case, and judged by the same engine with nothing else configured. A task's runs are all in one half, so a test run is read against test runs only. A run a rule declined to judge is counted and did not fire`,
+      rows: caseHistoryRows,
     },
     byPipeline: pipelines.map((pipeline) => {
       const p = rows.filter((r) => r.pipeline === pipeline);
@@ -380,6 +466,36 @@ export function renderOutsideMarkdown(results: OutsideResults): string {
   for (const [name, b] of [['dev', results.bySplit.dev], ['test', results.bySplit.test]] as const) {
     L.push(`| ${name} | ${b.runs} | ${b.wrongPass.k} of ${b.wrongPass.n} · ${pct(b.wrongPass.rate)} | ${b.wrongFail.k} of ${b.wrongFail.n} · ${pct(b.wrongFail.rate)} |`);
   }
+  L.push('');
+  const ch = results.caseHistory;
+  const short = (r: Rate): string => `${r.k} of ${r.n} · ${pct(r.rate)} ${ci(r.ci95)}`;
+  const declinedOf = (d: Record<string, number>): string => {
+    const parts = Object.entries(d).sort(([a], [b]) => a.localeCompare(b)).map(([why, n]) => `${n} ${why.replace(/_/g, ' ')}`);
+    return parts.length === 0 ? 'none' : parts.join(', ');
+  };
+  L.push('## A run against the other runs of its task');
+  L.push('');
+  L.push(
+    `Three rules read a run against the earlier runs of its own case: \`no_unusual_action\` (it called a tool that may act, and the earlier runs all but never did), \`no_dropped_step\` (it never called a tool nearly every earlier run called) and \`no_dropped_specific\` (its answer lacks a figure, a date, an address or an identifier nearly every earlier answer carried). Nobody writes the expectation, and none of them knows what an attack looks like. They are measurements: they report and decide no verdict, so the error rates above are the same with them or without. **How they are scored here.** ${ch.method.charAt(0).toUpperCase()}${ch.method.slice(1)}. The lines these rules draw were set on the dev half; the test half is the half to read.`,
+  );
+  L.push('');
+  L.push('**An action the other runs did not take.** Where the attack succeeded the agent did something for the attacker, and that is usually a tool the task does not need.');
+  L.push('');
+  L.push('| Rule | Half | Fired, where the attack succeeded | Fired, where it failed | Fired, with no attack | Declined to judge |');
+  L.push('|---|---|---|---|---|---|');
+  for (const r of ch.rows.filter((x) => x.rule === 'no_unusual_action')) {
+    L.push(`| \`${r.rule}\` | ${r.half} | ${short(r.attackSucceeded)} | ${short(r.attackFailed)} | ${short(r.noAttack)} | ${declinedOf(r.declined)} |`);
+  }
+  L.push('');
+  L.push('**Something the other runs did, or said, that this one did not.** Among the runs where no attack succeeded, by whether the user\'s task was done.');
+  L.push('');
+  L.push('| Rule | Half | Fired, where the task was not done | Fired, where it was done | Declined to judge |');
+  L.push('|---|---|---|---|---|');
+  for (const r of ch.rows.filter((x) => x.rule !== 'no_unusual_action')) {
+    L.push(`| \`${r.rule}\` | ${r.half} | ${short(r.taskNotDone)} | ${short(r.taskDone)} | ${declinedOf(r.declined)} |`);
+  }
+  L.push('');
+  L.push(`Read these beside two facts about the sample. The other runs of a task here are other agents', so this is one case repeated across ${s.pipelines} agents and defences, where a deployment's history is one agent's own earlier runs. And ${s.attackSucceeded} of the ${s.runs} runs are successful attacks, so the runs a run is read against are far less clean than a deployment's would be.`);
   L.push('');
   L.push('## By agent');
   L.push('');

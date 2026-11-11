@@ -22,6 +22,8 @@ const RULE_FILES = [
   'src/eval/rules/tool-choice.ts',
   // says_something lives in its own module and is registered into the completeness bundle.
   'src/eval/rules/says-something.ts',
+  // The case-history rules live in their own module and are registered into the completeness bundle.
+  'src/eval/rules/case-history.ts',
 ];
 
 const CATEGORIES = ['completeness', 'relevance', 'safety', 'cost'];

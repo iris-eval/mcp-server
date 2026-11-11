@@ -254,13 +254,24 @@
         "summary": "Tool outputs are read as grounding material: a file, directory or URL the output cites that neither the ask nor anything the agent read mentions is evidence, with the span. Only locations are judged — a code identifier or a number belongs to the hallucination signals — and the rule declines rather than guesses when a read was truncated."
       },
       {
-        "evidence": [],
+        "evidence": [
+          {
+            "kind": "rule",
+            "name": "no_dropped_specific"
+          },
+          {
+            "kind": "proof",
+            "name": "no_dropped_specific"
+          }
+        ],
         "id": "Q2xS4",
-        "needs": [],
+        "needs": [
+          "output"
+        ],
         "question": "Q2",
-        "status": "gap",
+        "status": "partial",
         "subject": "S4",
-        "summary": "Consistency of claims across repeated runs of one input is not evaluated."
+        "summary": "The specifics the earlier answers to a case agreed on are checked on each new answer: no_dropped_specific fails when the answer lacks a figure, a date, an address or an identifier that three quarters or more of the case's last twenty answers carried, and names its kind and a trace that carries it, never its value. Specifics only: whether two answers' prose claims agree is not read, a specific no earlier answer carried is not flagged, and on agent runs Iris did not write the signal is a weak one."
       },
       {
         "evidence": [],
@@ -584,6 +595,10 @@
           {
             "kind": "proof",
             "name": "ask_coverage"
+          },
+          {
+            "kind": "rule",
+            "name": "no_dropped_step"
           }
         ],
         "id": "Q5xS3",
@@ -594,7 +609,7 @@
         "question": "Q5",
         "status": "partial",
         "subject": "S3",
-        "summary": "A part of the ask the answer never mentions may still have been DONE: ask_coverage (v2, 0.15.0) reads the trajectory and counts a part covered when a tool call the trace shows carries its terms — the same lexical test as the answer, so the trajectory can only add coverage (the rule needs the output and the ask; it reads the trajectory when the trace carries one). Recall-only for the family; what the trajectory does not carry is still unjudged, and the judge template above is the other half."
+        "summary": "A part of the ask the answer never mentions may still have been DONE: ask_coverage (v2, 0.15.0) reads the trajectory and counts a part covered when a tool call the trace shows carries its terms — the same lexical test as the answer, so the trajectory can only add coverage (the rule needs the output and the ask; it reads the trajectory when the trace carries one). Recall-only for the family; what the trajectory does not carry is still unjudged, and the judge template above is the other half. With earlier runs of the case to read against, no_dropped_step reports a run that never called a tool nearly every earlier run called."
       },
       {
         "evidence": [
@@ -898,16 +913,34 @@
       {
         "evidence": [
           {
+            "kind": "rule",
+            "name": "no_unusual_action"
+          },
+          {
+            "kind": "rule",
+            "name": "no_dropped_step"
+          },
+          {
+            "kind": "proof",
+            "name": "no_unusual_action"
+          },
+          {
+            "kind": "proof",
+            "name": "no_dropped_step"
+          },
+          {
             "kind": "tool",
             "name": "compare_runs"
           }
         ],
         "id": "Q8xS3",
-        "needs": [],
+        "needs": [
+          "tool_calls"
+        ],
         "question": "Q8",
-        "status": "partial",
+        "status": "has",
         "subject": "S3",
-        "summary": "A trajectory regression shows as its rule failing more often between two runs, reported per rule, worst first, once traces are logged with tool calls and a run id. The trajectories themselves are not compared step by step."
+        "summary": "A run's calls are compared with what the earlier runs of its own case did, as each trace is evaluated: no_unusual_action fails when the run called a tool that may act and the earlier runs all but never did, and no_dropped_step when it never called a tool nearly every earlier run called. Both read the case's last twenty runs, by which tools were called and not by arguments or order; they report and never decide, and are measured on agent runs Iris did not write, each read against the other runs of its task. Between two runs, a trajectory regression also shows as its rule failing more often, reported per rule, worst first."
       },
       {
         "evidence": [
@@ -1245,8 +1278,8 @@
       }
     ],
     "counts": {
-      "gap": 4,
-      "has": 34,
+      "gap": 3,
+      "has": 35,
       "n/a": 4,
       "partial": 18
     },
@@ -1499,7 +1532,7 @@
     "version": 1
   },
   "evalRules": {
-    "builtInCount": 26,
+    "builtInCount": 29,
     "categories": [
       "completeness",
       "relevance",
@@ -1533,6 +1566,8 @@
       "maxSteps",
       "minOutputLength",
       "noBlocklistWords",
+      "noDroppedSpecific",
+      "noDroppedStep",
       "noHallucinationMarkers",
       "noInjectionCompliance",
       "noInjectionPatterns",
@@ -1540,6 +1575,7 @@
       "noSilentToolFailure",
       "noStubOutput",
       "noToolLoop",
+      "noUnusualAction",
       "nonEmptyOutput",
       "saysSomething",
       "sentenceCount",
@@ -1741,6 +1777,32 @@
       },
       {
         "classes": [
+          "incomplete_ask"
+        ],
+        "kind": "measurement",
+        "mechanism": "formula",
+        "name": "no_dropped_specific",
+        "needs": [
+          "output"
+        ],
+        "question": "complete",
+        "version": 1
+      },
+      {
+        "classes": [
+          "wrong_trajectory"
+        ],
+        "kind": "measurement",
+        "mechanism": "formula",
+        "name": "no_dropped_step",
+        "needs": [
+          "tool_calls"
+        ],
+        "question": "task_completed",
+        "version": 1
+      },
+      {
+        "classes": [
           "fabrication"
         ],
         "kind": "inference",
@@ -1829,6 +1891,19 @@
         "kind": "detection",
         "mechanism": "formula",
         "name": "no_tool_loop",
+        "needs": [
+          "tool_calls"
+        ],
+        "question": "tool_use_correct",
+        "version": 1
+      },
+      {
+        "classes": [
+          "wrong_trajectory"
+        ],
+        "kind": "measurement",
+        "mechanism": "formula",
+        "name": "no_unusual_action",
         "needs": [
           "tool_calls"
         ],
@@ -1995,19 +2070,19 @@
           "measuredThreeOrMore": 0
         },
         "rules": {
-          "evaluators": 26,
-          "measuredThreeOrMore": 26
+          "evaluators": 29,
+          "measuredThreeOrMore": 29
         }
       },
       "byStatus": {
-        "measurable": 213,
-        "measured": 145,
-        "n/a": 104,
-        "partial": 22,
-        "stated": 88
+        "measurable": 225,
+        "measured": 157,
+        "n/a": 110,
+        "partial": 25,
+        "stated": 94
       },
-      "evaluators": 44,
-      "measuredThreeOrMore": 36,
+      "evaluators": 47,
+      "measuredThreeOrMore": 39,
       "questions": 13
     },
     "evaluators": [
@@ -2554,6 +2629,210 @@
         "id": "rule:says_something",
         "measured": 4,
         "name": "says_something"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[no_unusual_action]",
+            "note": "precision, recall and F1 on 34 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[no_unusual_action].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[wrong_trajectory]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: measurement, mechanism: formula; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:no_unusual_action",
+        "measured": 4,
+        "name": "no_unusual_action"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[no_dropped_step]",
+            "note": "precision, recall and F1 on 30 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[no_dropped_step].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[wrong_trajectory]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: measurement, mechanism: formula; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:no_dropped_step",
+        "measured": 4,
+        "name": "no_dropped_step"
+      },
+      {
+        "cells": {
+          "q1": {
+            "evidence": "proof/results.json → rules[no_dropped_specific]",
+            "note": "precision, recall and F1 on 31 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "status": "measured"
+          },
+          "q10": {
+            "evidence": "proof/results.json → rules[no_dropped_specific].ppvAt",
+            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
+            "status": "measured"
+          },
+          "q11": {
+            "evidence": "proof/composite-results.json → perClass[incomplete_ask]",
+            "note": "recall on composed cases and the 24 real transcripts where the class is present",
+            "status": "measured"
+          },
+          "q12": {
+            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
+            "status": "measurable"
+          },
+          "q13": {
+            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
+            "status": "measurable"
+          },
+          "q2": {
+            "evidence": "proof/RESULTS.md → misses by case id",
+            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
+            "status": "partial"
+          },
+          "q3": {
+            "evidence": "list_rules → kind: measurement, mechanism: formula; proof/corpus → definition",
+            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
+            "status": "stated"
+          },
+          "q4": {
+            "evidence": "every result since 0.9.0 carries kind and mechanism",
+            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
+            "status": "stated"
+          },
+          "q5": {
+            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
+            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
+            "status": "measurable"
+          },
+          "q6": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q7": {
+            "note": "deterministic",
+            "status": "n/a"
+          },
+          "q8": {
+            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
+            "note": "a pure function of its input; the committed numbers are the code's",
+            "status": "measured"
+          },
+          "q9": {
+            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
+            "status": "measurable"
+          }
+        },
+        "group": "rules",
+        "id": "rule:no_dropped_specific",
+        "measured": 4,
+        "name": "no_dropped_specific"
       },
       {
         "cells": {
@@ -5122,13 +5401,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "e1d72ff465c1"
+        "compositeVersion": "d912234e2f5f"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "7c27824a2b98",
+        "corpusVersion": "89dbea4426ba",
         "customCorpusVersion": "506945ab966b"
       }
     },
@@ -5141,8 +5420,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-10-25T20:34:01.564Z",
-  "generatedFromCommit": "6d0e407e",
+  "generatedAt": "2026-11-11T06:08:33.862Z",
+  "generatedFromCommit": "fb319116",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5230,78 +5509,78 @@
     ]
   },
   "proof": {
-    "commit": "56ed5577",
+    "commit": "fb319116",
     "composite": {
-      "compositeVersion": "e1d72ff465c1",
+      "compositeVersion": "d912234e2f5f",
       "confidence": {
         "changed": {
           "of": 112,
           "toDecisive": 0,
-          "toMarginal": 82
+          "toMarginal": 79
         },
         "intervalOnly": {
           "decisive": {
             "dev": {
               "ci95": [
-                0.604,
-                0.8256
+                0.598,
+                0.8225
               ],
-              "k": 43,
-              "n": 59,
-              "patterns": 13,
-              "rate": 0.7288
+              "k": 42,
+              "n": 58,
+              "patterns": 12,
+              "rate": 0.7241
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.3006,
-                0.9544
+                0.4385,
+                1
               ],
               "k": 3,
-              "n": 4,
-              "patterns": 3,
-              "rate": 0.75
+              "n": 3,
+              "patterns": 2,
+              "rate": 1
             },
             "test": {
               "ci95": [
-                0.4079,
-                0.7784
+                0.4088,
+                0.7925
               ],
-              "k": 14,
-              "n": 23,
-              "patterns": 10,
-              "rate": 0.6087
+              "k": 13,
+              "n": 21,
+              "patterns": 8,
+              "rate": 0.619
             }
           },
           "marginal": {
             "dev": {
               "ci95": [
-                0.5353,
-                0.8745
+                0.551,
+                0.88
               ],
-              "k": 17,
-              "n": 23,
-              "patterns": 7,
-              "rate": 0.7391
+              "k": 18,
+              "n": 24,
+              "patterns": 8,
+              "rate": 0.75
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.2065,
-                1
+                0.0945,
+                0.9055
               ],
               "k": 1,
-              "n": 1,
-              "patterns": 1,
-              "rate": 1
+              "n": 2,
+              "patterns": 2,
+              "rate": 0.5
             },
             "test": {
               "ci95": [
-                0.3589,
-                0.9178
+                0.3542,
+                0.8794
               ],
-              "k": 5,
-              "n": 7,
-              "patterns": 4,
-              "rate": 0.7143
+              "k": 6,
+              "n": 9,
+              "patterns": 6,
+              "rate": 0.6667
             }
           }
         },
@@ -5456,14 +5735,14 @@
               "to": 1
             }
           ],
-          "compositeVersion": "e1d72ff465c1",
+          "compositeVersion": "d912234e2f5f",
           "prior": 0.5,
           "priorMode": "per-output",
           "split": "dev",
-          "version": "235c0aefb6fe"
+          "version": "80d593d7576e"
         }
       },
-      "corpusVersion": "7c27824a2b98",
+      "corpusVersion": "89dbea4426ba",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -6958,7 +7237,7 @@
       },
       "version": "0.21.0"
     },
-    "corpusVersion": "7c27824a2b98",
+    "corpusVersion": "89dbea4426ba",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -7583,7 +7862,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-10-25T20:29:36.870Z",
+    "generatedAt": "2026-11-11T06:05:10.188Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7601,9 +7880,9 @@
         "platform": "win32"
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
-      "n": 1323,
-      "p50Ms": 0.854,
-      "p95Ms": 4.764
+      "n": 1418,
+      "p50Ms": 0.824,
+      "p95Ms": 4.661
     },
     "method": {
       "ci": "wilson-95",
@@ -8013,6 +8292,156 @@
         "skipped": 1,
         "tn": 126,
         "tp": 23
+      },
+      {
+        "category": "completeness",
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.8157,
+            1
+          ],
+          "recall": [
+            0.8157,
+            1
+          ]
+        },
+        "credible95": {
+          "f1": [
+            0.8932,
+            0.9993
+          ],
+          "precision": [
+            0.8711,
+            1
+          ],
+          "recall": [
+            0.8569,
+            1
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "labelBasis": "definition",
+        "n": 34,
+        "name": "no_unusual_action",
+        "negatives": 17,
+        "positives": 17,
+        "ppvAt": {
+          "0.01": 1,
+          "0.05": 1,
+          "0.2": 1,
+          "0.5": 1
+        },
+        "precision": 1,
+        "recall": 1,
+        "skipped": 4,
+        "tn": 17,
+        "tp": 17
+      },
+      {
+        "category": "completeness",
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.7847,
+            1
+          ],
+          "recall": [
+            0.7847,
+            1
+          ]
+        },
+        "credible95": {
+          "f1": [
+            0.8715,
+            0.9994
+          ],
+          "precision": [
+            0.8368,
+            1
+          ],
+          "recall": [
+            0.8423,
+            1
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "labelBasis": "definition",
+        "n": 30,
+        "name": "no_dropped_step",
+        "negatives": 16,
+        "positives": 14,
+        "ppvAt": {
+          "0.01": 1,
+          "0.05": 1,
+          "0.2": 1,
+          "0.5": 1
+        },
+        "precision": 1,
+        "recall": 1,
+        "skipped": 5,
+        "tn": 16,
+        "tp": 14
+      },
+      {
+        "category": "completeness",
+        "ci95": {
+          "f1": [
+            1,
+            1
+          ],
+          "precision": [
+            0.7719,
+            1
+          ],
+          "recall": [
+            0.7719,
+            1
+          ]
+        },
+        "credible95": {
+          "f1": [
+            0.8672,
+            0.9991
+          ],
+          "precision": [
+            0.8192,
+            1
+          ],
+          "recall": [
+            0.8371,
+            1
+          ]
+        },
+        "f1": 1,
+        "fn": 0,
+        "fp": 0,
+        "labelBasis": "definition",
+        "n": 31,
+        "name": "no_dropped_specific",
+        "negatives": 18,
+        "positives": 13,
+        "ppvAt": {
+          "0.01": 1,
+          "0.05": 1,
+          "0.2": 1,
+          "0.5": 1
+        },
+        "precision": 1,
+        "recall": 1,
+        "skipped": 3,
+        "tn": 18,
+        "tp": 13
       },
       {
         "category": "relevance",

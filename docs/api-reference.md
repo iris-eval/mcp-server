@@ -595,7 +595,7 @@ Remove a deployed custom rule by ID. Idempotent-ish: re-deleting a removed rule 
 
 ### delete_trace
 
-Remove a single stored trace by ID. Tenant-scoped: only deletes traces the caller owns. Spans cascade. Every evaluation linked to the trace keeps its verdict, scores, criticality and evidence offsets and loses its text — `output_text`, the expected text and the rule messages are erased in the same transaction and `erased_at` is stamped — so no text from the trace survives in any evaluation. The retention sweep erases the same way for the traces it deletes.
+Remove a single stored trace by ID. Tenant-scoped: only deletes traces the caller owns. Spans cascade, and so does the short row kept beside the trace for the case-history rules (the tools it called and the specifics of its answer). Every evaluation linked to the trace keeps its verdict, scores, criticality and evidence offsets and loses its text — `output_text`, the expected text and the rule messages are erased in the same transaction and `erased_at` is stamped — so no text from the trace survives in any evaluation. The retention sweep erases the same way for the traces it deletes.
 
 **What a delete costs.** The erasure happens inside the call, not later, so the trace's text is out of the file when the call returns (unless a search, or another process, holds the file at that moment: the README's storage section says what happens then). Most of the time goes to taking the trace's words out of the search index and zeroing the pages they freed, so it grows with how many different words the trace holds. At 100,000 stored traces, the median of 20 deletes was about 26 ms for a trace without spans, and 85 to 100 ms for one carrying an agent loop's spans (three model calls and two tool calls). To remove old traces in bulk, set `retention.days`: the sweep deletes in short steps in the background.
 
@@ -1782,7 +1782,7 @@ Dry-run a rule definition before deploying it: replay it against recent stored t
 
 ## Evaluation Rules
 
-Iris ships with 26 built-in rules across 4 categories. Each rule produces a score between 0 and 1, a pass/fail boolean, and a human-readable message. Rules are combined using weighted averaging to produce the final evaluation score. See `src/eval/rules/` for canonical implementation; `tests/integration/rule-coverage-matrix.test.ts` is the regression-protected ground-truth table.
+Iris ships with 29 built-in rules across 4 categories. Each rule produces a score between 0 and 1, a pass/fail boolean, and a human-readable message. Rules are combined using weighted averaging to produce the final evaluation score. See `src/eval/rules/` for canonical implementation; `tests/integration/rule-coverage-matrix.test.ts` is the regression-protected ground-truth table.
 
 ### Completeness Rules
 
@@ -1795,12 +1795,23 @@ Used when `eval_type` is `"completeness"`. These rules check whether the output 
 | `sentence_count` | 0.5 | Number of sentences (split on `.!?`) | `min_sentences` (default: `2`) | `sentences >= min_sentences` |
 | `expected_coverage` | 1.5 | Word overlap between output and expected text | None (50% threshold hardcoded) | `>= 50%` of expected terms found in output |
 | `says_something` | 2.0 | An answer that says nothing, read against what the ask asked for (a detection, measured on its own labelled family) | None | Not a promise or a bare claim of completion in place of the work, a placeholder, an announcement with nothing after it, the ask handed back, or one passage on a loop |
+| `no_unusual_action` | 1.0 | The run's tool calls against the earlier runs of its own case (a measurement: it reports and never decides the verdict) | None | Every tool it called that may act was called by more than a quarter of the earlier runs, by the share `(k + 1) / (m + 2)` |
+| `no_dropped_step` | 1.0 | The same history, read the other way (a measurement) | None | It called every tool that three quarters or more of the earlier runs called |
+| `no_dropped_specific` | 1.0 | The answer's figures, dates, addresses and identifiers against the earlier answers to its own case (a measurement) | None | It carries every specific that three quarters or more of the earlier answers carried |
 
 Both defaults are configurable server-wide via `config.eval.ruleThresholds` (`min_output_length`, `min_sentences`), and per call by passing the same keys in the evaluation's custom config — the call-level value wins.
 
 **`min_output_length` scoring:** If failing, score is `min(length / min_length, 0.99)` -- partial credit proportional to how close the output is.
 
 **`expected_coverage` scoring:** Score equals the fraction of expected terms covered. Skipped (returns score 1) when no expected text is provided.
+
+**`no_unusual_action`, `no_dropped_step` and `no_dropped_specific`** read a run against the earlier runs of its own case, so nobody writes the expectation: a case that has been run before has already said what its runs do and what their answers agree on. The case is the trace's `case_key`, or the key Iris derives from its input. With `k` of the `m` most recent earlier runs (at most 20) doing a thing, its share is `(k + 1) / (m + 2)`: unusual at a quarter or less (no earlier run for `m` of 3 to 5, at most one for 6 to 9), usual at three quarters or more (every earlier run for `m` of 3 to 5, all but one for 6 to 9).
+
+- `no_unusual_action` fails when the run called a tool that may act and the earlier runs all but never called it. A tool the catalogue marks `readOnlyHint`, or whose name says it reads (`get`, `list`, `search`, …), is a look-up: the message names it and it is not counted.
+- `no_dropped_step` fails when the run never called a tool nearly every earlier run called. An explicit empty `tool_calls` is judged as no calls made.
+- `no_dropped_specific` fails when the answer lacks a specific nearly every earlier answer carried: a figure, a date, a time, an email or web address, or an identifier holding a digit, each read in one written form (`1,050.00` is `1050`). It reports the kind, the count and the id of a trace that carries it. The value is never copied into the result, so deleting that trace removes it.
+
+All three are measurements: they report, they move the score, and they never decide the verdict. Each skips as `insufficient_history` below three earlier runs, and when the earlier runs share nothing to hold a run to (`no_usual_way`, `no_usual_step`, `no_usual_specific`). The history is read from the store by `log_trace` with `evaluate`, `POST /api/v1/traces`, `iris-eval ingest`, `evaluate_runs`, and `evaluate_output` with a `trace_id`; an `evaluate_output` call with no `trace_id` has none. It is kept as one short row beside each trace (the tools it called and the specifics of its answer), written when the trace is stored and deleted with it, so a run stored before the release that added it is not read as an earlier run. What a fire is worth is measured on agent runs Iris did not write, each read against the other runs of its task: [`proof/OUTSIDE.md`](../proof/OUTSIDE.md).
 
 **`says_something`** fails an answer that says nothing, read against what the ask asked for, and names the shape in its evidence. Most shapes need an ask for something written (write, draft, summarise, explain, describe, list, translate …) or, when `tool_calls: []` records that no tool was called, an ask to act (an action verb leads it): a question can be answered by "OK", "null" or "Done.", an ask to confirm by "OK", and an ask to act by a report that it was done.
 

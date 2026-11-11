@@ -1,7 +1,7 @@
 # What a verdict does when evidence is taken away, a failure is added, or the output is written another way
 
-Generated 2026-10-25T20:30:13.190Z for v0.21.0 (local generating commit `56ed5577` — branch commits are squashed on merge, so cite the version).
-Composite version `e1d72ff465c1`, 145 labelled cases, the shipped configuration. Reproduce with `npm run proof -- --invariants`; CI runs `npm run proof -- --check --invariants`.
+Generated 2026-11-11T06:05:53.166Z for v0.21.0 (local generating commit `fb319116` — branch commits are squashed on merge, so cite the version).
+Composite version `d912234e2f5f`, 145 labelled cases, the shipped configuration. Reproduce with `npm run proof -- --invariants`; CI runs `npm run proof -- --check --invariants`.
 
 ## Sending less, at the shipped configuration
 

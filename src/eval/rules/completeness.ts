@@ -9,6 +9,7 @@ import { checkArguments, compileToolSchema, type ArgumentCheck } from '../schema
 import { stepScopeNote, stepsOf } from '../steps.js';
 import { skipWithoutTrajectory } from './trajectory.js';
 import { toolSequence } from './expected-trajectory.js';
+import { caseHistoryRules } from './case-history.js';
 import { saysSomething } from './says-something.js';
 
 /** The length floor reads min_output_length, then its alias min_length: its provenance is the key that supplied the number. */
@@ -511,4 +512,4 @@ export const askCoverage: EvalRule = {
   },
 };
 
-export const completenessRules: EvalRule[] = [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments, askCoverage, toolSequence, saysSomething];
+export const completenessRules: EvalRule[] = [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments, askCoverage, toolSequence, saysSomething, ...caseHistoryRules];

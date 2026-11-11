@@ -315,10 +315,21 @@
       "id": "Q2xS4",
       "question": "Q2",
       "subject": "S4",
-      "status": "gap",
-      "summary": "Consistency of claims across repeated runs of one input is not evaluated.",
-      "evidence": [],
-      "needs": []
+      "status": "partial",
+      "summary": "The specifics the earlier answers to a case agreed on are checked on each new answer: no_dropped_specific fails when the answer lacks a figure, a date, an address or an identifier that three quarters or more of the case's last twenty answers carried, and names its kind and a trace that carries it, never its value. Specifics only: whether two answers' prose claims agree is not read, a specific no earlier answer carried is not flagged, and on agent runs Iris did not write the signal is a weak one.",
+      "evidence": [
+        {
+          "kind": "rule",
+          "name": "no_dropped_specific"
+        },
+        {
+          "kind": "proof",
+          "name": "no_dropped_specific"
+        }
+      ],
+      "needs": [
+        "output"
+      ]
     },
     {
       "id": "Q2xS5",
@@ -638,7 +649,7 @@
       "question": "Q5",
       "subject": "S3",
       "status": "partial",
-      "summary": "A part of the ask the answer never mentions may still have been DONE: ask_coverage (v2, 0.15.0) reads the trajectory and counts a part covered when a tool call the trace shows carries its terms — the same lexical test as the answer, so the trajectory can only add coverage (the rule needs the output and the ask; it reads the trajectory when the trace carries one). Recall-only for the family; what the trajectory does not carry is still unjudged, and the judge template above is the other half.",
+      "summary": "A part of the ask the answer never mentions may still have been DONE: ask_coverage (v2, 0.15.0) reads the trajectory and counts a part covered when a tool call the trace shows carries its terms — the same lexical test as the answer, so the trajectory can only add coverage (the rule needs the output and the ask; it reads the trajectory when the trace carries one). Recall-only for the family; what the trajectory does not carry is still unjudged, and the judge template above is the other half. With earlier runs of the case to read against, no_dropped_step reports a run that never called a tool nearly every earlier run called.",
       "evidence": [
         {
           "kind": "rule",
@@ -647,6 +658,10 @@
         {
           "kind": "proof",
           "name": "ask_coverage"
+        },
+        {
+          "kind": "rule",
+          "name": "no_dropped_step"
         }
       ],
       "needs": [
@@ -957,15 +972,33 @@
       "id": "Q8xS3",
       "question": "Q8",
       "subject": "S3",
-      "status": "partial",
-      "summary": "A trajectory regression shows as its rule failing more often between two runs, reported per rule, worst first, once traces are logged with tool calls and a run id. The trajectories themselves are not compared step by step.",
+      "status": "has",
+      "summary": "A run's calls are compared with what the earlier runs of its own case did, as each trace is evaluated: no_unusual_action fails when the run called a tool that may act and the earlier runs all but never did, and no_dropped_step when it never called a tool nearly every earlier run called. Both read the case's last twenty runs, by which tools were called and not by arguments or order; they report and never decide, and are measured on agent runs Iris did not write, each read against the other runs of its task. Between two runs, a trajectory regression also shows as its rule failing more often, reported per rule, worst first.",
       "evidence": [
+        {
+          "kind": "rule",
+          "name": "no_unusual_action"
+        },
+        {
+          "kind": "rule",
+          "name": "no_dropped_step"
+        },
+        {
+          "kind": "proof",
+          "name": "no_unusual_action"
+        },
+        {
+          "kind": "proof",
+          "name": "no_dropped_step"
+        },
         {
           "kind": "tool",
           "name": "compare_runs"
         }
       ],
-      "needs": []
+      "needs": [
+        "tool_calls"
+      ]
     },
     {
       "id": "Q8xS4",
