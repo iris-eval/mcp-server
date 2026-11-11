@@ -6,9 +6,11 @@
  * registry, the effective critical list from the engine, the judge state
  * from this process's environment), so the string is true for this
  * server, not for a documented default. Locked by
- * tests/integration/mcp-protocol.test.ts: non-empty, names only tools and
- * resources that are registered, quotes the effective critical list, and
- * stays under the ceiling. The same template renders the
+ * tests/integration/response-schema.test.ts (non-empty, names only tools
+ * and resources that are registered, quotes the effective critical list,
+ * and stays under the ceiling at the shipped list) and by
+ * tests/unit/instructions.test.ts (every list a config can make builds).
+ * The same template renders the
  * `evaluate-my-agent` prompt so the two cannot drift.
  */
 import type { JudgeState } from './judge-enablement.js';
@@ -19,8 +21,43 @@ import type { RelevanceJudgeState } from './eval/llm-judge/relevance-judge.js';
  * 2,600 until 0.13.0. The WHEN paragraph below is the highest-leverage text
  * in the product — it is what turns a registered server into a used one —
  * and it earns about a hundred tokens on every session.
+ *
+ * The ceiling is on the text this build writes. The critical list quoted in
+ * it is the deployment's (eval.criticalRules adds names to it), so its
+ * length is not this build's to bound, and it is left out of what the
+ * ceiling measures. Until 0.22.0 it was counted, and the text ran close
+ * enough to the ceiling that one promoted rule put it over: a server whose
+ * config promoted a rule refused to start. A list is quoted in full up to
+ * CRITICAL_LIST_MAX_CHARS, and past that cut at a whole name with the rest
+ * counted, so no list can make a server unstartable either.
  */
 export const INSTRUCTIONS_MAX_CHARS = 3000;
+
+/** The most characters of the critical list the instructions quote. */
+export const CRITICAL_LIST_MAX_CHARS = 400;
+
+/**
+ * The effective critical list as the instructions quote it: every name
+ * while they fit in CRITICAL_LIST_MAX_CHARS, else whole names up to there
+ * and a count of the rest. The sentence it sits in says where the
+ * effective list is read.
+ */
+export function criticalListText(names: readonly string[]): string {
+  if (names.length === 0) return 'none';
+  const full = names.join(', ');
+  if (full.length <= CRITICAL_LIST_MAX_CHARS) return full;
+  // Room is kept for the longest count this list could need.
+  const room = CRITICAL_LIST_MAX_CHARS - ` and ${names.length} more`.length;
+  const shown: string[] = [];
+  let length = 0;
+  for (const name of names) {
+    const next = length + (shown.length > 0 ? 2 : 0) + name.length;
+    if (next > room) break;
+    shown.push(name);
+    length = next;
+  }
+  return shown.length === 0 ? `${names.length} rules` : `${shown.join(', ')} and ${names.length - shown.length} more`;
+}
 
 export interface InstructionsInput {
   ruleCount: number;
@@ -41,7 +78,7 @@ export function buildInstructions(i: InstructionsInput): string {
   const judgeHowTo = i.judge.enabled
     ? 'They spend your key, never a shared one; the cap is refused before any spend.'
     : `To enable them, put your own ${JUDGE_KEY_VARS.anthropic} or ${JUDGE_KEY_VARS.openai} in the env block of the iris-eval entry in your MCP client config and restart the session; iris://capabilities carries the full steps.`;
-  const critical = i.critical.length > 0 ? i.critical.join(', ') : 'none';
+  const critical = criticalListText(i.critical);
   const text = [
     'Iris evaluates what an AI agent wrote and what it did. It runs locally, stores traces and verdicts in SQLite, and sends nothing anywhere unless you enable the judge, OTel export or a webhook.',
 
@@ -79,8 +116,10 @@ export function buildInstructions(i: InstructionsInput): string {
     'Errors from a tool return {"error":{"code","message","recovery":[]}} with isError true; follow recovery before retrying. ' +
       'An argument the schema rejects comes back as plain text naming IRIS_INVALID_ARGUMENT and the valid arguments.',
   ].join('\n\n');
-  if (text.length > INSTRUCTIONS_MAX_CHARS) {
-    throw new Error(`instructions are ${text.length} characters; the ceiling is ${INSTRUCTIONS_MAX_CHARS}`);
+  // What this build wrote, without the deployment's list: a breach here is a defect in the text above, never in a config.
+  const own = text.length - critical.length;
+  if (own > INSTRUCTIONS_MAX_CHARS) {
+    throw new Error(`instructions are ${own} characters without the critical list; the ceiling is ${INSTRUCTIONS_MAX_CHARS}`);
   }
   return text;
 }
