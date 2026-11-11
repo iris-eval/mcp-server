@@ -262,3 +262,49 @@ describe('--demo-clear', () => {
     expect(stderr).toContain('nothing to remove');
   }, 30_000);
 });
+
+/*
+ * The one path every other spawn in this file switches off: opening the
+ * dashboard in a browser. With IRIS_NO_AUTO_LAUNCH=1 everywhere, nothing
+ * ran it, and on a Linux machine with no xdg-open (a container, a server)
+ * `--demo` printed its address and exited: spawn() reports a missing
+ * command as an 'error' event on the child, after it has returned.
+ *
+ * Linux only, because that is where the opener can be missing, and because
+ * on Windows and macOS this would open a real browser on the machine that
+ * runs the suite. PATH is cut down to node's own directory so xdg-open is
+ * not found whatever the runner has installed, and CI is unset so the
+ * launch is attempted at all.
+ */
+describe.runIf(process.platform === 'linux')('--demo on a machine with no browser opener', () => {
+  it('prints its address and keeps serving', async () => {
+    const dashboardPort = await freePort();
+    const env: NodeJS.ProcessEnv = { ...process.env, IRIS_HOME: home, PATH: resolve(process.execPath, '..') };
+    delete env.CI;
+    delete env.IRIS_NO_AUTO_LAUNCH;
+    const proc = spawn(process.execPath, ['--import', 'tsx', entryPoint, '--demo', '--dashboard-port', String(dashboardPort)], {
+      cwd: repoRoot,
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    child = proc;
+    let stderr = '';
+    const port = await new Promise<number>((resolvePromise, rejectPromise) => {
+      const timer = setTimeout(() => rejectPromise(new Error(`Dashboard never came up within ${DEMO_START_BUDGET_MS} ms. stderr so far:\n${stderr}`)), DEMO_START_BUDGET_MS);
+      proc.stderr!.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString();
+        const m = stderr.match(/Dashboard available at http:\/\/localhost:(\d+)/);
+        if (m) {
+          clearTimeout(timer);
+          resolvePromise(Number(m[1]));
+        }
+      });
+    });
+    // The missing opener is reported on a later tick than the line above: give it time to arrive.
+    await new Promise((r) => setTimeout(r, 2000));
+    expect(stderr).not.toContain('xdg-open');
+    expect(proc.exitCode, `the demo exited. stderr:\n${stderr.slice(-2000)}`).toBeNull();
+    const summary = await get(port, '/api/v1/summary?hours=720', `127.0.0.1:${port}`);
+    expect(summary.status).toBe(200);
+  }, DEMO_START_BUDGET_MS + 20_000);
+});
