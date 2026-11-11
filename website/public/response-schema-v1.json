@@ -488,6 +488,9 @@
               "config"
             ]
           },
+          "advisory": {
+            "type": "boolean"
+          },
           "state": {
             "description": "read this, not passed: a rule that skipped is not_checked, and carries passed false",
             "type": "string",
