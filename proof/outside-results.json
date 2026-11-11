@@ -784,7 +784,7 @@
       }
     ]
   },
-  "commit": "ba04e92f",
+  "commit": "e6041aa0",
   "detectors": [
     {
       "caught": {
@@ -1002,7 +1002,7 @@
       "runs": 2
     }
   ],
-  "generatedAt": "2026-11-11T07:19:26.210Z",
+  "generatedAt": "2026-11-11T07:47:40.850Z",
   "headline": {
     "wrongFail": {
       "ci95": [
