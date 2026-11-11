@@ -377,6 +377,20 @@ All four are transitive-only (`brace-expansion` via dev-tooling globs, `fast-uri
 
 **Gate after:** `npm audit` reports 0 vulnerabilities in every npm lockfile in the repository (the root, `dashboard/`, `packages/sdk`, `packages/langchain`, `examples/otel-recipes/js` and `tests/real-clients/clients`) except `website/`, where it reports only GHSA-g3hv-75wg-m249 on `minimatch` 3.1.5, recorded above. Queried against OSV, as OpenSSF Scorecard does, the npm lockfiles carried 6 vulnerable entries across these three advisories before this change (1,560 entries checked) and carry 1 after (1,562 checked): that same `minimatch` 3.1.5. The 19 pinned Python packages in `.github/requirements/build.txt` and `examples/otel-recipes/requirements-*.txt` have no OSV advisory.
 
+### 2026-11-11 — `node-forge` 1.4.3 by lockfile bump (Linux-regenerated)
+
+**Why.** GitHub published three `node-forge` advisories on 2026-11-10, each covering every release through 1.4.2 and fixed in 1.4.3: [GHSA-j8rw-jp99-435v](https://github.com/advisories/GHSA-j8rw-jp99-435v) (the TLS client crashes on a handshake record received without a session), [GHSA-6cv4-p8m7-4r25](https://github.com/advisories/GHSA-6cv4-p8m7-4r25) (a regular expression that trims response headers and cookies in `forge.http` can be made to backtrack) and [GHSA-w4xr-hqv8-ch44](https://github.com/advisories/GHSA-w4xr-hqv8-ch44) (the TLS client crashes on an unsupported ServerHello compression method).
+
+| Advisory(ies) | Package | Was → Now | Load path | Decision |
+|---|---|---|---|---|
+| The three above (each medium) | `node-forge` | root 1.4.2 → 1.4.3 | ← `@anthropic-ai/mcpb@2.1.2`, an exact devDependency: the MCPB tooling CI and the release use. Not in the published package, the image or the bundle | **Patch** — the tooling's own range `^1.3.2` reaches 1.4.3, so no `overrides` entry |
+
+**Exposure before the fix.** None of the three was reachable. All are in `node-forge`'s TLS client and HTTP client (`forge.tls`, `forge.http`). The MCPB tooling imports the library in one file, `dist/node/sign.js`, and calls its certificate, key, PKCS#7, ASN.1 and hashing functions (`forge.pki`, `forge.pkcs7`, `forge.asn1`, `forge.md`, `forge.util.createBuffer`); it opens no TLS or HTTP connection with it. What iris runs of that tooling is in the row for GHSA-86w9-cpqp-85rv above.
+
+**Lockfile provenance.** Regenerated on Linux (`node:24`, npm 11.19.0) with `npm update node-forge --package-lock-only --ignore-scripts`. Three lines changed, all in the `node-forge` entry (its version, tarball and integrity); no entry was added or removed, and the integrity is the one the registry publishes for 1.4.3.
+
+**Gate after:** `npm audit` at the root reports 0 vulnerabilities, and `node scripts/security/check-exposure-coverage.mjs` exits 0.
+
 ### Untrusted JSON Schema — the tool-argument path (v0.11.0+)
 
 Not an advisory. A standing assessment, recorded here because it is the one place in iris where a
