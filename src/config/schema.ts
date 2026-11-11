@@ -79,6 +79,7 @@ export const configFileSchema = z.strictObject({
       ruleThresholds: ruleThresholds.optional(),
       criticalRules: z.array(name).optional(),
       nonCriticalRules: z.array(name).optional(),
+      advisoryRules: z.array(name).optional(),
       composer: z.enum(['risk', 'legacy']).optional(),
       falsePassCost: nonNegative.optional(),
       onCriticalSkipped: z.enum(['unknown', 'fail', 'pass']).optional(),

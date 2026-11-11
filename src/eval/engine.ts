@@ -292,6 +292,7 @@ export class EvalEngine {
       ruleThresholds: this.ruleThresholds,
       criticalRules: this.criticalityOverrides?.criticalRules,
       nonCriticalRules: this.criticalityOverrides?.nonCriticalRules,
+      advisoryRules: this.criticalityOverrides?.advisoryRules,
       judge: this.judgeIdentity(),
       composer: {
         defaultsGate: this.compose.defaultsGate,
@@ -710,6 +711,8 @@ export class EvalEngine {
        */
       const effective = this.criticality(rule);
       const { critical, source } = effective;
+      // A rule the deployment set to report only (eval.advisoryRules). Stamped on the row, like `critical`, so a stored row re-composes as it was decided.
+      const advisory = effective.advisory === true && raw.skipped !== true;
       // ruleId / category sit right after the name so a reader scanning
       // rule_results sees WHICH deployed rule (and which bundle) spoke.
       const { ruleName, ...rest } = raw;
@@ -728,6 +731,7 @@ export class EvalEngine {
         ...(category !== undefined ? { category } : {}),
         critical,
         criticalSource: source,
+        ...(advisory ? { advisory: true } : {}),
         state: ruleStateOf(raw),
         ...rest,
         ...stampRuleResult(rule, raw, context, effective, {

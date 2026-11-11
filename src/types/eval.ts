@@ -740,6 +740,13 @@ export interface EvalRuleResult {
    */
   criticalSource?: 'default' | 'config';
   /**
+   * True when the deployment named this rule in `eval.advisoryRules`: it
+   * reported and took no part in the verdict, neither vetoing nor entering
+   * the risk estimate. Stamped on the row so a stored evaluation re-composes
+   * as it was decided. Absent on every other result.
+   */
+  advisory?: boolean;
+  /**
    * What this rule says about the output, in one field: `pass`, `fail`, or
    * `not_checked` when it skipped. Read this, not `passed`: a rule that
    * skipped carries `passed: false` and `score: 0` (it did not pass), and a

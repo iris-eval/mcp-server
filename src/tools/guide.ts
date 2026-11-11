@@ -164,7 +164,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
   list_rules: {
     does:
       'Read-only, no network. built_in is the shipped roster and is never narrowed by the filters. For each rule: kind (measurement, detection, inference, judgment, policy, verification), mechanism, needs (the inputs it reads — absent means the rule skips, never passes), question, classes, version, weight, ' +
-      'the EFFECTIVE critical flag with criticalSource (default, or config when eval.criticalRules / eval.nonCriticalRules changed it on this server — read it before trusting a passed: true), ' +
+      'the EFFECTIVE critical flag with criticalSource (default, or config when eval.criticalRules / eval.nonCriticalRules changed it on this server — read it before trusting a passed: true), advisory: true when eval.advisoryRules set the rule to report only, ' +
       'and proof: precision and recall with 95% intervals and the positive predictive value at four prevalences, the numbers published at https://iris-eval.com/proof. ' +
       'rules is the custom-rule store, filterable by eval_type and enabled_only; total and enabled_count count custom rules. quarantined lists store entries this version could not validate. plugins lists the rules loaded from eval.plugins.',
     whenNot:

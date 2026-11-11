@@ -28,6 +28,19 @@
  * do not enforce unique names — one can legitimately be called `no_pii` —
  * and a name-keyed override would silently reach it. A custom rule's
  * severity stays its own definition's business.
+ *
+ * A THIRD LIST, FOR THE RULES THAT ARE WEIGHED. A detection or an inference
+ * that is not critical does not veto: its fire enters the risk estimate,
+ * and at the shipped loss ratio one fire of most of them fails the verdict.
+ * The two lists above say nothing to that. `no_silent_tool_failure` is not
+ * critical, so `nonCriticalRules` cannot stop it failing a verdict, and a
+ * deployment whose agent retries through tool errors had no setting to
+ * reach for.
+ *   eval.advisoryRules     — these rules report and take no part in the
+ *                            verdict: no veto, and not in the risk estimate.
+ * It names built-in detections and inferences only. A measurement already
+ * only reports, and a policy advises until the deployment sets its
+ * threshold, so naming either would say nothing or contradict itself.
  */
 
 import type { EvalRule, EvalType, ClaimKind, Mechanism, Need, QuestionId, FailureClass } from '../types/eval.js';
@@ -43,6 +56,8 @@ export interface CriticalityOverrides {
   criticalRules?: string[];
   /** Built-in rule names demoted from critical. */
   nonCriticalRules?: string[];
+  /** Built-in detections and inferences that report and take no part in the verdict. */
+  advisoryRules?: string[];
   /*
    * The engine is handed `config.eval` whole, so the verdict's six defaults
    * (0.10.0) arrive on the same object. They are read by the composer, not
@@ -62,9 +77,14 @@ export interface CriticalityOverrides {
 
 export interface EffectiveCriticality {
   critical: boolean;
-  /** 'config' when one of the two lists decided this; 'default' otherwise. */
+  /** 'config' when one of the lists decided this; 'default' otherwise. */
   source: CriticalitySource;
+  /** The deployment named this rule in eval.advisoryRules: it reports and takes no part in the verdict. Absent otherwise. */
+  advisory?: true;
 }
+
+/** The kinds a rule must be to be named in eval.advisoryRules: the two the risk estimate weighs. */
+const WEIGHED_KINDS: ReadonlySet<string> = new Set(['detection', 'inference']);
 
 /** Every built-in rule, in bundle order. The registry the lists are checked against. */
 export function builtInRules(): EvalRule[] {
@@ -87,12 +107,14 @@ export function criticalityIssues(overrides: CriticalityOverrides | undefined): 
   if (!overrides) return [];
   const issues: string[] = [];
   const valid = new Set(builtInRuleNames());
-  const seen: Record<'criticalRules' | 'nonCriticalRules', Set<string>> = {
+  const kindOf = new Map(builtInRules().map((r) => [r.name, r.kind]));
+  const seen: Record<'criticalRules' | 'nonCriticalRules' | 'advisoryRules', Set<string>> = {
     criticalRules: new Set(),
     nonCriticalRules: new Set(),
+    advisoryRules: new Set(),
   };
 
-  for (const key of ['criticalRules', 'nonCriticalRules'] as const) {
+  for (const key of ['criticalRules', 'nonCriticalRules', 'advisoryRules'] as const) {
     const list = overrides[key];
     if (list === undefined) continue;
     if (!Array.isArray(list)) {
@@ -112,6 +134,18 @@ export function criticalityIssues(overrides: CriticalityOverrides | undefined): 
         );
         continue;
       }
+      if (key === 'advisoryRules' && !WEIGHED_KINDS.has(kindOf.get(entry) ?? '')) {
+        const kind = kindOf.get(entry);
+        issues.push(
+          `eval.advisoryRules names "${entry}", which is a ${kind ?? 'rule with no declared kind'}. The list is for detections and inferences, the rules a verdict weighs. ` +
+            (kind === 'measurement'
+              ? 'A measurement already only reports.'
+              : kind === 'policy'
+                ? 'A policy advises until you set its threshold, and gates once you do; to stop a policy that ships critical from vetoing, name it in eval.nonCriticalRules.'
+                : 'Leave it out.'),
+        );
+        continue;
+      }
       seen[key].add(entry);
     }
   }
@@ -120,6 +154,11 @@ export function criticalityIssues(overrides: CriticalityOverrides | undefined): 
     if (seen.nonCriticalRules.has(name)) {
       issues.push(
         `"${name}" is in BOTH eval.criticalRules and eval.nonCriticalRules, so the config does not say whether it should veto. Remove it from one of them.`,
+      );
+    }
+    if (seen.advisoryRules.has(name)) {
+      issues.push(
+        `"${name}" is in BOTH eval.criticalRules and eval.advisoryRules, so the config says it should veto and should take no part in the verdict. Remove it from one of them.`,
       );
     }
   }
@@ -155,7 +194,7 @@ export function assertValidCriticality(overrides: CriticalityOverrides | undefin
   if (issues.length === 0) return;
   throw new Error(
     `Invalid eval criticality configuration:\n  - ${issues.join('\n  - ')}\n` +
-      'Set eval.criticalRules / eval.nonCriticalRules in your Iris config.json (see docs/api-reference.md § Rule criticality).',
+      'Set eval.criticalRules / eval.nonCriticalRules / eval.advisoryRules in your Iris config.json (see docs/api-reference.md § Rule criticality).',
   );
 }
 
@@ -173,6 +212,8 @@ export function resolveCriticality(
 ): EffectiveCriticality {
   const declared = rule.critical === true;
   if (!overrides || !builtIns.has(rule)) return { critical: declared, source: 'default' };
+  // A rule that takes no part in the verdict does not veto either, whatever its definition declares.
+  if (overrides.advisoryRules?.includes(rule.name)) return { critical: false, source: declared ? 'config' : 'default', advisory: true };
   if (overrides.criticalRules?.includes(rule.name)) return { critical: true, source: 'config' };
   if (overrides.nonCriticalRules?.includes(rule.name)) return { critical: false, source: 'config' };
   return { critical: declared, source: 'default' };
@@ -197,6 +238,8 @@ export interface BuiltInRuleMeta {
   critical: boolean;
   /** Who decided it: the rule's own declaration, or one of the config lists. */
   criticalSource: CriticalitySource;
+  /** Present when eval.advisoryRules names the rule: it reports and takes no part in the verdict. */
+  advisory?: true;
   /** The rule's declared metadata (see EvalRule): the kind of claim, its mechanism, what it reads, the question it answers, the failure classes, the definition version. */
   kind?: ClaimKind;
   mechanism?: Mechanism;
@@ -235,6 +278,7 @@ export function builtInRuleRoster(
         weight: rule.weight,
         critical: effective.critical,
         criticalSource: effective.source,
+        ...(effective.advisory ? { advisory: true as const } : {}),
         kind: rule.kind,
         mechanism: rule.mechanism,
         needs: rule.needs,

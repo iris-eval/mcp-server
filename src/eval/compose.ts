@@ -131,6 +131,8 @@ const fired = (r: EvalRuleResult): boolean => !r.skipped && r.passed === false;
  * disagree. A skipped rule played no role and keeps none.
  */
 export function roleOf(r: EvalRuleResult, cfg: ComposeConfig): Role {
+  // The deployment set this rule to report only (eval.advisoryRules): it is in no layer below.
+  if (r.advisory === true) return 'advisory';
   if (r.kind === 'judgment') return 'gate';
   if (r.kind === 'policy') return decides(r, cfg.defaultsGate) ? 'gate' : 'advisory';
   if (isCritical(r)) return 'veto';
@@ -520,8 +522,8 @@ export function bundleState(
   if (verdict.state === 'pass') return ran ? 'pass' : 'unknown';
   let state: Verdict['state'] = ran ? 'pass' : 'unknown';
   const layers: Array<{ basis: Verdict['basis']; state: Verdict['state']; by: string[] }> = [{ basis: verdict.basis, state: verdict.state, by: verdict.by }, ...(verdict.also ?? [])];
-  // Every detection and inference that ran enters the risk estimate, a critical one included: a veto is also read as a probability.
-  const isRisk = (r: EvalRuleResult): boolean => !r.skipped && (r.kind === 'detection' || r.kind === 'inference');
+  // Every detection and inference that ran enters the risk estimate, a critical one included: a veto is also read as a probability. One set to report only does not.
+  const isRisk = (r: EvalRuleResult): boolean => !r.skipped && r.advisory !== true && (r.kind === 'detection' || r.kind === 'inference');
   for (const layer of layers) {
     if (layer.basis === 'required_evidence_missing') {
       /*
@@ -653,6 +655,22 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
   for (const r of result.rule_results) {
     if (!fired(r)) continue;
     if (verdict.by.includes(r.ruleName) || laterRules.has(r.ruleName)) continue;
+    if (r.advisory === true) {
+      /*
+       * A rule the deployment set to report only. Said whatever the verdict
+       * is: a reader who sees a detector fail beside a pass, or beside a
+       * failure that names other rules, has to be told the detector was
+       * left out on purpose, and by which setting.
+       */
+      out.push({
+        severity: 'note',
+        addressee: 'operator',
+        rule: r.ruleName,
+        text: `${r.ruleName} failed and took no part in this verdict: this deployment names it in eval.advisoryRules, so it reports and neither vetoes nor enters the risk estimate. Take it off that list to have its fires weighed again.`,
+        configKey: 'eval.advisoryRules',
+      });
+      continue;
+    }
     if (r.ruleName === 'answers_the_ask' && r.kind === 'policy' && r.judge === undefined && !decides(r, cfg.defaultsGate)) {
       /*
        * Without a judge the rule advises, and says why (#649): the generic

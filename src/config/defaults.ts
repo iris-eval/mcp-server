@@ -156,6 +156,13 @@ export const defaultConfig: IrisConfig = {
     criticalRules: [],
     nonCriticalRules: [],
     /*
+     * The rules a deployment set to report only. Empty: every detection and
+     * inference is weighed as it ships. A deployment names one here when its
+     * fires are not failures on its own traffic and it would rather read
+     * them than be stopped by them.
+     */
+    advisoryRules: [],
+    /*
      * The verdict's six defaults (0.10.0), each a config key so changing one is
      * a one-line change. Measured before shipped: on the held-out split of
      * the composite corpus the risk composer is right about shipping 57.7%

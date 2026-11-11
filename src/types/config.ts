@@ -133,6 +133,15 @@ export interface IrisConfig {
      * name in both lists is a config error: it does not say what you want.
      */
     nonCriticalRules?: string[];
+    /**
+     * Built-in detections and inferences that report and take no part in the
+     * verdict: they do not veto, and they are left out of the risk estimate,
+     * fired or not. The setting for a rule that is weighed, where
+     * `nonCriticalRules` is the setting for one that vetoes. Same
+     * validation; a measurement or a policy named here is refused with the
+     * reason, and so is a name that is also in `criticalRules`.
+     */
+    advisoryRules?: string[];
     /*
      * The verdict's six defaults (0.10.0). Each is a RECOMMENDATION with its
      * failure mode stated, not a settled answer; every surface that shows

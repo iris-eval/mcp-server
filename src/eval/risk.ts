@@ -113,6 +113,8 @@ export function detectorsOf(result: EvalResult): Detector[] {
   for (const r of result.rule_results) {
     if (r.skipped) continue;
     if (r.kind !== 'detection' && r.kind !== 'inference') continue;
+    // A rule the deployment set to report only (eval.advisoryRules) is not evidence either way: its fire is not weighed, and its silence does not lower the estimate.
+    if (r.advisory === true) continue;
     const acc = publishedAccuracyFor(r.ruleName);
     if (!acc) continue;
     const u = r.uncertainty;

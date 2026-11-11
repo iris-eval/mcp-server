@@ -113,6 +113,7 @@ export const evalRuleResultSchema = z.looseObject({
     category: z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom']).optional(),
     critical: z.boolean().optional(),
     criticalSource: z.enum(['default', 'config']).optional(),
+    advisory: z.boolean().optional(),
     state: z.enum(['pass', 'fail', 'not_checked']).optional().describe('read this, not passed: a rule that skipped is not_checked, and carries passed false'),
     passed: z.boolean(),
     score: z.number(),

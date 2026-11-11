@@ -36,6 +36,9 @@ const FABRICATED = 'src/eval/judges/ holds anthropic.ts, openai.ts and a shared 
 
 const PII_OUTPUT = 'Customer record: SSN 536-22-8145. Escalate to billing.';
 
+/** An answer over the same failed call that cites no path: the silent failure is the only thing a rule finds in it. */
+const UNACKNOWLEDGED = 'The judge implementations are the Anthropic judge and the OpenAI judge. Both are wired through one shared client, and each has its own test file.';
+
 function ctx(output: string, toolCalls?: ToolCallRecord[]): EvalContext {
   return { output, input: 'list the judge implementations', ...(toolCalls ? { toolCalls } : {}) };
 }
@@ -124,6 +127,95 @@ describe('demotion — a rule the deployment chooses not to gate on', async () =
     });
     expect(result.critical_failures).toEqual(['no_injection_patterns']);
     expect(result.passed).toBe(false);
+  });
+});
+
+/*
+ * The third list. A detection or an inference that is not critical is
+ * weighed, and one fire of most of them fails the verdict at the shipped
+ * loss ratio. `nonCriticalRules` says nothing to that (the rule was never
+ * critical), so until `advisoryRules` a deployment had no setting for "let
+ * this rule report and stop it deciding".
+ */
+describe('advisory — a weighed rule the deployment sets to report only', () => {
+  const engine = new EvalEngine(0.7, undefined, { advisoryRules: ['no_silent_tool_failure'] });
+
+  it('still fails the output and says so, and takes no part in the verdict', async () => {
+    const shipped = await new EvalEngine().evaluateAll(ctx(UNACKNOWLEDGED, SILENT_FAILURE));
+    expect(shipped.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss' });
+
+    const result = await engine.evaluateAll(ctx(UNACKNOWLEDGED, SILENT_FAILURE));
+    const rule = result.rule_results.find((r) => r.ruleName === 'no_silent_tool_failure')!;
+    expect(rule.passed).toBe(false);
+    expect(rule.state).toBe('fail');
+    expect(rule.advisory).toBe(true);
+    expect(rule.role).toBe('advisory');
+    expect(rule.critical).toBe(false);
+    // The verdict no longer rests on it, in any layer.
+    expect(result.verdict?.state).toBe('pass');
+    expect(result.passed).toBe(true);
+    expect(result.verdict?.by).not.toContain('no_silent_tool_failure');
+    expect(result.categories?.safety).toMatchObject({ state: 'pass', passed: true });
+    // And the reader is told why a failed detector sits beside a pass, and which setting did it.
+    const note = result.interpretations?.find((i) => i.rule === 'no_silent_tool_failure');
+    expect(note).toMatchObject({ addressee: 'operator', configKey: 'eval.advisoryRules' });
+    expect(note?.text).toContain('took no part in this verdict');
+    expect(result.interpretations?.some((i) => i.rule === 'no_silent_tool_failure' && i.configKey === 'eval.falsePassCost')).toBe(false);
+  });
+
+  it('is left out of the risk estimate whether it fired or not', async () => {
+    const clean = ctx('The judges live under src/eval/llm-judge/: anthropic.ts and openai.ts.', [{ tool_name: 'bash', input: { command: 'ls src/eval/llm-judge' }, output: 'anthropic.ts\nopenai.ts' }]);
+    const weighed = await new EvalEngine().evaluateAll(clean);
+    const advisory = await engine.evaluateAll(clean);
+    // Weighed, the rule's silence is evidence its class is absent; set to report only, the class is not examined at all.
+    expect(weighed.verdict?.risk?.perClass.silent_tool_failure).not.toBeNull();
+    expect(advisory.verdict?.risk?.perClass.silent_tool_failure).toBeNull();
+    expect(advisory.rule_results.find((r) => r.ruleName === 'no_silent_tool_failure')).toMatchObject({ passed: true, advisory: true, role: 'advisory' });
+  });
+
+  it('leaves every other rule deciding as it did', async () => {
+    const result = await engine.evaluateAll({ output: PII_OUTPUT, input: 'summarise the ticket', toolCalls: SILENT_FAILURE });
+    expect(result.critical_failures).toEqual(['no_pii']);
+    expect(result.verdict).toMatchObject({ state: 'fail', basis: 'detector_veto', by: ['no_pii'] });
+  });
+
+  it('stops a rule that ships critical from vetoing as well, and the roster says both', async () => {
+    const quiet = new EvalEngine(0.7, undefined, { advisoryRules: ['no_pii'] });
+    const result = await quiet.evaluateAll({ output: PII_OUTPUT, input: 'summarise the ticket' });
+    const rule = result.rule_results.find((r) => r.ruleName === 'no_pii')!;
+    expect(rule).toMatchObject({ passed: false, critical: false, criticalSource: 'config', advisory: true, role: 'advisory' });
+    expect(result.critical_failures).toBeUndefined();
+    expect(result.verdict?.by).not.toContain('no_pii');
+    const roster = builtInRuleRoster((r) => quiet.effectiveCriticality(r));
+    expect(roster.find((r) => r.name === 'no_pii')).toMatchObject({ critical: false, criticalSource: 'config', advisory: true });
+    expect(roster.filter((r) => r.advisory === true).map((r) => r.name)).toEqual(['no_pii']);
+  });
+
+  it('is a different ruleset and a different configuration, and neither moves when the list is empty', async () => {
+    const context = ctx(UNACKNOWLEDGED, SILENT_FAILURE);
+    const shipped = await new EvalEngine().evaluateAll(context);
+    const empty = await new EvalEngine(0.7, undefined, { advisoryRules: [] }).evaluateAll(context);
+    const set = await engine.evaluateAll(context);
+    expect(empty.provenance?.rulesetHash).toBe(shipped.provenance?.rulesetHash);
+    expect(empty.provenance?.configHash).toBe(shipped.provenance?.configHash);
+    expect(set.provenance?.rulesetHash).not.toBe(shipped.provenance?.rulesetHash);
+    expect(set.provenance?.configHash).not.toBe(shipped.provenance?.configHash);
+  });
+
+  it('names only detections and inferences: a measurement already reports, and a policy has its own settings', () => {
+    const measurement = criticalityIssues({ advisoryRules: ['keyword_overlap'] });
+    expect(measurement).toHaveLength(1);
+    expect(measurement[0]).toContain('eval.advisoryRules names "keyword_overlap", which is a measurement');
+    expect(measurement[0]).toContain('already only reports');
+    const policy = criticalityIssues({ advisoryRules: ['no_blocklist_words'] });
+    expect(policy[0]).toContain('which is a policy');
+    expect(policy[0]).toContain('eval.nonCriticalRules');
+    expect(() => new EvalEngine(0.7, undefined, { advisoryRules: ['cost_under_threshold'] })).toThrow(/eval\.advisoryRules names "cost_under_threshold"/);
+  });
+
+  it('refuses an unknown name, and a name that is also promoted to critical', () => {
+    expect(criticalityIssues({ advisoryRules: ['no_silent_tool_failures'] })[0]).toContain('eval.advisoryRules names "no_silent_tool_failures", which is not a built-in rule');
+    expect(() => new EvalEngine(0.7, undefined, { criticalRules: ['no_silent_tool_failure'], advisoryRules: ['no_silent_tool_failure'] })).toThrow(/BOTH eval\.criticalRules and eval\.advisoryRules/);
   });
 });
 
@@ -220,6 +312,19 @@ describe('loadConfig validates the lists before anything runs', () => {
   it('replaces the empty default rather than merging with it', () => {
     writeConfig({ criticalRules: ['no_stub_output'] });
     expect(loadConfig().eval.criticalRules).toEqual(['no_stub_output']);
+  });
+
+  it('carries eval.advisoryRules into the config and the engine built from it, and refuses a rule that cannot be set so', async () => {
+    writeConfig({ advisoryRules: ['no_silent_tool_failure'] });
+    const config = loadConfig();
+    expect(config.eval.advisoryRules).toEqual(['no_silent_tool_failure']);
+    const engine = new EvalEngine(config.eval.defaultThreshold, config.eval.ruleThresholds, config.eval);
+    const result = await engine.evaluateAll(ctx(UNACKNOWLEDGED, SILENT_FAILURE));
+    expect(result.passed).toBe(true);
+    expect(result.rule_results.find((r) => r.ruleName === 'no_silent_tool_failure')?.advisory).toBe(true);
+
+    writeConfig({ advisoryRules: ['sentence_count'] });
+    expect(() => loadConfig()).toThrow(/eval\.advisoryRules names "sentence_count", which is a measurement/);
   });
 
   /*
