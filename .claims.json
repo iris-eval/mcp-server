@@ -254,24 +254,13 @@
         "summary": "Tool outputs are read as grounding material: a file, directory or URL the output cites that neither the ask nor anything the agent read mentions is evidence, with the span. Only locations are judged — a code identifier or a number belongs to the hallucination signals — and the rule declines rather than guesses when a read was truncated."
       },
       {
-        "evidence": [
-          {
-            "kind": "rule",
-            "name": "no_dropped_specific"
-          },
-          {
-            "kind": "proof",
-            "name": "no_dropped_specific"
-          }
-        ],
+        "evidence": [],
         "id": "Q2xS4",
-        "needs": [
-          "output"
-        ],
+        "needs": [],
         "question": "Q2",
-        "status": "partial",
+        "status": "gap",
         "subject": "S4",
-        "summary": "The specifics the earlier answers to a case agreed on are checked on each new answer: no_dropped_specific fails when the answer lacks a figure, a date, an address or an identifier that three quarters or more of the case's last twenty answers carried, and names its kind and a trace that carries it, never its value. Specifics only: whether two answers' prose claims agree is not read, a specific no earlier answer carried is not flagged, and on agent runs Iris did not write the signal is a weak one."
+        "summary": "Consistency of claims across repeated runs of one input is not evaluated."
       },
       {
         "evidence": [],
@@ -595,10 +584,6 @@
           {
             "kind": "proof",
             "name": "ask_coverage"
-          },
-          {
-            "kind": "rule",
-            "name": "no_dropped_step"
           }
         ],
         "id": "Q5xS3",
@@ -609,7 +594,7 @@
         "question": "Q5",
         "status": "partial",
         "subject": "S3",
-        "summary": "A part of the ask the answer never mentions may still have been DONE: ask_coverage (v2, 0.15.0) reads the trajectory and counts a part covered when a tool call the trace shows carries its terms — the same lexical test as the answer, so the trajectory can only add coverage (the rule needs the output and the ask; it reads the trajectory when the trace carries one). Recall-only for the family; what the trajectory does not carry is still unjudged, and the judge template above is the other half. With earlier runs of the case to read against, no_dropped_step reports a run that never called a tool nearly every earlier run called."
+        "summary": "A part of the ask the answer never mentions may still have been DONE: ask_coverage (v2, 0.15.0) reads the trajectory and counts a part covered when a tool call the trace shows carries its terms — the same lexical test as the answer, so the trajectory can only add coverage (the rule needs the output and the ask; it reads the trajectory when the trace carries one). Recall-only for the family; what the trajectory does not carry is still unjudged, and the judge template above is the other half."
       },
       {
         "evidence": [
@@ -938,9 +923,9 @@
           "tool_calls"
         ],
         "question": "Q8",
-        "status": "has",
+        "status": "partial",
         "subject": "S3",
-        "summary": "A run's calls are compared with what the earlier runs of its own case did, as each trace is evaluated: no_unusual_action fails when the run called a tool that may act and the earlier runs all but never did, and no_dropped_step when it never called a tool nearly every earlier run called. Both read the case's last twenty runs, by which tools were called and not by arguments or order; they report and never decide, and are measured on agent runs Iris did not write, each read against the other runs of its task. Between two runs, a trajectory regression also shows as its rule failing more often, reported per rule, worst first."
+        "summary": "A run's calls are compared with what the same agent's earlier runs of its own case did, as each trace is evaluated: no_unusual_action fails when the run called a tool that may act and none of the case's twenty most recent earlier runs called it, and no_dropped_step when it never called a tool every one of them called. That says the run did something different, by which tools it called and not by arguments or order, and not whether different is better or worse; both report and, at the shipped configuration, decide no verdict. They need three earlier runs stored with the trace's case, and are measured on agent runs Iris did not write, each read against the other runs of its task. Between two runs, a trajectory regression also shows as its rule failing more often, reported per rule, worst first."
       },
       {
         "evidence": [
@@ -1278,8 +1263,8 @@
       }
     ],
     "counts": {
-      "gap": 3,
-      "has": 35,
+      "gap": 4,
+      "has": 34,
       "n/a": 4,
       "partial": 18
     },
@@ -1532,7 +1517,7 @@
     "version": 1
   },
   "evalRules": {
-    "builtInCount": 29,
+    "builtInCount": 28,
     "categories": [
       "completeness",
       "relevance",
@@ -1566,7 +1551,6 @@
       "maxSteps",
       "minOutputLength",
       "noBlocklistWords",
-      "noDroppedSpecific",
       "noDroppedStep",
       "noHallucinationMarkers",
       "noInjectionCompliance",
@@ -1777,19 +1761,6 @@
       },
       {
         "classes": [
-          "incomplete_ask"
-        ],
-        "kind": "measurement",
-        "mechanism": "formula",
-        "name": "no_dropped_specific",
-        "needs": [
-          "output"
-        ],
-        "question": "complete",
-        "version": 1
-      },
-      {
-        "classes": [
           "wrong_trajectory"
         ],
         "kind": "measurement",
@@ -1798,7 +1769,7 @@
         "needs": [
           "tool_calls"
         ],
-        "question": "task_completed",
+        "question": "tool_use_correct",
         "version": 1
       },
       {
@@ -2070,19 +2041,19 @@
           "measuredThreeOrMore": 0
         },
         "rules": {
-          "evaluators": 29,
-          "measuredThreeOrMore": 29
+          "evaluators": 28,
+          "measuredThreeOrMore": 28
         }
       },
       "byStatus": {
-        "measurable": 225,
-        "measured": 157,
-        "n/a": 110,
-        "partial": 25,
-        "stated": 94
+        "measurable": 221,
+        "measured": 153,
+        "n/a": 108,
+        "partial": 24,
+        "stated": 92
       },
-      "evaluators": 47,
-      "measuredThreeOrMore": 39,
+      "evaluators": 46,
+      "measuredThreeOrMore": 38,
       "questions": 13
     },
     "evaluators": [
@@ -2634,7 +2605,7 @@
         "cells": {
           "q1": {
             "evidence": "proof/results.json → rules[no_unusual_action]",
-            "note": "precision, recall and F1 on 34 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "note": "precision, recall and F1 on 32 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
             "status": "measured"
           },
           "q10": {
@@ -2702,7 +2673,7 @@
         "cells": {
           "q1": {
             "evidence": "proof/results.json → rules[no_dropped_step]",
-            "note": "precision, recall and F1 on 30 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "note": "precision, recall and F1 on 26 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
             "status": "measured"
           },
           "q10": {
@@ -2765,74 +2736,6 @@
         "id": "rule:no_dropped_step",
         "measured": 4,
         "name": "no_dropped_step"
-      },
-      {
-        "cells": {
-          "q1": {
-            "evidence": "proof/results.json → rules[no_dropped_specific]",
-            "note": "precision, recall and F1 on 31 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
-            "status": "measured"
-          },
-          "q10": {
-            "evidence": "proof/results.json → rules[no_dropped_specific].ppvAt",
-            "note": "what a fire is worth at 1%, 5%, 20% and 50% prevalence, from the family's counts",
-            "status": "measured"
-          },
-          "q11": {
-            "evidence": "proof/composite-results.json → perClass[incomplete_ask]",
-            "note": "recall on composed cases and the 24 real transcripts where the class is present",
-            "status": "measured"
-          },
-          "q12": {
-            "evidence": "pair rule fires with the judge's dimensions on one corpus (needs a key)",
-            "status": "measurable"
-          },
-          "q13": {
-            "evidence": "run the rules over the judge corpus and the judge over the rule corpus; publish the agreement per pair (needs a key)",
-            "status": "measurable"
-          },
-          "q2": {
-            "evidence": "proof/RESULTS.md → misses by case id",
-            "note": "every false positive and false negative is named by id; no rate under transforms (the rule reports no span, or is not critical)",
-            "status": "partial"
-          },
-          "q3": {
-            "evidence": "list_rules → kind: measurement, mechanism: formula; proof/corpus → definition",
-            "note": "a measurement or policy: the proof family measures conformance to the stated formula, not detection of a failure",
-            "status": "stated"
-          },
-          "q4": {
-            "evidence": "every result since 0.9.0 carries kind and mechanism",
-            "note": "the kind label says it is a formula, so it cannot appear to be a detector",
-            "status": "stated"
-          },
-          "q5": {
-            "evidence": "proof/lib/composite-report.ts calibration, per rule score",
-            "note": "a per-rule reliability curve over the composite corpus is the harness; only the composer is calibrated today",
-            "status": "measurable"
-          },
-          "q6": {
-            "note": "deterministic",
-            "status": "n/a"
-          },
-          "q7": {
-            "note": "deterministic",
-            "status": "n/a"
-          },
-          "q8": {
-            "evidence": "npm run proof -- --check regenerates the file byte for byte in CI on every pull request",
-            "note": "a pure function of its input; the committed numbers are the code's",
-            "status": "measured"
-          },
-          "q9": {
-            "evidence": "proof/lib/transforms.ts extends to any rule that reports a span",
-            "status": "measurable"
-          }
-        },
-        "group": "rules",
-        "id": "rule:no_dropped_specific",
-        "measured": 4,
-        "name": "no_dropped_specific"
       },
       {
         "cells": {
@@ -5401,13 +5304,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "d912234e2f5f"
+        "compositeVersion": "3fad3023b158"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "89dbea4426ba",
+        "corpusVersion": "4eeb53b7ccfb",
         "customCorpusVersion": "506945ab966b"
       }
     },
@@ -5420,8 +5323,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-11-11T06:08:33.862Z",
-  "generatedFromCommit": "fb319116",
+  "generatedAt": "2026-11-11T07:26:58.222Z",
+  "generatedFromCommit": "ba04e92f",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5509,14 +5412,14 @@
     ]
   },
   "proof": {
-    "commit": "fb319116",
+    "commit": "ba04e92f",
     "composite": {
-      "compositeVersion": "d912234e2f5f",
+      "compositeVersion": "3fad3023b158",
       "confidence": {
         "changed": {
           "of": 112,
           "toDecisive": 0,
-          "toMarginal": 79
+          "toMarginal": 80
         },
         "intervalOnly": {
           "decisive": {
@@ -5532,23 +5435,23 @@
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.4385,
-                1
+                0.3006,
+                0.9544
               ],
               "k": 3,
-              "n": 3,
-              "patterns": 2,
-              "rate": 1
+              "n": 4,
+              "patterns": 3,
+              "rate": 0.75
             },
             "test": {
               "ci95": [
-                0.4088,
-                0.7925
+                0.3873,
+                0.7674
               ],
               "k": 13,
-              "n": 21,
-              "patterns": 8,
-              "rate": 0.619
+              "n": 22,
+              "patterns": 9,
+              "rate": 0.5909
             }
           },
           "marginal": {
@@ -5564,23 +5467,23 @@
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.0945,
-                0.9055
+                0.2065,
+                1
               ],
               "k": 1,
-              "n": 2,
-              "patterns": 2,
-              "rate": 0.5
+              "n": 1,
+              "patterns": 1,
+              "rate": 1
             },
             "test": {
               "ci95": [
-                0.3542,
-                0.8794
+                0.4093,
+                0.9285
               ],
               "k": 6,
-              "n": 9,
-              "patterns": 6,
-              "rate": 0.6667
+              "n": 8,
+              "patterns": 5,
+              "rate": 0.75
             }
           }
         },
@@ -5735,14 +5638,14 @@
               "to": 1
             }
           ],
-          "compositeVersion": "d912234e2f5f",
+          "compositeVersion": "3fad3023b158",
           "prior": 0.5,
           "priorMode": "per-output",
           "split": "dev",
-          "version": "80d593d7576e"
+          "version": "2f4a67bc9a9d"
         }
       },
-      "corpusVersion": "89dbea4426ba",
+      "corpusVersion": "4eeb53b7ccfb",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -7237,7 +7140,7 @@
       },
       "version": "0.21.0"
     },
-    "corpusVersion": "89dbea4426ba",
+    "corpusVersion": "4eeb53b7ccfb",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -7862,7 +7765,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-11-11T06:05:10.188Z",
+    "generatedAt": "2026-11-11T07:19:16.463Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7880,9 +7783,9 @@
         "platform": "win32"
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
-      "n": 1418,
-      "p50Ms": 0.824,
-      "p95Ms": 4.661
+      "n": 1381,
+      "p50Ms": 0.843,
+      "p95Ms": 4.645
     },
     "method": {
       "ci": "wilson-95",
@@ -8327,9 +8230,9 @@
         "fn": 0,
         "fp": 0,
         "labelBasis": "definition",
-        "n": 34,
+        "n": 32,
         "name": "no_unusual_action",
-        "negatives": 17,
+        "negatives": 15,
         "positives": 17,
         "ppvAt": {
           "0.01": 1,
@@ -8340,7 +8243,7 @@
         "precision": 1,
         "recall": 1,
         "skipped": 4,
-        "tn": 17,
+        "tn": 15,
         "tp": 17
       },
       {
@@ -8351,25 +8254,25 @@
             1
           ],
           "precision": [
-            0.7847,
+            0.7719,
             1
           ],
           "recall": [
-            0.7847,
+            0.7719,
             1
           ]
         },
         "credible95": {
           "f1": [
-            0.8715,
-            0.9994
+            0.8621,
+            0.9993
           ],
           "precision": [
-            0.8368,
+            0.8241,
             1
           ],
           "recall": [
-            0.8423,
+            0.8333,
             1
           ]
         },
@@ -8377,59 +8280,9 @@
         "fn": 0,
         "fp": 0,
         "labelBasis": "definition",
-        "n": 30,
+        "n": 26,
         "name": "no_dropped_step",
-        "negatives": 16,
-        "positives": 14,
-        "ppvAt": {
-          "0.01": 1,
-          "0.05": 1,
-          "0.2": 1,
-          "0.5": 1
-        },
-        "precision": 1,
-        "recall": 1,
-        "skipped": 5,
-        "tn": 16,
-        "tp": 14
-      },
-      {
-        "category": "completeness",
-        "ci95": {
-          "f1": [
-            1,
-            1
-          ],
-          "precision": [
-            0.7719,
-            1
-          ],
-          "recall": [
-            0.7719,
-            1
-          ]
-        },
-        "credible95": {
-          "f1": [
-            0.8672,
-            0.9991
-          ],
-          "precision": [
-            0.8192,
-            1
-          ],
-          "recall": [
-            0.8371,
-            1
-          ]
-        },
-        "f1": 1,
-        "fn": 0,
-        "fp": 0,
-        "labelBasis": "definition",
-        "n": 31,
-        "name": "no_dropped_specific",
-        "negatives": 18,
+        "negatives": 13,
         "positives": 13,
         "ppvAt": {
           "0.01": 1,
@@ -8439,8 +8292,8 @@
         },
         "precision": 1,
         "recall": 1,
-        "skipped": 3,
-        "tn": 18,
+        "skipped": 5,
+        "tn": 13,
         "tp": 13
       },
       {

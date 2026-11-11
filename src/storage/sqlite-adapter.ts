@@ -380,14 +380,22 @@ export interface CaseResultRow {
   createdAt: string;
 }
 
+/**
+ * One agent's runs of one case stored before a given row, newest first.
+ * Named and exported so the test that holds its plan reads this statement
+ * and not a copy of it.
+ */
+export const CASE_HISTORY_SQL = `SELECT c.trace_id AS trace_id, c.tools AS tools
+           FROM case_runs c INDEXED BY idx_case_runs_tenant_case_agent
+          WHERE c.tenant_id = ? AND c.case_key = ? AND c.agent_name = ? AND c.rowid < ?
+          ORDER BY c.rowid DESC
+          LIMIT ?`;
+
 /** One earlier run of a case, as getCaseHistory reads it from case_runs (migration 023). */
 export interface CaseHistoryRow {
   traceId: string;
-  timestamp: string;
   /** The distinct tools the run called, in first-call order; an empty list when it made none; null when its calls were not recorded. */
   tools: string[] | null;
-  /** The specifics its answer carried; null when it stored no answer. */
-  specifics: string[] | null;
 }
 
 export type VerdictState = 'pass' | 'fail' | 'unknown';
@@ -1545,7 +1553,7 @@ export class SqliteAdapter implements IStorageAdapter {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     // What each run of a case did, kept small beside it (migration 023): the case-history rules read these rows, never the traces.
-    const insertCaseRunStmt = this.db.prepare('INSERT INTO case_runs (trace_id, tenant_id, case_key, timestamp, tools, specifics) VALUES (?, ?, ?, ?, ?, ?)');
+    const insertCaseRunStmt = this.db.prepare('INSERT INTO case_runs (trace_id, tenant_id, case_key, agent_name, tools) VALUES (?, ?, ?, ?, ?)');
     // Compiling this insert compiles the six span triggers of the search index: a batch without spans never asks for it.
     const insertSpanStmt = traces.some((t) => t.spans?.length)
       ? this.db.prepare(`
@@ -1621,9 +1629,9 @@ export class SqliteAdapter implements IStorageAdapter {
         }
       }
       if (caseKey !== null) {
-        // Derived from the trace as stored, spans included, and never changed after: a trace's calls and answer do not change.
-        const run = caseRunOf({ tool_calls: t.tool_calls, spans: t.spans, output: t.output });
-        insertCaseRunStmt.run(t.trace_id, tenantId, caseKey, t.timestamp, run.tools === null ? null : JSON.stringify(run.tools), run.specifics === null ? null : JSON.stringify(run.specifics));
+        // Derived from the trace as stored, spans included, and never changed after: a trace's calls do not change.
+        const run = caseRunOf({ tool_calls: t.tool_calls, spans: t.spans });
+        insertCaseRunStmt.run(t.trace_id, tenantId, caseKey, t.agent_name, run.tools === null ? null : JSON.stringify(run.tools));
       }
       return cjk;
     };
@@ -2572,42 +2580,31 @@ export class SqliteAdapter implements IStorageAdapter {
   }
 
   /**
-   * The runs of one case stored before a given trace, newest first: what
-   * each called and the specifics its answer carried, as migration 023
-   * keeps them.
+   * The same agent's runs of the same case stored before a given trace,
+   * newest first: the tools each called, as migration 023 keeps them. null
+   * when the trace has no row of its own: it has no case, or it was stored
+   * before the rows were kept, or it is not stored.
    *
    * Read for every evaluation of a trace that has a case, so it is bounded
    * twice: by `limit` rows, and by walking the case's index backwards from
-   * the trace. That index holds a case's runs in the order they were
-   * stored, so the read is `limit` index entries and their short rows, with
-   * no sort, however many times the case has been run and however large its
-   * traces are. "Before" is the order of storing, checked against the
-   * trace's own time: a run stored earlier and dated later is left out, as
-   * historyBefore leaves one out. A trace stored before migration 023 has
-   * no row: it is never an earlier run, and read as the trace under
-   * evaluation it has no history.
+   * the trace. That index holds an agent's runs of a case in the order they
+   * were stored, so the read is `limit` index entries and their short rows,
+   * with no sort, however many times the case has been run and however
+   * large its traces are. "Earlier" is the order of storing and nothing
+   * else: a trace's own timestamp is whatever its sender wrote, in any
+   * zone and any precision, and comparing two of them as text read a run
+   * stamped with an offset as later than every run stamped in UTC. The
+   * case and the agent are read from the trace's own row, so a caller
+   * cannot ask for another's.
    */
-  async getCaseHistory(tenantId: TenantId, caseKey: string, before: { traceId: string; timestamp: string }, limit: number): Promise<CaseHistoryRow[]> {
+  async getCaseHistory(tenantId: TenantId, traceId: string, limit: number): Promise<CaseHistoryRow[] | null> {
     assertTenant(tenantId);
-    const anchor = this.db.prepare('SELECT rowid AS at FROM case_runs WHERE trace_id = ? AND tenant_id = ?').get(before.traceId, tenantId) as { at: number } | undefined;
-    if (anchor === undefined) return [];
-    const rows = this.db
-      .prepare(
-        `SELECT c.trace_id AS trace_id, c.timestamp AS timestamp, c.tools AS tools, c.specifics AS specifics
-           FROM case_runs c INDEXED BY idx_case_runs_tenant_case
-          WHERE c.tenant_id = ? AND c.case_key = ? AND c.rowid < ?
-          ORDER BY c.rowid DESC
-          LIMIT ?`,
-      )
-      .all(tenantId, caseKey, anchor.at, limit) as Array<{ trace_id: string; timestamp: string; tools: string | null; specifics: string | null }>;
-    return rows
-      .filter((row) => row.timestamp <= before.timestamp)
-      .map((row) => ({
-        traceId: row.trace_id,
-        timestamp: row.timestamp,
-        tools: row.tools === null ? null : (JSON.parse(row.tools) as string[]),
-        specifics: row.specifics === null ? null : (JSON.parse(row.specifics) as string[]),
-      }));
+    const anchor = this.db.prepare('SELECT rowid AS at, case_key, agent_name FROM case_runs WHERE trace_id = ? AND tenant_id = ?').get(traceId, tenantId) as
+      | { at: number; case_key: string; agent_name: string }
+      | undefined;
+    if (anchor === undefined) return null;
+    const rows = this.db.prepare(CASE_HISTORY_SQL).all(tenantId, anchor.case_key, anchor.agent_name, anchor.at, limit) as Array<{ trace_id: string; tools: string | null }>;
+    return rows.map((row) => ({ traceId: row.trace_id, tools: row.tools === null ? null : (JSON.parse(row.tools) as string[]) }));
   }
 
   async getEvalById(tenantId: TenantId, id: string): Promise<EvalResult | null> {

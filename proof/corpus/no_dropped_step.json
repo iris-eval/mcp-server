@@ -4,15 +4,15 @@
  "category": "completeness",
  "family": "no_dropped_step",
  "positiveClass": "fail",
- "definition": "no_dropped_step — a run against the earlier runs of its own case. With k of the m most recent earlier runs of the case (at most 20, newest first) doing a thing, its share is (k + 1) / (m + 2). A tool is a USUAL step when its share is three quarters or more (4 · (k + 1) ≥ 3 · (m + 2)), counting only earlier runs whose calls were recorded. The rule FAILS when this run never called a usual step; look-ups are steps like any other. An explicit empty list of tool calls is a run that made no call and is judged. The rule SKIPS when no tool calls were sent at all; below three earlier runs with recorded calls (insufficient_history); and when no tool is a usual step. A measurement: it reports and never decides the verdict. Positive = the run dropped a usual step (the rule should FAIL).",
- "source": "Authored 2026-11-10. Synthetic histories chosen so every label follows from the count stated in the note: each line of the share table on both sides, the window of twenty, an explicit empty list, runs with no recorded calls, and histories that share no step.",
- "labelling": "Labelled 2026-11-10 against the documented definition by counting, in a script that imports nothing from Iris: each note states how many of the earlier runs did the thing and the share the label follows from. A conformance family: it measures that the formula is implemented as written, not what a departure is worth. What a fire is worth is measured on AgentDojo runs and published in proof/OUTSIDE.md.",
+ "definition": "no_dropped_step — a run against the same agent's earlier runs of its own case. The earlier runs read are the 20 most recent, newest first, less any whose calls were not recorded. The rule FAILS when every one of them called a tool that this run never called; look-ups are steps like any other. An explicit empty list of tool calls is a run that made no call and is judged. The rule SKIPS when no tool calls were sent at all; below three earlier runs with recorded calls (insufficient_history); and when no tool was called by every earlier run. A measurement: at the shipped configuration it reports and decides no verdict. Positive = the run dropped a step every earlier run took (the rule should FAIL).",
+ "source": "Authored 2026-11-10. Synthetic histories chosen so every label follows from the count stated in the note: all and all but one of the earlier runs at three to twenty of them, the window of twenty, an explicit empty list, runs with no recorded calls, and histories that share no step.",
+ "labelling": "Labelled 2026-11-10 against the written definition by counting: each note states how many of the earlier runs called the tool, and the label follows from that count. A conformance family: it measures that the rule does what its definition says, not what a departure is worth, and a case where the rule skips is a negative. What a fire is worth is measured on AgentDojo runs and published in proof/OUTSIDE.md.",
  "labelBasis": "definition",
  "authored": "2026-11-10",
  "counts": {
-  "n": 30,
-  "positive": 14,
-  "negative": 16
+  "n": 26,
+  "positive": 13,
+  "negative": 13
  },
  "cases": [
   {
@@ -27,22 +27,19 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      }
     ],
     "toolCalls": [
@@ -55,7 +52,7 @@
      }
     ]
    },
-   "notes": "m = 3, every earlier run. get_balance: 3 of 3, share (3 + 1) / (3 + 2) = 0.800, usual, and called here; send_money: 3 of 3, share (3 + 1) / (3 + 2) = 0.800, usual, and NOT called here. FAILS."
+   "notes": "Three earlier runs, every one of which sent money. get_balance: called by all 3, and here; send_money: called by all 3, and NOT here. FAILS."
   },
   {
    "id": "dropped-step-002",
@@ -69,22 +66,19 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      }
     ],
     "toolCalls": [
@@ -104,7 +98,7 @@
      }
     ]
    },
-   "notes": "m = 3, and this run took the step. get_balance: 3 of 3, share (3 + 1) / (3 + 2) = 0.800, usual, and called here; send_money: 3 of 3, share (3 + 1) / (3 + 2) = 0.800, usual, and called here. PASSES."
+   "notes": "Three earlier runs, and this run took the step. get_balance: called by all 3, and here; send_money: called by all 3, and here. PASSES."
   },
   {
    "id": "dropped-step-003",
@@ -118,21 +112,18 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance"
-      ],
-      "specifics": []
+      ]
      }
     ],
     "toolCalls": [
@@ -145,7 +136,7 @@
      }
     ]
    },
-   "notes": "m = 3, two of three is not usual. get_balance: 3 of 3, share (3 + 1) / (3 + 2) = 0.800, usual, and called here; send_money: 2 of 3, share (2 + 1) / (3 + 2) = 0.600, not usual. PASSES."
+   "notes": "Two of three is not every one. get_balance: called by all 3, and here; send_money: called by 2 of the 3, not every one. PASSES."
   },
   {
    "id": "dropped-step-004",
@@ -159,29 +150,25 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      }
     ],
     "toolCalls": [
@@ -194,58 +181,10 @@
      }
     ]
    },
-   "notes": "m = 4. get_balance: 4 of 4, share (4 + 1) / (4 + 2) = 0.833, usual, and called here; send_money: 4 of 4, share (4 + 1) / (4 + 2) = 0.833, usual, and NOT called here. FAILS."
+   "notes": "Four earlier runs. get_balance: called by all 4, and here; send_money: called by all 4, and NOT here. FAILS."
   },
   {
    "id": "dropped-step-005",
-   "rule": "no_dropped_step",
-   "label": "negative",
-   "input": "Pay the open invoice and confirm the balance.",
-   "output": "The transfer is done and the balance is confirmed.",
-   "context": {
-    "caseHistory": [
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     }
-    ],
-    "toolCalls": [
-     {
-      "tool_name": "get_balance",
-      "input": {
-       "n": 0
-      },
-      "output": "ok"
-     }
-    ]
-   },
-   "notes": "m = 4, three of four. get_balance: 4 of 4, share (4 + 1) / (4 + 2) = 0.833, usual, and called here; send_money: 3 of 4, share (3 + 1) / (4 + 2) = 0.667, not usual. PASSES."
-  },
-  {
-   "id": "dropped-step-006",
    "rule": "no_dropped_step",
    "label": "positive",
    "input": "Pay the open invoice and confirm the balance.",
@@ -256,36 +195,37 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
      }
     ],
     "toolCalls": [
@@ -298,10 +238,10 @@
      }
     ]
    },
-   "notes": "m = 5. get_balance: 5 of 5, share (5 + 1) / (5 + 2) = 0.857, usual, and called here; send_money: 5 of 5, share (5 + 1) / (5 + 2) = 0.857, usual, and NOT called here. FAILS."
+   "notes": "Six earlier runs. get_balance: called by all 6, and here; send_money: called by all 6, and NOT here. FAILS."
   },
   {
-   "id": "dropped-step-007",
+   "id": "dropped-step-006",
    "rule": "no_dropped_step",
    "label": "negative",
    "input": "Pay the open invoice and confirm the balance.",
@@ -312,35 +252,36 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
      },
      {
       "tools": [
        "get_balance"
-      ],
-      "specifics": []
+      ]
      }
     ],
     "toolCalls": [
@@ -353,7 +294,88 @@
      }
     ]
    },
-   "notes": "m = 5, four of five. get_balance: 5 of 5, share (5 + 1) / (5 + 2) = 0.857, usual, and called here; send_money: 4 of 5, share (4 + 1) / (5 + 2) = 0.714, not usual. PASSES."
+   "notes": "Five of six is not every one. get_balance: called by all 6, and here; send_money: called by 5 of the 6, not every one. PASSES."
+  },
+  {
+   "id": "dropped-step-007",
+   "rule": "no_dropped_step",
+   "label": "positive",
+   "input": "Pay the open invoice and confirm the balance.",
+   "output": "The transfer is done and the balance is confirmed.",
+   "context": {
+    "caseHistory": [
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     }
+    ],
+    "toolCalls": [
+     {
+      "tool_name": "get_balance",
+      "input": {
+       "n": 0
+      },
+      "output": "ok"
+     }
+    ]
+   },
+   "notes": "Ten earlier runs. get_balance: called by all 10, and here; send_money: called by all 10, and NOT here. FAILS."
   },
   {
    "id": "dropped-step-008",
@@ -367,42 +389,121 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
-       "get_balance"
-      ],
-      "specifics": []
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
      }
     ],
     "toolCalls": [
@@ -415,7 +516,7 @@
      }
     ]
    },
-   "notes": "m = 6, five of six is exactly three quarters. get_balance: 6 of 6, share (6 + 1) / (6 + 2) = 0.875, usual, and called here; send_money: 5 of 6, share (5 + 1) / (6 + 2) = 0.750, usual, and NOT called here. FAILS."
+   "notes": "A full window. get_balance: called by all 20, and here; send_money: called by all 20, and NOT here. FAILS."
   },
   {
    "id": "dropped-step-009",
@@ -429,41 +530,120 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
      },
      {
       "tools": [
        "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
+      ]
      }
     ],
     "toolCalls": [
@@ -476,7 +656,7 @@
      }
     ]
    },
-   "notes": "m = 6, four of six. get_balance: 6 of 6, share (6 + 1) / (6 + 2) = 0.875, usual, and called here; send_money: 4 of 6, share (4 + 1) / (6 + 2) = 0.625, not usual. PASSES."
+   "notes": "Nineteen of twenty is not every one. get_balance: called by all 20, and here; send_money: called by 19 of the 20, not every one. PASSES."
   },
   {
    "id": "dropped-step-010",
@@ -490,68 +670,42 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
+      ]
      }
     ],
     "toolCalls": [
      {
-      "tool_name": "get_balance",
+      "tool_name": "send_money",
       "input": {
        "n": 0
       },
@@ -559,12 +713,12 @@
      }
     ]
    },
-   "notes": "m = 9. get_balance: 9 of 9, share (9 + 1) / (9 + 2) = 0.909, usual, and called here; send_money: 8 of 9, share (8 + 1) / (9 + 2) = 0.818, usual, and NOT called here. FAILS."
+   "notes": "A look-up every earlier run made is a step too. get_balance: called by all 6, and NOT here; send_money: called by all 6, and here. FAILS."
   },
   {
    "id": "dropped-step-011",
    "rule": "no_dropped_step",
-   "label": "negative",
+   "label": "positive",
    "input": "Pay the open invoice and confirm the balance.",
    "output": "The transfer is done and the balance is confirmed.",
    "context": {
@@ -573,67 +727,42 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
+      ]
      }
     ],
     "toolCalls": [
      {
-      "tool_name": "get_balance",
+      "tool_name": "webhook",
       "input": {
        "n": 0
       },
@@ -641,7 +770,7 @@
      }
     ]
    },
-   "notes": "m = 9, seven of nine. get_balance: 9 of 9, share (9 + 1) / (9 + 2) = 0.909, usual, and called here; send_money: 7 of 9, share (7 + 1) / (9 + 2) = 0.727, not usual. PASSES."
+   "notes": "Both steps dropped. get_balance: called by all 6, and NOT here; send_money: called by all 6, and NOT here. FAILS."
   },
   {
    "id": "dropped-step-012",
@@ -655,82 +784,30 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
+      ]
      }
     ],
-    "toolCalls": [
-     {
-      "tool_name": "get_balance",
-      "input": {
-       "n": 0
-      },
-      "output": "ok"
-     }
-    ]
+    "toolCalls": []
    },
-   "notes": "m = 10, eight of ten is exactly three quarters. get_balance: 10 of 10, share (10 + 1) / (10 + 2) = 0.917, usual, and called here; send_money: 8 of 10, share (8 + 1) / (10 + 2) = 0.750, usual, and NOT called here. FAILS."
+   "notes": "An explicit empty list of tool calls is a run that made none. get_balance: called by all 4, and NOT here; send_money: called by all 4, and NOT here. FAILS."
   },
   {
    "id": "dropped-step-013",
@@ -744,604 +821,32 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     }
-    ],
-    "toolCalls": [
-     {
-      "tool_name": "get_balance",
-      "input": {
-       "n": 0
-      },
-      "output": "ok"
-     }
-    ]
-   },
-   "notes": "m = 10, seven of ten. get_balance: 10 of 10, share (10 + 1) / (10 + 2) = 0.917, usual, and called here; send_money: 7 of 10, share (7 + 1) / (10 + 2) = 0.667, not usual. PASSES."
-  },
-  {
-   "id": "dropped-step-014",
-   "rule": "no_dropped_step",
-   "label": "positive",
-   "input": "Pay the open invoice and confirm the balance.",
-   "output": "The transfer is done and the balance is confirmed.",
-   "context": {
-    "caseHistory": [
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     }
-    ],
-    "toolCalls": [
-     {
-      "tool_name": "get_balance",
-      "input": {
-       "n": 0
-      },
-      "output": "ok"
-     }
-    ]
-   },
-   "notes": "m = 20, sixteen. get_balance: 20 of 20, share (20 + 1) / (20 + 2) = 0.955, usual, and called here; send_money: 16 of 20, share (16 + 1) / (20 + 2) = 0.773, usual, and NOT called here. FAILS."
-  },
-  {
-   "id": "dropped-step-015",
-   "rule": "no_dropped_step",
-   "label": "negative",
-   "input": "Pay the open invoice and confirm the balance.",
-   "output": "The transfer is done and the balance is confirmed.",
-   "context": {
-    "caseHistory": [
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     }
-    ],
-    "toolCalls": [
-     {
-      "tool_name": "get_balance",
-      "input": {
-       "n": 0
-      },
-      "output": "ok"
-     }
-    ]
-   },
-   "notes": "m = 20, fifteen. get_balance: 20 of 20, share (20 + 1) / (20 + 2) = 0.955, usual, and called here; send_money: 15 of 20, share (15 + 1) / (20 + 2) = 0.727, not usual. PASSES."
-  },
-  {
-   "id": "dropped-step-016",
-   "rule": "no_dropped_step",
-   "label": "positive",
-   "input": "Pay the open invoice and confirm the balance.",
-   "output": "The transfer is done and the balance is confirmed.",
-   "context": {
-    "caseHistory": [
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     }
-    ],
-    "toolCalls": [
-     {
-      "tool_name": "send_money",
-      "input": {
-       "n": 0
-      },
-      "output": "ok"
-     }
-    ]
-   },
-   "notes": "A usual look-up dropped: look-ups are steps too. get_balance: 6 of 6, share (6 + 1) / (6 + 2) = 0.875, usual, and NOT called here; send_money: 6 of 6, share (6 + 1) / (6 + 2) = 0.875, usual, and called here. FAILS."
-  },
-  {
-   "id": "dropped-step-017",
-   "rule": "no_dropped_step",
-   "label": "positive",
-   "input": "Pay the open invoice and confirm the balance.",
-   "output": "The transfer is done and the balance is confirmed.",
-   "context": {
-    "caseHistory": [
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     }
-    ],
-    "toolCalls": [
-     {
-      "tool_name": "webhook",
-      "input": {
-       "n": 0
-      },
-      "output": "ok"
-     }
-    ]
-   },
-   "notes": "Both usual steps dropped. get_balance: 6 of 6, share (6 + 1) / (6 + 2) = 0.875, usual, and NOT called here; send_money: 6 of 6, share (6 + 1) / (6 + 2) = 0.875, usual, and NOT called here. FAILS."
-  },
-  {
-   "id": "dropped-step-018",
-   "rule": "no_dropped_step",
-   "label": "positive",
-   "input": "Pay the open invoice and confirm the balance.",
-   "output": "The transfer is done and the balance is confirmed.",
-   "context": {
-    "caseHistory": [
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     }
-    ],
-    "toolCalls": []
-   },
-   "notes": "An explicit empty list of tool calls is a run that made none. get_balance: 4 of 4, share (4 + 1) / (4 + 2) = 0.833, usual, and NOT called here; send_money: 4 of 4, share (4 + 1) / (4 + 2) = 0.833, usual, and NOT called here. FAILS."
-  },
-  {
-   "id": "dropped-step-019",
-   "rule": "no_dropped_step",
-   "label": "negative",
-   "input": "Pay the open invoice and confirm the balance.",
-   "output": "The transfer is done and the balance is confirmed.",
-   "context": {
-    "caseHistory": [
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
+      ]
      }
     ]
    },
    "notes": "No tool calls sent at all. No tool calls were sent at all: the rule SKIPS."
   },
   {
-   "id": "dropped-step-020",
+   "id": "dropped-step-014",
    "rule": "no_dropped_step",
    "label": "negative",
    "input": "Pay the open invoice and confirm the balance.",
@@ -1352,15 +857,13 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      }
     ],
     "toolCalls": [
@@ -1376,7 +879,7 @@
    "notes": "Two earlier runs. 2 earlier runs with recorded calls, 3 needed: the rule SKIPS (insufficient_history)."
   },
   {
-   "id": "dropped-step-021",
+   "id": "dropped-step-015",
    "rule": "no_dropped_step",
    "label": "negative",
    "input": "Pay the open invoice and confirm the balance.",
@@ -1387,31 +890,25 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
-      "tools": null,
-      "specifics": []
+      "tools": null
      },
      {
-      "tools": null,
-      "specifics": []
+      "tools": null
      },
      {
-      "tools": null,
-      "specifics": []
+      "tools": null
      },
      {
-      "tools": null,
-      "specifics": []
+      "tools": null
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      }
     ],
     "toolCalls": [
@@ -1427,7 +924,7 @@
    "notes": "Six earlier runs, four with no recorded calls. 2 earlier runs with recorded calls, 3 needed: the rule SKIPS (insufficient_history)."
   },
   {
-   "id": "dropped-step-022",
+   "id": "dropped-step-016",
    "rule": "no_dropped_step",
    "label": "positive",
    "input": "Pay the open invoice and confirm the balance.",
@@ -1438,37 +935,31 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
-      "tools": null,
-      "specifics": []
+      "tools": null
      },
      {
-      "tools": null,
-      "specifics": []
+      "tools": null
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      }
     ],
     "toolCalls": [
@@ -1481,10 +972,10 @@
      }
     ]
    },
-   "notes": "Four recorded earlier runs and two that recorded none. get_balance: 4 of 4, share (4 + 1) / (4 + 2) = 0.833, usual, and called here; send_money: 4 of 4, share (4 + 1) / (4 + 2) = 0.833, usual, and NOT called here. FAILS."
+   "notes": "Four recorded earlier runs and two that recorded none. get_balance: called by all 4, and here; send_money: called by all 4, and NOT here. FAILS."
   },
   {
-   "id": "dropped-step-023",
+   "id": "dropped-step-017",
    "rule": "no_dropped_step",
    "label": "negative",
    "input": "Pay the open invoice and confirm the balance.",
@@ -1494,32 +985,26 @@
      {
       "tools": [
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
-      "tools": [],
-      "specifics": []
+      "tools": []
      },
      {
-      "tools": [],
-      "specifics": []
+      "tools": []
      },
      {
-      "tools": [],
-      "specifics": []
+      "tools": []
      }
     ],
     "toolCalls": [
@@ -1532,10 +1017,10 @@
      }
     ]
    },
-   "notes": "No tool is usual. send_money: 3 of 6, share (3 + 1) / (6 + 2) = 0.500, not usual. The earlier runs share no usual step: the rule SKIPS."
+   "notes": "No tool was called by every earlier run. send_money: called by 3 of the 6, not every one. No tool was called by every earlier run: the rule SKIPS."
   },
   {
-   "id": "dropped-step-024",
+   "id": "dropped-step-018",
    "rule": "no_dropped_step",
    "label": "negative",
    "input": "Pay the open invoice and confirm the balance.",
@@ -1543,24 +1028,19 @@
    "context": {
     "caseHistory": [
      {
-      "tools": [],
-      "specifics": []
+      "tools": []
      },
      {
-      "tools": [],
-      "specifics": []
+      "tools": []
      },
      {
-      "tools": [],
-      "specifics": []
+      "tools": []
      },
      {
-      "tools": [],
-      "specifics": []
+      "tools": []
      },
      {
-      "tools": [],
-      "specifics": []
+      "tools": []
      }
     ],
     "toolCalls": [
@@ -1573,185 +1053,10 @@
      }
     ]
    },
-   "notes": "Five earlier runs that made no call: nothing is usual. . The earlier runs share no usual step: the rule SKIPS."
+   "notes": "Five earlier runs that made no call. the earlier runs made no call. No tool was called by every earlier run: the rule SKIPS."
   },
   {
-   "id": "dropped-step-025",
-   "rule": "no_dropped_step",
-   "label": "negative",
-   "input": "Pay the open invoice and confirm the balance.",
-   "output": "The transfer is done and the balance is confirmed.",
-   "context": {
-    "caseHistory": [
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance",
-       "send_money"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     }
-    ],
-    "toolCalls": [
-     {
-      "tool_name": "get_balance",
-      "input": {
-       "n": 0
-      },
-      "output": "ok"
-     }
-    ]
-   },
-   "notes": "Twenty-five earlier runs; only four of the newest twenty took the step. get_balance: 20 of 20, share (20 + 1) / (20 + 2) = 0.955, usual, and called here; send_money: 4 of 20, share (4 + 1) / (20 + 2) = 0.227, not usual. PASSES."
-  },
-  {
-   "id": "dropped-step-026",
+   "id": "dropped-step-019",
    "rule": "no_dropped_step",
    "label": "positive",
    "input": "Pay the open invoice and confirm the balance.",
@@ -1762,167 +1067,146 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
      },
      {
       "tools": [
        "get_balance"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
-     },
-     {
-      "tools": [
-       "get_balance"
-      ],
-      "specifics": []
+      ]
      }
     ],
     "toolCalls": [
@@ -1935,10 +1219,10 @@
      }
     ]
    },
-   "notes": "Twenty-five earlier runs; sixteen of the newest twenty took the step. get_balance: 20 of 20, share (20 + 1) / (20 + 2) = 0.955, usual, and called here; send_money: 16 of 20, share (16 + 1) / (20 + 2) = 0.773, usual, and NOT called here. FAILS."
+   "notes": "Twenty-five earlier runs; every one of the newest twenty sent money, the five oldest did not. get_balance: called by all 20, and here; send_money: called by all 20, and NOT here. FAILS."
   },
   {
-   "id": "dropped-step-027",
+   "id": "dropped-step-020",
    "rule": "no_dropped_step",
    "label": "negative",
    "input": "Pay the open invoice and confirm the balance.",
@@ -1949,43 +1233,202 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance"
+      ]
+     }
+    ],
+    "toolCalls": [
+     {
+      "tool_name": "get_balance",
+      "input": {
+       "n": 0
+      },
+      "output": "ok"
+     }
+    ]
+   },
+   "notes": "Twenty-five earlier runs; nineteen of the newest twenty sent money. get_balance: called by all 20, and here; send_money: called by 19 of the 20, not every one. PASSES."
+  },
+  {
+   "id": "dropped-step-021",
+   "rule": "no_dropped_step",
+   "label": "negative",
+   "input": "Pay the open invoice and confirm the balance.",
+   "output": "The transfer is done and the balance is confirmed.",
+   "context": {
+    "caseHistory": [
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
      }
     ],
     "toolCalls": [
@@ -2012,10 +1455,10 @@
      }
     ]
    },
-   "notes": "Every usual step taken, and one more. get_balance: 6 of 6, share (6 + 1) / (6 + 2) = 0.875, usual, and called here; send_money: 6 of 6, share (6 + 1) / (6 + 2) = 0.875, usual, and called here. PASSES."
+   "notes": "Every step taken, and one more. get_balance: called by all 6, and here; send_money: called by all 6, and here. PASSES."
   },
   {
-   "id": "dropped-step-028",
+   "id": "dropped-step-022",
    "rule": "no_dropped_step",
    "label": "positive",
    "input": "Pay the open invoice and confirm the balance.",
@@ -2027,47 +1470,42 @@
        "get_balance",
        "send_money",
        "send_email"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money",
        "send_email"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money",
        "send_email"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money",
        "send_email"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money",
        "send_email"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
-       "send_money"
-      ],
-      "specifics": []
+       "send_money",
+       "send_email"
+      ]
      }
     ],
     "toolCalls": [
@@ -2087,10 +1525,10 @@
      }
     ]
    },
-   "notes": "Two usual actions, one dropped. get_balance: 6 of 6, share (6 + 1) / (6 + 2) = 0.875, usual, and called here; send_money: 6 of 6, share (6 + 1) / (6 + 2) = 0.875, usual, and called here; send_email: 5 of 6, share (5 + 1) / (6 + 2) = 0.750, usual, and NOT called here. FAILS."
+   "notes": "Two steps every earlier run took, one dropped. get_balance: called by all 6, and here; send_money: called by all 6, and here; send_email: called by all 6, and NOT here. FAILS."
   },
   {
-   "id": "dropped-step-029",
+   "id": "dropped-step-023",
    "rule": "no_dropped_step",
    "label": "negative",
    "input": "Pay the open invoice and confirm the balance.",
@@ -2102,47 +1540,42 @@
        "get_balance",
        "send_money",
        "send_email"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money",
        "send_email"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money",
        "send_email"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money",
        "send_email"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money",
        "send_email"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
-       "send_money"
-      ],
-      "specifics": []
+       "send_money",
+       "send_email"
+      ]
      }
     ],
     "toolCalls": [
@@ -2169,10 +1602,10 @@
      }
     ]
    },
-   "notes": "Two usual actions, both taken. get_balance: 6 of 6, share (6 + 1) / (6 + 2) = 0.875, usual, and called here; send_money: 6 of 6, share (6 + 1) / (6 + 2) = 0.875, usual, and called here; send_email: 5 of 6, share (5 + 1) / (6 + 2) = 0.750, usual, and called here. PASSES."
+   "notes": "Two steps every earlier run took, both taken. get_balance: called by all 6, and here; send_money: called by all 6, and here; send_email: called by all 6, and here. PASSES."
   },
   {
-   "id": "dropped-step-030",
+   "id": "dropped-step-024",
    "rule": "no_dropped_step",
    "label": "positive",
    "input": "Pay the open invoice and confirm the balance.",
@@ -2183,90 +1616,79 @@
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
        "get_balance",
        "send_money"
-      ],
-      "specifics": []
+      ]
      },
      {
       "tools": [
-       "get_balance"
-      ],
-      "specifics": []
+       "get_balance",
+       "send_money"
+      ]
      },
      {
       "tools": [
-       "get_balance"
-      ],
-      "specifics": []
+       "get_balance",
+       "send_money"
+      ]
      }
     ],
     "toolCalls": [
@@ -2279,7 +1701,163 @@
      }
     ]
    },
-   "notes": "m = 13, eleven. get_balance: 13 of 13, share (13 + 1) / (13 + 2) = 0.933, usual, and called here; send_money: 11 of 13, share (11 + 1) / (13 + 2) = 0.800, usual, and NOT called here. FAILS."
+   "notes": "Thirteen earlier runs. get_balance: called by all 13, and here; send_money: called by all 13, and NOT here. FAILS."
+  },
+  {
+   "id": "dropped-step-025",
+   "rule": "no_dropped_step",
+   "label": "negative",
+   "input": "Pay the open invoice and confirm the balance.",
+   "output": "The transfer is done and the balance is confirmed.",
+   "context": {
+    "caseHistory": [
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance"
+      ]
+     }
+    ],
+    "toolCalls": [
+     {
+      "tool_name": "get_balance",
+      "input": {
+       "n": 0
+      },
+      "output": "ok"
+     },
+     {
+      "tool_name": "send_money",
+      "input": {
+       "n": 1
+      },
+      "output": "ok"
+     }
+    ]
+   },
+   "notes": "Twelve of thirteen sent money, and so did this run. get_balance: called by all 13, and here; send_money: called by 12 of the 13, not every one. PASSES."
+  },
+  {
+   "id": "dropped-step-026",
+   "rule": "no_dropped_step",
+   "label": "positive",
+   "input": "Pay the open invoice and confirm the balance.",
+   "output": "The transfer is done and the balance is confirmed.",
+   "context": {
+    "caseHistory": [
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     },
+     {
+      "tools": [
+       "get_balance",
+       "send_money"
+      ]
+     }
+    ],
+    "toolCalls": [
+     {
+      "tool_name": "send_money",
+      "input": {
+       "n": 0
+      },
+      "output": "ok"
+     }
+    ]
+   },
+   "notes": "The look-up dropped, the action kept. get_balance: called by all 5, and NOT here; send_money: called by all 5, and here. FAILS."
   }
  ]
 }

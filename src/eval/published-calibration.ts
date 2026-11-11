@@ -7,8 +7,8 @@
  */
 
 export const PUBLISHED_CALIBRATION = {
-  version: '80d593d7576e',
-  compositeVersion: 'd912234e2f5f',
+  version: '2f4a67bc9a9d',
+  compositeVersion: '3fad3023b158',
   split: 'dev',
   prior: 0.5,
   priorMode: 'per-output',

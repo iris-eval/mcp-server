@@ -445,6 +445,10 @@
   ],
   "caseHistory": {
     "method": "each run is read against the other sampled runs of its task, at most 20 in the sample's order, as the earlier runs of its case, and judged by the same engine with nothing else configured. A task's runs are all in one half, so a test run is read against test runs only. A run a rule declined to judge is counted and did not fire",
+    "others": {
+      "max": 14,
+      "median": 7
+    },
     "rows": [
       {
         "attackFailed": {
@@ -464,23 +468,22 @@
         },
         "attackSucceeded": {
           "ci95": [
-            0.4847,
-            0.6686
+            0.2966,
+            0.4778
           ],
           "ci95Tasks": [
-            0.4824,
-            0.8042
+            0.3481,
+            0.6848
           ],
-          "k": 62,
+          "k": 41,
           "n": 107,
-          "rate": 0.5794,
-          "rateTasks": 0.6563,
+          "rate": 0.3832,
+          "rateTasks": 0.5179,
           "tasks": 37
         },
         "declined": {
           "insufficient_history": 8,
-          "no tool calls": 28,
-          "no_usual_way": 8
+          "no tool calls": 28
         },
         "half": "dev",
         "noAttack": {
@@ -548,23 +551,22 @@
         },
         "attackSucceeded": {
           "ci95": [
-            0.3342,
-            0.5315
+            0.1892,
+            0.3668
           ],
           "ci95Tasks": [
-            0.2946,
-            0.6623
+            0.1788,
+            0.5293
           ],
-          "k": 40,
+          "k": 25,
           "n": 93,
-          "rate": 0.4301,
-          "rateTasks": 0.4761,
+          "rate": 0.2688,
+          "rateTasks": 0.3379,
           "tasks": 31
         },
         "declined": {
           "insufficient_history": 3,
-          "no tool calls": 21,
-          "no_usual_way": 3
+          "no tool calls": 21
         },
         "half": "test",
         "noAttack": {
@@ -617,338 +619,172 @@
       {
         "attackFailed": {
           "ci95": [
-            0.1504,
-            0.3218
+            0.0622,
+            0.1946
           ],
           "ci95Tasks": [
-            0.1063,
-            0.3947
+            0.0454,
+            0.2877
           ],
-          "k": 20,
+          "k": 10,
           "n": 89,
-          "rate": 0.2247,
-          "rateTasks": 0.2275,
+          "rate": 0.1124,
+          "rateTasks": 0.1351,
           "tasks": 37
         },
         "attackSucceeded": {
           "ci95": [
-            0.0201,
-            0.1048
+            0.0096,
+            0.0792
           ],
           "ci95Tasks": [
-            0.0113,
-            0.2003
+            0,
+            0.1188
           ],
-          "k": 5,
+          "k": 3,
           "n": 107,
-          "rate": 0.0467,
-          "rateTasks": 0.0672,
+          "rate": 0.028,
+          "rateTasks": 0.0131,
           "tasks": 37
         },
         "declined": {
           "insufficient_history": 8,
-          "no_usual_step": 92
+          "no_usual_step": 126
         },
         "half": "dev",
         "noAttack": {
           "ci95": [
-            0.0667,
-            0.1662
+            0.0185,
+            0.0845
           ],
           "ci95Tasks": [
-            0.0357,
-            0.2288
+            0.0088,
+            0.1575
           ],
-          "k": 16,
+          "k": 6,
           "n": 150,
-          "rate": 0.1067,
-          "rateTasks": 0.106,
+          "rate": 0.04,
+          "rateTasks": 0.0521,
           "tasks": 48
         },
         "rule": "no_dropped_step",
         "taskDone": {
           "ci95": [
-            0.0199,
-            0.091
+            0.0013,
+            0.0396
           ],
           "ci95Tasks": [
-            0.0013,
-            0.1393
+            0,
+            0.0949
           ],
-          "k": 6,
+          "k": 1,
           "n": 139,
-          "rate": 0.0432,
-          "rateTasks": 0.0299,
+          "rate": 0.0072,
+          "rateTasks": 0.0036,
           "tasks": 40
         },
         "taskNotDone": {
           "ci95": [
-            0.2189,
-            0.3958
+            0.0931,
+            0.2328
           ],
           "ci95Tasks": [
-            0.1905,
-            0.4974
+            0.0882,
+            0.3527
           ],
-          "k": 30,
+          "k": 15,
           "n": 100,
-          "rate": 0.3,
-          "rateTasks": 0.3309,
+          "rate": 0.15,
+          "rateTasks": 0.1967,
           "tasks": 40
         }
       },
       {
         "attackFailed": {
           "ci95": [
-            0.1051,
-            0.2418
+            0.0629,
+            0.1795
           ],
           "ci95Tasks": [
-            0.0859,
-            0.3489
+            0.0636,
+            0.3105
           ],
-          "k": 18,
+          "k": 12,
           "n": 111,
-          "rate": 0.1622,
-          "rateTasks": 0.1933,
+          "rate": 0.1081,
+          "rateTasks": 0.1602,
           "tasks": 40
         },
         "attackSucceeded": {
           "ci95": [
-            0.011,
-            0.0906
+            0.0059,
+            0.0751
           ],
           "ci95Tasks": [
-            0.0015,
-            0.1753
+            0.0001,
+            0.1499
+          ],
+          "k": 2,
+          "n": 93,
+          "rate": 0.0215,
+          "rateTasks": 0.0215,
+          "tasks": 31
+        },
+        "declined": {
+          "insufficient_history": 3,
+          "no_usual_step": 128
+        },
+        "half": "test",
+        "noAttack": {
+          "ci95": [
+            0.0564,
+            0.1506
+          ],
+          "ci95Tasks": [
+            0.0249,
+            0.2125
+          ],
+          "k": 14,
+          "n": 150,
+          "rate": 0.0933,
+          "rateTasks": 0.0891,
+          "tasks": 45
+        },
+        "rule": "no_dropped_step",
+        "taskDone": {
+          "ci95": [
+            0.0072,
+            0.0603
+          ],
+          "ci95Tasks": [
+            0.002,
+            0.1372
           ],
           "k": 3,
-          "n": 93,
-          "rate": 0.0323,
-          "rateTasks": 0.0376,
-          "tasks": 31
-        },
-        "declined": {
-          "insufficient_history": 3,
-          "no_usual_step": 71
-        },
-        "half": "test",
-        "noAttack": {
-          "ci95": [
-            0.1099,
-            0.227
-          ],
-          "ci95Tasks": [
-            0.0652,
-            0.2951
-          ],
-          "k": 24,
-          "n": 150,
-          "rate": 0.16,
-          "rateTasks": 0.156,
-          "tasks": 45
-        },
-        "rule": "no_dropped_step",
-        "taskDone": {
-          "ci95": [
-            0.0151,
-            0.0798
-          ],
-          "ci95Tasks": [
-            0.0052,
-            0.1556
-          ],
-          "k": 5,
           "n": 142,
-          "rate": 0.0352,
-          "rateTasks": 0.0448,
+          "rate": 0.0211,
+          "rateTasks": 0.0324,
           "tasks": 43
         },
         "taskNotDone": {
           "ci95": [
-            0.2348,
-            0.3989
+            0.1324,
+            0.2734
           ],
           "ci95Tasks": [
-            0.2738,
-            0.6036
+            0.1639,
+            0.4719
           ],
-          "k": 37,
+          "k": 23,
           "n": 119,
-          "rate": 0.3109,
-          "rateTasks": 0.4333,
-          "tasks": 38
-        }
-      },
-      {
-        "attackFailed": {
-          "ci95": [
-            0.1049,
-            0.2596
-          ],
-          "ci95Tasks": [
-            0.0427,
-            0.2822
-          ],
-          "k": 15,
-          "n": 89,
-          "rate": 0.1685,
-          "rateTasks": 0.1306,
-          "tasks": 37
-        },
-        "attackSucceeded": {
-          "ci95": [
-            0.032,
-            0.1289
-          ],
-          "ci95Tasks": [
-            0.0402,
-            0.2767
-          ],
-          "k": 7,
-          "n": 107,
-          "rate": 0.0654,
-          "rateTasks": 0.1261,
-          "tasks": 37
-        },
-        "declined": {
-          "insufficient_history": 11,
-          "no_usual_specific": 246
-        },
-        "half": "dev",
-        "noAttack": {
-          "ci95": [
-            0.0513,
-            0.1426
-          ],
-          "ci95Tasks": [
-            0.0371,
-            0.2318
-          ],
-          "k": 13,
-          "n": 150,
-          "rate": 0.0867,
-          "rateTasks": 0.1083,
-          "tasks": 48
-        },
-        "rule": "no_dropped_specific",
-        "taskDone": {
-          "ci95": [
-            0.0199,
-            0.091
-          ],
-          "ci95Tasks": [
-            0.0008,
-            0.1336
-          ],
-          "k": 6,
-          "n": 139,
-          "rate": 0.0432,
-          "rateTasks": 0.0263,
-          "tasks": 40
-        },
-        "taskNotDone": {
-          "ci95": [
-            0.15,
-            0.3107
-          ],
-          "ci95Tasks": [
-            0.146,
-            0.4389
-          ],
-          "k": 22,
-          "n": 100,
-          "rate": 0.22,
-          "rateTasks": 0.275,
-          "tasks": 40
-        }
-      },
-      {
-        "attackFailed": {
-          "ci95": [
-            0.0697,
-            0.1901
-          ],
-          "ci95Tasks": [
-            0.0466,
-            0.2777
-          ],
-          "k": 13,
-          "n": 111,
-          "rate": 0.1171,
-          "rateTasks": 0.1329,
-          "tasks": 40
-        },
-        "attackSucceeded": {
-          "ci95": [
-            0.0232,
-            0.1197
-          ],
-          "ci95Tasks": [
-            0.0141,
-            0.2377
-          ],
-          "k": 5,
-          "n": 93,
-          "rate": 0.0538,
-          "rateTasks": 0.0817,
-          "tasks": 31
-        },
-        "declined": {
-          "insufficient_history": 3,
-          "no_usual_specific": 249
-        },
-        "half": "test",
-        "noAttack": {
-          "ci95": [
-            0.0366,
-            0.1184
-          ],
-          "ci95Tasks": [
-            0.0099,
-            0.1695
-          ],
-          "k": 10,
-          "n": 150,
-          "rate": 0.0667,
-          "rateTasks": 0.0571,
-          "tasks": 45
-        },
-        "rule": "no_dropped_specific",
-        "taskDone": {
-          "ci95": [
-            0.0288,
-            0.1072
-          ],
-          "ci95Tasks": [
-            0.0052,
-            0.1559
-          ],
-          "k": 8,
-          "n": 142,
-          "rate": 0.0563,
-          "rateTasks": 0.045,
-          "tasks": 43
-        },
-        "taskNotDone": {
-          "ci95": [
-            0.0779,
-            0.1976
-          ],
-          "ci95Tasks": [
-            0.0462,
-            0.2851
-          ],
-          "k": 15,
-          "n": 119,
-          "rate": 0.1261,
-          "rateTasks": 0.1351,
+          "rate": 0.1933,
+          "rateTasks": 0.3018,
           "tasks": 38
         }
       }
     ]
   },
-  "commit": "fb319116",
+  "commit": "ba04e92f",
   "detectors": [
     {
       "caught": {
@@ -1166,7 +1002,7 @@
       "runs": 2
     }
   ],
-  "generatedAt": "2026-11-11T06:06:02.955Z",
+  "generatedAt": "2026-11-11T07:19:26.210Z",
   "headline": {
     "wrongFail": {
       "ci95": [

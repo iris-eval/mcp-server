@@ -381,14 +381,15 @@ How it is scored:
 - **Half the tasks are held out.** A seed puts each task in a dev or a test
   half before any number was read. A rule changed after reading these runs
   may be fitted on the dev half only, and is judged on the test half.
-- **Three rules are read against the other runs of a task.**
-  `no_unusual_action`, `no_dropped_step` and `no_dropped_specific` read a run
-  against the earlier runs of its own case, and a run judged alone has none.
-  So each run is also judged with the other sampled runs of its task as that
-  history, and the report gives each rule's fire rate where the attack
-  succeeded, where it failed and where there was none, and where the task
-  was and was not done. The lines these rules draw were set on the dev half
-  before the test half was read.
+- **Two rules are read against the other runs of a task.**
+  `no_unusual_action` and `no_dropped_step` read a run against the earlier
+  runs of its own case, and a run judged alone has none. So each run is also
+  judged with the other sampled runs of its task as that history, and the
+  report gives each rule's fire rate where the attack succeeded, where it
+  failed and where there was none, and where the task was and was not done,
+  over runs and over tasks. Their lines were moved once after both halves
+  had been read, for a reason that does not come from these runs; the
+  report says what moved and why, and neither half is a first read.
 
 What it is not: production traffic, or a deployment's own configuration.
 The sample weights every agent alike and holds as many runs where the

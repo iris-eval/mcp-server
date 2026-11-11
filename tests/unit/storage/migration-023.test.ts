@@ -4,7 +4,8 @@
  *   - it is the last migration, after 022, and adds one table and one index;
  *   - a store that held traces before it keeps them, and they have no row:
  *     a case's history starts with the first run stored after the upgrade;
- *   - a release from the compatibility floor on can still open the file.
+ *   - a writer that does not know the table can still store and delete
+ *     (the floor's promise, held here with plain SQL standing in for it).
  */
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -28,7 +29,7 @@ describe('migration 023 — the runs of a case', () => {
     expect(COMPAT_FLOORS.get('023-case-runs')).toBe('0.20.0');
   });
 
-  it('adds one table keyed by the trace, with the tenant on every row, and one index on the case', async () => {
+  it('adds one table keyed by the trace, with the tenant on every row, and one index on the case and the agent', async () => {
     const store = new SqliteAdapter(':memory:');
     await store.initialize();
     const columns = raw(store).prepare('PRAGMA table_info(case_runs)').all();
@@ -36,15 +37,14 @@ describe('migration 023 — the runs of a case', () => {
       ['trace_id', 'TEXT', 0, 1],
       ['tenant_id', 'TEXT', 1, 0],
       ['case_key', 'TEXT', 1, 0],
-      ['timestamp', 'TEXT', 1, 0],
+      ['agent_name', 'TEXT', 1, 0],
       ['tools', 'TEXT', 0, 0],
-      ['specifics', 'TEXT', 0, 0],
     ]);
     const fk = raw(store).prepare('PRAGMA foreign_key_list(case_runs)').all();
     expect(fk).toHaveLength(1);
     expect(fk[0]).toMatchObject({ table: 'traces', from: 'trace_id', to: 'trace_id', on_delete: 'CASCADE' });
-    const index = raw(store).prepare("PRAGMA index_info('idx_case_runs_tenant_case')").all();
-    expect(index.map((c) => c.name)).toEqual(['tenant_id', 'case_key']);
+    const index = raw(store).prepare("PRAGMA index_info('idx_case_runs_tenant_case_agent')").all();
+    expect(index.map((c) => c.name)).toEqual(['tenant_id', 'case_key', 'agent_name']);
     await store.close();
   });
 
@@ -69,11 +69,13 @@ describe('migration 023 — the runs of a case', () => {
     await store.insertTrace(LOCAL_TENANT, { trace_id: 'b'.repeat(32), agent_name: 'bot', input: 'Pay the invoice.', output: 'Paid 420.', timestamp: '2026-11-10T00:00:00.000Z', case_key: 'pay' });
     await store.insertTrace(LOCAL_TENANT, { trace_id: 'c'.repeat(32), agent_name: 'bot', input: 'Pay the invoice.', output: 'Paid 420.', timestamp: '2026-11-10T00:00:01.000Z', case_key: 'pay' });
     // The run stored before the migration is not an earlier run; the one stored after it is.
-    expect((await store.getCaseHistory(LOCAL_TENANT, 'pay', { traceId: 'c'.repeat(32), timestamp: '2026-11-10T00:00:01.000Z' }, 20)).map((r) => r.traceId)).toEqual(['b'.repeat(32)]);
+    expect((await store.getCaseHistory(LOCAL_TENANT, 'c'.repeat(32), 20))?.map((r) => r.traceId)).toEqual(['b'.repeat(32)]);
+    // And the old run itself, judged again, has no row of its own: no history, which is not an empty one.
+    expect(await store.getCaseHistory(LOCAL_TENANT, 'a'.repeat(32), 20)).toBeNull();
     await store.close();
   });
 
-  it('a writer that knows nothing of the table (a release from the floor on) stores a trace and deletes one without breaking it', async () => {
+  it('a writer that knows nothing of the table stores a trace and deletes one without breaking it (plain SQL standing in for a release from the floor on)', async () => {
     const store = new SqliteAdapter(':memory:');
     await store.initialize();
     await store.insertTrace(LOCAL_TENANT, { trace_id: 'd'.repeat(32), agent_name: 'bot', input: 'Pay the invoice.', output: 'Paid 420.', timestamp: '2026-11-10T00:00:00.000Z', case_key: 'pay' });

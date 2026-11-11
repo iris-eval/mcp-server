@@ -25,7 +25,6 @@ import { costContextOf } from './cost-basis.js';
 import { recordOfTrace } from './evidence.js';
 import type { JudgeRequest } from './llm-judge/budget.js';
 import { CASE_HISTORY_WINDOW } from './case-history.js';
-import { resolveCaseKey } from './case-key.js';
 
 export type IngestEvalType = EvalType | 'all';
 
@@ -68,18 +67,18 @@ export async function costHistoryFor(storage: IStorageAdapter, tenantId: TenantI
 }
 
 /**
- * The earlier runs of a stored trace's case, as the case-history rules read
- * them (src/eval/case-history.ts): what each called and the specifics its
- * answer carried, newest first, from the short rows the store keeps beside
- * each trace. The case is the one the trace was stored under, the caller's
- * key or the one derived from its input; undefined when it has neither,
- * because then there is no case to have a history.
+ * The same agent's earlier runs of a stored trace's case, as the
+ * case-history rules read them (src/eval/case-history.ts): the tools each
+ * called, newest first, from the short rows the store keeps beside each
+ * trace. The case is the one the trace was stored under, the caller's key
+ * or the one derived from its input. undefined when the trace has no row
+ * of its own (no case, or stored before the rows were kept): the rules
+ * then say there is no stored case, which is not the same as a case with
+ * no earlier runs.
  */
-export async function caseHistoryFor(storage: IStorageAdapter, tenantId: TenantId, trace: Pick<Trace, 'trace_id' | 'timestamp' | 'case_key' | 'input'>): Promise<readonly CaseRun[] | undefined> {
-  const caseKey = resolveCaseKey(trace.case_key, trace.input);
-  if (caseKey === null) return undefined;
-  const rows = await storage.getCaseHistory(tenantId, caseKey, { traceId: trace.trace_id, timestamp: trace.timestamp }, CASE_HISTORY_WINDOW);
-  return rows.map((row) => ({ traceId: row.traceId, tools: row.tools, specifics: row.specifics }));
+export async function caseHistoryFor(storage: IStorageAdapter, tenantId: TenantId, trace: Pick<Trace, 'trace_id'>): Promise<readonly CaseRun[] | undefined> {
+  const rows = await storage.getCaseHistory(tenantId, trace.trace_id, CASE_HISTORY_WINDOW);
+  return rows === null ? undefined : rows.map((row) => ({ tools: row.tools }));
 }
 
 /**

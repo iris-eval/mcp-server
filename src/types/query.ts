@@ -419,8 +419,8 @@ export interface IStorageAdapter {
    * the composed verdict, so a case's rate can be read for one question.
    */
   getCaseResults(tenantId: TenantId, filter?: { run?: string; caseKey?: string; question?: QuestionId; session?: string; groupBy?: 'case_key' | 'session' }): Promise<CaseResultRow[]>;
-  /** The runs of one case stored before a given trace, newest first, at most `limit`: what each called and the specifics its answer carried. */
-  getCaseHistory(tenantId: TenantId, caseKey: string, before: { traceId: string; timestamp: string }, limit: number): Promise<CaseHistoryRow[]>;
+  /** The same agent's runs of the same case stored before a given trace, newest first, at most `limit`: the tools each called. null when the trace has no case row of its own. */
+  getCaseHistory(tenantId: TenantId, traceId: string, limit: number): Promise<CaseHistoryRow[] | null>;
   /** Datasets: a named set of case keys a comparison and a gate can be restricted to. */
   createDataset(tenantId: TenantId, input: { label: string; cases: DatasetCase[] }): Promise<DatasetDetail>;
   /** By id, else by label; null when neither matches. */

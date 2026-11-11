@@ -41,9 +41,9 @@
  *     vendored regardless, so the two libraries agree on any context the
  *     server CAN evaluate
  *   - No stored history. cost_anomaly reads an agent's earlier costs and
- *     the three case-history rules read the earlier runs of a case, both
- *     from the server's store, so all four always skip here, as they do on
- *     the server for a call with no trace behind it
+ *     the two case-history rules read its earlier runs of a case, both from
+ *     the server's store, so all three always skip here, as they do on the
+ *     server for a call with no stored trace behind it
  *   - No weighted-score aggregation and no critical veto — raw rule results
  *     and a plain average
  *   - No custom-rule support, no regex budget or sandbox — the route bounds
@@ -5221,58 +5221,31 @@ function saysSomething(ctx: EvalContext): EvalRuleResult {
 
 /*
  * The case-history rules — vendored as skips. They read a run against the
- * earlier runs of its own case, from the server's store, which the
- * playground does not have; on a bare call the server skips all three too
- * (no trajectory, or insufficient_history), and a skip on both sides is a
- * parity match.
+ * same agent's earlier runs of its case, from the server's store, which the
+ * playground does not have; on a call with no stored trace behind it the
+ * server skips both too, and a skip on both sides is a parity match.
  */
+const NO_STORED_CASE = 'insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)';
+
 function noUnusualAction(ctx: EvalContext): EvalRuleResult {
   const calls = ctx.toolCalls;
   if (calls === undefined || calls.length === 0) {
     return { ruleName: 'no_unusual_action', category: 'completeness', passed: false, score: 0, message: 'No tool calls provided', skipped: true, skipReason: 'context.toolCalls not provided' };
   }
-  return {
-    ruleName: 'no_unusual_action',
-    category: 'completeness',
-    passed: false,
-    score: 0,
-    message: 'Not judged: 0 earlier runs of this case with recorded tool calls, 3 needed before a run can be read against them',
-    skipped: true,
-    skipReason: 'insufficient_history: 0 earlier runs of this case with recorded tool calls, 3 needed',
-  };
+  return { ruleName: 'no_unusual_action', category: 'completeness', passed: false, score: 0, message: 'Not judged: this call has no stored case behind it, so there are no earlier runs to read it against', skipped: true, skipReason: NO_STORED_CASE };
 }
 
 function noDroppedStep(ctx: EvalContext): EvalRuleResult {
   if (ctx.toolCalls === undefined) {
     return { ruleName: 'no_dropped_step', category: 'completeness', passed: false, score: 0, message: 'No tool calls provided', skipped: true, skipReason: 'context.toolCalls not provided' };
   }
-  return {
-    ruleName: 'no_dropped_step',
-    category: 'completeness',
-    passed: false,
-    score: 0,
-    message: 'Not judged: 0 earlier runs of this case with recorded tool calls, 3 needed before a run can be read against them',
-    skipped: true,
-    skipReason: 'insufficient_history: 0 earlier runs of this case with recorded tool calls, 3 needed',
-  };
-}
-
-function noDroppedSpecific(): EvalRuleResult {
-  return {
-    ruleName: 'no_dropped_specific',
-    category: 'completeness',
-    passed: false,
-    score: 0,
-    message: 'Not judged: 0 earlier runs of this case with an answer, 3 needed before a run can be read against them',
-    skipped: true,
-    skipReason: 'insufficient_history: 0 earlier runs of this case with an answer, 3 needed',
-  };
+  return { ruleName: 'no_dropped_step', category: 'completeness', passed: false, score: 0, message: 'Not judged: this call has no stored case behind it, so there are no earlier runs to read it against', skipped: true, skipReason: NO_STORED_CASE };
 }
 
 const RULES_BY_CATEGORY: Record<EvalCategory, Array<(ctx: EvalContext) => EvalRuleResult>> = {
   safety: [noPii, noBlocklistWords, noInjectionPatterns, noStubOutput, noHallucinationMarkers, noSilentToolFailure, groundedInReads, noInjectionCompliance],
   relevance: [keywordOverlap, topicConsistency, toolChoice, answersTheAsk],
-  completeness: [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments, askCoverage, toolSequence, saysSomething, noUnusualAction, noDroppedStep, noDroppedSpecific],
+  completeness: [minOutputLength, nonEmptyOutput, sentenceCount, expectedCoverage, validToolArguments, askCoverage, toolSequence, saysSomething, noUnusualAction, noDroppedStep],
   cost: [costUnderThreshold, verbosityRatio, noToolLoop, maxSteps, costAnomaly, stepBudget],
 };
 
@@ -5304,7 +5277,6 @@ export const OUTPUT_VIEWS = new Map<(ctx: EvalContext) => EvalRuleResult, 'value
   [groundedInReads, 'values'],
   [noInjectionCompliance, 'values'],
   [saysSomething, 'values'],
-  [noDroppedSpecific, 'values'],
   [noPii, 'labelled'],
   [noBlocklistWords, 'labelled'],
   [noInjectionPatterns, 'labelled'],
