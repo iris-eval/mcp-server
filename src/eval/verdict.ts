@@ -123,10 +123,17 @@ export function deriveCriticalSkipped(ruleResults: readonly EvalRuleResult[]): s
  * did. Without it the hash named a custom rule by its name alone, and a rule
  * replaced by one that checks nothing kept the fingerprint of the rule it
  * replaced.
+ *
+ * A rule the deployment set to report only (eval.advisoryRules) is marked,
+ * and only then: the same rules with one of them taken out of the verdict
+ * are a different ruleset, and a ruleset with none marked hashes as it did.
  */
 export function rulesetHash(rules: readonly EvalRule[], resolve: (rule: EvalRule) => EffectiveCriticality, judge?: string): string {
   const rows = rules
-    .map((r) => [r.name, r.version ?? 0, r.kind ?? '', resolve(r).critical ? 1 : 0, r.weight, ...(r.contentHash !== undefined ? [r.contentHash] : [])] as const)
+    .map((r) => {
+      const effective = resolve(r);
+      return [r.name, r.version ?? 0, r.kind ?? '', effective.critical ? 1 : 0, r.weight, ...(r.contentHash !== undefined ? [r.contentHash] : []), ...(effective.advisory === true ? ['advisory'] : [])] as const;
+    })
     .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   /*
    * A relevance judge changes what answers_the_ask decides (#649), so a
@@ -187,13 +194,23 @@ function composerMoved(c: ComposerSettings): Record<string, unknown> {
  * They are appended only where they differ from the shipped ones: a
  * deployment that set none of them hashes exactly as it did.
  */
-export function configHash(config: { threshold: number; ruleThresholds?: Record<string, unknown>; criticalRules?: readonly string[]; nonCriticalRules?: readonly string[]; judge?: string; composer?: ComposerSettings }): string {
+export function configHash(config: {
+  threshold: number;
+  ruleThresholds?: Record<string, unknown>;
+  criticalRules?: readonly string[];
+  nonCriticalRules?: readonly string[];
+  advisoryRules?: readonly string[];
+  judge?: string;
+  composer?: ComposerSettings;
+}): string {
   const moved = config.composer ? composerMoved(config.composer) : {};
   const stable = JSON.stringify({
     threshold: config.threshold,
     ruleThresholds: Object.fromEntries(Object.entries(config.ruleThresholds ?? {}).sort(([a], [b]) => (a < b ? -1 : 1))),
     criticalRules: [...(config.criticalRules ?? [])].sort(),
     nonCriticalRules: [...(config.nonCriticalRules ?? [])].sort(),
+    // The rules set to report only, when there are any; absent keeps every hash computed without the key as it was.
+    ...((config.advisoryRules?.length ?? 0) > 0 ? { advisoryRules: [...config.advisoryRules!].sort() } : {}),
     // The relevance judge in force, when there is one; absent keeps every judge-less hash as it was.
     ...(config.judge !== undefined ? { judge: config.judge } : {}),
     ...(Object.keys(moved).length > 0 ? { composer: moved } : {}),
