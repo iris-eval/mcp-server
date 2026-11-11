@@ -1,7 +1,7 @@
 /*
  * Migration 022 — the capture source's declaration on a trace.
  *
- *   - it is the last migration, after 021, and adds one nullable column;
+ *   - it comes right after 021, and adds one nullable column;
  *   - a trace stored before it (the column NULL) reads back with no
  *     declaration, and is judged as it always was: nobody declared;
  *   - a trace stored after it keeps the declaration it was sent with.
@@ -23,9 +23,8 @@ afterEach(() => {
 const raw = (store: SqliteAdapter) => (store as unknown as { db: { prepare(sql: string): { all(...p: unknown[]): Array<Record<string, unknown>>; run(...p: unknown[]): unknown } } }).db;
 
 describe('migration 022 — the capture source on a trace', () => {
-  it('is the last known migration, after 021, with the floor 015 already holds', () => {
-    expect(KNOWN_MIGRATION_IDS[KNOWN_MIGRATION_IDS.length - 1]).toBe('022-trace-capture');
-    expect(KNOWN_MIGRATION_IDS[KNOWN_MIGRATION_IDS.length - 2]).toBe('021-eval-verdict-state');
+  it('comes right after 021, with the floor 015 already holds', () => {
+    expect(KNOWN_MIGRATION_IDS[KNOWN_MIGRATION_IDS.indexOf('022-trace-capture') - 1]).toBe('021-eval-verdict-state');
     expect(COMPAT_FLOORS.get('022-trace-capture')).toBe('0.20.0');
   });
 

@@ -19,11 +19,12 @@ import { toEvaluationResponse } from './response.js';
 import { historyBefore } from './decision-moment.js';
 import type { IStorageAdapter } from '../types/query.js';
 import type { Trace } from '../types/trace.js';
-import type { EvalResult, EvalType } from '../types/eval.js';
+import type { CaseRun, EvalResult, EvalType } from '../types/eval.js';
 import type { TenantId } from '../types/tenant.js';
 import { costContextOf } from './cost-basis.js';
 import { recordOfTrace } from './evidence.js';
 import type { JudgeRequest } from './llm-judge/budget.js';
+import { CASE_HISTORY_WINDOW } from './case-history.js';
 
 export type IngestEvalType = EvalType | 'all';
 
@@ -66,6 +67,21 @@ export async function costHistoryFor(storage: IStorageAdapter, tenantId: TenantI
 }
 
 /**
+ * The same agent's earlier runs of a stored trace's case, as the
+ * case-history rules read them (src/eval/case-history.ts): the tools each
+ * called, newest first, from the short rows the store keeps beside each
+ * trace. The case is the one the trace was stored under, the caller's key
+ * or the one derived from its input. undefined when the trace has no row
+ * of its own (no case, or stored before the rows were kept): the rules
+ * then say there is no stored case, which is not the same as a case with
+ * no earlier runs.
+ */
+export async function caseHistoryFor(storage: IStorageAdapter, tenantId: TenantId, trace: Pick<Trace, 'trace_id'>): Promise<readonly CaseRun[] | undefined> {
+  const rows = await storage.getCaseHistory(tenantId, trace.trace_id, CASE_HISTORY_WINDOW);
+  return rows === null ? undefined : rows.map((row) => ({ tools: row.tools }));
+}
+
+/**
  * Evaluate a trace that has just been stored, and store the evaluation
  * linked to it. The trace must carry an output — the callers check that
  * before storing anything, so a refusal never leaves a half-done write.
@@ -83,12 +99,15 @@ export async function evaluateStoredTrace(
    * moment classifier does. The trace just stored is excluded by id.
    */
   const costHistory = await costHistoryFor(storage, tenantId, trace);
+  // And the earlier runs of its case, for the rules that read a run against them.
+  const caseHistory = await caseHistoryFor(storage, tenantId, trace);
   const context = {
     output: trace.output,
     input: trace.input,
     // Reported or estimated at ingest; the cost rules say which.
     ...costContextOf(trace),
     costHistory,
+    caseHistory,
     tokenUsage: trace.token_usage,
     // What the agent DID, as this same request stored it. Whole-source
     // precedence in the step layer means spans are only reached when

@@ -25,7 +25,7 @@ import { LOCAL_LABEL_MIN, LOCAL_LABEL_WINDOW, localPrecision } from '../../eval/
 import { buildLocalLabelSource, builtInKindOf, refreshLocalLabels, type LocalLabelSource } from '../../eval/local-labels.js';
 import { publishedAccuracyFor } from '../../eval/accuracy.js';
 import { builtInRules } from '../../eval/criticality.js';
-import { costHistoryFor } from '../../eval/ingest.js';
+import { caseHistoryFor, costHistoryFor } from '../../eval/ingest.js';
 import { toEvaluationResponse } from '../../eval/response.js';
 import { insertLinkedEvalResult } from '../../tools/trace-link.js';
 import { costContextOf } from '../../eval/cost-basis.js';
@@ -213,6 +213,7 @@ export function registerLabelRoutes(router: Router, storage: IStorageAdapter, op
       expected: before.expected_text,
       ...costContextOf(trace),
       costHistory: await costHistoryFor(storage, tenantId, trace),
+      caseHistory: await caseHistoryFor(storage, tenantId, trace),
       tokenUsage: trace.token_usage,
       toolCalls: trace.tool_calls,
       spans,

@@ -181,6 +181,20 @@ export interface ExpectedTrajectory {
   tolerance?: number;
 }
 
+/**
+ * One earlier run of a case, as the case-history rules read it
+ * (src/eval/case-history.ts): the tools it called, and nothing else of it.
+ */
+export interface CaseRun {
+  /**
+   * The distinct tools the run called, in the order it first called them.
+   * An empty list is a run that made no call. null is a run whose calls
+   * were not recorded or cannot be listed whole, which says nothing about
+   * tools and is not counted among the earlier runs.
+   */
+  tools: readonly string[] | null;
+}
+
 export interface EvalContext {
   output: string;
   /**
@@ -255,6 +269,14 @@ export interface EvalContext {
    * evaluate_output call, where the rule reports insufficient_history.
    */
   costHistory?: readonly number[];
+  /**
+   * The same agent's earlier runs of this trace's case, newest first, at
+   * most 20: for each, the tools it called (src/eval/case-history.ts). The
+   * baseline the two case-history rules read. Supplied by the engine's
+   * callers from the store, as `costHistory` is; absent on a call with no
+   * stored case behind it, where those rules report insufficient_history.
+   */
+  caseHistory?: readonly CaseRun[];
   /**
    * Who recorded this evidence, and the capture source's declaration when
    * one recorded it (src/eval/evidence.ts, recordOfTrace). A field the

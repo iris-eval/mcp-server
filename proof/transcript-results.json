@@ -1,6 +1,6 @@
 {
-  "commit": "56ed5577",
-  "generatedAt": "2026-10-25T20:29:42.719Z",
+  "commit": "ba04e92f",
+  "generatedAt": "2026-11-11T07:26:26.455Z",
   "method": "each transcript runs through the real engine exactly as evaluate_output does, at the shipped defaults. BUNDLE verdicts are compared to the answer key written when the transcript was captured; the SHIP verdict is compared to \"no failure class is present\"; CLASSES CAUGHT counts the classes a person said were present that some rule declaring that class actually failed on. The three are different questions and the class number is the one that stays meaningful as rules are added, because it needs no relabelling. Gaps are MEASURED here and read by tests/real-transcripts.test.ts, so a gap that closes cannot stay recorded as open",
   "rows": [
     {
@@ -57,6 +57,14 @@
         {
           "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
           "rule": "tool_sequence"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
         },
         {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
@@ -132,6 +140,14 @@
           "rule": "tool_sequence"
         },
         {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
+        },
+        {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
           "rule": "tool_choice"
         },
@@ -203,6 +219,14 @@
         {
           "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
           "rule": "tool_sequence"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
         },
         {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
@@ -278,6 +302,14 @@
           "rule": "tool_sequence"
         },
         {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
+        },
+        {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
           "rule": "tool_choice"
         },
@@ -345,6 +377,14 @@
         {
           "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
           "rule": "tool_sequence"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
         },
         {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
@@ -418,6 +458,14 @@
         {
           "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
           "rule": "tool_sequence"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
         },
         {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
@@ -499,6 +547,14 @@
           "rule": "tool_sequence"
         },
         {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
+        },
+        {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
           "rule": "tool_choice"
         },
@@ -572,6 +628,14 @@
         {
           "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
           "rule": "tool_sequence"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
         },
         {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
@@ -653,6 +717,14 @@
           "rule": "tool_sequence"
         },
         {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
+        },
+        {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
           "rule": "tool_choice"
         },
@@ -730,6 +802,14 @@
         {
           "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
           "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.toolCalls is empty — the agent made no tool calls, so there is no trajectory to judge",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
         },
         {
           "reason": "context.toolCalls is empty — the agent made no tool calls, so there is no trajectory to judge",
@@ -827,6 +907,14 @@
           "rule": "tool_sequence"
         },
         {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
+        },
+        {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
           "rule": "tool_choice"
         },
@@ -904,6 +992,14 @@
         {
           "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
           "rule": "tool_sequence"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
         },
         {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
@@ -987,6 +1083,14 @@
           "rule": "tool_sequence"
         },
         {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
+        },
+        {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
           "rule": "tool_choice"
         },
@@ -1066,6 +1170,14 @@
         {
           "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
           "rule": "tool_sequence"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
         },
         {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
@@ -1149,6 +1261,14 @@
           "rule": "tool_sequence"
         },
         {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
+        },
+        {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
           "rule": "tool_choice"
         },
@@ -1223,6 +1343,14 @@
         {
           "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
           "rule": "tool_sequence"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
         },
         {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
@@ -1301,6 +1429,14 @@
         {
           "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
           "rule": "tool_sequence"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
         },
         {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
@@ -1385,6 +1521,14 @@
           "rule": "tool_sequence"
         },
         {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
+        },
+        {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
           "rule": "tool_choice"
         },
@@ -1457,6 +1601,14 @@
         {
           "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
           "rule": "tool_sequence"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
         },
         {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
@@ -1539,6 +1691,14 @@
         {
           "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
           "rule": "tool_sequence"
+        },
+        {
+          "reason": "context.toolCalls is empty — the agent made no tool calls, so there is no trajectory to judge",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
         },
         {
           "reason": "context.toolCalls is empty — the agent made no tool calls, so there is no trajectory to judge",
@@ -1638,6 +1798,14 @@
           "rule": "tool_sequence"
         },
         {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
+        },
+        {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
           "rule": "tool_choice"
         },
@@ -1720,6 +1888,14 @@
           "rule": "tool_sequence"
         },
         {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
+        },
+        {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
           "rule": "tool_choice"
         },
@@ -1799,6 +1975,14 @@
           "rule": "tool_sequence"
         },
         {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
+        },
+        {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",
           "rule": "tool_choice"
         },
@@ -1873,6 +2057,14 @@
         {
           "reason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
           "rule": "tool_sequence"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_unusual_action"
+        },
+        {
+          "reason": "insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)",
+          "rule": "no_dropped_step"
         },
         {
           "reason": "context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)",

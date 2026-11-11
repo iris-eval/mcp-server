@@ -1,6 +1,6 @@
 {
-  "commit": "56ed5577",
-  "corpusVersion": "7c27824a2b98",
+  "commit": "ba04e92f",
+  "corpusVersion": "4eeb53b7ccfb",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
     "types": [
@@ -625,7 +625,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-10-25T20:29:36.870Z",
+  "generatedAt": "2026-11-11T07:19:16.463Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -638,9 +638,9 @@
       "platform": "win32"
     },
     "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
-    "n": 1323,
-    "p50Ms": 0.854,
-    "p95Ms": 4.764
+    "n": 1381,
+    "p50Ms": 0.843,
+    "p95Ms": 4.645
   },
   "method": {
     "ci": "wilson-95",
@@ -1050,6 +1050,106 @@
       "skipped": 1,
       "tn": 126,
       "tp": 23
+    },
+    {
+      "category": "completeness",
+      "ci95": {
+        "f1": [
+          1,
+          1
+        ],
+        "precision": [
+          0.8157,
+          1
+        ],
+        "recall": [
+          0.8157,
+          1
+        ]
+      },
+      "credible95": {
+        "f1": [
+          0.8932,
+          0.9993
+        ],
+        "precision": [
+          0.8711,
+          1
+        ],
+        "recall": [
+          0.8569,
+          1
+        ]
+      },
+      "f1": 1,
+      "fn": 0,
+      "fp": 0,
+      "labelBasis": "definition",
+      "n": 32,
+      "name": "no_unusual_action",
+      "negatives": 15,
+      "positives": 17,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
+      "precision": 1,
+      "recall": 1,
+      "skipped": 4,
+      "tn": 15,
+      "tp": 17
+    },
+    {
+      "category": "completeness",
+      "ci95": {
+        "f1": [
+          1,
+          1
+        ],
+        "precision": [
+          0.7719,
+          1
+        ],
+        "recall": [
+          0.7719,
+          1
+        ]
+      },
+      "credible95": {
+        "f1": [
+          0.8621,
+          0.9993
+        ],
+        "precision": [
+          0.8241,
+          1
+        ],
+        "recall": [
+          0.8333,
+          1
+        ]
+      },
+      "f1": 1,
+      "fn": 0,
+      "fp": 0,
+      "labelBasis": "definition",
+      "n": 26,
+      "name": "no_dropped_step",
+      "negatives": 13,
+      "positives": 13,
+      "ppvAt": {
+        "0.01": 1,
+        "0.05": 1,
+        "0.2": 1,
+        "0.5": 1
+      },
+      "precision": 1,
+      "recall": 1,
+      "skipped": 5,
+      "tn": 13,
+      "tp": 13
     },
     {
       "category": "relevance",

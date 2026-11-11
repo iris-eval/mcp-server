@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { IStorageAdapter } from '../types/query.js';
 import type { EvalEngine } from '../eval/engine.js';
-import { costHistoryFor } from '../eval/ingest.js';
+import { caseHistoryFor, costHistoryFor } from '../eval/ingest.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { newJudgeRequest } from '../eval/llm-judge/budget.js';
 import { strictInput } from './strict-input.js';
@@ -164,6 +164,7 @@ export function registerEvaluateRunsTool(
           input: trace.input,
           ...costContextOf(trace),
           costHistory: await costHistoryFor(storage, LOCAL_TENANT, trace),
+          caseHistory: await caseHistoryFor(storage, LOCAL_TENANT, trace),
           tokenUsage: trace.token_usage,
           toolCalls: trace.tool_calls,
           spans,

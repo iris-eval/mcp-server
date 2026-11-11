@@ -115,6 +115,8 @@ export const BUILT_IN_RULE_CATEGORY: Record<string, RuleCategory> = {
   ask_coverage: 'completeness',
   tool_sequence: 'completeness',
   says_something: 'completeness',
+  no_unusual_action: 'completeness',
+  no_dropped_step: 'completeness',
   // cost (max_steps is listed above with the safety block for historical order)
   cost_under_threshold: 'cost',
   verbosity_ratio: 'cost',
@@ -146,6 +148,8 @@ export const BUILT_IN_RULES: ReadonlyArray<{ name: string; category: RuleCategor
   { name: 'ask_coverage', category: 'completeness' },
   { name: 'tool_sequence', category: 'completeness' },
   { name: 'says_something', category: 'completeness' },
+  { name: 'no_unusual_action', category: 'completeness' },
+  { name: 'no_dropped_step', category: 'completeness' },
   { name: 'cost_under_threshold', category: 'cost' },
   { name: 'verbosity_ratio', category: 'cost' },
   { name: 'no_tool_loop', category: 'cost' },
