@@ -1,0 +1,1156 @@
+{
+ "what": "Tool names, each labelled by what the tool does: A it acts (writes, sends, deletes, runs something), R it only reads, D debatable.",
+ "provenance": "Written on 2026-11-11 from recall of the tool lists these servers, agent runtimes and function-calling styles publish, by a reviewer who had not seen the reader's word lists; not every name was checked against its source. The word lists were extended after reading the reader's misses on this list, so what the reader scores here is in-sample. tool-names.heldout.json is the list it was not fitted on.",
+ "names": [
+  {
+   "name": "read_file",
+   "group": "mcp filesystem",
+   "label": "R"
+  },
+  {
+   "name": "read_text_file",
+   "group": "mcp filesystem",
+   "label": "R"
+  },
+  {
+   "name": "read_media_file",
+   "group": "mcp filesystem",
+   "label": "R"
+  },
+  {
+   "name": "read_multiple_files",
+   "group": "mcp filesystem",
+   "label": "R"
+  },
+  {
+   "name": "write_file",
+   "group": "mcp filesystem",
+   "label": "A"
+  },
+  {
+   "name": "edit_file",
+   "group": "mcp filesystem",
+   "label": "A"
+  },
+  {
+   "name": "create_directory",
+   "group": "mcp filesystem",
+   "label": "A"
+  },
+  {
+   "name": "list_directory",
+   "group": "mcp filesystem",
+   "label": "R"
+  },
+  {
+   "name": "list_directory_with_sizes",
+   "group": "mcp filesystem",
+   "label": "R"
+  },
+  {
+   "name": "directory_tree",
+   "group": "mcp filesystem",
+   "label": "R"
+  },
+  {
+   "name": "move_file",
+   "group": "mcp filesystem",
+   "label": "A"
+  },
+  {
+   "name": "search_files",
+   "group": "mcp filesystem",
+   "label": "R"
+  },
+  {
+   "name": "get_file_info",
+   "group": "mcp filesystem",
+   "label": "R"
+  },
+  {
+   "name": "list_allowed_directories",
+   "group": "mcp filesystem",
+   "label": "R"
+  },
+  {
+   "name": "git_status",
+   "group": "mcp git",
+   "label": "R"
+  },
+  {
+   "name": "git_diff_unstaged",
+   "group": "mcp git",
+   "label": "R"
+  },
+  {
+   "name": "git_diff_staged",
+   "group": "mcp git",
+   "label": "R"
+  },
+  {
+   "name": "git_diff",
+   "group": "mcp git",
+   "label": "R"
+  },
+  {
+   "name": "git_commit",
+   "group": "mcp git",
+   "label": "A"
+  },
+  {
+   "name": "git_add",
+   "group": "mcp git",
+   "label": "A"
+  },
+  {
+   "name": "git_reset",
+   "group": "mcp git",
+   "label": "A"
+  },
+  {
+   "name": "git_log",
+   "group": "mcp git",
+   "label": "R"
+  },
+  {
+   "name": "git_create_branch",
+   "group": "mcp git",
+   "label": "A"
+  },
+  {
+   "name": "git_checkout",
+   "group": "mcp git",
+   "label": "A"
+  },
+  {
+   "name": "git_show",
+   "group": "mcp git",
+   "label": "R"
+  },
+  {
+   "name": "git_init",
+   "group": "mcp git",
+   "label": "A"
+  },
+  {
+   "name": "git_branch",
+   "group": "mcp git",
+   "label": "R"
+  },
+  {
+   "name": "create_or_update_file",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "search_repositories",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "create_repository",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "get_file_contents",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "push_files",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "create_issue",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "create_pull_request",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "fork_repository",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "create_branch",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "list_commits",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "list_issues",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "update_issue",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "add_issue_comment",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "search_code",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "search_issues",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "search_users",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "get_issue",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "get_pull_request",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "list_pull_requests",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "create_pull_request_review",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "merge_pull_request",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "get_pull_request_files",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "get_pull_request_status",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "update_pull_request_branch",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "get_pull_request_comments",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "get_pull_request_reviews",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "delete_file",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "rerun_workflow_run",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "rerun_failed_jobs",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "cancel_workflow_run",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "dismiss_notification",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "mark_all_notifications_read",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "star_repository",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "unstar_repository",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "request_copilot_review",
+   "group": "mcp github",
+   "label": "A"
+  },
+  {
+   "name": "get_commit",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "get_workflow_run",
+   "group": "mcp github",
+   "label": "R"
+  },
+  {
+   "name": "slack_list_channels",
+   "group": "mcp slack",
+   "label": "R"
+  },
+  {
+   "name": "slack_post_message",
+   "group": "mcp slack",
+   "label": "A"
+  },
+  {
+   "name": "slack_reply_to_thread",
+   "group": "mcp slack",
+   "label": "A"
+  },
+  {
+   "name": "slack_add_reaction",
+   "group": "mcp slack",
+   "label": "A"
+  },
+  {
+   "name": "slack_get_channel_history",
+   "group": "mcp slack",
+   "label": "R"
+  },
+  {
+   "name": "slack_get_thread_replies",
+   "group": "mcp slack",
+   "label": "R"
+  },
+  {
+   "name": "slack_get_users",
+   "group": "mcp slack",
+   "label": "R"
+  },
+  {
+   "name": "slack_get_user_profile",
+   "group": "mcp slack",
+   "label": "R"
+  },
+  {
+   "name": "puppeteer_navigate",
+   "group": "mcp puppeteer",
+   "label": "D"
+  },
+  {
+   "name": "puppeteer_screenshot",
+   "group": "mcp puppeteer",
+   "label": "R"
+  },
+  {
+   "name": "puppeteer_click",
+   "group": "mcp puppeteer",
+   "label": "A"
+  },
+  {
+   "name": "puppeteer_fill",
+   "group": "mcp puppeteer",
+   "label": "A"
+  },
+  {
+   "name": "puppeteer_select",
+   "group": "mcp puppeteer",
+   "label": "A"
+  },
+  {
+   "name": "puppeteer_hover",
+   "group": "mcp puppeteer",
+   "label": "D"
+  },
+  {
+   "name": "puppeteer_evaluate",
+   "group": "mcp puppeteer",
+   "label": "A"
+  },
+  {
+   "name": "browser_close",
+   "group": "mcp playwright",
+   "label": "D"
+  },
+  {
+   "name": "browser_resize",
+   "group": "mcp playwright",
+   "label": "D"
+  },
+  {
+   "name": "browser_console_messages",
+   "group": "mcp playwright",
+   "label": "R"
+  },
+  {
+   "name": "browser_handle_dialog",
+   "group": "mcp playwright",
+   "label": "A"
+  },
+  {
+   "name": "browser_evaluate",
+   "group": "mcp playwright",
+   "label": "A"
+  },
+  {
+   "name": "browser_file_upload",
+   "group": "mcp playwright",
+   "label": "A"
+  },
+  {
+   "name": "browser_fill_form",
+   "group": "mcp playwright",
+   "label": "A"
+  },
+  {
+   "name": "browser_install",
+   "group": "mcp playwright",
+   "label": "A"
+  },
+  {
+   "name": "browser_press_key",
+   "group": "mcp playwright",
+   "label": "A"
+  },
+  {
+   "name": "browser_type",
+   "group": "mcp playwright",
+   "label": "A"
+  },
+  {
+   "name": "browser_navigate",
+   "group": "mcp playwright",
+   "label": "D"
+  },
+  {
+   "name": "browser_navigate_back",
+   "group": "mcp playwright",
+   "label": "D"
+  },
+  {
+   "name": "browser_network_requests",
+   "group": "mcp playwright",
+   "label": "R"
+  },
+  {
+   "name": "browser_run_code",
+   "group": "mcp playwright",
+   "label": "A"
+  },
+  {
+   "name": "browser_take_screenshot",
+   "group": "mcp playwright",
+   "label": "R"
+  },
+  {
+   "name": "browser_snapshot",
+   "group": "mcp playwright",
+   "label": "R"
+  },
+  {
+   "name": "browser_click",
+   "group": "mcp playwright",
+   "label": "A"
+  },
+  {
+   "name": "browser_drag",
+   "group": "mcp playwright",
+   "label": "A"
+  },
+  {
+   "name": "browser_hover",
+   "group": "mcp playwright",
+   "label": "D"
+  },
+  {
+   "name": "browser_select_option",
+   "group": "mcp playwright",
+   "label": "A"
+  },
+  {
+   "name": "browser_tabs",
+   "group": "mcp playwright",
+   "label": "D"
+  },
+  {
+   "name": "browser_wait_for",
+   "group": "mcp playwright",
+   "label": "R"
+  },
+  {
+   "name": "create_entities",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "A"
+  },
+  {
+   "name": "create_relations",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "A"
+  },
+  {
+   "name": "add_observations",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "A"
+  },
+  {
+   "name": "delete_entities",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "A"
+  },
+  {
+   "name": "delete_observations",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "A"
+  },
+  {
+   "name": "delete_relations",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "A"
+  },
+  {
+   "name": "read_graph",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "R"
+  },
+  {
+   "name": "search_nodes",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "R"
+  },
+  {
+   "name": "open_nodes",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "R"
+  },
+  {
+   "name": "fetch",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "R"
+  },
+  {
+   "name": "read_query",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "R"
+  },
+  {
+   "name": "write_query",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "A"
+  },
+  {
+   "name": "create_table",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "A"
+  },
+  {
+   "name": "list_tables",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "R"
+  },
+  {
+   "name": "describe_table",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "R"
+  },
+  {
+   "name": "append_insight",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "A"
+  },
+  {
+   "name": "query",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "D"
+  },
+  {
+   "name": "sequentialthinking",
+   "group": "mcp memory+fetch+sqlite",
+   "label": "R"
+  },
+  {
+   "name": "Read",
+   "group": "claude code",
+   "label": "R"
+  },
+  {
+   "name": "Write",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "Edit",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "MultiEdit",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "NotebookEdit",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "Bash",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "PowerShell",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "BashOutput",
+   "group": "claude code",
+   "label": "R"
+  },
+  {
+   "name": "KillShell",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "Glob",
+   "group": "claude code",
+   "label": "R"
+  },
+  {
+   "name": "Grep",
+   "group": "claude code",
+   "label": "R"
+  },
+  {
+   "name": "LS",
+   "group": "claude code",
+   "label": "R"
+  },
+  {
+   "name": "WebFetch",
+   "group": "claude code",
+   "label": "R"
+  },
+  {
+   "name": "WebSearch",
+   "group": "claude code",
+   "label": "R"
+  },
+  {
+   "name": "Task",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "Agent",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "TodoWrite",
+   "group": "claude code",
+   "label": "D"
+  },
+  {
+   "name": "ExitPlanMode",
+   "group": "claude code",
+   "label": "D"
+  },
+  {
+   "name": "SlashCommand",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "Skill",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "AskUserQuestion",
+   "group": "claude code",
+   "label": "R"
+  },
+  {
+   "name": "SendMessage",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "CronCreate",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "CronDelete",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "TaskStop",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "EnterWorktree",
+   "group": "claude code",
+   "label": "A"
+  },
+  {
+   "name": "Monitor",
+   "group": "claude code",
+   "label": "R"
+  },
+  {
+   "name": "ToolSearch",
+   "group": "claude code",
+   "label": "R"
+  },
+  {
+   "name": "mcp__context7__query-docs",
+   "group": "namespaced MCP names",
+   "label": "R"
+  },
+  {
+   "name": "mcp__playwright__browser_click",
+   "group": "namespaced MCP names",
+   "label": "A"
+  },
+  {
+   "name": "mcp__playwright__browser_type",
+   "group": "namespaced MCP names",
+   "label": "A"
+  },
+  {
+   "name": "computer",
+   "group": "anthropic + openai + codex tools",
+   "label": "A"
+  },
+  {
+   "name": "bash",
+   "group": "anthropic + openai + codex tools",
+   "label": "A"
+  },
+  {
+   "name": "str_replace_editor",
+   "group": "anthropic + openai + codex tools",
+   "label": "A"
+  },
+  {
+   "name": "str_replace_based_edit_tool",
+   "group": "anthropic + openai + codex tools",
+   "label": "A"
+  },
+  {
+   "name": "web_search",
+   "group": "anthropic + openai + codex tools",
+   "label": "R"
+  },
+  {
+   "name": "web_fetch",
+   "group": "anthropic + openai + codex tools",
+   "label": "R"
+  },
+  {
+   "name": "code_execution",
+   "group": "anthropic + openai + codex tools",
+   "label": "A"
+  },
+  {
+   "name": "memory",
+   "group": "anthropic + openai + codex tools",
+   "label": "A"
+  },
+  {
+   "name": "code_interpreter",
+   "group": "anthropic + openai + codex tools",
+   "label": "A"
+  },
+  {
+   "name": "file_search",
+   "group": "anthropic + openai + codex tools",
+   "label": "R"
+  },
+  {
+   "name": "python",
+   "group": "anthropic + openai + codex tools",
+   "label": "A"
+  },
+  {
+   "name": "local_shell",
+   "group": "anthropic + openai + codex tools",
+   "label": "A"
+  },
+  {
+   "name": "apply_patch",
+   "group": "anthropic + openai + codex tools",
+   "label": "A"
+  },
+  {
+   "name": "shell",
+   "group": "anthropic + openai + codex tools",
+   "label": "A"
+  },
+  {
+   "name": "exec_command",
+   "group": "anthropic + openai + codex tools",
+   "label": "A"
+  },
+  {
+   "name": "write_stdin",
+   "group": "anthropic + openai + codex tools",
+   "label": "A"
+  },
+  {
+   "name": "view_image",
+   "group": "anthropic + openai + codex tools",
+   "label": "R"
+  },
+  {
+   "name": "sendEmail",
+   "group": "function-style names",
+   "label": "A"
+  },
+  {
+   "name": "getWeather",
+   "group": "function-style names",
+   "label": "R"
+  },
+  {
+   "name": "bookFlight",
+   "group": "function-style names",
+   "label": "A"
+  },
+  {
+   "name": "transferFunds",
+   "group": "function-style names",
+   "label": "A"
+  },
+  {
+   "name": "makePayment",
+   "group": "function-style names",
+   "label": "A"
+  },
+  {
+   "name": "processRefund",
+   "group": "function-style names",
+   "label": "A"
+  },
+  {
+   "name": "emailCustomer",
+   "group": "function-style names",
+   "label": "A"
+  },
+  {
+   "name": "notifyUser",
+   "group": "function-style names",
+   "label": "A"
+  },
+  {
+   "name": "escalateToHuman",
+   "group": "function-style names",
+   "label": "A"
+  },
+  {
+   "name": "terminateInstance",
+   "group": "function-style names",
+   "label": "A"
+  },
+  {
+   "name": "deleteUser",
+   "group": "function-style names",
+   "label": "A"
+  },
+  {
+   "name": "chargeCard",
+   "group": "function-style names",
+   "label": "A"
+  },
+  {
+   "name": "lockAccount",
+   "group": "function-style names",
+   "label": "A"
+  },
+  {
+   "name": "closeAccount",
+   "group": "function-style names",
+   "label": "A"
+  },
+  {
+   "name": "resetPassword",
+   "group": "function-style names",
+   "label": "A"
+  },
+  {
+   "name": "terminal",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "python_repl",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "requests_get",
+   "group": "langchain + infra",
+   "label": "R"
+  },
+  {
+   "name": "requests_post",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "requests_put",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "requests_delete",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "duckduckgo_search",
+   "group": "langchain + infra",
+   "label": "R"
+  },
+  {
+   "name": "kubectl_apply",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "kubectl_scale",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "kubectl_rollout_restart",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "terraform_apply",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "terraform_destroy",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "docker_rm",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "ec2_terminate_instances",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "lambda_invoke",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "iam_attach_role_policy",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "rds_reboot_db_instance",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "s3_put_object",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "http_request",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "curl",
+   "group": "langchain + infra",
+   "label": "A"
+  },
+  {
+   "name": "SEND_EMAIL",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "SENDEMAIL",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "sendemail",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "send-email",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "gmail.sendMessage",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "GMAIL_SEND_EMAIL",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "SLACK_SENDS_A_MESSAGE_TO_A_SLACK_CHANNEL",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "GITHUB_STAR_A_REPOSITORY_FOR_THE_AUTHENTICATED_USER",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "GITHUB_CREATE_AN_ISSUE",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "enviar_correo",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "supprimer_fichier",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "deleteS3Bucket",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "S3PutObject",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "HTTPPost",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "v2DeleteUser",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "functions.send_email",
+   "group": "casing and namespacing",
+   "label": "A"
+  },
+  {
+   "name": "get_terminal_output",
+   "group": "read tools with an acting word",
+   "label": "R"
+  },
+  {
+   "name": "read_terminal",
+   "group": "read tools with an acting word",
+   "label": "R"
+  },
+  {
+   "name": "terminal_last_command",
+   "group": "read tools with an acting word",
+   "label": "R"
+  },
+  {
+   "name": "list_shell_sessions",
+   "group": "read tools with an acting word",
+   "label": "R"
+  },
+  {
+   "name": "get_order",
+   "group": "read tools with an acting word",
+   "label": "R"
+  },
+  {
+   "name": "get_post",
+   "group": "read tools with an acting word",
+   "label": "R"
+  },
+  {
+   "name": "get_schedule",
+   "group": "read tools with an acting word",
+   "label": "R"
+  },
+  {
+   "name": "get_call_log",
+   "group": "read tools with an acting word",
+   "label": "R"
+  },
+  {
+   "name": "get_data_set",
+   "group": "read tools with an acting word",
+   "label": "R"
+  },
+  {
+   "name": "get_charge",
+   "group": "read tools with an acting word",
+   "label": "R"
+  },
+  {
+   "name": "get_refund",
+   "group": "read tools with an acting word",
+   "label": "R"
+  },
+  {
+   "name": "get_block_children",
+   "group": "read tools with an acting word",
+   "label": "R"
+  }
+ ]
+}

@@ -5304,13 +5304,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "3e9ea8853a75"
+        "compositeVersion": "77a8033032ae"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "82bcccd6cc06",
+        "corpusVersion": "1a647b7f1a02",
         "customCorpusVersion": "506945ab966b"
       }
     },
@@ -5323,8 +5323,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-11-11T22:37:33.936Z",
-  "generatedFromCommit": "d4bd6707",
+  "generatedAt": "2026-11-11T23:19:47.800Z",
+  "generatedFromCommit": "3c739db6",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5412,78 +5412,78 @@
     ]
   },
   "proof": {
-    "commit": "d4bd6707",
+    "commit": "3c739db6",
     "composite": {
-      "compositeVersion": "3e9ea8853a75",
+      "compositeVersion": "77a8033032ae",
       "confidence": {
         "changed": {
           "of": 112,
           "toDecisive": 0,
-          "toMarginal": 79
+          "toMarginal": 74
         },
         "intervalOnly": {
           "decisive": {
             "dev": {
               "ci95": [
-                0.598,
-                0.8225
+                0.5646,
+                0.8048
               ],
-              "k": 42,
-              "n": 58,
-              "patterns": 12,
-              "rate": 0.7241
+              "k": 37,
+              "n": 53,
+              "patterns": 11,
+              "rate": 0.6981
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.4385,
-                1
+                0.2077,
+                0.9385
               ],
-              "k": 3,
+              "k": 2,
               "n": 3,
               "patterns": 2,
-              "rate": 1
+              "rate": 0.6667
             },
             "test": {
               "ci95": [
-                0.4088,
-                0.7925
+                0.3655,
+                0.7553
               ],
-              "k": 13,
+              "k": 12,
               "n": 21,
               "patterns": 8,
-              "rate": 0.619
+              "rate": 0.5714
             }
           },
           "marginal": {
             "dev": {
               "ci95": [
-                0.551,
-                0.88
+                0.6161,
+                0.9015
               ],
-              "k": 18,
-              "n": 24,
-              "patterns": 8,
-              "rate": 0.75
+              "k": 23,
+              "n": 29,
+              "patterns": 9,
+              "rate": 0.7931
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.0945,
-                0.9055
+                0.3424,
+                1
               ],
-              "k": 1,
+              "k": 2,
               "n": 2,
               "patterns": 2,
-              "rate": 0.5
+              "rate": 1
             },
             "test": {
               "ci95": [
-                0.3542,
-                0.8794
+                0.4526,
+                0.9368
               ],
-              "k": 6,
+              "k": 7,
               "n": 9,
               "patterns": 6,
-              "rate": 0.6667
+              "rate": 0.7778
             }
           }
         },
@@ -5638,14 +5638,14 @@
               "to": 1
             }
           ],
-          "compositeVersion": "3e9ea8853a75",
+          "compositeVersion": "77a8033032ae",
           "prior": 0.5,
           "priorMode": "per-output",
           "split": "dev",
-          "version": "b7f7ea78386c"
+          "version": "ac2ab7a2890f"
         }
       },
-      "corpusVersion": "82bcccd6cc06",
+      "corpusVersion": "1a647b7f1a02",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -7140,7 +7140,7 @@
       },
       "version": "0.21.0"
     },
-    "corpusVersion": "82bcccd6cc06",
+    "corpusVersion": "1a647b7f1a02",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -7765,7 +7765,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-11-11T22:36:56.479Z",
+    "generatedAt": "2026-11-11T23:18:50.953Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7784,8 +7784,8 @@
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
       "n": 1349,
-      "p50Ms": 0.849,
-      "p95Ms": 4.941
+      "p50Ms": 1.307,
+      "p95Ms": 6.997
     },
     "method": {
       "ci": "wilson-95",

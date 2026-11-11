@@ -314,6 +314,22 @@ describe('the second sample: one agent\'s own runs of a task', () => {
     }
   });
 
+  it('the fires by history length are the first reading\'s fires, each run counted once', () => {
+    const { ownHistory } = JSON.parse(readFileSync(join(root, OUTSIDE_RESULTS_JSON), 'utf-8')) as { ownHistory: OwnHistoryResults };
+    const all = ownHistory.readings.find((r) => r.history === 'all')!;
+    expect(Math.min(...ownHistory.bySize.map((r) => r.earlier))).toBe(ownHistory.others.min);
+    expect(Math.max(...ownHistory.bySize.map((r) => r.earlier))).toBe(ownHistory.others.max);
+    for (const half of ['dev', 'test'] as const) {
+      const rows = ownHistory.bySize.filter((r) => r.half === half);
+      const full = all.rows.find((r) => r.rule === 'no_unusual_action' && r.half === half)!;
+      const sum = (pick: (r: (typeof rows)[number]) => number): number => rows.reduce((total, r) => total + pick(r), 0);
+      expect(sum((r) => r.runs), half).toBe(manifest.runs.filter((r) => r.split === half).length);
+      expect([sum((r) => r.attackSucceeded.k), sum((r) => r.attackSucceeded.n)], half).toEqual([full.attackSucceeded.k, full.attackSucceeded.n]);
+      expect([sum((r) => r.noAttackSucceeded.k), sum((r) => r.noAttackSucceeded.n)], half).toEqual([full.attackFailed.k + full.noAttack.k, full.attackFailed.n + full.noAttack.n]);
+      for (const r of rows) expect(r.attackSucceeded.n + r.noAttackSucceeded.n, `${half} ${r.earlier}`).toBe(r.runs);
+    }
+  });
+
   /*
    * The rule counts only tools known to act. It counted a name nothing
    * places as an action when both halves of this sample were first read,
@@ -437,6 +453,8 @@ describe('a run read against its own agent\'s runs, and nobody else\'s', () => {
        * of the careful agent's other runs sent money and every one of the
        * loose agent's did, so each draw holds the one fire, at every size.
        */
+      // By history length the one fire is where it should be: every run here has five earlier runs.
+      expect(own.bySize).toEqual([{ half: 'dev', earlier: 5, runs: 12, attackSucceeded: { k: 0, n: 0 }, noAttackSucceeded: { k: 1, n: 12 } }]);
       expect(own.shortHistory.draws).toBe(SHORT_HISTORY_DRAWS);
       expect(own.shortHistory.rows.filter((r) => r.half === 'dev').map((r) => r.size)).toEqual([...SHORT_HISTORY_SIZES]);
       for (const r of own.shortHistory.rows.filter((x) => x.half === 'dev')) {

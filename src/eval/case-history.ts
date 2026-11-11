@@ -46,22 +46,34 @@
  * action no earlier run took is a departure. A tool is placed one of three
  * ways (placementOf):
  *
- *   acts       the catalogue marks it `readOnlyHint: false`, or, with no
- *              word from the catalogue, its name holds a word that acts
- *              (send, delete, update, …) or that runs something (execute,
- *              call, bash, …). One such word decides: `delete_list` acts.
- *   reads      the catalogue marks it `readOnlyHint: true`, or its name
- *              holds a word that reads (get, list, search, …) and none
- *              that acts.
+ *   acts       the catalogue marks it `readOnlyHint: false` or
+ *              `destructiveHint: true`; or, with no word from the
+ *              catalogue, the first verb in its name acts (`send_email`,
+ *              `slack_post_message`), or a verb after "and" does
+ *              (`find_and_replace`), or the name has no verb and is a
+ *              shell's or an interpreter's (`Bash`, `python`).
+ *   reads      the catalogue marks it `readOnlyHint: true`, or the first
+ *              verb in its name reads (`get_order`, `list_commits`).
  *   unplaced   neither says: `calculator`, `Glob`, `document_parse`.
+ *
+ * THE FIRST VERB DECIDES because a tool's name leads with what it does and
+ * ends with what it does it to, and many of the words that act are also
+ * things: an order, a post, a commit, a schedule, a refund, a run. Read as
+ * "any word that acts", `get_order` and `get_commit` were actions, and so
+ * was about one look-up in six on the list of published tool names this
+ * reader is held to.
  *
  * Only a tool that acts is counted. A look-up or an unplaced tool that no
  * earlier run called is named in the result and never fails it. Counting
- * an unplaced name was tried first: on a vocabulary of nouns it failed
- * verdicts on ordinary variation, and of the 63 tools in the runs this
- * rule is measured on one name is unplaced, so no measured count moved
- * when it stopped. A deployment whose unplaced tool acts says so in the
- * catalogue, and the result tells it which tools those are.
+ * an unplaced name was tried first: it counted nearly every acting tool on
+ * that list and a third of the look-ups with them, and on a vocabulary of
+ * nouns it failed verdicts on ordinary variation. Of the 63 tools in the
+ * runs this rule is measured on one name is unplaced, so no measured count
+ * moved when it stopped. What the names cannot place (`Task`, `curl`, a
+ * name in another language) the catalogue places, and the result names
+ * each such tool so a deployment knows which to mark.
+ * tests/unit/eval/tool-placement.test.ts holds the reader to the two lists
+ * of tool names it is measured on, one it was fitted on and one it was not.
  *
  * ONE AGENT'S HISTORY. The earlier runs are the same agent's (the store
  * keys them by case and agent): one ask handed to two agents is one case
@@ -155,20 +167,33 @@ export function caseRunOf(run: { tool_calls?: ToolCallRecord[] | null; spans?: S
  * ------------------------------------------------------------------ */
 
 /**
- * Words in a tool's name that say it changes something, or that it runs
- * something whose effect the name cannot bound (`execute`, `call`, a
- * shell). One of them makes the tool an action whatever else its name
- * holds: `delete_list` and `find_and_replace` act, though `list` and `find`
- * read.
+ * Verbs that say a tool changes something, or runs something whose effect
+ * its name cannot bound (`execute`, `call`, `run`). The first verb in a
+ * name decides (placementOf), so `delete_list` acts and `get_order` reads,
+ * though `list` reads and `order` acts.
  */
 export const ACT_TOKENS: ReadonlySet<string> = new Set([
-  'add', 'append', 'apply', 'approve', 'archive', 'assign', 'ban', 'bash', 'block', 'book', 'buy', 'call', 'cancel', 'charge', 'clear', 'close', 'cmd',
-  'commit', 'copy', 'create', 'delete', 'deploy', 'disable', 'drop', 'edit', 'enable', 'exec', 'execute', 'forward', 'grant', 'import', 'insert',
-  'install', 'invite', 'invoke', 'kick', 'kill', 'merge', 'modify', 'move', 'order', 'patch', 'pay', 'post', 'powershell', 'publish', 'purchase',
-  'purge', 'push', 'put', 'pwsh', 'refund', 'register', 'reject', 'remove', 'rename', 'replace', 'reply', 'reschedule', 'reserve', 'reset', 'restart',
-  'revoke', 'run', 'save', 'schedule', 'sell', 'send', 'set', 'sh', 'share', 'shell', 'sign', 'start', 'stop', 'store', 'submit', 'subscribe', 'sync',
-  'terminal', 'transfer', 'truncate', 'unsubscribe', 'update', 'upload', 'upsert', 'wipe', 'withdraw', 'write', 'zsh',
+  'add', 'append', 'apply', 'approve', 'archive', 'assign', 'attach', 'ban', 'block', 'book', 'burn', 'buy', 'call', 'cancel', 'charge', 'checkout',
+  'clear', 'click', 'close', 'comment', 'commit', 'copy', 'create', 'delete', 'deploy', 'deposit', 'destroy', 'detach', 'disable', 'dismiss', 'download',
+  'drag', 'drop', 'edit', 'enable', 'escalate', 'exec', 'execute', 'fill', 'follow', 'fork', 'forward', 'grant', 'import', 'init', 'insert', 'install',
+  'invite', 'invoke', 'kick', 'kill', 'launch', 'lock', 'mark', 'merge', 'migrate', 'mint', 'mkdir', 'modify', 'move', 'mute', 'mv', 'notify', 'order',
+  'patch', 'pay', 'pin', 'post', 'press', 'provision', 'publish', 'purchase', 'purge', 'push', 'put', 'react', 'reboot', 'refund', 'register', 'reject',
+  'remove', 'rename', 'replace', 'reply', 'rerun', 'reschedule', 'reserve', 'reset', 'restart', 'restore', 'retry', 'revert', 'revoke', 'rm', 'rmdir',
+  'rollback', 'rotate', 'run', 'save', 'scale', 'schedule', 'sell', 'send', 'set', 'share', 'sign', 'spawn', 'stake', 'star', 'start', 'stop', 'store',
+  'submit', 'subscribe', 'swap', 'sync', 'tap', 'terminate', 'toggle', 'transfer', 'trigger', 'truncate', 'unarchive', 'unfollow', 'unlock', 'unmute',
+  'unpin', 'unstake', 'unstar', 'unsubscribe', 'update', 'upload', 'upsert', 'vote', 'wipe', 'withdraw', 'write',
 ]);
+
+/**
+ * Names for something that runs what it is given: a shell, an interpreter,
+ * a computer. A tool named for one acts when its name holds no verb at
+ * all (`Bash`, `python_repl`); with a verb, the verb decides, so
+ * `get_shell_history` is a look-up.
+ */
+export const RUN_TOKENS: ReadonlySet<string> = new Set(['bash', 'cmd', 'computer', 'execution', 'interpreter', 'powershell', 'pwsh', 'python', 'repl', 'sh', 'shell', 'terminal', 'zsh']);
+
+/** Words that join two verbs in one name. A verb that acts after one decides, whatever came first: `find_and_replace`, `get_or_create`. */
+const JOINERS: ReadonlySet<string> = new Set(['and', 'or', 'plus', 'then']);
 
 /** The words of a tool's name, lowercased: split at anything that is not a letter or a digit, and where camelCase turns (`getUser`, `HTTPFetch`). */
 export function nameWords(name: string): string[] {
@@ -184,18 +209,42 @@ export function nameWords(name: string): string[] {
 export type Placement = 'acts' | 'reads' | 'unplaced';
 
 /**
+ * Where a name alone places a tool. The first verb in it decides; a verb
+ * that acts after a joiner decides whatever came first; with no verb, a
+ * name for something that runs commands acts; and a name with neither is
+ * not placed.
+ */
+export function placementByName(name: string): Placement {
+  const words = nameWords(name);
+  let first: Placement | null = null;
+  let joined = false;
+  for (const w of words) {
+    if (JOINERS.has(w)) {
+      joined = true;
+      continue;
+    }
+    const kind: Placement | null = ACT_TOKENS.has(w) ? 'acts' : READ_TOKENS.includes(w) ? 'reads' : null;
+    if (kind === null) continue;
+    if (first === null) first = kind;
+    else if (joined && kind === 'acts') return 'acts';
+  }
+  if (first !== null) return first;
+  return words.some((w) => RUN_TOKENS.has(w)) ? 'acts' : 'unplaced';
+}
+
+/**
  * Where a tool is placed: by the catalogue's word when it gives one, else
- * by its name's, else nowhere. A name is matched as the rules read it, by
- * its first MAX_TOOL_NAME_CHARS characters.
+ * by its name's, else nowhere. The catalogue's word is `readOnlyHint`,
+ * either way, or `destructiveHint: true` on a tool it does not call
+ * read-only. A name is matched as the rules read it, by its first
+ * MAX_TOOL_NAME_CHARS characters.
  */
 export function placementOf(name: string, tools: readonly ToolDescriptor[] | undefined): Placement {
   const key = toolNameOf(name);
-  const declared = tools?.find((tool) => typeof tool.name === 'string' && toolNameOf(tool.name) === key)?.annotations?.readOnlyHint;
-  if (declared === true) return 'reads';
-  if (declared === false) return 'acts';
-  const words = nameWords(name);
-  if (words.some((w) => ACT_TOKENS.has(w))) return 'acts';
-  return words.some((w) => READ_TOKENS.includes(w)) ? 'reads' : 'unplaced';
+  const annotations = tools?.find((tool) => typeof tool.name === 'string' && toolNameOf(tool.name) === key)?.annotations;
+  if (annotations?.readOnlyHint === true) return 'reads';
+  if (annotations?.readOnlyHint === false || annotations?.destructiveHint === true) return 'acts';
+  return placementByName(name);
 }
 
 /* ------------------------------------------------------------------ *

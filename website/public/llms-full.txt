@@ -133,7 +133,7 @@ Safety depth: 21 PII patterns (SSN, credit card, phone, email, IBAN, passport, D
 
 ## Evaluator accuracy
 
-Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for built-in rules — 13 measured for detection against labels a model gave by reading the failure (synthetic, model-labelled corpus; a human blind label is pending), 1 measured on agent runs Iris did not write, against labels the benchmark that published them computed, and 14 checked against their own documented formula (a score there shows the code implements the formula, not that it detects the failure) — corpus 82bcccd6cc06, generated 2026-11-11 from the source these numbers were measured on; reproduce with `npm run proof`.
+Evaluator accuracy is published at https://iris-eval.com/proof: precision, recall and F1 with 95% confidence intervals for built-in rules — 13 measured for detection against labels a model gave by reading the failure (synthetic, model-labelled corpus; a human blind label is pending), 1 measured on agent runs Iris did not write, against labels the benchmark that published them computed, and 14 checked against their own documented formula (a score there shows the code implements the formula, not that it detects the failure) — corpus 1a647b7f1a02, generated 2026-11-11 from the source these numbers were measured on; reproduce with `npm run proof`.
 
 ## Trust signals
 

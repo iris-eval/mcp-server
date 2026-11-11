@@ -260,6 +260,15 @@ export interface ShortHistoryRow {
   noAttackSucceeded: DrawnShare;
 }
 
+/** `no_unusual_action` on the runs of one half that were read against exactly `earlier` other runs. */
+export interface HistorySizeRow {
+  half: 'dev' | 'test';
+  earlier: number;
+  runs: number;
+  attackSucceeded: { k: number; n: number };
+  noAttackSucceeded: { k: number; n: number };
+}
+
 export interface OwnHistoryResults {
   source: AgentsManifest['source'];
   sampling: AgentsManifest['sampling'];
@@ -274,6 +283,8 @@ export interface OwnHistoryResults {
   readings: Array<{ history: OwnHistoryKind; rows: CaseHistoryRow[]; planted: PlantedCount[]; verdict: OwnVerdictRow[]; belowWeighed: Array<{ half: 'dev' | 'test'; runs: number; of: number }> }>;
   /** The unusual action at histories shorter than the sample holds. */
   shortHistory: { method: string; draws: number; rows: ShortHistoryRow[] };
+  /** The unusual action read against all the others, by how many others a run had: the same fires as the first reading, split by history length. */
+  bySize: HistorySizeRow[];
   rows: OwnHistoryRow[];
 }
 
@@ -533,6 +544,8 @@ export async function measureOwnHistory(root: string, engine: EvalEngine, hash: 
 
   const readings: OwnHistoryResults['readings'] = [];
   let otherCounts: number[] = [];
+  // The runs no_unusual_action fired on, read against all the others.
+  const firedAgainstAll = new Set<string>();
   for (const history of ['all', 'no_attack_succeeded'] as const) {
     // The fires of no_unusual_action where the attack failed, and which of them were on a call carrying a planted value.
     const firedFailed = new Map<string, boolean>();
@@ -547,6 +560,7 @@ export async function measureOwnHistory(root: string, engine: EvalEngine, hash: 
       clusterOf: (r) => r.group,
       onResult: (r, result) => shippedWith.set(r.path, result.passed),
       onFired: (rule, r, result) => {
+        if (rule === 'no_unusual_action' && history === 'all') firedAgainstAll.add(r.path);
         if (rule !== 'no_unusual_action' || r.attackSucceeded !== false) return;
         const context = contextOf.get(r.path)!;
         const steps = toSteps(context);
@@ -627,6 +641,24 @@ export async function measureOwnHistory(root: string, engine: EvalEngine, hash: 
     }
   }
 
+  // The first reading's fires by how many other runs each run had. otherCounts is in the order of `rows`.
+  const bySize: HistorySizeRow[] = [];
+  for (const half of ['dev', 'test'] as const) {
+    const sizes = [...new Set(rows.flatMap((r, i) => (r.split === half ? [otherCounts[i]] : [])))].sort((a, b) => a - b);
+    for (const earlier of sizes) {
+      const at = rows.filter((r, i) => r.split === half && otherCounts[i] === earlier);
+      const succeeded = at.filter((r) => r.attackSucceeded === true);
+      const none = at.filter((r) => r.attackSucceeded !== true);
+      bySize.push({
+        half,
+        earlier,
+        runs: at.length,
+        attackSucceeded: { k: succeeded.filter((r) => firedAgainstAll.has(r.path)).length, n: succeeded.length },
+        noAttackSucceeded: { k: none.filter((r) => firedAgainstAll.has(r.path)).length, n: none.length },
+      });
+    }
+  }
+
   // Where each tool these runs call is placed. The logs carry no catalogue, so a name is all there is to go on.
   const toolNames = [...new Set(rows.flatMap((r) => asRun.get(r.path)?.tools ?? []))].sort();
   const placements = toolNames.map((name) => ({ name, placement: placementOf(name, undefined) }));
@@ -659,6 +691,7 @@ export async function measureOwnHistory(root: string, engine: EvalEngine, hash: 
       draws: SHORT_HISTORY_DRAWS,
       rows: shortRows,
     },
+    bySize,
     rows,
   };
 }
@@ -1140,9 +1173,23 @@ export function renderOutsideMarkdown(results: OutsideResults): string {
     }
   }
   L.push('');
+  L.push(
+    "The drawn rows change one thing, how many of a run's own earlier runs are read, and the rate where no attack succeeded falls as that number rises. The sample's own history lengths cannot show that cleanly: here a run's history length goes with its suite, because a task has one attacked run for each attacker goal AgentDojo has for the suite it belongs to. For the record, the fires of the first table by how many earlier runs each run had:",
+  );
+  L.push('');
+  L.push('| Earlier runs a run had | Half | Runs | Fired, where the attack succeeded | Fired, where no attack succeeded |');
+  L.push('|---|---|--:|---|---|');
+  const sized = (r: { k: number; n: number }): string => (r.n === 0 ? 'none such' : `${r.k} of ${r.n} · ${pctOf(r.k, r.n)}`);
+  for (const r of own.bySize) L.push(`| ${r.earlier} | ${r.half} | ${r.runs} | ${sized(r.attackSucceeded)} | ${sized(r.noAttackSucceeded)} |`);
+  L.push('');
   if (weighed.includes('`no_unusual_action`')) {
+    const falseFires = (xs: HistorySizeRow[]): number => xs.reduce((sum, x) => sum + x.noAttackSucceeded.k, 0);
+    const shortestOf = (half: 'dev' | 'test'): string => {
+      const sizes = own.bySize.filter((x) => x.half === half);
+      return `${falseFires(sizes.filter((x) => x.earlier <= own.others.min + 1))} of the ${falseFires(sizes)} on the ${half} half`;
+    };
     L.push(
-      `The fewer earlier runs it reads, the more often the rule fires where nothing was wrong. So it is weighed in the verdict from ${CASE_HISTORY_WEIGH_MIN} earlier runs, the fewest any run it was measured on had; with ${REPORTED_ONLY_AT} it reports what it found and takes no part.`,
+      `Of the fires where no attack succeeded, ${shortestOf('test')} and ${shortestOf('dev')} are on runs read against ${own.others.min} or ${own.others.min + 1} earlier runs. The rule is weighed in the verdict from ${CASE_HISTORY_WEIGH_MIN} earlier runs, the fewest any run it was measured on had, and with ${REPORTED_ONLY_AT} it reports what it found and takes no part. From ${CASE_HISTORY_WEIGH_MIN} on, a fire is weighed by one pair of error rates, the whole family's, whatever the length of the history behind it.`,
     );
     L.push('');
   }

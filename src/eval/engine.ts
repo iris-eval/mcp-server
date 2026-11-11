@@ -714,19 +714,28 @@ export class EvalEngine {
       // ruleId / category sit right after the name so a reader scanning
       // rule_results sees WHICH deployed rule (and which bundle) spoke.
       const { ruleName, advisoryWhy: ownReason, ...rest } = raw;
+      // Only the engine says a result took no part in the verdict: a flag a rule set on its own result is not carried.
+      delete rest.advisory;
       /*
        * A result that reports and takes no part in the verdict. Stamped on
        * the row, like `critical`, so a stored row re-composes as it was
        * decided. Either the deployment named the rule in eval.advisoryRules,
        * or the rule itself said this result is below the standing its error
        * rates were measured at (`advisoryWhy`: no_unusual_action with fewer
-       * earlier runs than it is weighed from). The rule's own reason gives
-       * way twice: to the deployment's list, which is then the standing
-       * reason, and to a deployment that made the rule critical, which has
-       * said every fire of it decides.
+       * earlier runs than it is weighed from).
+       *
+       * A rule's own reason is honoured only where it lowers a weight: on a
+       * detection or an inference that is not critical, the same kinds
+       * eval.advisoryRules takes. A policy or a judgment has no such reason
+       * to give, because a gate is somebody's decision and not a weight, so
+       * no rule can talk its own gate or veto away. And it gives way twice:
+       * to the deployment's list, which is then the standing reason, and to
+       * a deployment that made the rule critical, which has said every fire
+       * of it decides.
        */
       const byConfig = effective.advisory === true;
-      const byRule = !byConfig && ownReason !== undefined && !critical;
+      const weighed = rule.kind === 'detection' || rule.kind === 'inference';
+      const byRule = !byConfig && ownReason !== undefined && weighed && !critical;
       const advisory = (byConfig || byRule) && raw.skipped !== true;
       /*
        * The stamp (0.9.0): what kind of claim this is, what the composer
