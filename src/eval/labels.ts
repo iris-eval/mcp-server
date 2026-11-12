@@ -14,7 +14,15 @@
  * The prior estimate: a rule that fires on a fraction f of traffic with
  * local precision p̂ sees f·p̂ true fires, and f·p̂ ≈ π·sens, so
  * π̂ = f·p̂ / sens — labelled `estimated`, with the interval that follows
- * from p̂'s. The sampling suggestion names the rule whose next label
+ * from p̂'s. It is an estimate of how often the failure THAT RULE detects
+ * is present, and it is used as exactly that: the prior of the rule's own
+ * failure class (classPriorsFrom). Until 0.22.0 it replaced the prior for
+ * every class, so twenty labels on one rarely firing rule lowered what a
+ * fire of every other rule was worth, whether the labels said right or
+ * wrong, and most verdicts those other rules had failed then passed. A
+ * rule's labels say nothing about a class the rule does not look for.
+ *
+ * The sampling suggestion names the rule whose next label
  * narrows the most traffic-weighted uncertainty: gain_r = f_r ·
  * (halfwidth(n_r) − halfwidth(n_r + 1)) at p̂_r. Issues are fires grouped
  * by rule and evidence signature, so ten fires of one pattern read as one
@@ -87,6 +95,48 @@ export function estimatedPrior(rule: LocalPrecision, fireRate: number, sensitivi
     fireRate,
     sensitivity,
   };
+}
+
+/** The prior of one failure class, as a deployment's labels on one rule's fires imply it. */
+export interface ClassPrior {
+  /** The failure class the estimate is for: one the labelled rule declares. */
+  class: string;
+  pi: number;
+  lo: number;
+  hi: number;
+  /** The rule whose labels and fire rate it came from. */
+  ruleName: string;
+  fireRate: number;
+  sensitivity: number;
+}
+
+/**
+ * The class priors a set of rule estimates imply.
+ *
+ * A rule's estimate is the prior that one of ITS classes is present. A rule
+ * that declares one class gives that class the estimate. One that declares
+ * several cannot say which was present, so the estimate is spread over them
+ * the way the prior is spread over the classes examined (risk.ts,
+ * classPrior): each gets 1 − (1 − π̂)^(1/k), and the k of them together
+ * give π̂ back. Where two labelled rules share a class the larger estimate
+ * stands, as it did when one estimate served every class. Each number is
+ * given to four places, the precision a verdict's provenance repeats it at,
+ * and the list is sorted by class, so the same labels always give the same
+ * list.
+ */
+export function classPriorsFrom(estimates: ReadonlyArray<{ estimate: EstimatedPrior; classes: readonly string[] }>): ClassPrior[] {
+  const best = new Map<string, ClassPrior>();
+  for (const { estimate, classes } of estimates) {
+    const k = classes.length;
+    if (k === 0) continue;
+    const share = (x: number): number => Math.round((k === 1 ? x : 1 - Math.pow(1 - x, 1 / k)) * 1e4) / 1e4;
+    for (const cls of classes) {
+      const prior: ClassPrior = { class: cls, pi: share(estimate.pi), lo: share(estimate.lo), hi: share(estimate.hi), ruleName: estimate.ruleName, fireRate: estimate.fireRate, sensitivity: estimate.sensitivity };
+      const held = best.get(cls);
+      if (held === undefined || prior.pi > held.pi) best.set(cls, prior);
+    }
+  }
+  return [...best.values()].sort((a, b) => (a.class < b.class ? -1 : a.class > b.class ? 1 : 0));
 }
 
 export interface SamplingSuggestion {

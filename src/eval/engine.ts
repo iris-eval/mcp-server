@@ -246,20 +246,47 @@ export class EvalEngine {
 
   /**
    * The prior in force and where it came from: the deployment's own
-   * eval.prior when it set one; else the prior its labels imply, once any
-   * detection or inference has LOCAL_LABEL_MIN labels; else the default.
-   * A configured prior always wins — the deployment said so.
+   * eval.prior when it set one, else the default. A configured prior always
+   * wins — the deployment said so.
+   *
+   * Until 0.22.0 there was a third source: the prior the deployment's
+   * labels implied, in force for every class once one rule had
+   * LOCAL_LABEL_MIN labels. That estimate is of one failure class, the
+   * labelled rule's, and it now stands for that class alone
+   * (effectiveClassPriors). A row stored under the old reading carries
+   * `priorSource: "estimated"` and re-composes from its own stamp.
    */
   private effectivePrior(): PriorInForce {
     if (this.criticalityOverrides?.priorConfigured === true) return { pi: this.compose.prior, source: 'config' };
-    const estimated = this.localLabels?.estimatedPrior ?? null;
-    if (estimated !== null) return { pi: estimated.pi, source: 'estimated' };
     return { pi: this.compose.prior, source: 'default' };
+  }
+
+  /**
+   * The class priors in force: for each failure class a labelled rule looks
+   * for, the prior the deployment's labels on that rule's fires imply.
+   * None when no rule has LOCAL_LABEL_MIN labels, and none on a deployment
+   * that set eval.prior, whose word stands for every class.
+   */
+  private effectiveClassPriors(): Record<string, number> | undefined {
+    if (this.criticalityOverrides?.priorConfigured === true) return undefined;
+    const priors = this.localLabels?.classPriors ?? [];
+    if (priors.length === 0) return undefined;
+    return Object.fromEntries(priors.map((p) => [p.class, p.pi]));
+  }
+
+  /** The prior a rule's own number is stated at: the estimate for its failure classes where the labels give one, else the prior in force. */
+  private statedPriorFor(rule: EvalRule): PriorInForce {
+    const classPriors = this.effectiveClassPriors();
+    const own = (rule.classes ?? []).flatMap((cls) => (classPriors?.[cls] !== undefined ? [classPriors[cls]] : []));
+    if (own.length === 0) return this.effectivePrior();
+    // The prior that any of the rule's estimated classes is present.
+    return { pi: 1 - own.reduce((none, pi) => none * (1 - pi), 1), source: 'estimated' };
   }
 
   /** The composer configuration with the prior in force. */
   private effectiveCompose(): ComposeConfig {
-    return { ...this.compose, prior: this.effectivePrior().pi };
+    const classPriors = this.effectiveClassPriors();
+    return { ...this.compose, prior: this.effectivePrior().pi, ...(classPriors !== undefined ? { classPriors } : {}) };
   }
 
   /**
@@ -271,6 +298,7 @@ export class EvalEngine {
    */
   private composerFacts(): NonNullable<Provenance['composer']> {
     const prior = this.effectivePrior();
+    const classPriors = this.effectiveClassPriors();
     return {
       defaultsGate: this.compose.defaultsGate,
       falsePassCost: this.compose.falsePassCost,
@@ -278,6 +306,7 @@ export class EvalEngine {
       prior: prior.pi,
       priorSource: prior.source,
       priorMode: this.compose.priorMode,
+      ...(classPriors !== undefined ? { classPriors } : {}),
       calibration: PUBLISHED_CALIBRATION.version,
       ...(this.compose.requiredEvidence.length > 0 ? { requiredEvidence: [...this.compose.requiredEvidence] } : {}),
       rules: COMPOSER_RULES,
@@ -302,6 +331,7 @@ export class EvalEngine {
         prior: prior.pi,
         priorSource: prior.source,
         priorMode: this.compose.priorMode,
+        classPriors: this.effectiveClassPriors(),
       },
     });
   }
@@ -768,7 +798,7 @@ export class EvalEngine {
         state: ruleStateOf(raw),
         ...rest,
         ...stampRuleResult(rule, raw, context, effective, {
-          prior: this.effectivePrior(),
+          prior: this.statedPriorFor(rule),
           local: this.localLabels?.precision.get(rule.name),
           deployed: ruleId !== undefined,
           judgeInForce: this.relevanceJudge !== null,

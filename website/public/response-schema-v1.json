@@ -281,6 +281,16 @@
                 "estimated"
               ]
             },
+            "classPriors": {
+              "description": "the prior of each failure class the deployment's labels estimated, by class; a class not named was weighed at its share of prior",
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "number"
+              }
+            },
             "priorMode": {
               "description": "how the prior was spread over the failure classes",
               "type": "string",

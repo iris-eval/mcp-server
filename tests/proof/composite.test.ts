@@ -5,13 +5,15 @@
  * class a shipped detector maps to present, shouldShip consistent with the
  * stated rule); the split is a pure function of the id; the committed
  * results equal what the code produces; the risk composer agrees with the
- * legacy one wherever a critical rule vetoed; the sweep runs on dev only.
+ * legacy one wherever a critical rule vetoed; the sweep runs on dev only;
+ * with one rule labelled, no verdict moves on a case no rule of the
+ * labelled class examined.
  */
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { loadComposite, splitOf, validateComposite, compositeContext, SPLIT_SALT } from '../../proof/lib/composite.js';
-import { measureComposite, normaliseCompositeForCheck, renderCompositeMarkdown, COMPOSITE_RESULTS_JSON, COMPOSITE_MD, type CompositeResults } from '../../proof/lib/composite-report.js';
+import { measureComposite, measureOneRuleLabelled, normaliseCompositeForCheck, renderCompositeMarkdown, COMPOSITE_RESULTS_JSON, COMPOSITE_MD, type CompositeResults, type OneRuleLabelled } from '../../proof/lib/composite-report.js';
 import { fnv1a } from '../../proof/lib/materialise.js';
 import { repoRoot, stableJson } from '../../proof/run.js';
 import { rulesByType } from '../../src/eval/rules/index.js';
@@ -66,14 +68,16 @@ describe('composite results', () => {
    * loaded maximum seen.
    */
   let measured: Awaited<ReturnType<typeof measureComposite>>;
+  let oneRuleLabelled: OneRuleLabelled;
   beforeAll(async () => {
     measured = await measureComposite(repoRoot);
+    oneRuleLabelled = await measureOneRuleLabelled(repoRoot);
   }, MEASURE_BUDGET_MS);
 
   it('the committed results equal what this code produces', async () => {
     const { results } = measured;
     const version = (JSON.parse(await readFile(resolve(repoRoot, 'package.json'), 'utf-8')) as { version: string }).version;
-    const full: CompositeResults = { ...results, generatedAt: 'x', commit: 'x', version };
+    const full: CompositeResults = { ...results, oneRuleLabelled, generatedAt: 'x', commit: 'x', version };
     const fresh = normaliseCompositeForCheck(stableJson(full), renderCompositeMarkdown(full));
     const committed = normaliseCompositeForCheck(
       await readFile(resolve(repoRoot, COMPOSITE_RESULTS_JSON), 'utf-8'),
@@ -106,6 +110,43 @@ describe('composite results', () => {
     // Ten examined classes at a 0.5 prior each leave (1 − 0.5)^10 as the prior that nothing is wrong.
     expect(results.riskPerClass.dev.falseBlock.rate!).toBeGreaterThan(0.9);
     expect(results.risk.dev.falseBlock.rate!).toBeLessThan(results.riskPerClass.dev.falseBlock.rate!);
+  });
+
+  it('with one rule labelled, the unlabelled row is the test split of the first table and a verdict moves only where the labelled class was examined', () => {
+    const { results } = measured;
+    const o = oneRuleLabelled;
+    expect(o.labels).toBe(20);
+    // The row every labelling is read against is the product's verdict on the test split, as the first table reports it.
+    expect(o.unlabelled.falseBlock).toEqual(results.risk.test.falseBlock);
+    expect(o.unlabelled.missedBlock).toEqual(results.risk.test.missedBlock);
+    // Two labellings for each rule that has a row, and each estimates a prior for every class the rule looks for and for no other.
+    expect(o.rows.length).toBeGreaterThanOrEqual(16);
+    expect(o.rows.length % 2).toBe(0);
+    for (const row of o.rows) {
+      expect(row.labels.right + row.labels.wrong, row.rule).toBe(20);
+      expect(row.classPriors.map((p) => p.class).sort(), row.rule).toEqual([...row.classes].sort());
+      for (const p of row.classPriors) {
+        expect(p.pi, row.rule).toBeGreaterThan(0);
+        expect(p.pi, row.rule).toBeLessThan(1);
+      }
+      expect(row.changed.fired.n + row.changed.quiet.n + row.changed.notRun.n, row.rule).toBe(results.counts.test);
+      // Where the labelled rule did not run, no other rule of its class examined the output on this corpus either, so nothing weighed the class and the verdict cannot have moved.
+      expect(row.changed.notRun.k, `${row.rule} ${row.labels.right}/${row.labels.wrong}`).toBe(0);
+      // A veto is not weighed: labels on a critical rule's fires change no verdict it fired on.
+      if (row.critical) expect(row.changed.fired.k, row.rule).toBe(0);
+    }
+    // Labels that call every fire wrong put the class at the floor; labels that call every fire right put it above.
+    for (let i = 0; i < o.rows.length; i += 2) {
+      const [right, wrong] = [o.rows[i], o.rows[i + 1]];
+      expect(right.rule).toBe(wrong.rule);
+      expect(right.labels).toEqual({ right: 20, wrong: 0 });
+      expect(wrong.labels).toEqual({ right: 0, wrong: 20 });
+      expect(Math.max(...right.classPriors.map((p) => p.pi)), right.rule).toBeGreaterThan(Math.max(...wrong.classPriors.map((p) => p.pi)));
+      // Called right, a fire is weighed at least as heavily as called wrong: no verdict it failed is passed.
+      expect(right.missedBlock.k, right.rule).toBeLessThanOrEqual(wrong.missedBlock.k);
+    }
+    // Every weighed rule is accounted for: a row pair, or a reason there is none.
+    expect(new Set(o.rows.map((row) => row.rule)).size + o.notLabelled.length).toBeGreaterThanOrEqual(13);
   });
 
   it('the risk composer fails every case the legacy composer vetoed, and the sweep never touches the test split', async () => {

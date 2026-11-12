@@ -153,6 +153,8 @@ export interface ComposerSettings {
   prior: number;
   priorSource: string;
   priorMode: string;
+  /** The priors of single failure classes estimated from the deployment's labels, when there are any. */
+  classPriors?: Readonly<Record<string, number>>;
 }
 
 /** What the composer does when a deployment sets nothing (compose.ts, DEFAULT_COMPOSE; risk.ts). Restated here so this module imports neither. */
@@ -179,6 +181,9 @@ function composerMoved(c: ComposerSettings): Record<string, unknown> {
     moved.priorSource = c.priorSource;
   }
   if (c.priorMode !== SHIPPED_COMPOSER.priorMode) moved.priorMode = c.priorMode;
+  // A class weighed at the deployment's own prior, when there is one: absent keeps every hash computed without the key as it was.
+  const classPriors = Object.entries(c.classPriors ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  if (classPriors.length > 0) moved.classPriors = classPriors;
   return moved;
 }
 

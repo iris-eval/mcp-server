@@ -232,7 +232,7 @@ export interface Provenance {
     defaultsGate: boolean;
     falsePassCost: number;
     onCriticalSkipped: 'unknown' | 'fail' | 'pass';
-    /** The prior the risk estimate used and where it came from (0.14.0): your eval.prior, the one your labels implied, or the default. */
+    /** The prior the risk estimate used and where it came from (0.14.0): your eval.prior or the default. Rows from before 0.22.0 can say `estimated`, when one prior from your labels stood for every class. */
     prior?: number;
     priorSource?: 'default' | 'config' | 'estimated';
     /** How the prior was spread over the failure classes (0.19.0). */
@@ -283,7 +283,9 @@ export interface LabelStatsRow {
   fireRate: number | null;
 }
 
-export interface EstimatedPrior {
+/** The prior of one failure class, as the labels on one rule's fires imply it. It is used for that class and no other. */
+export interface ClassPrior {
+  class: string;
   pi: number;
   lo: number;
   hi: number;
@@ -307,7 +309,8 @@ export interface LabelStats {
   min: number;
   /** How many recent evaluations the fire rate and the issues are read over. */
   window: number;
-  estimatedPrior: EstimatedPrior | null;
+  /** One entry for each failure class a labelled rule looks for; empty until a rule has `min` labels. */
+  classPriors: ClassPrior[];
   suggestion: SamplingSuggestion | null;
   refreshedAt: string;
 }
@@ -318,7 +321,7 @@ export interface LabelResponse {
   rule: LabelStatsRow | null;
   /** Labels before a rule's local precision is in force. */
   min: number;
-  estimatedPrior: EstimatedPrior | null;
+  classPriors: ClassPrior[];
   suggestion: SamplingSuggestion | null;
 }
 

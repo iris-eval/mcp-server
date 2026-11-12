@@ -216,6 +216,7 @@ export const provenanceSchema = z.looseObject({
       onCriticalSkipped: z.enum(['unknown', 'fail', 'pass']),
       prior: z.number().optional(),
       priorSource: z.enum(['default', 'config', 'estimated']).optional(),
+      classPriors: z.record(z.string(), z.number()).optional().describe('the prior of each failure class the deployment\'s labels estimated, by class; a class not named was weighed at its share of prior'),
       priorMode: z.enum(['per-output', 'per-class']).optional().describe('how the prior was spread over the failure classes'),
       calibration: z.string().optional().describe('the version of the calibration table the confidence label was read from'),
       requiredEvidence: z.array(z.string()).optional().describe('the inputs the deployment requires on every evaluation, when it requires any'),

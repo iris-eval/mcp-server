@@ -3,7 +3,7 @@
  *
  *   POST /labels                         — label one rule's FIRE on one evaluation right or wrong
  *   GET  /labels?eval_id=                — the labels on one evaluation
- *   GET  /labels/stats                   — per rule: labels, local precision, whether it is in force; the estimated prior; what to label next
+ *   GET  /labels/stats                   — per rule: labels, local precision, whether it is in force; the class priors the labels imply; what to label next
  *   GET  /issues                         — fires grouped by (rule, evidence signature) over the recent window
  *   POST /evaluations/:id/reevaluate     — score a stored evaluation's trace again under the engine as it stands now
  *
@@ -64,7 +64,8 @@ export interface LabelStats {
   rules: LabelStatsRow[];
   min: number;
   window: number;
-  estimatedPrior: LocalLabelSource['estimatedPrior'];
+  /** The prior each labelled rule's fires imply for its own failure classes; empty until a rule that enters the risk estimate has `min` labels. */
+  classPriors: LocalLabelSource['classPriors'];
   suggestion: LocalLabelSource['suggestion'];
   refreshedAt: string;
 }
@@ -87,7 +88,7 @@ function statsOf(source: LocalLabelSource): LabelStats {
       fireRate: source.fireRates.get(rule) ?? null,
     };
   });
-  return { rules, min: LOCAL_LABEL_MIN, window: LOCAL_LABEL_WINDOW, estimatedPrior: source.estimatedPrior, suggestion: source.suggestion, refreshedAt: source.refreshedAt };
+  return { rules, min: LOCAL_LABEL_MIN, window: LOCAL_LABEL_WINDOW, classPriors: source.classPriors, suggestion: source.suggestion, refreshedAt: source.refreshedAt };
 }
 
 export function registerLabelRoutes(router: Router, storage: IStorageAdapter, options: { evalEngine?: EvalEngine } = {}): void {
@@ -124,7 +125,7 @@ export function registerLabelRoutes(router: Router, storage: IStorageAdapter, op
       });
       const source = await refresh(tenantId);
       const stats = statsOf(source);
-      res.status(201).json({ label, rule: stats.rules.find((r) => r.rule === body.rule) ?? null, min: LOCAL_LABEL_MIN, estimatedPrior: stats.estimatedPrior, suggestion: stats.suggestion });
+      res.status(201).json({ label, rule: stats.rules.find((r) => r.rule === body.rule) ?? null, min: LOCAL_LABEL_MIN, classPriors: stats.classPriors, suggestion: stats.suggestion });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
         res.status(400).json(validationErrorBody('Invalid request body', (err as unknown as { issues: unknown }).issues));

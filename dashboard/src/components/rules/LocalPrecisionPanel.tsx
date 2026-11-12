@@ -119,11 +119,17 @@ export function LocalPrecisionPanel() {
         your traffic, and at {data.min} labels it replaces the published number on every verdict this deployment makes. Labels measure
         precision only: nothing here says what a quiet rule missed.
       </p>
-      {data.estimatedPrior && (
-        <Tooltip content={TT.estimatedPrior}>
-          <p style={styles.fact} tabIndex={0} data-estimated-prior={data.estimatedPrior.pi.toFixed(3)}>
-            Prior estimated from your labels: {data.estimatedPrior.pi.toFixed(2)} [{data.estimatedPrior.lo.toFixed(2)}, {data.estimatedPrior.hi.toFixed(2)}],
-            from {data.estimatedPrior.ruleName} (fires on {pct(data.estimatedPrior.fireRate)} of your traffic). Your <code>eval.prior</code>, when set, wins.
+      {data.classPriors.length > 0 && (
+        <Tooltip content={TT.classPriors}>
+          <p style={styles.fact} tabIndex={0} data-class-priors={data.classPriors.map((p) => p.class).join(' ')}>
+            Estimated from your labels:{' '}
+            {data.classPriors.map((p, i) => (
+              <span key={p.class} data-class-prior={p.class}>
+                {i > 0 ? '; ' : ''}
+                <code>{p.class}</code> {p.pi.toFixed(2)} [{p.lo.toFixed(2)}, {p.hi.toFixed(2)}], from {p.ruleName} (fires on {pct(p.fireRate)} of your traffic)
+              </span>
+            ))}
+            . Each is the prior for that failure alone: a rule that looks for any other failure is weighed as before. Your <code>eval.prior</code>, when set, wins.
           </p>
         </Tooltip>
       )}

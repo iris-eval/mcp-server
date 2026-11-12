@@ -77,7 +77,8 @@ describe('the configuration hash covers every setting that decides a verdict', (
     ['what a critical check that could not answer does', { onCriticalSkipped: 'pass' }],
     ['the evidence required', { requiredEvidence: ['tool_calls'] }],
     ['a prior the deployment set', { prior: 0.2, priorSource: 'config' }],
-    ['a prior estimated from its labels', { prior: 0.0368, priorSource: 'estimated' }],
+    ['a prior estimated from its labels, as a row from before 0.22.0 carries it', { prior: 0.0368, priorSource: 'estimated' }],
+    ['the prior of one failure class, estimated from its labels', { classPriors: { stub: 0.0415 } }],
     ['how the prior is spread', { priorMode: 'per-class' }],
   ])('%s changes it', (_name, moved) => {
     expect(configHash({ ...base, composer: { ...shipped, ...moved } })).not.toBe(configHash(base));
@@ -87,6 +88,14 @@ describe('the configuration hash covers every setting that decides a verdict', (
     const a = configHash({ ...base, composer: { ...shipped, prior: 0.11, priorSource: 'estimated' } });
     const b = configHash({ ...base, composer: { ...shipped, prior: 0.04, priorSource: 'estimated' } });
     expect(a).not.toBe(b);
+  });
+
+  it('two class priors are two configurations, the order the classes are written in is not, and none is the shipped hash', () => {
+    const a = configHash({ ...base, composer: { ...shipped, classPriors: { stub: 0.11 } } });
+    const b = configHash({ ...base, composer: { ...shipped, classPriors: { stub: 0.04 } } });
+    expect(a).not.toBe(b);
+    expect(configHash({ ...base, composer: { ...shipped, classPriors: { stub: 0.11, tool_loop: 0.2 } } })).toBe(configHash({ ...base, composer: { ...shipped, classPriors: { tool_loop: 0.2, stub: 0.11 } } }));
+    expect(configHash({ ...base, composer: { ...shipped, classPriors: {} } })).toBe(configHash(base));
   });
 
   it('the engine stamps it: the same output passes and fails under two settings, and the two verdicts carry two hashes', async () => {

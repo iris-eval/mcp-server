@@ -6,7 +6,9 @@
  *   the floor and the per-rule rows; GET /issues groups the fires;
  *   POST /evaluations/:id/reevaluate keeps the old row and names it — and
  *   after twenty labels calling the rule wrong, the re-score passes what
- *   the published number failed. The bold sentence, end to end.
+ *   the published number failed. The bold sentence, end to end. The same
+ *   twenty labels leave a verdict that rests on another rule's fire failed:
+ *   what they estimate is the prior of the labelled rule's class alone.
  */
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -22,6 +24,13 @@ import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 
 const STUB = 'TODO: write the summary.';
+
+/** A failed tool call the answer does not mention: the verdict rests on no_silent_tool_failure, and no_stub_output is quiet. */
+const SILENT_FAILURE = {
+  output: 'The invoice was sent to the customer and the balance is confirmed for the account.',
+  input: 'Send the invoice and confirm the balance.',
+  toolCalls: [{ tool_name: 'send_invoice', input: { id: 7 }, output: null, error: 'upstream timeout after 3 retries' }],
+};
 
 const dirs: string[] = [];
 const stores: SqliteAdapter[] = [];
@@ -135,7 +144,7 @@ describe('GET /labels/stats and GET /issues', () => {
     expect(stub).toMatchObject({ n: 1, right: 0, wrong: 1, local: false, entersRisk: true, fireRate: 1 });
     expect(typeof stub.publishedPrecision).toBe('number');
     expect(rows.find((r) => r.rule === 'no_pii')).toMatchObject({ n: 0, fireRate: 0 });
-    expect(stats.body.estimatedPrior).toBeNull();
+    expect(stats.body.classPriors).toEqual([]);
     // The suggestion names a rule whose labels can move a verdict — never a measurement's.
     const suggestion = stats.body.suggestion as { ruleName: string; n: number; sentence: string };
     expect(rows.find((r) => r.rule === suggestion.ruleName)).toMatchObject({ entersRisk: true });
@@ -162,6 +171,8 @@ describe('POST /evaluations/:id/reevaluate', () => {
     const scored: Array<{ traceId: string; evalId: string; verdict: string | undefined }> = [];
     for (let i = 0; i < 20; i++) scored.push(await h.scoreOne(i));
     expect(scored.every((s) => s.verdict === 'fail')).toBe(true);
+    const otherRuleBefore = await h.engine.evaluateAll(SILENT_FAILURE);
+    expect(otherRuleBefore.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['silent_tool_failure'] });
 
     // Nineteen labels: still the published number, still a fail.
     for (let i = 0; i < 19; i++) {
@@ -178,7 +189,11 @@ describe('POST /evaluations/:id/reevaluate', () => {
     const twentieth = await call(h.app, 'POST', '/api/v1/labels', { eval_id: scored[19].evalId, rule: 'no_stub_output', label: 'wrong' });
     expect(twentieth.status).toBe(201);
     expect(twentieth.body.rule).toMatchObject({ n: 20, right: 2, wrong: 18, local: true });
-    expect(twentieth.body.estimatedPrior).not.toBeNull();
+    // The labels estimate how often a stub is present, and say it is the prior of that failure.
+    const classPriors = twentieth.body.classPriors as Array<{ class: string; pi: number; ruleName: string; fireRate: number }>;
+    expect(classPriors).toHaveLength(1);
+    expect(classPriors[0]).toMatchObject({ class: 'stub', ruleName: 'no_stub_output', fireRate: 1 });
+    expect(classPriors[0].pi).toBeLessThan(0.2);
 
     const moved = await call(h.app, 'POST', `/api/v1/evaluations/${scored[19].evalId}/reevaluate`);
     expect(moved.status).toBe(201);
@@ -186,10 +201,10 @@ describe('POST /evaluations/:id/reevaluate', () => {
     expect(moved.body.before).toMatchObject({ verdict: 'fail' });
     expect(moved.body.after).toMatchObject({ verdict: 'pass', passed: true });
     expect(moved.body.changed).toBe(true);
-    const evaluation = moved.body.evaluation as { id: string; provenance: { supersedes: string; composer: { priorSource: string } }; rule_results: Array<{ ruleName: string; uncertainty?: { basis: string; n?: number } }> };
+    const evaluation = moved.body.evaluation as { id: string; provenance: { supersedes: string; composer: Record<string, unknown> }; rule_results: Array<{ ruleName: string; uncertainty?: { basis: string; n?: number } }> };
     expect(evaluation.id).not.toBe(scored[19].evalId);
     expect(evaluation.provenance.supersedes).toBe(scored[19].evalId);
-    expect(evaluation.provenance.composer.priorSource).toBe('estimated');
+    expect(evaluation.provenance.composer).toMatchObject({ prior: 0.5, priorSource: 'default', classPriors: { stub: classPriors[0].pi } });
     expect(evaluation.rule_results.find((r) => r.ruleName === 'no_stub_output')!.uncertainty).toMatchObject({ basis: 'local_labels', n: 20 });
 
     // Both rows stand on the trace; the newest is the re-score.
@@ -198,6 +213,11 @@ describe('POST /evaluations/:id/reevaluate', () => {
     expect(rows.map((r) => r.id)).toContain(evaluation.id);
     expect(rows.find((r) => r.id === evaluation.id)!.verdict?.state).toBe('pass');
     expect(rows.find((r) => r.id === scored[19].evalId)!.verdict?.state).toBe('fail');
+
+    // A verdict that rests on another rule's fire is where it was: the twenty labels say nothing about a failure the stub rule does not look for.
+    const otherRuleAfter = await h.engine.evaluateAll(SILENT_FAILURE);
+    expect(otherRuleAfter.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['silent_tool_failure'] });
+    expect(otherRuleAfter.verdict!.risk!.perClass.silent_tool_failure).toBe(otherRuleBefore.verdict!.risk!.perClass.silent_tool_failure);
     await h.store.close();
   }, 120_000);
 

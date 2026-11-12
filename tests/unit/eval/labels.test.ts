@@ -3,13 +3,15 @@
  *
  * Local precision is right / (right + wrong) with a Wilson interval and is
  * in force at LOCAL_LABEL_MIN; the prior estimate is f · p̂ / sens with the
- * interval that follows from p̂'s; the sampling suggestion is the
+ * interval that follows from p̂'s, and it is the prior of the labelled rule's
+ * own failure classes and of no other; the sampling suggestion is the
  * traffic-weighted narrowing of the interval; the evidence signature names
  * what a rule found so two fires of one pattern are one issue.
  */
 import { describe, expect, it } from 'vitest';
 import {
   LOCAL_LABEL_MIN,
+  classPriorsFrom,
   estimatedPrior,
   evidenceSignature,
   halfwidthAt,
@@ -70,6 +72,49 @@ describe('the estimated prior', () => {
     expect(estimatedPrior(localPrecision({ ruleName: 'r', right: 10, wrong: 9 }), 0.25, 0.8)).toBeNull();
     expect(estimatedPrior(twenty, 0, 0.8)).toBeNull();
     expect(estimatedPrior(twenty, 0.25, 0)).toBeNull();
+  });
+});
+
+describe('the class priors an estimate stands for', () => {
+  const stub = estimatedPrior(localPrecision({ ruleName: 'no_stub_output', right: 12, wrong: 8 }), 0.25, 0.8)!;
+
+  it('a rule with one failure class gives that class its estimate, to four places, and names no other class', () => {
+    const priors = classPriorsFrom([{ estimate: stub, classes: ['stub'] }]);
+    expect(priors).toHaveLength(1);
+    expect(priors[0]).toEqual({ class: 'stub', pi: 0.1875, lo: Math.round(stub.lo * 1e4) / 1e4, hi: Math.round(stub.hi * 1e4) / 1e4, ruleName: 'no_stub_output', fireRate: 0.25, sensitivity: 0.8 });
+  });
+
+  it('a rule with two classes spreads its estimate over them, and the two together give it back', () => {
+    const e = estimatedPrior(localPrecision({ ruleName: 'no_pii', right: 18, wrong: 2 }), 0.05, 0.9)!;
+    const priors = classPriorsFrom([{ estimate: e, classes: ['pii_leak', 'credential_leak'] }]);
+    expect(priors.map((p) => p.class)).toEqual(['credential_leak', 'pii_leak']);
+    expect(priors[0].pi).toBe(priors[1].pi);
+    expect(priors[0].pi).toBeLessThan(e.pi);
+    // 1 − (1 − share)² is the rule's estimate again, to the four places a share is given at.
+    expect(1 - (1 - priors[0].pi) ** 2).toBeCloseTo(e.pi, 3);
+  });
+
+  it('where two labelled rules look for the same class, the larger estimate stands and says whose it is', () => {
+    const silent = estimatedPrior(localPrecision({ ruleName: 'says_something', right: 20, wrong: 0 }), 0.02, 0.5)!;
+    const priors = classPriorsFrom([
+      { estimate: silent, classes: ['stub'] },
+      { estimate: stub, classes: ['stub'] },
+    ]);
+    expect(priors).toHaveLength(1);
+    expect(priors[0]).toMatchObject({ class: 'stub', pi: 0.1875, ruleName: 'no_stub_output' });
+  });
+
+  it('a rule that declares no class speaks for none, and no estimate gives an empty list', () => {
+    expect(classPriorsFrom([{ estimate: stub, classes: [] }])).toEqual([]);
+    expect(classPriorsFrom([])).toEqual([]);
+  });
+
+  it('the list is in class order whatever order the rules came in', () => {
+    const loop = estimatedPrior(localPrecision({ ruleName: 'no_tool_loop', right: 15, wrong: 5 }), 0.1, 0.9)!;
+    const a = classPriorsFrom([{ estimate: stub, classes: ['stub'] }, { estimate: loop, classes: ['tool_loop'] }]);
+    const b = classPriorsFrom([{ estimate: loop, classes: ['tool_loop'] }, { estimate: stub, classes: ['stub'] }]);
+    expect(a).toEqual(b);
+    expect(a.map((p) => p.class)).toEqual(['stub', 'tool_loop']);
   });
 });
 

@@ -566,6 +566,15 @@ export interface Provenance {
     prior?: number;
     priorSource?: 'default' | 'config' | 'estimated';
     /**
+     * The priors of single failure classes that the deployment's labels
+     * estimated, by class. A class not named was weighed at its share of
+     * `prior`. Present from 0.22.0, and only on a verdict some labelled rule
+     * had LOCAL_LABEL_MIN labels behind. Through 0.21.0 the labels' estimate
+     * replaced `prior` itself, for every class, with
+     * `priorSource: "estimated"`; such a row still reads back as given.
+     */
+    classPriors?: Record<string, number>;
+    /**
      * How the prior was spread over the failure classes. Absent on rows
      * written before 0.19.0, which read back under the default reading —
      * wrong for a deployment that set eval.priorMode, and the reason it is

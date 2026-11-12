@@ -498,7 +498,7 @@ const newestFirst = (a: EvalResult, b: EvalResult): number => {
 function riskColumns(result: EvalResult): [string | null, string | null] {
   if (!result.provenance) return [null, RISK_KEY_VERSION];
   const cfg = composeConfigOf(result.provenance);
-  const stored = storedRiskEstimate(result, cfg.prior, cfg.priorMode);
+  const stored = storedRiskEstimate(result, cfg.prior, cfg.priorMode, cfg.classPriors);
   return [stored ? JSON.stringify(stored) : null, RISK_KEY_VERSION];
 }
 

@@ -28,7 +28,7 @@ const stats: LabelStats = {
   ],
   min: 20,
   window: 2000,
-  estimatedPrior: { pi: 0.041, lo: 0.0105, hi: 0.113, ruleName: 'no_stub_output', fireRate: 0.3, sensitivity: 0.8 },
+  classPriors: [{ class: 'stub', pi: 0.041, lo: 0.0105, hi: 0.113, ruleName: 'no_stub_output', fireRate: 0.3, sensitivity: 0.8 }],
   suggestion: { ruleName: 'no_tool_loop', n: 4, halfwidthPoints: 33, fireRate: 0.12, sentence: 'label a no_tool_loop fire next: 4 labelled, ±33 points, fires on 12% of your traffic' },
   refreshedAt: '2026-09-20T18:00:00.000Z',
 };
@@ -58,20 +58,20 @@ describe('LocalPrecisionPanel', () => {
     expect(container.querySelector('[data-label-count="no_stub_output"]')?.textContent).toBe('2 right · 18 wrong');
   });
 
-  it('says the estimated prior and which rule to label next, in the server’s words', () => {
+  it('says the prior the labels imply, for which failure and no other, and which rule to label next, in the server’s words', () => {
     const { container } = render(<MemoryRouter><LocalPrecisionPanel /></MemoryRouter>);
-    const prior = container.querySelector('[data-estimated-prior]')!;
-    expect(prior.getAttribute('data-estimated-prior')).toBe('0.041');
-    expect(prior.textContent).toContain('0.04 [0.01, 0.11]');
-    expect(prior.textContent).toContain('from no_stub_output (fires on 30% of your traffic)');
+    const prior = container.querySelector('[data-class-priors]')!;
+    expect(prior.getAttribute('data-class-priors')).toBe('stub');
+    expect(container.querySelector('[data-class-prior="stub"]')?.textContent).toContain('stub 0.04 [0.01, 0.11], from no_stub_output (fires on 30% of your traffic)');
+    expect(prior.textContent).toContain('Each is the prior for that failure alone: a rule that looks for any other failure is weighed as before.');
     expect(container.querySelector('[data-sampling-suggestion="no_tool_loop"]')?.textContent).toBe('Next: label a no_tool_loop fire next: 4 labelled, ±33 points, fires on 12% of your traffic.');
   });
 
   it('with nothing labelled and nothing firing, says so and invents no number', () => {
-    useLabelStatsMock.mockReturnValue(query({ ...stats, rules: stats.rules.map((r) => ({ ...r, n: 0, right: 0, wrong: 0, precision: null, local: false, fireRate: 0 })), estimatedPrior: null, suggestion: null }));
+    useLabelStatsMock.mockReturnValue(query({ ...stats, rules: stats.rules.map((r) => ({ ...r, n: 0, right: 0, wrong: 0, precision: null, local: false, fireRate: 0 })), classPriors: [], suggestion: null }));
     const { container } = render(<MemoryRouter><LocalPrecisionPanel /></MemoryRouter>);
     expect(container.querySelector('[data-label-summary]')?.textContent).toBe('0 labels on 0 rules · in force on 0');
-    expect(container.querySelector('[data-estimated-prior]')).toBeNull();
+    expect(container.querySelector('[data-class-priors]')).toBeNull();
     expect(container.querySelector('[data-sampling-suggestion]')).toBeNull();
     expect(container.textContent).toContain('No labels yet, and no rule has fired on your recent traffic.');
   });
