@@ -20,6 +20,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { ToolSchema } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { createIrisServer } from '../../src/server.js';
 import { createCustomRuleStore } from '../../src/custom-rule-store.js';
@@ -80,6 +81,53 @@ describe('the tools catalogue', () => {
     });
     const back = await storage.getTrace(LOCAL_TENANT, 'cat-1');
     expect(back?.tools).toEqual(tools);
+  });
+
+  /*
+   * The second drift-lock. Iris's own tools carry no icons, so the lock
+   * above passed while a server that sent them was refused. This one reads
+   * the protocol's list of a tool's fields from the SDK: a field with no
+   * sample here fails by name, before a caller's paste does.
+   */
+  it('every field the protocol gives a tool is accepted on a catalogue entry', () => {
+    const SAMPLES: Record<string, unknown> = {
+      name: 'get_product',
+      title: 'Get a product',
+      icons: [{ src: 'https://example.com/product.png', mimeType: 'image/png', sizes: ['48x48'] }],
+      description: 'One product by id.',
+      inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+      outputSchema: { type: 'object', properties: { price: { type: 'number' } } },
+      annotations: { readOnlyHint: true },
+      execution: { taskSupport: 'optional' },
+      _meta: { 'example.com/v': 1 },
+    };
+    const fields = Object.keys(ToolSchema.shape);
+    expect(fields).toContain('icons');
+    expect(fields.filter((f) => !(f in SAMPLES)), 'a field the protocol gives a tool has no sample here: accept it in toolDescriptorSchema and add one').toEqual([]);
+    for (const field of fields) {
+      const entry = { name: SAMPLES.name, [field]: SAMPLES[field] };
+      const parsed = catalogueSchema.safeParse([entry]);
+      expect(parsed.success, parsed.success ? '' : `${field}: ${JSON.stringify(parsed.error.issues)}`).toBe(true);
+    }
+    // The whole entry, as a server that fills every field sends it.
+    expect(catalogueSchema.safeParse([SAMPLES]).success).toBe(true);
+  });
+
+  it('evaluate_output holds a catalogue to the limits log_trace does: a name twice and an over-size catalogue are refused with the reason', async () => {
+    const run = { output: 'The first product costs 18.50 USD.', input: 'What does the first product cost?', eval_type: 'all', tool_calls: [{ tool_name: 'get_product', input: { id: 'p1' }, output: { price: 18.5 } }] };
+    const asText = (res: unknown): string => JSON.stringify(res);
+    const twice = await client.callTool({ name: 'evaluate_output', arguments: { ...run, tools: [{ name: 'get_product' }, { name: 'get_product', inputSchema: { type: 'object', required: ['sku'] } }] } });
+    expect(twice.isError).toBe(true);
+    expect(asText(twice)).toContain('twice');
+    const fat = await client.callTool({ name: 'evaluate_output', arguments: { ...run, tools: [{ name: 'get_product', inputSchema: { blob: 'y'.repeat(MAX_TOOLS_BYTES) } }] } });
+    expect(fat.isError).toBe(true);
+    expect(asText(fat)).toContain(String(MAX_TOOLS_BYTES));
+    const tooMany = await client.callTool({ name: 'evaluate_output', arguments: { ...run, tools: Array.from({ length: MAX_TOOLS + 1 }, (_, i) => ({ name: `t${i}` })) } });
+    expect(tooMany.isError).toBe(true);
+    // A catalogue within the limits is judged, icons and all.
+    const ok = await client.callTool({ name: 'evaluate_output', arguments: { ...run, tools: [{ name: 'get_product', icons: [{ src: 'https://example.com/p.png' }], inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } }] } });
+    expect(ok.isError).not.toBe(true);
+    expect(asText(ok)).toContain('valid_tool_arguments');
   });
 
   it('a vendor key Iris never reads is carried; a misspelling of one it READS is refused', () => {

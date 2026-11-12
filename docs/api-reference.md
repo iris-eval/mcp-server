@@ -81,7 +81,7 @@ Log an agent execution trace with spans, tool calls, and metrics.
 | `token_usage` | `TokenUsage` | No | -- | Token usage breakdown |
 | `cost_usd` | `number` | No | -- | Total cost in USD, stored as reported. Omitted, Iris estimates it from `token_usage` (or the spans' token counts) and the model (`metadata.model` or the spans') at list price, and marks it `cost_source: "estimated"`; see [cost.md](cost.md) |
 | `metadata` | `Record<string, unknown>` | No | -- | Arbitrary metadata key-value pairs |
-| `tools` | `ToolDescriptor[]` | No | -- | What the agent could have called — your MCP `tools/list` result, verbatim; stored on the trace and reused by `evaluate_output` |
+| `tools` | `ToolDescriptor[]` | No | -- | What the agent could have called — your MCP `tools/list` result, verbatim; stored on the trace and reused by `evaluate_output`. Each entry is a tool as the protocol defines one: a key the protocol does not give a tool is refused by name, so a misspelled `inputSchema` cannot pass for a tool with no schema. At most 200 entries and 262,144 bytes, and no name twice; a catalogue over a limit is refused, never cut |
 | `run` | `string` | No | -- | The batch this execution belongs to, for `compare_runs`; never inferred |
 | `case_key` | `string` | No | derived from `input` | What makes this the same question as a trace in another run |
 | `session_id` | `string` | No | the SEP-414 baggage `session_id`, when sent | The conversation this turn belongs to; the trace drawer shows the other turns, `get_traces` and `GET /api/v1/traces` filter by it, `compare_traces` can group by it |
@@ -211,6 +211,7 @@ Evaluate agent output quality using configurable rules. Runs a set of built-in o
 | `custom_rules` | `CustomRule[]` | No | -- | Custom evaluation rules (required when `eval_type` is `custom`) |
 | `cost_usd` | `number` | No | -- | Cost in USD (used by cost rules) |
 | `token_usage` | `TokenUsage` | No | -- | Token usage breakdown (used by cost rules) |
+| `tools` | `ToolDescriptor[]` | No | -- | What the agent COULD call: your MCP `tools/list` result as it is, the same catalogue [`log_trace`](#log_trace) stores, held to the same limits. Read by `valid_tool_arguments` and `tool_choice`, and for the hints the loop and case-history rules read. Omit it and those two rules **skip rather than pass**; with `trace_id` it is loaded from the stored trace |
 | `tool_calls` | `ToolCall[]` | No | -- | What the agent DID — the same `{ tool_name, input?, output?, latency_ms?, error? }` entries [`log_trace`](#log_trace) records, validated by the same schema. Read by the trajectory rules (`no_silent_tool_failure`, `no_tool_loop`). Omit it and those rules **skip rather than pass**, so an evaluation with no trajectory reports "not judged", never "clean". When `trace_id` names a stored trace and this is omitted, the tool calls stored on that trace are used instead |
 
 **CustomRule**
