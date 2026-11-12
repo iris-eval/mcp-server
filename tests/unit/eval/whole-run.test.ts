@@ -20,7 +20,7 @@ import { EvalEngine } from '../../../src/eval/engine.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
 import { builtInRules } from '../../../src/eval/criticality.js';
 import { MAX_STEPS_DERIVED, notJudgedPastCeiling, runWasCut, stepsUpTo } from '../../../src/eval/steps.js';
-import { cyclePeriodsSearched, maxCycleLength, MAX_CYCLE_WORK, noToolLoop } from '../../../src/eval/rules/cost.js';
+import { noToolLoop } from '../../../src/eval/rules/cost.js';
 import { caseRunOf } from '../../../src/eval/case-history.js';
 import type { CaseRun, EvalContext, EvalResult, EvalRuleResult } from '../../../src/types/eval.js';
 import type { ToolCallRecord, ToolDescriptor } from '../../../src/types/trace.js';
@@ -101,7 +101,7 @@ describe('the rules read a run of more than 500 calls whole', () => {
     expect(row(far, 'max_steps').message).not.toContain('were read');
   });
 
-  it('no_tool_loop: a loop past the 500th call is a loop, and the search for a repeated sequence keeps its own bound', () => {
+  it('no_tool_loop: a loop is a loop wherever in the run it is, and a repeated sequence of any length a run can hold is found', () => {
     const loop: ToolCallRecord[] = Array.from({ length: 4 }, () => ({ tool_name: 'read_file', input: { path: 'src/same.ts' }, output: 'x' }));
     const late = noToolLoop.evaluate({ output: 'done', toolCalls: [...reads(1_500), ...loop] } as EvalContext);
     expect(late.passed).toBe(false);
@@ -111,16 +111,44 @@ describe('the rules read a run of more than 500 calls whole', () => {
     const cycle = noToolLoop.evaluate({ output: 'done', toolCalls: [...reads(3_000), ...abc, ...abc, ...abc] } as EvalContext);
     expect(cycle.passed).toBe(false);
     expect(cycle.message).toContain('a 3-call sequence');
-    // Every period a cycle could have, up to 500 calls: the search is what it was.
-    for (let n = 0; n <= 500; n += 1) expect(cyclePeriodsSearched(n), String(n)).toBe(maxCycleLength(n));
-    // Past that it falls as the run grows, and the work stays at what 500 calls cost.
-    expect([cyclePeriodsSearched(2_000), cyclePeriodsSearched(5_000), cyclePeriodsSearched(N)]).toEqual([83, 52, 37]);
-    for (const n of [501, 1_000, 2_000, 5_000, N]) expect((n * cyclePeriodsSearched(n) ** 2) / 2, String(n)).toBeLessThanOrEqual(MAX_CYCLE_WORK);
-    // A clean long run says how far it looked for one.
+    /*
+     * A 160-call sequence run three times, then other calls. Each call is
+     * made three times, which the count of identical calls allows, so only
+     * the search for a repeated sequence can see it. A search held to the
+     * work it did at 500 calls stopped short of 160 once the run was 502
+     * calls long, and passed a loop it had reported at 500.
+     */
+    const gram = Array.from({ length: 160 }, (_, i): ToolCallRecord => ({ tool_name: 'read_file', input: { path: `src/loop/${i}.ts` }, output: 'x' }));
+    for (const others of [0, 20, 22, 122, 1_520, N - 480]) {
+      const result = noToolLoop.evaluate({ output: 'done', toolCalls: [...gram, ...gram, ...gram, ...reads(others)] } as EvalContext);
+      expect(result.passed, `${others} other calls after it`).toBe(false);
+      expect(result.message, `${others} other calls after it`).toContain('a 160-call sequence');
+    }
+    // The longest sequence a run of the list's length can hold three times, at the end of it.
+    const long = Array.from({ length: 3_000 }, (_, i): ToolCallRecord => ({ tool_name: 'read_file', input: { path: `src/long/${i}.ts` }, output: 'x' }));
+    const longest = noToolLoop.evaluate({ output: 'done', toolCalls: [...reads(N - 9_000), ...long, ...long, ...long] } as EvalContext);
+    expect(longest.passed).toBe(false);
+    expect(longest.message).toContain('a 3000-call sequence');
+    // A clean run says nothing about how far it looked: it looked at every length.
     const clean = noToolLoop.evaluate({ output: 'done', toolCalls: reads(2_000) } as EvalContext);
     expect(clean.passed).toBe(true);
-    expect(clean.message).toContain('a repeated sequence was looked for up to 83 calls long');
-    expect(noToolLoop.evaluate({ output: 'done', toolCalls: reads(400) } as EvalContext).message).not.toContain('looked for up to');
+    expect(clean.message).toBe('No repeated tool call (2000 calls; most repeated ran 1×, max 3)');
+  });
+
+  it('no_tool_loop: a call repeated past the allowance is a loop when the most repeated call is a poll', () => {
+    // get_status six times at a steady cadence is a machine waiting. read_file five times on one path, with no cadence, is not, and stood behind it.
+    const at = (ms: number) => new Date(Date.UTC(2026, 0, 1) + ms).toISOString();
+    const span = (i: number, name: string, input: Record<string, unknown>, ms: number) => ({ span_id: `s${i}`, trace_id: 't', name, kind: 'TOOL' as const, status_code: 'OK' as const, start_time: at(ms), attributes: { 'tool.name': name, 'tool.input': input } });
+    const polls = Array.from({ length: 6 }, (_, i) => span(i, 'get_status', { id: 'build-7' }, i * 10_000));
+    const rereads = [0, 300, 700, 12_000, 12_100].map((ms, i) => span(100 + i, 'read_file', { path: 'src/same.ts' }, 60_000 + ms));
+    const result = noToolLoop.evaluate({ output: 'done', spans: [...polls, ...rereads] } as unknown as EvalContext);
+    expect(result.passed).toBe(false);
+    expect(result.message).toContain('read_file called 5 times with the same input');
+    expect(result.value).toMatchObject({ value: 5 });
+    // The poll alone still passes, and is said to be one.
+    const waiting = noToolLoop.evaluate({ output: 'done', spans: polls } as unknown as EvalContext);
+    expect(waiting.passed).toBe(true);
+    expect(waiting.message).toContain('get_status ran 6× at a regular cadence');
   });
 
   it('a run of the list\'s whole length is read inside a CPU budget, in the shapes that cost the most', async () => {
@@ -175,7 +203,7 @@ describe('past the list, a rule does not answer for the run', () => {
       caseHistory: earlier,
       expectedTrajectory: { tool_calls: [{ tool_name: 'read_file' }] },
     });
-    for (const name of ['valid_tool_arguments', 'tool_choice', 'no_tool_loop', 'no_silent_tool_failure', 'grounded_in_reads', 'no_injection_compliance', 'tool_sequence', 'no_unusual_action', 'no_dropped_step']) {
+    for (const name of ['valid_tool_arguments', 'no_tool_loop', 'no_silent_tool_failure', 'grounded_in_reads', 'no_injection_compliance', 'no_unusual_action']) {
       const r = row(result, name);
       expect(r, name).toMatchObject({ skipped: true, evidenceIncomplete: true, skipClass: 'defeated', state: 'not_checked' });
       expect(r.message, name).toContain(`the first ${N} of`);
@@ -184,6 +212,12 @@ describe('past the list, a rule does not answer for the run', () => {
     // The counts need no reading, and are judged.
     expect(row(result, 'max_steps').skipped).toBeFalsy();
     expect(row(result, 'step_budget').skipped).toBeFalsy();
+    // And two that the calls read settle: the one call expected was made, and the one step the case always takes was taken. More calls undo neither.
+    expect(row(result, 'tool_sequence')).toMatchObject({ passed: true, state: 'pass' });
+    expect(row(result, 'tool_sequence').message).toContain(`the first ${N} of ${N + 1} calls were read`);
+    expect(row(result, 'no_dropped_step')).toMatchObject({ passed: true, state: 'pass' });
+    // And a choice of tools that no uncalled tool beats: the tools called can only grow.
+    expect(row(result, 'tool_choice')).toMatchObject({ passed: true, state: 'pass' });
   });
 
   it('a rule promoted to critical then makes the verdict unknown, where it passed clean', async () => {
@@ -193,6 +227,101 @@ describe('past the list, a rule does not answer for the run', () => {
       expect(result.verdict?.by, name).toContain(name);
       expect(result.passed, name).toBe(false);
     }
+  });
+
+  it('valid_tool_arguments: nothing checkable among the calls read is not "nothing to check" in a run read in part', async () => {
+    // Ten thousand calls to a tool the catalogue lists with no schema, and one more: a tool the catalogue does not have.
+    const bare: ToolDescriptor[] = [{ name: 'note', description: 'Keep a note.' }];
+    const notes = Array.from({ length: N }, (_, i): ToolCallRecord => ({ tool_name: 'note', input: { text: `n${i}` }, output: 'ok' }));
+    const last: ToolCallRecord = { tool_name: 'drop_database', input: { name: 'prod' }, output: 'dropped' };
+    const result = await engine({ criticalRules: ['valid_tool_arguments'] }).evaluateAll({ ...RUN, toolCalls: [...notes, last], tools: bare });
+    const r = row(result, 'valid_tool_arguments');
+    expect(r).toMatchObject({ skipped: true, evidenceIncomplete: true, skipClass: 'defeated' });
+    expect(r.message).toContain('None of them could be checked (note (no inputSchema in the catalogue)), and the rest were not read');
+    expect(result.verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown' });
+    // Read whole, the same last call is the finding, and a run of nothing checkable is still not applicable.
+    const whole = await engine({ criticalRules: ['valid_tool_arguments'] }).evaluateAll({ ...RUN, toolCalls: [...notes.slice(0, 20), last], tools: bare });
+    expect(row(whole, 'valid_tool_arguments')).toMatchObject({ passed: false, state: 'fail' });
+    const nothing = await engine({ criticalRules: ['valid_tool_arguments'] }).evaluateAll({ ...RUN, toolCalls: notes.slice(0, 20), tools: bare });
+    expect(row(nothing, 'valid_tool_arguments')).toMatchObject({ skipped: true, skipClass: 'not_applicable' });
+    expect(nothing.verdict?.basis).not.toBe('critical_unknown');
+  });
+
+  it('a rule somebody asked for that could not answer makes the verdict unknown too: an expectation the call supplied, a threshold the deployment set', async () => {
+    // superset: no call outside the expected set among those read, and the rest unread. Not critical; the call asked for it.
+    const expectation = await engine().evaluateAll({ ...RUN, toolCalls: longer([read(N)]), expectedTrajectory: { tool_calls: [{ tool_name: 'read_file' }], mode: 'superset', step_budget: N * 2 } });
+    expect(row(expectation, 'tool_sequence')).toMatchObject({ skipped: true, skipClass: 'defeated', asked: 'call' });
+    expect(row(expectation, 'tool_sequence').critical).toBe(false);
+    expect(expectation.verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['tool_sequence'] });
+    expect(expectation.passed).toBe(false);
+    expect(expectation.interpretations?.map((i) => i.text).join(' ')).toContain('A check was asked and could not answer (tool_sequence, which this call asked for)');
+    // The deployment set max_tool_repeats: it asked for the loop check, and a clean reading of part of a run is not its answer.
+    const configured = new EvalEngine(defaultConfig.eval.defaultThreshold, { ...defaultConfig.eval.ruleThresholds, max_tool_repeats: 2 }, { ...defaultConfig.eval, configuredThresholdKeys: ['max_tool_repeats'] });
+    const threshold = await configured.evaluateAll({ ...RUN, toolCalls: longer([read(N)]) });
+    expect(row(threshold, 'no_tool_loop')).toMatchObject({ skipped: true, skipClass: 'defeated', asked: 'config' });
+    expect(threshold.verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown' });
+    expect(threshold.verdict?.by).toContain('no_tool_loop');
+    // Nobody asked: the same row leaves the verdict alone, as before.
+    const unasked = await engine().evaluateAll({ ...RUN, toolCalls: longer([read(N)]) });
+    expect(row(unasked, 'no_tool_loop')).toMatchObject({ skipped: true, skipClass: 'defeated' });
+    expect(row(unasked, 'no_tool_loop').asked).toBeUndefined();
+    expect(unasked.verdict?.basis).not.toBe('critical_unknown');
+    // And eval.onCriticalSkipped decides it, as for a critical rule.
+    const accepted = await engine({ onCriticalSkipped: 'pass' }).evaluateAll({ ...RUN, toolCalls: longer([read(N)]), expectedTrajectory: { tool_calls: [{ tool_name: 'read_file' }], mode: 'superset', step_budget: N * 2 } });
+    expect(accepted.verdict?.basis).not.toBe('critical_unknown');
+  });
+
+  it('tool_sequence: what the calls read settle stands, in every mode', async () => {
+    const judge = async (expectedTrajectory: EvalContext['expectedTrajectory'], toolCalls: ToolCallRecord[]) => row(await engine().evaluateAll({ ...RUN, toolCalls, expectedTrajectory }), 'tool_sequence');
+    const three = [{ tool_name: 'read_file' }, { tool_name: 'read_file' }, { tool_name: 'read_file' }];
+    // strict and unordered: a run with more calls than were expected differs from the expectation, whatever the rest are.
+    for (const mode of ['strict', 'unordered'] as const) {
+      const r = await judge({ tool_calls: three, mode }, longer([read(N)]));
+      expect(r, mode).toMatchObject({ passed: false, state: 'fail' });
+      expect(r.message, mode).toContain(`the run made ${N + 1} calls and 3 were expected, so ${N - 2} are beyond the expected ${mode === 'strict' ? 'sequence' : 'set'}`);
+      expect(r.message, mode).toContain(`the first ${N} of ${N + 1} calls were read`);
+    }
+    // strict: a call out of place among those read is the finding it always was.
+    const misplaced = await judge({ tool_calls: [{ tool_name: 'send_invoice' }], mode: 'strict' }, longer([read(N)]));
+    expect(misplaced.passed).toBe(false);
+    expect(misplaced.message).toContain('call 1 was read_file, expected send_invoice');
+    // superset: a call outside the expected set, once read, is outside it.
+    const outside = await judge({ tool_calls: [{ tool_name: 'read_file' }], mode: 'superset' }, [{ tool_name: 'delete_branch', input: { name: 'main' }, output: 'deleted' }, ...longer()]);
+    expect(outside).toMatchObject({ passed: false, state: 'fail' });
+    expect(outside.message).toContain('1 call outside the expected set (first: #0 delete_branch)');
+    // subset and ordered_subset: satisfied among the calls read, no later call can unsatisfy it.
+    for (const mode of ['subset', 'ordered_subset'] as const) {
+      const r = await judge({ tool_calls: [{ tool_name: 'read_file', input: { path: 'src/file_3.ts' } }], mode }, longer([read(N)]));
+      expect(r, mode).toMatchObject({ passed: true, state: 'pass' });
+      expect(r.message, mode).toContain(`satisfied by the ${N} read`);
+    }
+    // And what they do not settle is not judged: an expected call not yet seen may be among the rest.
+    for (const mode of ['subset', 'ordered_subset'] as const) {
+      const r = await judge({ tool_calls: [{ tool_name: 'send_invoice' }], mode }, longer([read(N)]));
+      expect(r, mode).toMatchObject({ skipped: true, evidenceIncomplete: true, skipClass: 'defeated' });
+      expect(r.message, mode).toContain('1 expected call was not found among them, and may be among the rest');
+    }
+  });
+
+  it('a pass the rest of the run cannot break stands: a choice of tools, a failure the answer owns, a step the case takes', async () => {
+    // tool_choice: the tool that fits was called among the calls read. More calls only add to the tools called.
+    const chosen = row(await engine().evaluateAll({ input: 'Send the invoice to the customer acme by email.', output: 'The invoice was sent to acme.', toolCalls: [{ tool_name: 'send_invoice', input: { customer: 'acme' }, output: 'sent' }, ...longer()], tools: TOOLS }), 'tool_choice');
+    expect(chosen).toMatchObject({ passed: true, state: 'pass' });
+    expect(chosen.message).toContain(`the first ${N} of ${N + 1} calls were read`);
+    // no_silent_tool_failure: the answer says a call failed. A failure among the rest would be owned by the same words.
+    const failed: ToolCallRecord = { tool_name: 'send_report', input: { to: 'ops' }, output: '{"status":"failed","error":"permission_denied"}' };
+    const owned = { input: 'Read the files, then send the report to ops.', output: 'I read the files. Sending the report failed: permission was denied.' };
+    const withFailure = row(await engine().evaluateAll({ ...owned, toolCalls: [failed, ...longer()] }), 'no_silent_tool_failure');
+    expect(withFailure).toMatchObject({ passed: true, state: 'pass' });
+    expect(withFailure.message).toContain('1 tool call went wrong (send_report) and the output acknowledges it');
+    expect(withFailure.message).toContain(`the first ${N} of ${N + 1} calls were read`);
+    const noneRead = row(await engine().evaluateAll({ ...owned, toolCalls: longer([read(N)]) }), 'no_silent_tool_failure');
+    expect(noneRead).toMatchObject({ passed: true, state: 'pass' });
+    expect(noneRead.message).toContain('No tool call was left failed among the calls read, and the output acknowledges a failure');
+    // no_dropped_step: with no earlier run of the case there is nothing to read the run against, at any length.
+    const noHistory = await engine({ criticalRules: ['no_dropped_step'] }).evaluateAll({ ...RUN, toolCalls: longer([read(N)]) });
+    expect(row(noHistory, 'no_dropped_step')).toMatchObject({ skipped: true, skipClass: 'not_applicable' });
+    expect(noHistory.verdict?.basis).not.toBe('critical_unknown');
   });
 
   it('a finding the rest of the run cannot clear stands, with how far the rule read', async () => {
@@ -231,6 +360,11 @@ describe('past the list, a rule does not answer for the run', () => {
     const choice = row(await engine().evaluateAll({ input: 'Send the invoice to the customer acme by email.', output: 'The invoice was sent.', toolCalls: longer([read(N)]), tools: TOOLS }), 'tool_choice');
     expect(choice).toMatchObject({ skipped: true, evidenceIncomplete: true });
     expect(choice.message).toContain('send_invoice fits the ask better than the tools called among them, and may be called among the rest');
+    // A step the case always takes, not found among the calls read, may be among the rest.
+    const earlier: CaseRun[] = Array.from({ length: 6 }, () => ({ tools: ['read_file', 'send_invoice'] }));
+    const dropped = row(await engine().evaluateAll({ ...RUN, toolCalls: longer([read(N)]), caseHistory: earlier }), 'no_dropped_step');
+    expect(dropped).toMatchObject({ skipped: true, evidenceIncomplete: true, skipClass: 'defeated' });
+    expect(dropped.message).toContain('send_invoice, called in every one of the 6 earlier runs of this case, was not called among them and may be among the rest');
   });
 
   it('ask_coverage judges the answer whatever the run\'s length, and does not find against a part a later call may have done', async () => {
@@ -289,29 +423,33 @@ describe('past the list, a rule does not answer for the run', () => {
 const PAST_THE_LIST: Record<string, string> = {
   valid_tool_arguments: 'a call to a tool the catalogue does not have stands; otherwise not judged',
   ask_coverage: 'an answer that covers every part is judged; a part left uncovered is not judged',
-  tool_sequence: 'not judged',
+  tool_sequence: 'what the calls read settle stands (more calls than a strict or unordered expectation holds, a call outside a superset, a subset already satisfied); otherwise not judged',
   no_unusual_action: 'an action new to the case stands; otherwise not judged',
-  no_dropped_step: 'not judged',
-  tool_choice: 'not judged',
+  no_dropped_step: 'a pass stands; a step not found among the calls read is not judged',
+  tool_choice: 'a pass stands; a finding is not judged',
   no_tool_loop: 'a loop stands; otherwise not judged',
   max_steps: 'counts the calls the run made',
   step_budget: 'counts the calls the run made',
-  no_silent_tool_failure: 'not judged',
+  no_silent_tool_failure: 'an answer that acknowledges a failure passes; otherwise not judged',
   grounded_in_reads: 'not judged',
   no_injection_compliance: 'a directive that was acted on stands; otherwise not judged',
   action_policy: 'reads to its own ceiling; a denied call stands; otherwise not judged',
+  // These two read the calls as they were sent, not through the list: nothing of theirs is cut.
+  cost_anomaly: 'reads every call for the dearest one',
+  says_something: 'reads only whether any call was made',
 };
 
 describe('every rule that reads the trajectory says what it does past the list', () => {
-  it('each rule in a file that calls stepsOf is in the table', () => {
+  it('each rule that reads the calls, through the list or as they were sent, is in the table', () => {
     const dir = resolve(__dirname, '../../../src/eval/rules');
     const readers = new Set<string>();
+    const readsCalls = /\bstepsOf\(|\bcontext\.toolCalls\b|\bcontext\.spans\b/;
     for (const file of readdirSync(dir).filter((f) => f.endsWith('.ts'))) {
       const source = readFileSync(resolve(dir, file), 'utf8').split('\r\n').join('\n');
-      // One rule object at a time: from its `name:` line to the next one's.
+      // One rule object at a time: from its `name:` line to the next one's. A helper that stands after a rule is read as that rule's.
       const parts = source.split(/\n\s*name: '([a-z_]+)',\n/);
-      for (let i = 1; i < parts.length; i += 2) if (/\bstepsOf\(/.test(parts[i + 1])) readers.add(parts[i]);
-      if (file === 'custom.ts' && /\bstepsOf\(/.test(source)) readers.add('action_policy');
+      for (let i = 1; i < parts.length; i += 2) if (readsCalls.test(parts[i + 1])) readers.add(parts[i]);
+      if (file === 'custom.ts' && readsCalls.test(source)) readers.add('action_policy');
     }
     expect([...readers].sort()).toEqual(Object.keys(PAST_THE_LIST).sort());
     // And each built-in among them is a registered rule.

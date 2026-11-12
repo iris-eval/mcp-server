@@ -286,8 +286,14 @@ function walk(
    * than the fail-open it replaces. A deployment that set
    * `onCriticalSkipped: "pass"` still sees the node — it accepted this
    * risk, which is not the same as there being none.
+   *
+   * Asked, by being critical or by somebody having asked (stamp.ts,
+   * askedOf): a policy whose threshold the deployment set, an expectation
+   * the call supplied. Until 0.22.0 only a critical rule was read here, so
+   * an expected trajectory compared with part of a run, or a gate that
+   * threw, was "not judged" and the verdict passed.
    */
-  const unknown = rows.filter((r) => isCritical(r) && r.skipped === true && r.skipClass !== undefined && r.skipClass !== 'not_applicable');
+  const unknown = rows.filter((r) => r.skipped === true && r.skipClass !== undefined && r.skipClass !== 'not_applicable' && (isCritical(r) || r.asked !== undefined));
   path.push({ node: 'unknown', by: unknown.map((r) => r.ruleName), decided: unknown.length > 0 && cfg.onCriticalSkipped !== 'pass' });
   if (stopAtDecision && path.some((n) => n.decided)) return path;
 
@@ -819,13 +825,21 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
   }
   const unanswered = verdict.basis === 'critical_unknown' ? verdict : (verdict.also ?? []).find((l) => l.basis === 'critical_unknown');
   if (unanswered !== undefined) {
+    // A rule that is not critical is here because somebody asked for it (stamp.ts, askedOf), and the sentence says who.
+    const askedFor = unanswered.by.map((name) => {
+      const r = result.rule_results.find((x) => x.ruleName === name && x.skipped === true);
+      return r !== undefined && !isCritical(r) && r.asked !== undefined ? `${name}, which this ${r.asked === 'config' ? 'deployment' : 'call'} asked for` : name;
+    });
+    const allCritical = askedFor.every((entry, i) => entry === unanswered.by[i]);
+    const check = allCritical ? 'A critical check' : 'A check';
+    const names = askedFor.join(allCritical ? ', ' : '; ');
     out.push({
       severity: 'block',
       addressee: 'operator',
       text:
         verdict.basis === 'critical_unknown'
-          ? `A critical check was asked and could not answer (${unanswered.by.join(', ')}), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.`
-          : `A critical check was asked and could not answer (${unanswered.by.join(', ')}). The verdict failed on other grounds; that check is still not answered. Set eval.onCriticalSkipped to "pass" to accept that risk.`,
+          ? `${check} was asked and could not answer (${names}), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.`
+          : `${check} was asked and could not answer (${names}). The verdict failed on other grounds; that check is still not answered. Set eval.onCriticalSkipped to "pass" to accept that risk.`,
       configKey: 'eval.onCriticalSkipped',
     });
   }

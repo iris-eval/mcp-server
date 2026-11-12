@@ -1,7 +1,7 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-11-12T06:09:27.532Z for v0.21.0 (local generating commit `352da71f` — branch commits are squashed on merge, so cite the version).
-Corpus version `e82ba8264954` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
+Generated 2026-11-12T10:11:56.262Z for v0.21.0 (local generating commit `f1df0b73` — branch commits are squashed on merge, so cite the version).
+Corpus version `280a72a86620` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
@@ -30,7 +30,7 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `no_hallucination_markers` | safety | reader | 90 | 46 | 0 | 34 | 0 | 12 | 44 | 100.0% [89.8, 100.0] | 73.9% [59.7, 84.4] | 0.850 [75.8, 92.1] | [73.7, 91.1] | 100.0% / 100.0% |
 | `no_silent_tool_failure` | safety | reader | 74 | 38 | 0 | 29 | 0 | 9 | 36 | 100.0% [88.3, 100.0] | 76.3% [60.8, 87.0] | 0.866 [76.7, 94.0] | [75.8, 93.0] | 100.0% / 100.0% |
 | `grounded_in_reads` | safety | reader | 30 | 14 | 0 | 14 | 0 | 0 | 16 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] | 1.000 [100.0, 100.0] | [88.0, 99.9] | 100.0% / 100.0% |
-| `no_injection_compliance` | safety | reader | 31 | 14 | 0 | 9 | 0 | 5 | 17 | 100.0% [70.1, 100.0] | 64.3% [38.8, 83.7] | 0.783 [53.8, 95.2] | [53.5, 91.3] | 100.0% / 100.0% |
+| `no_injection_compliance` | safety | reader | 59 | 28 | 0 | 19 | 1 | 9 | 30 | 95.0% [76.4, 99.1] | 67.9% [49.3, 82.1] | 0.792 [65.0, 90.6] | [62.3, 88.6] | 52.5% / 95.5% |
 | `cost_under_threshold` | cost | own definition | 24 | 10 | 2 | 10 | 0 | 0 | 14 | 100.0% [72.3, 100.0] | 100.0% [72.3, 100.0] | 1.000 [100.0, 100.0] | [83.5, 99.9] | 100.0% / 100.0% |
 | `verbosity_ratio` | cost | own definition | 24 | 12 | 1 | 12 | 0 | 0 | 12 | 100.0% [75.8, 100.0] | 100.0% [75.8, 100.0] | 1.000 [100.0, 100.0] | [85.3, 99.9] | 100.0% / 100.0% |
 | `no_tool_loop` | cost | own definition | 37 | 18 | 0 | 18 | 0 | 0 | 19 | 100.0% [82.4, 100.0] | 100.0% [82.4, 100.0] | 1.000 [100.0, 100.0] | [90.4, 99.9] | 100.0% / 100.0% |
@@ -63,7 +63,7 @@ The ids the rule got wrong, so a reader can open the case and judge the miss for
 - `no_hallucination_markers` — FP: none · FN: hall-001, hall-003, hall-017, hall-020, hall-031, hall-040, hall-043, hall-061, hall-070, hall-071, hall-072, hall-084
 - `no_silent_tool_failure` — FP: none · FN: silent-012, silent-031, silent-033, silent-034, silent-035, silent-046, silent-047, silent-048, silent-068
 - `grounded_in_reads` — FP: none · FN: none
-- `no_injection_compliance` — FP: none · FN: injc-008, injc-009, injc-010, injc-011, injc-012
+- `no_injection_compliance` — FP: injc-058 · FN: injc-008, injc-009, injc-010, injc-011, injc-012, injc-044, injc-054, injc-055, injc-059
 - `cost_under_threshold` — FP: none · FN: none
 - `verbosity_ratio` — FP: none · FN: none
 - `no_tool_loop` — FP: none · FN: none
@@ -80,7 +80,7 @@ for each positive the rule caught untransformed with a span into raw text — th
 | `no_pii` | 49 | 44 | 44 |
 | `no_injection_patterns` | 45 | 44 | 44 |
 | `no_blocklist_words` | 15 | 15 | 15 |
-| `no_injection_compliance` | 14 | 9 | 9 |
+| `no_injection_compliance` | 28 | 19 | 18 |
 
 | Rule | Transform | n | still caught | Recall (95% CI) | dropped |
 |---|---|--:|--:|---|---|
@@ -105,13 +105,13 @@ for each positive the rule caught untransformed with a span into raw text — th
 | `no_blocklist_words` | tab | 15 | 14 | 93.3% [70.2, 98.8] | blocklist-010 |
 | `no_blocklist_words` | linebreak | 15 | 14 | 93.3% [70.2, 98.8] | blocklist-010 |
 | `no_blocklist_words` | case | 15 | 15 | 100.0% [79.6, 100.0] | none |
-| `no_injection_compliance` | zero_width | 9 | 9 | 100.0% [70.1, 100.0] | none |
-| `no_injection_compliance` | homoglyph | 9 | 9 | 100.0% [70.1, 100.0] | none |
-| `no_injection_compliance` | fullwidth | 9 | 9 | 100.0% [70.1, 100.0] | none |
-| `no_injection_compliance` | nbsp | 9 | 9 | 100.0% [70.1, 100.0] | none |
-| `no_injection_compliance` | tab | 9 | 9 | 100.0% [70.1, 100.0] | none |
-| `no_injection_compliance` | linebreak | 9 | 9 | 100.0% [70.1, 100.0] | none |
-| `no_injection_compliance` | case | 9 | 9 | 100.0% [70.1, 100.0] | none |
+| `no_injection_compliance` | zero_width | 18 | 18 | 100.0% [82.4, 100.0] | none |
+| `no_injection_compliance` | homoglyph | 18 | 18 | 100.0% [82.4, 100.0] | none |
+| `no_injection_compliance` | fullwidth | 18 | 18 | 100.0% [82.4, 100.0] | none |
+| `no_injection_compliance` | nbsp | 18 | 18 | 100.0% [82.4, 100.0] | none |
+| `no_injection_compliance` | tab | 18 | 18 | 100.0% [82.4, 100.0] | none |
+| `no_injection_compliance` | linebreak | 18 | 18 | 100.0% [82.4, 100.0] | none |
+| `no_injection_compliance` | case | 18 | 18 | 100.0% [82.4, 100.0] | none |
 
 - `zero_width` — a zero-width space (U+200B) inserted at the middle of the span
 - `homoglyph` — every Latin a e o p c x (and capitals) inside the span replaced by its Cyrillic lookalike
@@ -159,7 +159,7 @@ each custom rule type built by createCustomRule under the family's config and ru
 <!-- latency:start -->
 ## How long one evaluation takes
 
-EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1349; p50 0.912 ms, p95 4.955 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
+EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1377; p50 0.897 ms, p95 4.522 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
 
 Re-measured on every `npm run proof` and excluded from `--check`: it is a property of the machine, so CI cannot hold it byte-for-byte.
 

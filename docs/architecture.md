@@ -247,7 +247,7 @@ Which of these rules VETO the verdict is per-deployment: `config.eval.criticalRu
 score  = SUM(rule[i].score * rule[i].weight) / SUM(rule[i].weight)   # evaluated rules only — a quality gradient
 passed = verdict.state == "pass"                                     # composed by KIND, in layers; score is never consulted:
          policy_gate (a policy you configured failed) → detector_veto (a critical detector fired)
-         → critical_unknown (a critical check could not answer → unknown) → required_evidence_missing
+         → critical_unknown (a check that was asked for could not answer → unknown) → required_evidence_missing
          → risk_over_loss (p_bad > 1 / (1 + eval.falsePassCost); default cut 0.5) → clean
 ```
 

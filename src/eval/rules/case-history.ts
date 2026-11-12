@@ -173,7 +173,7 @@ export const noUnusualAction: EvalRule = {
 export const noDroppedStep: EvalRule = {
   name: 'no_dropped_step',
   description:
-    `A run against the same agent's earlier runs of its own case: fails when the run never called a tool that every one of the case's ${CASE_HISTORY_WINDOW} most recent earlier runs called, look-ups included. An explicit empty list of tool calls is judged as no calls made. A measurement: at the shipped configuration it reports and decides no verdict. Skips when no tool calls were sent at all, or more than the trajectory rules read; as insufficient_history below ${CASE_HISTORY_MIN} earlier runs with recorded calls, which is every call with no stored trace behind it; and when no tool was called by every earlier run, because there is nothing to hold this run to`,
+    `A run against the same agent's earlier runs of its own case: fails when the run never called a tool that every one of the case's ${CASE_HISTORY_WINDOW} most recent earlier runs called, look-ups included. An explicit empty list of tool calls is judged as no calls made. A measurement: at the shipped configuration it reports and decides no verdict. Skips when no tool calls were sent at all; as insufficient_history below ${CASE_HISTORY_MIN} earlier runs with recorded calls, which is every call with no stored trace behind it; and when no tool was called by every earlier run, because there is nothing to hold this run to. It reads a run of up to 10,000 tool calls whole; of a longer run a step found among the first 10,000 was taken, and one not found among them is not judged`,
   evalType: 'completeness',
   weight: 1,
   kind: 'measurement',
@@ -186,11 +186,9 @@ export const noDroppedStep: EvalRule = {
     // An explicit empty list is a run that made no call, and against steps the case always takes that is the finding. Calls not sent at all still skip.
     const skip = skipWithoutTrajectory('no_dropped_step', context);
     if (skip && trajectoryAbsence(context) !== 'empty_calls') return skip;
-    // A step taken only among the calls that were not read would be reported as dropped (steps.ts).
-    const cut = notJudgedPastCeiling('no_dropped_step', context, 'A step the case always takes may be among the rest');
-    if (cut !== null) return cut;
     const called = toolsOfSteps(stepsOf(context));
     if (called === null) return skipUnreadable('no_dropped_step');
+    // The history is asked first: a run with no earlier runs to be read against is not applicable at any length, as for no_unusual_action.
     const reading = droppedSteps(new Set(called), caseHistoryOf(context) ?? []);
     if (reading === null) return skipForHistory('no_dropped_step', context);
     const { m, dropped, usual } = reading;
@@ -203,6 +201,16 @@ export const noDroppedStep: EvalRule = {
         skipped: true,
         skipReason: `no_usual_step: no tool was called by every one of the ${runs(m)} of this case`,
       };
+    }
+    /*
+     * A run longer than the list the rules read (steps.ts). A step the case
+     * always takes, found among the calls read, was taken, and more calls
+     * do not undo it: a pass stands. One not found among them may be among
+     * the rest, so a finding is not judged.
+     */
+    if (dropped.length > 0) {
+      const cut = notJudgedPastCeiling('no_dropped_step', context, `${listNames(dropped)}, called in every one of the ${runs(m)} of this case, ${dropped.length === 1 ? 'was' : 'were'} not called among them and may be among the rest`);
+      if (cut !== null) return cut;
     }
     const scope = stepScopeNote(context);
     const evidence: Evidence[] = [

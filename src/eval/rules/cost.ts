@@ -1,6 +1,6 @@
 import { MAX_EVIDENCE_ITEMS, type EvalRule, type EvalContext, type EvalRuleResult, type Evidence } from '../../types/eval.js';
 import { thresholdSourceOf } from '../thresholds.js';
-import { describeInput, longestCycle, looksLikePolling, skipWithoutTrajectory, stepKey, targetKey } from './trajectory.js';
+import { describeInput, internKeys, longestCycleIn, looksLikePolling, skipWithoutTrajectory, stepKey, targetKey } from './trajectory.js';
 import { notJudgedPastCeiling, stepScopeNote, stepStatsOf, stepsOf } from '../steps.js';
 import { stepBudget } from './expected-trajectory.js';
 import { READ_TOKENS, catalogueIndex, catalogueMatch, readOnlyWordNotTaken } from '../catalogue.js';
@@ -104,32 +104,10 @@ export function maxCycleLength(callCount: number): number {
 }
 
 /**
- * The work the search for a repeated sequence may do.
- *
- * Trying every period up to maxCycleLength(n) from every start costs about
- * n × p² / 2 comparisons for the longest period p, which for p = n / 3 grows
- * with the cube of the run: 16 ms of CPU at 500 calls, 0.8 s at 2,000 and
- * 11.8 s at 5,000, measured on runs whose calls are all distinct. That
- * search is what held every trajectory rule to a run's first 500 calls
- * (steps.ts). The bound is the work the search does at 500 calls, so a run
- * of up to 500 calls is searched exactly as it was, and a longer one is
- * searched for repeated sequences up to a length that falls as it grows.
- */
-export const MAX_CYCLE_WORK = 7_000_000;
-
-/**
- * The longest period searched in a run of n calls: every period a cycle
- * could have up to 500 calls (166 at 500), then 83 at 2,000 and 37 at
- * 10,000. The other two readings of this rule, the count of identical
- * calls and the rereads of one target, read the whole run at any length.
- */
-export function cyclePeriodsSearched(callCount: number): number {
-  return Math.min(maxCycleLength(callCount), Math.floor(Math.sqrt((2 * MAX_CYCLE_WORK) / Math.max(1, callCount))));
-}
-
-/**
  * The longest repeated sequence worth reporting, at any period from 2 up to
- * maxCycleLength(n) — or null when the repetition was a POLL.
+ * maxCycleLength(n) — or null when the repetition was a POLL. Every period
+ * is searched at every length of run: one pass over the calls for each
+ * (trajectory.ts, longestCycleIn), n² / 3 comparisons in all.
  *
  * Period 2 keeps exactly the threshold the alternating-pair detector used,
  * so no case that fired before stops firing and none starts. Period 3 was
@@ -141,8 +119,9 @@ export function cyclePeriodsSearched(callCount: number): number {
  * signals to multiply as though they were independent.
  */
 function findCycle(keys: readonly string[], calls: readonly Step[]): { k: number; start: number; repetitions: number; gramIndices: number[] } | null {
-  for (let k = 2; k <= cyclePeriodsSearched(keys.length); k += 1) {
-    const cycle = longestCycle(keys, k);
+  const ids = internKeys(keys);
+  for (let k = 2; k <= maxCycleLength(keys.length); k += 1) {
+    const cycle = longestCycleIn(ids, k);
     if (cycle === null || cycle.repetitions <= MAX_TWO_CALL_CYCLES) continue;
     const occurrences: number[] = [];
     for (let r = 0; r < cycle.repetitions; r += 1) occurrences.push(cycle.start + r * k);
@@ -233,7 +212,7 @@ function targetRereads(
 export const noToolLoop: EvalRule = {
   name: 'no_tool_loop',
   description:
-    'The agent must not repeat itself. Fails when one tool is called with an identical input (object keys sorted, whitespace collapsed) more than max_tool_repeats times — default 3, config key `max_tool_repeats` — or when a sequence of two or more distinct calls repeats consecutively more than twice (A,B,A,B,A,B; A,B,C,D,A,B,C,D,A,B,C,D). Reads the trajectory from tool_calls, or from OpenTelemetry TOOL spans when no tool_calls were sent; skips when neither is provided, so an evaluation with no trajectory reports "not judged" rather than clean. Catches the wasted spend a cost threshold cannot see: five identical calls can still bill under a per-evaluation cost limit. It reads a run of up to 10,000 tool calls whole; in a run of more than 500 the repeated sequence it looks for is bounded in length (83 calls at 2,000, 37 at 10,000). Of a longer run a loop found among the first 10,000 calls is reported, and otherwise the rule is not judged',
+    'The agent must not repeat itself. Fails when one tool is called with an identical input (object keys sorted, whitespace collapsed) more than max_tool_repeats times — default 3, config key `max_tool_repeats` — or when a sequence of two or more distinct calls repeats consecutively more than twice (A,B,A,B,A,B; A,B,C,D,A,B,C,D,A,B,C,D). Reads the trajectory from tool_calls, or from OpenTelemetry TOOL spans when no tool_calls were sent; skips when neither is provided, so an evaluation with no trajectory reports "not judged" rather than clean. Catches the wasted spend a cost threshold cannot see: five identical calls can still bill under a per-evaluation cost limit. Every call repeated past the allowance is asked whether it was a poll, so a poll does not hide a loop behind it. It reads a run of up to 10,000 tool calls whole, and looks for a repeated sequence of every length such a run can hold. Of a longer run a loop found among the first 10,000 calls is reported, and otherwise the rule is not judged',
   evalType: 'cost',
   weight: 1,
   kind: 'detection',
@@ -242,7 +221,7 @@ export const noToolLoop: EvalRule = {
   thresholdKeys: ['max_tool_repeats', 'max_target_rereads'],
   question: 'tool_use_correct',
   classes: ['tool_loop'],
-  // 2: reads a run whole where it read the first 500 calls, and does not report a run it read in part as free of loops (#1013).
+  // 2: reads a run whole where it read the first 500 calls, and does not report a run it read in part as free of loops (#1013); and asks every call repeated past the allowance whether it was a poll, where it asked the most repeated one.
   version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     const skip = skipWithoutTrajectory('no_tool_loop', context);
@@ -262,20 +241,18 @@ export const noToolLoop: EvalRule = {
         : DEFAULT_MAX_TARGET_REREADS;
 
     const keys = calls.map(stepKey);
-    const counts = new Map<string, number>();
-    for (const key of keys) counts.set(key, (counts.get(key) ?? 0) + 1);
-
-    let worstKey = '';
-    let worstCount = 0;
-    for (const [key, count] of counts) {
-      if (count > worstCount) {
-        worstKey = key;
-        worstCount = count;
-      }
+    /** Where each distinct call stands in the run. */
+    const placesOf = new Map<string, number[]>();
+    for (const [index, key] of keys.entries()) {
+      const places = placesOf.get(key);
+      if (places === undefined) placesOf.set(key, [index]);
+      else places.push(index);
     }
+    let worstCount = 0;
+    for (const places of placesOf.values()) worstCount = Math.max(worstCount, places.length);
 
-    const repeatsEvidence: Evidence[] = [
-      { type: 'count', stat: 'max_repeats_of_one_call', unit: 'calls', value: worstCount, threshold: maxRepeats, thresholdSource: thresholdSourceOf(context, 'max_tool_repeats') },
+    const repeatsEvidenceOf = (count: number): Evidence[] => [
+      { type: 'count', stat: 'max_repeats_of_one_call', unit: 'calls', value: count, threshold: maxRepeats, thresholdSource: thresholdSourceOf(context, 'max_tool_repeats') },
     ];
     /*
      * A steady cadence is a machine WAITING, not a machine stuck, and this
@@ -283,23 +260,37 @@ export const noToolLoop: EvalRule = {
      * the same endpoint with the same arguments until the answer changes.
      * The check belongs on every trigger, not only the cycle one, because
      * the repeat count is what sees an unchanging call.
+     *
+     * Every call repeated past the allowance is asked, the most repeated
+     * first. Until 0.22.0 only the most repeated one was: when that was a
+     * poll, a second call made five times with no cadence passed behind it.
      */
-    const worstIndices = keys.flatMap((key, index) => (key === worstKey ? [index] : []));
-    const polling = worstCount > maxRepeats && looksLikePolling(worstIndices.map((i) => calls[i].startedAt));
+    const repeated = [...placesOf.values()].filter((places) => places.length > maxRepeats).sort((a, b) => b.length - a.length);
+    let poll: number[] | null = null;
+    let loop: number[] | null = null;
+    for (const places of repeated) {
+      if (looksLikePolling(places.map((i) => calls[i].startedAt))) {
+        poll ??= places;
+        continue;
+      }
+      loop = places;
+      break;
+    }
 
-    if (worstCount > maxRepeats && !polling) {
-      const call = calls[keys.indexOf(worstKey)];
-      const evidence: Evidence[] = [...repeatsEvidence];
-      keys.forEach((key, index) => {
-        if (key === worstKey && evidence.length < MAX_EVIDENCE_ITEMS) evidence.push({ type: 'toolCall', index, toolName: calls[index].name, label: 'repeated call' });
-      });
+    if (loop !== null) {
+      const call = calls[loop[0]];
+      const evidence: Evidence[] = [...repeatsEvidenceOf(loop.length)];
+      for (const index of loop) {
+        if (evidence.length >= MAX_EVIDENCE_ITEMS) break;
+        evidence.push({ type: 'toolCall', index, toolName: calls[index].name, label: 'repeated call' });
+      }
       return {
         ruleName: 'no_tool_loop',
         passed: false,
-        score: Math.max(0, 1 - (worstCount - maxRepeats) * 0.25),
-        value: { stat: 'max_repeats_of_one_call', unit: 'calls', value: worstCount },
+        score: Math.max(0, 1 - (loop.length - maxRepeats) * 0.25),
+        value: { stat: 'max_repeats_of_one_call', unit: 'calls', value: loop.length },
         evidence,
-        message: `Tool loop: ${call.name} called ${worstCount} times with the same input — ${describeInput(call.input)} — over ${calls.length} call${calls.length === 1 ? '' : 's'} (max ${maxRepeats})${scope}`,
+        message: `Tool loop: ${call.name} called ${loop.length} times with the same input — ${describeInput(call.input)} — over ${calls.length} call${calls.length === 1 ? '' : 's'} (max ${maxRepeats})${scope}`,
       };
     }
 
@@ -363,21 +354,18 @@ export const noToolLoop: EvalRule = {
      */
     const cut = notJudgedPastCeiling('no_tool_loop', context, 'No loop was found among them, and the rest were not read');
     if (cut !== null) return cut;
-    // In a long run the search for a repeated sequence stops short of the longest one the run could hold, and a clean result says how far it looked.
-    const periods = cyclePeriodsSearched(keys.length);
-    const periodNote = periods < maxCycleLength(keys.length) ? `; a repeated sequence was looked for up to ${periods} calls long` : '';
     return {
       ruleName: 'no_tool_loop',
       passed: true,
       score: 1,
-      message: polling
-        ? `No tool loop: ${calls[worstIndices[0]].name} ran ${worstCount}× at a regular cadence, which is polling rather than a loop — an agent waiting on something waits, and a stuck one retries as fast as it can emit (${calls.length} call${calls.length === 1 ? '' : 's'}${periodNote})`
+      message: poll !== null
+        ? `No tool loop: ${calls[poll[0]].name} ran ${poll.length}× at a regular cadence, which is polling rather than a loop — an agent waiting on something waits, and a stuck one retries as fast as it can emit (${calls.length} call${calls.length === 1 ? '' : 's'})`
         // The catalogue note belongs on a PASS as much as on a failure: a
         // clean verdict that could not see part of the trajectory has to
         // say so, which is the difference between clean and not-judged.
-        : `No repeated tool call (${calls.length} call${calls.length === 1 ? '' : 's'}; most repeated ran ${worstCount}×, max ${maxRepeats}${periodNote})${rereads.unknownNote}`,
+        : `No repeated tool call (${calls.length} call${calls.length === 1 ? '' : 's'}; most repeated ran ${worstCount}×, max ${maxRepeats})${rereads.unknownNote}`,
       value: { stat: 'max_repeats_of_one_call', unit: 'calls', value: worstCount },
-      evidence: polling ? [...repeatsEvidence, { type: 'count', stat: 'regularly_spaced_repetitions', unit: 'calls', value: worstCount }] : repeatsEvidence,
+      evidence: poll !== null ? [...repeatsEvidenceOf(worstCount), { type: 'count', stat: 'regularly_spaced_repetitions', unit: 'calls', value: poll.length }] : repeatsEvidenceOf(worstCount),
     };
   },
 };

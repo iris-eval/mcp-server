@@ -45,20 +45,23 @@ import type { Span, Step, StepSource, ToolCallRecord } from '../types/trace.js';
  * failed the run (#1013). A rule's own work now sets what it reads, and
  * this list is as long as a run a rule can afford to read whole:
  *
- *   - the rules whose work grows with the number of calls read all of it;
- *   - `no_tool_loop` keeps a bound of its own on the one search that does
- *     not (rules/cost.ts, MAX_CYCLE_WORK);
- *   - a run longer than this list is not answered for. A rule reports a
- *     finding the rest of the run cannot clear, and otherwise says it was
- *     not judged and how far it read (`notJudgedPastCeiling`), so that a
- *     rule that vetoes or gates makes the verdict what
- *     eval.onCriticalSkipped says.
+ *   - each rule's work for a run of this length is bounded by what one
+ *     request can carry, and tests/unit/eval/whole-run-cost.test.ts holds
+ *     the shapes that cost the most inside a CPU budget. Where a rule's
+ *     work is calls times something else the request carries (expected
+ *     calls, a schema, a catalogue entry's text, failures), each of the
+ *     two is read once; where no reading is cheaper than the pairs, the
+ *     rule has a limit of work and says when it stopped at it;
+ *   - a run longer than this list is not answered for. A rule reports what
+ *     the calls it read settle, a finding the rest cannot clear or a pass
+ *     the rest cannot break, and otherwise says it was not judged and how
+ *     far it read (`notJudgedPastCeiling`). A rule somebody asked for (a
+ *     critical rule, a policy whose threshold was set, an expectation the
+ *     call supplied) then makes the verdict what eval.onCriticalSkipped
+ *     says (compose.ts, the unknown layer).
  *
- * Measured on a run whose calls are all distinct: one evaluation of every
- * bundle at the shipped settings costs about 0.1 s of CPU at 2,000 calls
- * and 0.6 s at 10,000, and 0.3 s at 10,000 when every call failed (the
- * figures are in the pull request for #1013). A request of the default
- * size, 1 MB, holds ten thousand calls of about a hundred bytes each.
+ * A request of the default size, 1 MB, holds ten thousand calls of about a
+ * hundred bytes each.
  */
 export const MAX_STEPS_DERIVED = 10_000;
 

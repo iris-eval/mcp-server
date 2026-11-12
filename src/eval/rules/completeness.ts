@@ -258,6 +258,21 @@ export const validToolArguments: EvalRule = {
     const ownNameEntry = (i: number): string | null => (matches[i]?.by === 'own' ? matches[i]!.tool.name : null);
     /** Entries more than one called name leads to: said in the message, with what to do. */
     const sharedEntries = new Set<string>();
+    /*
+     * Each tool's schema is compiled once an evaluation. Asked at every
+     * call, the schema was written out and hashed each time before anything
+     * looked at its size: one inputSchema of 255,000 characters under 10,000
+     * calls cost 7 s of CPU.
+     */
+    const compiledFor = new Map<unknown, ReturnType<typeof compileToolSchema>>();
+    const compiledSchemaOf = (schema: unknown): ReturnType<typeof compileToolSchema> => {
+      let compiled = compiledFor.get(schema);
+      if (compiled === undefined) {
+        compiled = compileToolSchema(schema);
+        compiledFor.set(schema, compiled);
+      }
+      return compiled;
+    };
 
     for (const [i, step] of steps.entries()) {
       const match = matches[i];
@@ -279,7 +294,7 @@ export const validToolArguments: EvalRule = {
         uncheckedReasons.set(step.name, 'no inputSchema in the catalogue');
         continue;
       }
-      const compiled = compileToolSchema(tool.inputSchema);
+      const compiled = compiledSchemaOf(tool.inputSchema);
       if (!compiled.ok) refusedSchema = true;
       const check = checkArguments(compiled, step.input);
       if (check.state === 'unchecked' && check.reason !== undefined) uncheckedReasons.set(step.name, check.reason);
@@ -302,6 +317,17 @@ export const validToolArguments: EvalRule = {
         .map(([tool, why]) => `${tool} (${why})`)
         .join('; ');
       const because = named.length > 0 ? named : 'the catalogue names none of the tools called';
+      /*
+       * Nothing to check among the calls read is not nothing to check in a
+       * run that was read in part: a call among the rest may be to a tool
+       * the catalogue does not have. Left as "not applicable", a note in the
+       * message was all that said so, and the rule promoted to critical let
+       * the verdict pass. A schema Iris refused stays a broken definition.
+       */
+      if (!refusedSchema) {
+        const cut = notJudgedPastCeiling('valid_tool_arguments', context, `None of them could be checked (${because}), and the rest were not read`);
+        if (cut !== null) return cut;
+      }
       return {
         ruleName: 'valid_tool_arguments',
         passed: false,
