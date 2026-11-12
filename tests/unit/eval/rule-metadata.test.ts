@@ -35,7 +35,7 @@ const root = resolve(__dirname, '..', '..', '..');
 const builtIns: EvalRule[] = (['completeness', 'relevance', 'safety', 'cost'] as const).flatMap((t) => rulesByType[t]);
 const KINDS = ['measurement', 'detection', 'inference', 'judgment', 'policy', 'verification'];
 const MECHANISMS = ['formula', 'pattern', 'heuristic', 'model', 'external'];
-const CUSTOM_TYPES: CustomRuleType[] = ['regex_match', 'regex_no_match', 'min_length', 'max_length', 'contains_keywords', 'excludes_keywords', 'json_schema', 'cost_threshold'];
+const CUSTOM_TYPES: CustomRuleType[] = ['regex_match', 'regex_no_match', 'min_length', 'max_length', 'contains_keywords', 'excludes_keywords', 'json_schema', 'cost_threshold', 'action_policy'];
 
 describe('rule metadata — the registry declares everything, in registered vocabulary', () => {
   it('there are built-ins to check (guards the registry read)', () => {

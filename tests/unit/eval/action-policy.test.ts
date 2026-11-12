@@ -304,11 +304,36 @@ describe('action_policy — a tool the host calls mcp__<server>__<tool>', () => 
     const label = run(deny, [del('mcp__backup__delete_stale___list_snapshots')], 'critical');
     expect(label.passed).toBe(false);
     expect(label.message).toContain("which matches delete_stale___list_snapshots, read as the tool's own name");
+    // A name is as long as its sender made it; the part a message quotes from it is held to 128 characters.
+    const wide = run({ deny: [{ tool: 'a*' }] }, [del(`mcp__files__${'a'.repeat(5_000)}`)], 'critical');
+    expect(wide.passed).toBe(false);
+    expect(wide.message).toContain(`which matches ${'a'.repeat(128)}…, read as the tool's own name`);
     // A name with a great many "__" costs one match, and is still judged.
     const long = `mcp__${'a__'.repeat(20_000)}delete_file`;
     const spent = cpuMs(() => {
       expect(run(deny, [del(long)], 'critical').passed).toBe(false);
       expect(run(deny, [del(`mcp__${'a__'.repeat(20_000)}read_file`)], 'critical').passed).toBe(true);
+    });
+    expect(spent).toBeLessThan(2_000);
+  });
+
+  it('a "/" in the server\'s part does not hide the tool\'s own name from a deny rule', () => {
+    const deny = { deny: [{ tool: 'delete_*' }] };
+    // A `*` does not cross a "/", so the "__" the own name begins after is read in whichever "/"-separated piece it sits.
+    for (const name of ['mcp__a/b__delete_file', 'mcp__a/b/c__delete_file', 'mcp__a__b/c__delete_file', 'mcp__/x__delete_file', 'mcp__a/__delete_file']) {
+      const r = run(deny, [del(name)], 'critical');
+      expect(r.passed, name).toBe(false);
+      expect(r.message, name).toContain("which matches delete_file, read as the tool's own name");
+    }
+    // Another tool of such a server is not denied, and the own name is still matched as a tool pattern matches any name: a `*` in it stops at a "/".
+    for (const name of ['mcp__a/b__read_file', 'mcp__a/delete_b__read_file', 'mcp__a/b__delete_/file']) {
+      expect(run(deny, [del(name)], 'critical').passed, name).toBe(true);
+    }
+    // A name with a great many "/" costs the two matches and no more.
+    const spent = cpuMs(() => {
+      expect(run(deny, [del(`mcp__${'a/'.repeat(20_000)}b__delete_file`)], 'critical').passed).toBe(false);
+      expect(run(deny, [del(`mcp__${'a/'.repeat(20_000)}b__read_file`)], 'critical').passed).toBe(true);
+      expect(run(deny, [del(`mcp__${'a__/'.repeat(20_000)}b__read_file`)], 'critical').passed).toBe(true);
     });
     expect(spent).toBeLessThan(2_000);
   });

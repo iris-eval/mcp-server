@@ -543,13 +543,19 @@ const OWN_NAME_READINGS = 32;
  * places" is one match of `mcp__*__<glob>`: the matcher's cost, once,
  * however many "__" a name holds. A name built to hold thousands of them
  * cannot multiply the work, so it cannot stall the policy.
+ *
+ * A `*` does not cross a "/", so that one match reads only a "__" in the
+ * name's first "/"-separated piece. A second, `mcp__*` then any pieces then
+ * `*__<glob>`, reads the "__" in every later piece: a "/" in the server's
+ * part does not hide the tool's own name from a deny rule.
  */
 function toolFormMatched(glob: string, toolName: string, favourDenial: boolean): { by: 'called' | 'own'; read?: string } | null {
   if (!favourDenial) return matchGlob(glob, toolName) ? { by: 'called' } : null;
   const folded = glob.toLowerCase();
   const called = toolName.toLowerCase();
   if (matchGlob(folded, called)) return { by: 'called' };
-  if (!called.startsWith(MCP_PREFIX) || !matchGlob(`${MCP_PREFIX}*__${folded}`, called)) return null;
+  if (!called.startsWith(MCP_PREFIX)) return null;
+  if (!matchGlob(`${MCP_PREFIX}*__${folded}`, called) && !matchGlob(`${MCP_PREFIX}*/**/*__${folded}`, called)) return null;
   const read = ownNameRead(folded, called);
   return { by: 'own', ...(read !== null ? { read } : {}) };
 }
