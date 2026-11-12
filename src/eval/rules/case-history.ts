@@ -41,7 +41,7 @@
  */
 import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type EvalRuleResult, type Evidence } from '../../types/eval.js';
 import { CASE_HISTORY_MIN, CASE_HISTORY_WEIGH_MIN, CASE_HISTORY_WINDOW, caseHistoryOf, droppedSteps, hasNoUsualWay, listNames, readOnlyWordsNotTaken, toolNameOf, toolsOfSteps, unusualActions } from '../case-history.js';
-import { stepScopeNote, stepStatsOf, stepsOf, trajectoryAbsence } from '../steps.js';
+import { notJudgedPastCeiling, stepScopeNote, stepsOf, trajectoryAbsence } from '../steps.js';
 import { skipWithoutTrajectory } from './trajectory.js';
 
 const runs = (n: number): string => `${n} earlier run${n === 1 ? '' : 's'}`;
@@ -84,7 +84,7 @@ function skipUnreadable(ruleName: string): EvalRuleResult {
 export const noUnusualAction: EvalRule = {
   name: 'no_unusual_action',
   description:
-    `A run against the same agent's earlier runs of its own case: fails when the run called a tool known to act and none of the case's ${CASE_HISTORY_WINDOW} most recent earlier runs called it. Known to act: the catalogue marks the tool readOnlyHint false or destructiveHint true, or, with no word from the catalogue, the first verb in its name acts (send, delete, update, execute, …), or a verb directly after "and" does, or the name has no verb and is a shell's or an interpreter's (bash, python); the verbs of a name like mcp__server__tool are read after the server's part. A look-up (readOnlyHint true, or a name whose first verb reads: get, list, search, …) and a tool neither the catalogue nor its name places (calculator, Glob) are named in the message and never counted. An inference: from ${CASE_HISTORY_WEIGH_MIN} earlier runs a fire is weighed in the verdict by what it was worth on agent runs labelled outside Iris, each read against the same agent's other runs of its task (proof/OUTSIDE.md), and from twenty of the deployment's own labels by the deployment's precision; with fewer earlier runs it reports and takes no part in the verdict, and the result says so (advisoryWhy); eval.advisoryRules sets the rule to report only. Skips without tool calls; as insufficient_history below ${CASE_HISTORY_MIN} earlier runs with recorded calls, which is every call with no stored trace behind it; and when more than half of the earlier runs each took an action none of the others took, because that case has no usual way of going`,
+    `A run against the same agent's earlier runs of its own case: fails when the run called a tool known to act and none of the case's ${CASE_HISTORY_WINDOW} most recent earlier runs called it. Known to act: the catalogue marks the tool readOnlyHint false or destructiveHint true, or, with no word from the catalogue, the first verb in its name acts (send, delete, update, execute, …), or a verb directly after "and" does, or the name has no verb and is a shell's or an interpreter's (bash, python); the verbs of a name like mcp__server__tool are read after the server's part. A look-up (readOnlyHint true, or a name whose first verb reads: get, list, search, …) and a tool neither the catalogue nor its name places (calculator, Glob) are named in the message and never counted. An inference: from ${CASE_HISTORY_WEIGH_MIN} earlier runs a fire is weighed in the verdict by what it was worth on agent runs labelled outside Iris, each read against the same agent's other runs of its task (proof/OUTSIDE.md), and from twenty of the deployment's own labels by the deployment's precision; with fewer earlier runs it reports and takes no part in the verdict, and the result says so (advisoryWhy); eval.advisoryRules sets the rule to report only. Skips without tool calls; as insufficient_history below ${CASE_HISTORY_MIN} earlier runs with recorded calls, which is every call with no stored trace behind it; and when more than half of the earlier runs each took an action none of the others took, because that case has no usual way of going. It reads a run of up to 10,000 tool calls whole; of a longer run an action found among the first 10,000 is reported, and otherwise the rule is not judged`,
   evalType: 'completeness',
   weight: 1,
   kind: 'inference',
@@ -151,6 +151,11 @@ export const noUnusualAction: EvalRule = {
       evidence.push({ type: 'toolCall', index: step.index, toolName: name, label: `called in none of the ${runs(m)} of this case` });
     }
     const passed = unusual.length === 0;
+    if (passed) {
+      // An action none of the earlier runs took may be among the calls that were not read; one found among those read stands (steps.ts).
+      const cut = notJudgedPastCeiling('no_unusual_action', context, 'No action new to the case was found among them, and the rest were not read');
+      if (cut !== null) return { ...cut, ...reportsOnly };
+    }
     return {
       ruleName: 'no_unusual_action',
       passed,
@@ -181,18 +186,9 @@ export const noDroppedStep: EvalRule = {
     // An explicit empty list is a run that made no call, and against steps the case always takes that is the finding. Calls not sent at all still skip.
     const skip = skipWithoutTrajectory('no_dropped_step', context);
     if (skip && trajectoryAbsence(context) !== 'empty_calls') return skip;
-    const stats = stepStatsOf(context);
-    if (stats.kept < stats.available) {
-      // A step taken only among the calls that were not read would be reported as dropped.
-      return {
-        ruleName: 'no_dropped_step',
-        passed: false,
-        score: 0,
-        message: `Not judged: the first ${stats.kept} of this run's ${stats.available} calls were read, and a step may be among the rest`,
-        skipped: true,
-        skipReason: `partial_trajectory: ${stats.kept} of ${stats.available} calls read`,
-      };
-    }
+    // A step taken only among the calls that were not read would be reported as dropped (steps.ts).
+    const cut = notJudgedPastCeiling('no_dropped_step', context, 'A step the case always takes may be among the rest');
+    if (cut !== null) return cut;
     const called = toolsOfSteps(stepsOf(context));
     if (called === null) return skipUnreadable('no_dropped_step');
     const reading = droppedSteps(new Set(called), caseHistoryOf(context) ?? []);

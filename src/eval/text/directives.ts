@@ -11,10 +11,11 @@
  * the JavaScript glue rather than in any pattern, so "the patterns are
  * bounded" was never the defence it sounded like.
  *
- * So: literal phrases, matched with `includes` over a length-capped slice.
- * Thirty phrases against eight thousand characters is a quarter of a million
- * comparisons per output, linear by construction, with no state machine that
- * can be made to explore.
+ * So: literal phrases, matched with `indexOf` over a length-capped slice:
+ * linear by construction, with no state machine that can be made to
+ * explore. Measured, the fold and the search together cost about 15 ns a
+ * character for plain text and for JSON, and about 0.5 µs a character for
+ * text that is all fullwidth letters, accents and zero-width characters.
  *
  * ONE EXTRA FOLD, and it is not decoration. `normalise()` collapses a
  * whitespace run that CONTAINED a newline to a newline, deliberately,
@@ -33,14 +34,34 @@
  */
 import { normalise, wordReading, type Normalised } from './normalise.js';
 
-/** Characters of one tool output that are read. A payload sits inside a document, not at the top of it. */
-export const INJECTION_SCAN_CHARS = 8_000;
-/** Tool outputs scanned. Matches the evidence cap, so evidence can never exceed what was examined. */
-export const MAX_SCANNED_TOOL_OUTPUTS = 25;
-/** Characters across the whole trajectory. */
-export const INJECTION_SCAN_TOTAL_CHARS = 100_000;
+/*
+ * HOW MUCH IS READ. Until 0.22.0: the first 25 tool outputs, the first 8,000
+ * characters of each, 100,000 characters in all, and the rule passed what
+ * lay past them with a note in its message. A page with 8,100 characters of
+ * ordinary text above the planted instruction passed clean, and so did the
+ * same page fetched after 25 ordinary reads (#1016). The limits were far
+ * below what the reading costs, and a planted instruction sits where a
+ * reader does not look: low in a long page, late in a long run.
+ *
+ * Now: every tool output the rules read (steps.ts), to
+ * INJECTION_SCAN_TOTAL_CHARS in all. That is the size a request may be,
+ * and at the slow rate above it is about half a second of CPU. Past it the
+ * rule does not pass (rules/safety.ts).
+ */
+/** Characters across the whole trajectory. Matches the request size limit the server already enforces. */
+export const INJECTION_SCAN_TOTAL_CHARS = 1_048_576;
+/** Characters of one tool output that are read: all that the total allows, so one long page is read whole. */
+export const INJECTION_SCAN_CHARS = INJECTION_SCAN_TOTAL_CHARS;
 /** Characters after a directive phrase that carry its payload. */
 export const DIRECTIVE_WINDOW_CHARS = 300;
+/**
+ * Occurrences of one phrase read in one tool output. Each is a place an
+ * instruction may begin: read at its first occurrence only, a phrase used
+ * harmlessly near the top of a page hid the planted one below it. A page
+ * that repeats a phrase more often than this is read to here, and the
+ * result says the rest were not read.
+ */
+export const MAX_PHRASE_OCCURRENCES = 8;
 
 /**
  * Terms of a directive's payload that must reappear before it counts.
@@ -55,8 +76,22 @@ export const DIRECTIVE_WINDOW_CHARS = 300;
  */
 export const ACTION_TERM_OVERLAP = 3;
 export const ECHO_TERM_OVERLAP = 3;
-/** Characters of a later call's arguments that are read for the action tier. */
-export const ARG_SCAN_CHARS = 2_000;
+/**
+ * Characters of a later call's arguments that are read for the action tier.
+ * It was 2,000, and a call that carried a long header before the attacker's
+ * address was read as carrying none of the directive's terms.
+ */
+export const ARG_SCAN_CHARS = 20_000;
+/** Characters of arguments read across the whole trajectory. */
+export const ARG_SCAN_TOTAL_CHARS = 1_048_576;
+/**
+ * Calls looked at while asking whether a later call acted on a directive,
+ * across all the directives of a run. The search reads only the calls that
+ * share a term with the directive (rules/safety.ts), so a run reaches this
+ * only when the directive's words are the run's own vocabulary; it then
+ * says it could not finish.
+ */
+export const ACTION_SEARCH_BUDGET = 2_000_000;
 /** Characters of the user's ask that are read to decide what counts as novel. */
 export const INPUT_TERM_SCAN_CHARS = 20_000;
 
@@ -191,29 +226,36 @@ export function foldForDirectives(raw: string): DirectiveReading[] {
   return words === null || words.text === flat ? [{ flat, normalised }] : [{ flat, normalised }, { flat: words.text, normalised: words }];
 }
 
-/** Every directive phrase in a folded tool output, with the payload that followed it. */
-export function findDirectives(readings: readonly DirectiveReading[]): DirectiveHit[] {
-  const hits: DirectiveHit[] = [];
-  const seen = new Set<string>();
-  for (const { flat, normalised } of readings) {
-    const lower = flat.toLowerCase();
-    for (const phrase of [...INJECTED_DIRECTIVE_PHRASES, ...TOOL_ONLY_DIRECTIVE_PHRASES]) {
-      // One hit per phrase, from the first reading that holds it.
-      if (seen.has(phrase)) continue;
-      const at = lower.indexOf(phrase);
-      if (at < 0) continue;
-      seen.add(phrase);
-      hits.push({
-        phrase,
-        start: at,
-        end: at + phrase.length,
-        reading: normalised,
-        window: flat.slice(at, at + phrase.length + DIRECTIVE_WINDOW_CHARS),
-      });
+/**
+ * Every place a directive phrase stands in a folded tool output, with the
+ * payload that followed it, earliest first in the raw text.
+ *
+ * Each occurrence of a phrase is a hit, up to MAX_PHRASE_OCCURRENCES of one
+ * phrase. Both readings are searched, because an occurrence broken across
+ * a line is in the second reading only, and one place in the raw text is
+ * one hit whichever reading found it. `more` says a phrase stood more
+ * often than was read.
+ */
+export function findDirectives(readings: readonly DirectiveReading[]): { hits: DirectiveHit[]; more: boolean } {
+  const rawStart = (reading: Normalised, at: number): number => (reading.unchanged ? at : reading.map[Math.min(at, reading.map.length - 1)]);
+  const found: Array<{ hit: DirectiveHit; raw: number }> = [];
+  let more = false;
+  for (const phrase of [...INJECTED_DIRECTIVE_PHRASES, ...TOOL_ONLY_DIRECTIVE_PHRASES]) {
+    const places = new Set<number>();
+    for (const { flat, normalised } of readings) {
+      const lower = flat.toLowerCase();
+      for (let at = lower.indexOf(phrase); at >= 0; at = lower.indexOf(phrase, at + phrase.length)) {
+        const raw = rawStart(normalised, at);
+        if (places.has(raw)) continue;
+        if (places.size === MAX_PHRASE_OCCURRENCES) {
+          more = true;
+          break;
+        }
+        places.add(raw);
+        found.push({ hit: { phrase, start: at, end: at + phrase.length, reading: normalised, window: flat.slice(at, at + phrase.length + DIRECTIVE_WINDOW_CHARS) }, raw });
+      }
     }
   }
-  // Earliest first in the RAW text, and one hit per phrase: a page
-  // repeating the same directive is one directive, not twenty.
-  const rawStart = (hit: DirectiveHit): number => (hit.reading.unchanged ? hit.start : hit.reading.map[Math.min(hit.start, hit.reading.map.length - 1)]);
-  return hits.sort((a, b) => rawStart(a) - rawStart(b));
+  found.sort((a, b) => a.raw - b.raw);
+  return { hits: found.map((f) => f.hit), more };
 }

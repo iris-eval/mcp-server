@@ -250,7 +250,7 @@ Since 0.10.0 the verdict is composed by the *kind* of claim each rule makes, in 
 1. `no_rules` — nothing could be judged: `verdict.state: "unknown"`, `passed: false`.
 2. `policy_gate` — a policy the deployment configured failed: a threshold **you** set (every count evidence carries `thresholdSource`, and a shipped default advises rather than gates unless `eval.defaultsGate` is `true`), a custom rule deployed at severity `high` or `critical`, or a judgment you asked for.
 3. `detector_veto` — a critical detector fired (`no_pii`, `no_injection_patterns`, `no_blocklist_words` by default; `eval.criticalRules` / `eval.nonCriticalRules` change the set).
-4. `critical_unknown` — a critical check was asked and could not answer: `unknown`, `passed: false`, unless `eval.onCriticalSkipped` is `"pass"` or `"fail"`. Four things count: a regex killed at the sandbox budget, a rule that threw while it judged (its row carries `threw: true`), a rule whose evidence was cut (for one, an `action_policy` on a run longer than the 10,000 calls it reads), and a broken definition. The first three carry `skipClass: "defeated"` on the rule's row and the last `"config_invalid"`. A rule that only reports and could not answer changes no verdict.
+4. `critical_unknown` — a critical check was asked and could not answer: `unknown`, `passed: false`, unless `eval.onCriticalSkipped` is `"pass"` or `"fail"`. Four things count: a regex killed at the sandbox budget, a rule that threw while it judged (its row carries `threw: true`), a rule whose evidence was cut or longer than it reads ([how much of a run the rules read](#how-much-of-a-run-the-rules-read)), and a broken definition. The first three carry `skipClass: "defeated"` on the rule's row and the last `"config_invalid"`. A rule that only reports and could not answer changes no verdict.
 5. `required_evidence_missing` — evidence somebody asked for was not sent: `unknown` (not checked), which is `passed: false` and not a failure. `verdict.by` lists the missing inputs. Three things ask:
    - **`eval.requiredEvidence`** names an input every evaluation must carry. It is met by what the call carried (`provenance.evidence.carried`), whichever bundles ran.
    - **The trace's capture source** declared that it records a field in full (`capture.complete`, see [the evidence contract](#the-evidence-contract-who-recorded-the-trace)), and the trace does not carry it. The record has a hole, so it is not checked, and an interpretation addressed to the operator names the capture source and the field.
@@ -272,6 +272,27 @@ Every rule result carries `role` — what the composer did with it here: `gate` 
 **Read `state`, not `passed`, on a rule result and on a bundle row.** Every rule result carries `state`: `pass`, `fail`, or `not_checked` for a rule that skipped (which still carries `passed: false` and `score: 0` as placeholders). Every row of `categories` carries `state`: the evaluation's verdict, read for the rules that bundle holds. A row is `fail` when a layer of the verdict rests on one of its rules; `unknown` when the bundle evaluated no rule, when one of its rules was asked for and lacked its evidence, or when an input `eval.requiredEvidence` names or the capture source declared is missing (which leaves every bundle unchecked); and `pass` otherwise. `passed` is `true` for pass, `false` for fail and `null` for unknown. Every checked row of a passing evaluation passes, and when the evaluation fails, the row holding the rules that failed it fails; when the risk estimate is over the line and no rule fired (possible only off the shipped loss ratio), every row whose rules the estimate reads fails. A single-`eval_type` call and a stored evaluation read back carry no `categories`; the rule results carry each rule's own `state` and bundle. Until 0.20.0 a row was its own arithmetic (a weighted mean of the bundle's scores against a threshold), and on an evaluation that failed for a hidden tool error every row could read `passed: true`; `score` on a row is still that mean, as a gradient.
 
 The response echoes the `eval_type` that ran. When `eval_type` is omitted, every bundle runs (`eval_type: "all"` — completeness, relevance, safety, cost and any custom rules) and the response carries a `note` saying the default ran; name a bundle to narrow the run. Inside `categories`, a bundle that evaluated no rule (cost without `cost_usd`, relevance without `input`) reports `state: "unknown"`, `passed: null` and `score: null` with `insufficient_data: true` — not judged, neither passing nor failing, and not counted toward the overall verdict. The top-level `passed` stays boolean and is `false` when nothing at all was evaluated, so a gate keyed on it fails closed; read `insufficient_data` to tell "failed" from "not judged".
+
+#### How much of a run the rules read
+
+A rule answers for the run it read. The rules that read tool calls read a run of up to 10,000 calls whole. A run longer than that is not answered for: a rule reports a finding that the rest of the run cannot clear, and otherwise it is not judged. Its result then carries `state: "not_checked"` and `skipClass: "defeated"`, and its message begins "Not judged: the first 10000 of this run's N calls were read". A rule that is not judged takes no part in the verdict, and one named in `eval.criticalRules` makes the verdict `unknown` with `basis: "critical_unknown"`, or what `eval.onCriticalSkipped` says.
+
+| Rule | Of a run longer than 10,000 calls |
+|---|---|
+| `valid_tool_arguments` | a call to a tool the catalogue does not have is reported; otherwise not judged, since a retry may be among the calls it did not read |
+| `no_tool_loop` | a loop among the first 10,000 calls is reported; otherwise not judged |
+| `no_unusual_action` | an action new to the case is reported; otherwise not judged |
+| `no_injection_compliance` | a directive that was acted on is reported; otherwise not judged |
+| `no_silent_tool_failure`, `grounded_in_reads`, `tool_choice`, `tool_sequence`, `no_dropped_step` | not judged |
+| `ask_coverage` | an answer that covers every part of the ask is judged; a part it left is not, since a call among the rest may have done it |
+| `max_steps`, `step_budget` | judged: they count the calls the run made |
+| a custom `action_policy` | a denied call is reported; otherwise not judged ([action_policy](custom-rules.md#action_policy)) |
+
+Three rules have limits of their own inside that:
+
+- `no_tool_loop` looks for a repeated sequence of every length a run of up to 500 calls can hold. In a longer run it looks up to a length that falls as the run grows, 83 calls at 2,000 and 37 at 10,000, and a clean result says how far it looked. Its count of identical calls and its count of rereads have no such limit.
+- `no_injection_compliance` reads up to 1,048,576 characters of tool output in a run, the size a request may be by default, and up to eight occurrences of one directive phrase in one output. Where it did not read everything, it reports a directive that was acted on, and otherwise it is not judged.
+- `grounded_in_reads` reads the same 1,048,576 characters of tool output, and is not judged past them.
 
 #### A trace has one verdict, and a caller cannot replace it
 

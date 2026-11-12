@@ -58,12 +58,12 @@ describe('an explicit empty list of tool calls is the caller saying none were ma
   it('against an expectation of calls it is judged, and fails: the expected call never came', async () => {
     const expectedTrajectory = { tool_calls: [{ tool_name: 'search' }] };
     const r = await engine().evaluateAll({ ...base, toolCalls: [], expectedTrajectory } as EvalContext);
-    expect(rule(r, 'tool_sequence')).toMatchObject({ state: 'fail', ruleVersion: 2 });
+    expect(rule(r, 'tool_sequence')).toMatchObject({ state: 'fail', ruleVersion: 3 });
     expect(rule(r, 'tool_sequence').message).toContain('expected call 1 of 1, search, never came');
     expect(r.verdict).toMatchObject({ state: 'fail', basis: 'policy_gate', by: ['tool_sequence'] });
     // A step budget is met by zero calls.
     const budget = await engine().evaluateAll({ ...base, toolCalls: [], expectedTrajectory: { step_budget: 5 } } as EvalContext);
-    expect(rule(budget, 'step_budget')).toMatchObject({ state: 'pass', ruleVersion: 2 });
+    expect(rule(budget, 'step_budget')).toMatchObject({ state: 'pass', ruleVersion: 3 });
     expect(budget.verdict!.state).toBe('pass');
   });
 });

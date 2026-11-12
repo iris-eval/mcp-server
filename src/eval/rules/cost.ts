@@ -1,7 +1,7 @@
 import { MAX_EVIDENCE_ITEMS, type EvalRule, type EvalContext, type EvalRuleResult, type Evidence } from '../../types/eval.js';
 import { thresholdSourceOf } from '../thresholds.js';
 import { describeInput, longestCycle, looksLikePolling, skipWithoutTrajectory, stepKey, targetKey } from './trajectory.js';
-import { stepScopeNote, stepsOf } from '../steps.js';
+import { notJudgedPastCeiling, stepScopeNote, stepStatsOf, stepsOf } from '../steps.js';
 import { stepBudget } from './expected-trajectory.js';
 import { READ_TOKENS, catalogueIndex, catalogueMatch, readOnlyWordNotTaken } from '../catalogue.js';
 import { listNames, toolNameOf } from '../case-history.js';
@@ -104,6 +104,30 @@ export function maxCycleLength(callCount: number): number {
 }
 
 /**
+ * The work the search for a repeated sequence may do.
+ *
+ * Trying every period up to maxCycleLength(n) from every start costs about
+ * n × p² / 2 comparisons for the longest period p, which for p = n / 3 grows
+ * with the cube of the run: 16 ms of CPU at 500 calls, 0.8 s at 2,000 and
+ * 11.8 s at 5,000, measured on runs whose calls are all distinct. That
+ * search is what held every trajectory rule to a run's first 500 calls
+ * (steps.ts). The bound is the work the search does at 500 calls, so a run
+ * of up to 500 calls is searched exactly as it was, and a longer one is
+ * searched for repeated sequences up to a length that falls as it grows.
+ */
+export const MAX_CYCLE_WORK = 7_000_000;
+
+/**
+ * The longest period searched in a run of n calls: every period a cycle
+ * could have up to 500 calls (166 at 500), then 83 at 2,000 and 37 at
+ * 10,000. The other two readings of this rule, the count of identical
+ * calls and the rereads of one target, read the whole run at any length.
+ */
+export function cyclePeriodsSearched(callCount: number): number {
+  return Math.min(maxCycleLength(callCount), Math.floor(Math.sqrt((2 * MAX_CYCLE_WORK) / Math.max(1, callCount))));
+}
+
+/**
  * The longest repeated sequence worth reporting, at any period from 2 up to
  * maxCycleLength(n) — or null when the repetition was a POLL.
  *
@@ -117,7 +141,7 @@ export function maxCycleLength(callCount: number): number {
  * signals to multiply as though they were independent.
  */
 function findCycle(keys: readonly string[], calls: readonly Step[]): { k: number; start: number; repetitions: number; gramIndices: number[] } | null {
-  for (let k = 2; k <= maxCycleLength(keys.length); k += 1) {
+  for (let k = 2; k <= cyclePeriodsSearched(keys.length); k += 1) {
     const cycle = longestCycle(keys, k);
     if (cycle === null || cycle.repetitions <= MAX_TWO_CALL_CYCLES) continue;
     const occurrences: number[] = [];
@@ -209,7 +233,7 @@ function targetRereads(
 export const noToolLoop: EvalRule = {
   name: 'no_tool_loop',
   description:
-    'The agent must not repeat itself. Fails when one tool is called with an identical input (object keys sorted, whitespace collapsed) more than max_tool_repeats times — default 3, config key `max_tool_repeats` — or when a sequence of two or more distinct calls repeats consecutively more than twice (A,B,A,B,A,B; A,B,C,D,A,B,C,D,A,B,C,D). Reads the trajectory from tool_calls, or from OpenTelemetry TOOL spans when no tool_calls were sent; skips when neither is provided, so an evaluation with no trajectory reports "not judged" rather than clean. Catches the wasted spend a cost threshold cannot see: five identical calls can still bill under a per-evaluation cost limit',
+    'The agent must not repeat itself. Fails when one tool is called with an identical input (object keys sorted, whitespace collapsed) more than max_tool_repeats times — default 3, config key `max_tool_repeats` — or when a sequence of two or more distinct calls repeats consecutively more than twice (A,B,A,B,A,B; A,B,C,D,A,B,C,D,A,B,C,D). Reads the trajectory from tool_calls, or from OpenTelemetry TOOL spans when no tool_calls were sent; skips when neither is provided, so an evaluation with no trajectory reports "not judged" rather than clean. Catches the wasted spend a cost threshold cannot see: five identical calls can still bill under a per-evaluation cost limit. It reads a run of up to 10,000 tool calls whole; in a run of more than 500 the repeated sequence it looks for is bounded in length (83 calls at 2,000, 37 at 10,000). Of a longer run a loop found among the first 10,000 calls is reported, and otherwise the rule is not judged',
   evalType: 'cost',
   weight: 1,
   kind: 'detection',
@@ -218,7 +242,8 @@ export const noToolLoop: EvalRule = {
   thresholdKeys: ['max_tool_repeats', 'max_target_rereads'],
   question: 'tool_use_correct',
   classes: ['tool_loop'],
-  version: 1,
+  // 2: reads a run whole where it read the first 500 calls, and does not report a run it read in part as free of loops (#1013).
+  version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     const skip = skipWithoutTrajectory('no_tool_loop', context);
     if (skip) return skip;
@@ -331,16 +356,26 @@ export const noToolLoop: EvalRule = {
       };
     }
 
+    /*
+     * A loop found among the calls read is a loop, whatever follows. None
+     * found says nothing of the calls that were not read, so for a run
+     * longer than the list the rule is not judged (steps.ts).
+     */
+    const cut = notJudgedPastCeiling('no_tool_loop', context, 'No loop was found among them, and the rest were not read');
+    if (cut !== null) return cut;
+    // In a long run the search for a repeated sequence stops short of the longest one the run could hold, and a clean result says how far it looked.
+    const periods = cyclePeriodsSearched(keys.length);
+    const periodNote = periods < maxCycleLength(keys.length) ? `; a repeated sequence was looked for up to ${periods} calls long` : '';
     return {
       ruleName: 'no_tool_loop',
       passed: true,
       score: 1,
       message: polling
-        ? `No tool loop: ${calls[worstIndices[0]].name} ran ${worstCount}× at a regular cadence, which is polling rather than a loop — an agent waiting on something waits, and a stuck one retries as fast as it can emit (${calls.length} call${calls.length === 1 ? '' : 's'})${scope}`
+        ? `No tool loop: ${calls[worstIndices[0]].name} ran ${worstCount}× at a regular cadence, which is polling rather than a loop — an agent waiting on something waits, and a stuck one retries as fast as it can emit (${calls.length} call${calls.length === 1 ? '' : 's'}${periodNote})`
         // The catalogue note belongs on a PASS as much as on a failure: a
         // clean verdict that could not see part of the trajectory has to
         // say so, which is the difference between clean and not-judged.
-        : `No repeated tool call (${calls.length} call${calls.length === 1 ? '' : 's'}; most repeated ran ${worstCount}×, max ${maxRepeats})${rereads.unknownNote}${scope}`,
+        : `No repeated tool call (${calls.length} call${calls.length === 1 ? '' : 's'}; most repeated ran ${worstCount}×, max ${maxRepeats}${periodNote})${rereads.unknownNote}`,
       value: { stat: 'max_repeats_of_one_call', unit: 'calls', value: worstCount },
       evidence: polling ? [...repeatsEvidence, { type: 'count', stat: 'regularly_spaced_repetitions', unit: 'calls', value: worstCount }] : repeatsEvidence,
     };
@@ -369,7 +404,7 @@ export const DEFAULT_MAX_STEPS = 50;
 export const maxSteps: EvalRule = {
   name: 'max_steps',
   description:
-    'A task must finish within a step budget. Fails when the trajectory carries more tool calls than `max_steps` — default 50. Reads the trajectory from tool_calls, or from OpenTelemetry TOOL spans when no tool_calls were sent; skips when neither is provided, so an evaluation with no trajectory reports "not judged" rather than clean. At the shipped default it ADVISES; set `max_steps` for your own agents and it GATES, because a step budget is a number only the deployment knows',
+    'A task must finish within a step budget. Fails when the trajectory carries more tool calls than `max_steps` — default 50. Reads the trajectory from tool_calls, or from OpenTelemetry TOOL spans when no tool_calls were sent; skips when neither is provided, so an evaluation with no trajectory reports "not judged" rather than clean. At the shipped default it ADVISES; set `max_steps` for your own agents and it GATES, because a step budget is a number only the deployment knows. The count is of the calls the run made, whatever its length',
   evalType: 'cost',
   weight: 1,
   kind: 'policy',
@@ -378,13 +413,19 @@ export const maxSteps: EvalRule = {
   thresholdKeys: ['max_steps'],
   question: 'within_budget',
   classes: ['over_budget'],
-  version: 1,
+  // 2: counts the calls the run made; counted from the list the rules read, no run was longer than 500 (#1013).
+  version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     const skip = skipWithoutTrajectory('max_steps', context);
     if (skip) return skip;
 
-    const calls = stepsOf(context);
-    const scope = stepScopeNote(context);
+    /*
+     * The number of calls the run made, not the number the rules read: a
+     * count needs no reading. Counted from the list, a run of any length
+     * was never more than the list's length, so a budget above that could
+     * not be exceeded (#1013).
+     */
+    const calls = Math.max(stepsOf(context).length, stepStatsOf(context).available);
     const configured = context.customConfig?.max_steps;
     const budget = typeof configured === 'number' && Number.isFinite(configured) && configured >= 1 ? Math.floor(configured) : DEFAULT_MAX_STEPS;
     // Presence in customConfig is NOT "the deployment set it": the engine
@@ -394,18 +435,18 @@ export const maxSteps: EvalRule = {
     const source = thresholdSourceOf(context, 'max_steps');
     const isConfigured = source !== 'default';
     const evidence: Evidence[] = [
-      { type: 'count', stat: 'tool_calls', unit: 'calls', value: calls.length, threshold: budget, thresholdSource: source },
+      { type: 'count', stat: 'tool_calls', unit: 'calls', value: calls, threshold: budget, thresholdSource: source },
     ];
-    const passed = calls.length <= budget;
+    const passed = calls <= budget;
     return {
       ruleName: 'max_steps',
       passed,
-      score: passed ? 1 : Math.max(0, budget / calls.length),
-      value: { stat: 'tool_calls', unit: 'calls', value: calls.length },
+      score: passed ? 1 : Math.max(0, budget / calls),
+      value: { stat: 'tool_calls', unit: 'calls', value: calls },
       evidence,
       message: passed
-        ? `${calls.length} tool call${calls.length === 1 ? '' : 's'}, within the budget of ${budget}${isConfigured ? '' : ' (the shipped default, so this rule advises rather than gates)'}${scope}`
-        : `Step budget: ${calls.length} tool calls exceeds ${budget}${isConfigured ? '' : ' (the shipped default, so this rule advises rather than gates — set max_steps to make it your policy)'}${scope}`,
+        ? `${calls} tool call${calls === 1 ? '' : 's'}, within the budget of ${budget}${isConfigured ? '' : ' (the shipped default, so this rule advises rather than gates)'}`
+        : `Step budget: ${calls} tool calls exceeds ${budget}${isConfigured ? '' : ' (the shipped default, so this rule advises rather than gates — set max_steps to make it your policy)'}`,
     };
   },
 };

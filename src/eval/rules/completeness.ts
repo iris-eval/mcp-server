@@ -6,7 +6,7 @@ import { thresholdSourceOf } from '../thresholds.js';
 import { MAX_ASK_CHARS, MIN_MEASURABLE_TERMS, answerIndex, coversPart, hitsPart, measurableParts, requiredHits, splitAsk, type AskPart } from '../text/asks.js';
 import { catalogueIndex, catalogueMatch } from '../catalogue.js';
 import { checkArguments, compileToolSchema, type ArgumentCheck } from '../schema-validator.js';
-import { stepScopeNote, stepsOf } from '../steps.js';
+import { notJudgedPastCeiling, runWasCut, stepScopeNote, stepsOf } from '../steps.js';
 import { skipWithoutTrajectory } from './trajectory.js';
 import { toolSequence } from './expected-trajectory.js';
 import { caseHistoryRules } from './case-history.js';
@@ -178,7 +178,7 @@ export const expectedCoverage: EvalRule = {
 export const validToolArguments: EvalRule = {
   name: 'valid_tool_arguments',
   description:
-    "Tool calls must be callable. Fails when a call names a tool absent from the supplied catalogue, or carries arguments the tool's own JSON Schema rejects, AND no later call to the same tool succeeded — a mistyped argument the agent noticed and retried is recorded, not failed. A call named mcp__<server>__<tool> is matched to the entry under that name and, when there is none, to the entry under the tool's own name, and the result says so; when more than one called name leads to one entry that way, those calls are not checked and the result says what to list. Needs the `tools` catalogue (your MCP tools/list result, verbatim); without it the rule SKIPS rather than passes, because a call cannot be checked against a schema nobody supplied. A schema Iris declines to compile leaves that tool's calls unchecked and names which tool and why",
+    "Tool calls must be callable. Fails when a call names a tool absent from the supplied catalogue, or carries arguments the tool's own JSON Schema rejects, AND no later call to the same tool succeeded — a mistyped argument the agent noticed and retried is recorded, not failed. A call named mcp__<server>__<tool> is matched to the entry under that name and, when there is none, to the entry under the tool's own name, and the result says so; when more than one called name leads to one entry that way, those calls are not checked and the result says what to list. Needs the `tools` catalogue (your MCP tools/list result, verbatim); without it the rule SKIPS rather than passes, because a call cannot be checked against a schema nobody supplied. A schema Iris declines to compile leaves that tool's calls unchecked and names which tool and why. It reads a run of up to 10,000 tool calls whole. Of a longer run a call to a tool the catalogue does not have is reported, and otherwise the rule is not judged: a retry may be among the calls it did not read",
   evalType: 'completeness',
   weight: 1,
   kind: 'detection',
@@ -186,7 +186,7 @@ export const validToolArguments: EvalRule = {
   needs: ['tool_calls', 'tools_catalogue'],
   question: 'tool_use_correct',
   classes: ['invalid_tool_call'],
-  // 2: a call named mcp__<server>__<tool> is matched to the catalogue by the tool's own name too (catalogue.ts, catalogueMatch).
+  // 2: a call named mcp__<server>__<tool> is matched to the catalogue by the tool's own name too (catalogue.ts, catalogueMatch); and the rule reads a run whole where it read the first 500 calls (#1013). Both since the last release, so one step.
   version: 2,
   /*
    * Not critical. Recovery detection is a heuristic over tool NAMES — an
@@ -325,10 +325,12 @@ export const validToolArguments: EvalRule = {
      * that reaches the same entry is not a retry of this one: read as one,
      * mcp__a__get_product would be "recovered" by mcp__b__get_product.
      */
+    // The last valid call under each name, found once: asked per invalid call over the steps after it, a run of invalid calls cost the square of its length.
+    const lastValidCall = new Map<string, number>();
+    for (const [j, step] of steps.entries()) if (checks[j].state === 'valid') lastValidCall.set(step.name, j);
     const recoveredLater = (index: number): boolean => {
       if (checks[index].keyword === 'not_in_catalogue') return false;
-      const name = steps[index].name;
-      return steps.some((s, j) => j > index && s.name === name && checks[j].state === 'valid');
+      return (lastValidCall.get(steps[index].name) ?? -1) > index;
     };
     const unrecovered = invalidIndexes.filter((i) => !recoveredLater(i));
     const recovered = invalidIndexes.filter((i) => recoveredLater(i));
@@ -363,6 +365,25 @@ export const validToolArguments: EvalRule = {
         ? `. More than one called name leads to the catalogue's ${[...sharedEntries].slice(0, 2).join(' and ')}: list each tool under the name it is called by to have its calls checked`
         : '';
 
+    /*
+     * A run longer than the list the rules read (steps.ts). A call to a
+     * tool the catalogue does not have is a finding no later call clears,
+     * and stands. Anything else could change with the rest of the run: an
+     * invalid call may be retried successfully among the calls not read,
+     * and a clean result says nothing of them. Until 0.22.0 the rule
+     * answered for the run on its first 500 calls either way (#1013).
+     */
+    if (!unrecovered.some((i) => checks[i].keyword === 'not_in_catalogue')) {
+      const cut = notJudgedPastCeiling(
+        'valid_tool_arguments',
+        context,
+        unrecovered.length === 0
+          ? 'Every call checked among them was callable, and the rest were not checked'
+          : `${unrecovered.length} invalid call${unrecovered.length === 1 ? ' was' : 's were'} not retried successfully among them, and a retry may be among the rest`,
+      );
+      if (cut !== null) return cut;
+    }
+
     if (unrecovered.length === 0) {
       const retried = recovered.length > 0 ? `; ${recovered.length} invalid call${recovered.length === 1 ? '' : 's'} the agent retried successfully` : '';
       return {
@@ -371,7 +392,7 @@ export const validToolArguments: EvalRule = {
         score: 1,
         value,
         evidence,
-        message: `Every checked call was callable (${checked} of ${steps.length} checked${retried}${ownNameNote})${uncheckedNote}${sharedNote}${scope}`,
+        message: `Every checked call was callable (${checked} of ${steps.length} checked${retried}${ownNameNote})${uncheckedNote}${sharedNote}`,
       };
     }
 
@@ -432,7 +453,8 @@ export const askCoverage: EvalRule = {
   outputView: 'values',
   question: 'task_completed',
   classes: ['incomplete_ask'],
-  version: 3,
+  // 4: reads the calls of a run whole where it read the first 500, and does not find against a part that a call it did not read may have done (#1013).
+  version: 4,
   /*
    * Not critical. A lexical covering test has an honest false-positive
    * surface — an answer in wholly different words with no ordinal to mirror
@@ -500,20 +522,39 @@ export const askCoverage: EvalRule = {
      * test as the answer's, over the steps' text, so the trajectory can only
      * add coverage, never remove it (recall-only for the proof family).
      */
-    const steps = stepsOf(context);
-    const trajectoryText = steps
-      .map((st) => [st.name, typeof st.input === 'string' ? st.input : JSON.stringify(st.input ?? ''), typeof st.output === 'string' ? st.output : JSON.stringify(st.output ?? '')].join(' '))
-      .join(' ');
-    const trajectoryIndex = steps.length > 0 ? answerIndex(trajectoryText) : null;
+    const unanswered = measurable.filter((p) => !coversPart(p, context.output, index));
+    // The trajectory is read only for a part the answer left: on a long run its text is megabytes, and an answer that covers every part needs none of it.
+    const steps = unanswered.length > 0 ? stepsOf(context) : [];
+    const trajectoryIndex =
+      steps.length > 0
+        ? answerIndex(
+            steps
+              .map((st) => [st.name, typeof st.input === 'string' ? st.input : JSON.stringify(st.input ?? ''), typeof st.output === 'string' ? st.output : JSON.stringify(st.output ?? '')].join(' '))
+              .join(' '),
+          )
+        : null;
     const coveredByAction = new Set<AskPart>();
-    const uncovered = measurable.filter((p) => {
-      if (coversPart(p, context.output, index)) return false;
+    const uncovered = unanswered.filter((p) => {
       if (trajectoryIndex && hitsPart(p, trajectoryIndex) >= requiredHits(p)) {
         coveredByAction.add(p);
         return false;
       }
       return true;
     });
+    /*
+     * A part neither the answer nor a call that was read addresses, on a
+     * run longer than the list the rules read (steps.ts): a call among the
+     * rest may have done it, so the finding is not one. An answer that
+     * covers every part is judged as it is, whatever the run's length.
+     */
+    if (uncovered.length > 0 && runWasCut(context)) {
+      const cut = notJudgedPastCeiling(
+        'ask_coverage',
+        context,
+        `${uncovered.length} part${uncovered.length === 1 ? '' : 's'} of the ask ${uncovered.length === 1 ? 'is' : 'are'} addressed by neither the answer nor a call among them, and a call among the rest may address ${uncovered.length === 1 ? 'it' : 'them'}`,
+      );
+      if (cut !== null) return cut;
+    }
     const covered = measurable.length - uncovered.length;
     const unmeasured = parts.length - measurable.length;
 

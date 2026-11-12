@@ -20,7 +20,7 @@
  */
 import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type EvalRuleResult, type Evidence, type ExpectedArgsMode, type ExpectedToolCall, type ExpectedTrajectoryMode } from '../../types/eval.js';
 import type { Step } from '../../types/trace.js';
-import { stepScopeNote, stepsOf, trajectoryAbsence } from '../steps.js';
+import { notJudgedPastCeiling, stepStatsOf, stepsOf, trajectoryAbsence } from '../steps.js';
 import { describeInput, normaliseInput, skipWithoutTrajectory, stableStringify } from './trajectory.js';
 
 export const DEFAULT_SEQUENCE_MODE: ExpectedTrajectoryMode = 'ordered_subset';
@@ -154,7 +154,7 @@ function skipWithoutExpectation(ruleName: string, what: string): EvalRuleResult 
 export const toolSequence: EvalRule = {
   name: 'tool_sequence',
   description:
-    'The calls the caller expected against the calls the agent made, in a mode: strict (equal, in order), unordered (equal as multisets), subset (every expected call present), superset (no call outside the expected set) or ordered_subset (the expected calls appear in order among the actual ones — the default; two pointers, linear time). A call matches by tool name, and by arguments only when the expectation names an input: exact compares the normalised input, subset (the default) asks that every expected key be present with the same value. Fails naming the first missing, extra or misplaced call. An explicit empty list of tool calls is judged as no calls made, which fails an expectation of calls. Skips when no tool calls were sent at all, or without expected_trajectory.tool_calls',
+    'The calls the caller expected against the calls the agent made, in a mode: strict (equal, in order), unordered (equal as multisets), subset (every expected call present), superset (no call outside the expected set) or ordered_subset (the expected calls appear in order among the actual ones — the default; two pointers, linear time). A call matches by tool name, and by arguments only when the expectation names an input: exact compares the normalised input, subset (the default) asks that every expected key be present with the same value. Fails naming the first missing, extra or misplaced call. An explicit empty list of tool calls is judged as no calls made, which fails an expectation of calls. Skips when no tool calls were sent at all, or without expected_trajectory.tool_calls. It reads a run of up to 10,000 tool calls whole, and is not judged on a longer one',
   evalType: 'completeness',
   weight: 1,
   kind: 'policy',
@@ -164,7 +164,8 @@ export const toolSequence: EvalRule = {
   question: 'complete',
   classes: ['wrong_trajectory'],
   // 2 (0.20.0): an explicit empty list of tool calls is judged against the expectation instead of skipped.
-  version: 2,
+  // 3: compares the whole run where it compared the first 500 calls, and is not judged on a run it read in part (#1013).
+  version: 3,
   evaluate(context: EvalContext): EvalRuleResult {
     const expected = context.expectedTrajectory?.tool_calls;
     if (expected === undefined || expected.length === 0) return skipWithoutExpectation('tool_sequence', 'tool_calls');
@@ -179,8 +180,14 @@ export const toolSequence: EvalRule = {
     const steps = stepsOf(context);
     const mode = modeOf(context.expectedTrajectory?.mode);
     const args = argsOf(context.expectedTrajectory?.args);
+    /*
+     * A run longer than the list the rules read (steps.ts) is not compared:
+     * an expected call may come among the calls that were not read, and
+     * one outside the expected set may too.
+     */
+    const cut = notJudgedPastCeiling('tool_sequence', context, 'An expected sequence is compared with the whole run');
+    if (cut !== null) return cut;
     const outcome = compareSequence(expected, steps, mode, args);
-    const scope = stepScopeNote(context);
     const evidence: Evidence[] = [
       { type: 'count', stat: 'expected_calls_matched', unit: 'calls', value: outcome.matched, threshold: expected.length, thresholdSource: 'call' },
       ...outcome.unexpected.slice(0, MAX_EVIDENCE_ITEMS - 1).map((index): Evidence => ({ type: 'toolCall', index, toolName: steps.find((s) => s.index === index)?.name ?? '', label: 'outside the expected set' })),
@@ -192,8 +199,8 @@ export const toolSequence: EvalRule = {
       value: { stat: 'expected_calls_matched', unit: 'calls', value: outcome.matched },
       evidence: evidence.slice(0, MAX_EVIDENCE_ITEMS),
       message: outcome.passed
-        ? `${expected.length} expected call${expected.length === 1 ? '' : 's'} satisfied by the ${steps.length} made (${mode}, args ${args})${scope}`
-        : `Trajectory differs from the expected (${mode}, args ${args}): ${outcome.why}${scope}`,
+        ? `${expected.length} expected call${expected.length === 1 ? '' : 's'} satisfied by the ${steps.length} made (${mode}, args ${args})`
+        : `Trajectory differs from the expected (${mode}, args ${args}): ${outcome.why}`,
     };
   },
 };
@@ -201,7 +208,7 @@ export const toolSequence: EvalRule = {
 export const stepBudget: EvalRule = {
   name: 'step_budget',
   description:
-    'A task must finish within ITS budget: the number of tool calls made against expected_trajectory.step_budget (or the number of expected calls when only tool_calls was given) times a tolerance (expected_trajectory.tolerance, default 1.5) — fails when calls exceed budget × tolerance, naming the overrun. Where max_steps is one deployment-wide ceiling, this is the budget the caller states for one task. An explicit empty list of tool calls is judged as zero calls. Skips when no tool calls were sent at all, or without an expectation',
+    'A task must finish within ITS budget: the number of tool calls made against expected_trajectory.step_budget (or the number of expected calls when only tool_calls was given) times a tolerance (expected_trajectory.tolerance, default 1.5) — fails when calls exceed budget × tolerance, naming the overrun. Where max_steps is one deployment-wide ceiling, this is the budget the caller states for one task. An explicit empty list of tool calls is judged as zero calls. Skips when no tool calls were sent at all, or without an expectation. The count is of the calls the run made, whatever its length',
   evalType: 'cost',
   weight: 1,
   kind: 'policy',
@@ -214,7 +221,8 @@ export const stepBudget: EvalRule = {
   question: 'within_budget',
   classes: ['over_budget'],
   // 2 (0.20.0): an explicit empty list of tool calls is judged as zero calls instead of skipped.
-  version: 2,
+  // 3: counts the calls the run made; counted from the list the rules read, no run was longer than 500 (#1013).
+  version: 3,
   evaluate(context: EvalContext): EvalRuleResult {
     const et = context.expectedTrajectory;
     const declared = typeof et?.step_budget === 'number' && Number.isFinite(et.step_budget) && et.step_budget >= 1 ? Math.floor(et.step_budget) : undefined;
@@ -225,9 +233,9 @@ export const stepBudget: EvalRule = {
     if (skip && trajectoryAbsence(context) !== 'empty_calls') return skip;
     const tolerance = typeof et?.tolerance === 'number' && Number.isFinite(et.tolerance) && et.tolerance >= 1 ? et.tolerance : DEFAULT_STEP_TOLERANCE;
     const ceiling = budget * tolerance;
-    const calls = stepsOf(context).length;
+    // The number of calls the run made, not the number the rules read: a count needs no reading (cost.ts, max_steps).
+    const calls = Math.max(stepsOf(context).length, stepStatsOf(context).available);
     const passed = calls <= ceiling;
-    const scope = stepScopeNote(context);
     return {
       ruleName: 'step_budget',
       passed,
@@ -235,8 +243,8 @@ export const stepBudget: EvalRule = {
       value: { stat: 'tool_calls', unit: 'calls', value: calls },
       evidence: [{ type: 'count', stat: 'tool_calls', unit: 'calls', value: calls, threshold: ceiling, thresholdSource: 'call' }],
       message: passed
-        ? `${calls} tool call${calls === 1 ? '' : 's'} against a budget of ${budget} × ${tolerance} = ${ceiling}${scope}`
-        : `Step budget: ${calls} tool calls exceeds ${budget} × ${tolerance} = ${ceiling} (${calls - Math.floor(ceiling)} over)${scope}`,
+        ? `${calls} tool call${calls === 1 ? '' : 's'} against a budget of ${budget} × ${tolerance} = ${ceiling}`
+        : `Step budget: ${calls} tool calls exceeds ${budget} × ${tolerance} = ${ceiling} (${calls - Math.floor(ceiling)} over)`,
     };
   },
 };

@@ -29,7 +29,7 @@
 import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type EvalRuleResult, type Evidence } from '../../types/eval.js';
 import type { ToolDescriptor } from '../../types/trace.js';
 import { catalogueIndex, catalogueMatch } from '../catalogue.js';
-import { stepScopeNote, stepsOf } from '../steps.js';
+import { notJudgedPastCeiling, stepsOf } from '../steps.js';
 import { contentTerms } from '../terms.js';
 import { thresholdSourceOf } from '../thresholds.js';
 import { skipWithoutTrajectory } from './trajectory.js';
@@ -63,7 +63,7 @@ export function fitOf(ask: ReadonlySet<string>, terms: ReadonlySet<string>): num
 export const toolChoice: EvalRule = {
   name: 'tool_choice',
   description:
-    "The right tool for the ask, from the catalogue: fit(T) is the share of the ask's ACTIONABLE terms — the content terms some tool's name, description or input property names mention — found in T's; the ask's other words (its subject) count for and against no tool. Fails when the best tool the agent did NOT call fits at least tool_choice_min_fit (0.5) and beats the union of the tools it DID call by at least tool_choice_margin (0.34), naming both tools and both fits. Judged over the whole trajectory, so several tools that each serve part of the ask are not wrong for the parts the others served. A call named mcp__<server>__<tool> counts as a call to the catalogue's entry under that name, or, when there is none, to the entry under the tool's own name, and the result says so. Lexical: a description that never mentions the ask's words cannot be chosen. Skips without the input, a trajectory or a catalogue, when the ask has fewer than two content terms, or when no tool mentions any of them",
+    "The right tool for the ask, from the catalogue: fit(T) is the share of the ask's ACTIONABLE terms — the content terms some tool's name, description or input property names mention — found in T's; the ask's other words (its subject) count for and against no tool. Fails when the best tool the agent did NOT call fits at least tool_choice_min_fit (0.5) and beats the union of the tools it DID call by at least tool_choice_margin (0.34), naming both tools and both fits. Judged over the whole trajectory, so several tools that each serve part of the ask are not wrong for the parts the others served. A call named mcp__<server>__<tool> counts as a call to the catalogue's entry under that name, or, when there is none, to the entry under the tool's own name, and the result says so. Lexical: a description that never mentions the ask's words cannot be chosen. Skips without the input, a trajectory or a catalogue, when the ask has fewer than two content terms, or when no tool mentions any of them. It reads a run of up to 10,000 tool calls whole, and is not judged on a longer one: the tool that fits may be called among the rest",
   evalType: 'relevance',
   weight: 1,
   kind: 'detection',
@@ -72,7 +72,7 @@ export const toolChoice: EvalRule = {
   thresholdKeys: ['tool_choice_margin', 'tool_choice_min_fit'],
   question: 'relevant',
   classes: ['wrong_tool'],
-  // 2: a call named mcp__<server>__<tool> counts as a call to its tool's entry (catalogue.ts, catalogueMatch).
+  // 2: a call named mcp__<server>__<tool> counts as a call to its tool's entry (catalogue.ts, catalogueMatch); and the rule reads a run whole where it read the first 500 calls (#1013). Both since the last release, so one step.
   version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     if (!context.input) {
@@ -130,7 +130,18 @@ export const toolChoice: EvalRule = {
     const margin = typeof context.customConfig?.tool_choice_margin === 'number' ? (context.customConfig.tool_choice_margin as number) : DEFAULT_TOOL_CHOICE_MARGIN;
     const minFit = typeof context.customConfig?.tool_choice_min_fit === 'number' ? (context.customConfig.tool_choice_min_fit as number) : DEFAULT_TOOL_CHOICE_MIN_FIT;
     const fired = best !== null && best.fit >= minFit && best.fit - calledFit >= margin;
-    const scope = stepScopeNote(context);
+    /*
+     * A run longer than the list the rules read (steps.ts): the tool that
+     * fits may be called among the rest. Read on its first 500 calls, a run
+     * that sent its invoice after 500 reads was told send_invoice "was not
+     * called" (#1013). A choice read on part of a run is not judged.
+     */
+    const cut = notJudgedPastCeiling(
+      'tool_choice',
+      context,
+      fired ? `${best!.tool.name} fits the ask better than the tools called among them, and may be called among the rest` : 'A choice of tools is judged on the whole run',
+    );
+    if (cut !== null) return cut;
     // A call an engine built in code was handed with no name is in the list as nothing, as it always was.
     const calledList = calledAs.join(calledAs.some((c) => typeof c === 'string' && c.includes(', ')) ? '; ' : ', ');
     const evidence: Evidence[] = [
@@ -145,10 +156,10 @@ export const toolChoice: EvalRule = {
       value: { stat: 'ask_fit_called_tools', unit: 'ratio', value: calledFit },
       evidence: evidence.slice(0, MAX_EVIDENCE_ITEMS),
       message: fired
-        ? `Wrong tool for the ask: ${best!.tool.name} fits ${(best!.fit * 100).toFixed(0)}% of the ask's actionable terms (${[...actionable].join(', ')}) and was not called; the tools called (${calledList}) fit ${(calledFit * 100).toFixed(0)}% — ${((best!.fit - calledFit) * 100).toFixed(0)} points short of it (margin ${(margin * 100).toFixed(0)})${scope}`
+        ? `Wrong tool for the ask: ${best!.tool.name} fits ${(best!.fit * 100).toFixed(0)}% of the ask's actionable terms (${[...actionable].join(', ')}) and was not called; the tools called (${calledList}) fit ${(calledFit * 100).toFixed(0)}% — ${((best!.fit - calledFit) * 100).toFixed(0)} points short of it (margin ${(margin * 100).toFixed(0)})`
         : best === null
-          ? `Every tool in the catalogue was called (${calledList}); nothing better was left to choose${scope}`
-          : `The tools called (${calledList}) fit ${(calledFit * 100).toFixed(0)}% of the ask's actionable terms (${[...actionable].join(', ')}); the best uncalled tool, ${best.tool.name}, fits ${(best.fit * 100).toFixed(0)}%${scope}`,
+          ? `Every tool in the catalogue was called (${calledList}); nothing better was left to choose`
+          : `The tools called (${calledList}) fit ${(calledFit * 100).toFixed(0)}% of the ask's actionable terms (${[...actionable].join(', ')}); the best uncalled tool, ${best.tool.name}, fits ${(best.fit * 100).toFixed(0)}%`,
     };
   },
 };

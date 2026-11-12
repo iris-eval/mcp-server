@@ -162,7 +162,7 @@ describe('ask_coverage — covering by tool call', () => {
     expect(r.passed).toBe(false);
   });
 
-  it('the rule declares a new version for this change of meaning (2), and again for reading a structured output by its values (3)', () => {
-    expect(askCoverage.version).toBe(3);
+  it('the rule declares a new version for this change of meaning (2), again for reading a structured output by its values (3), and again for reading a run whole (4)', () => {
+    expect(askCoverage.version).toBe(4);
   });
 });

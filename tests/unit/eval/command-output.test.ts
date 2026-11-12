@@ -230,7 +230,7 @@ describe('the rule, through the engine', () => {
 
   it('"All tests pass" beside "3 failed" fails, and says which line it read', async () => {
     const { verdict, row } = await rule(claim, [bash('npx vitest run', VITEST_FAIL)]);
-    expect(row).toMatchObject({ passed: false, ruleVersion: 2 });
+    expect(row).toMatchObject({ passed: false, ruleVersion: 3 });
     expect(row.message).toContain('bash (reports "Test Files  1 failed (1)") reported failure, and the output never says so');
     expect(row.evidence).toEqual([{ type: 'toolCall', index: 0, toolName: 'bash', label: 'reported failure: reports "Test Files  1 failed (1)" (unacknowledged)' }]);
     expect(verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss' });
