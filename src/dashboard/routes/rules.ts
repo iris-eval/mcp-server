@@ -346,15 +346,27 @@ async function previewRule(
    * defeated" is exactly the answer the rule author needs from a preview.
    */
   const regexBudget = { breaches: 0 };
+  const readsCalls = (rule.needs ?? []).includes('tool_calls');
 
   for (const trace of traceResult.traces) {
     if (trace.output === undefined) {
       wouldSkip++;
       continue;
     }
+    // A trace that arrived over OTLP stores its calls as TOOL spans and no tool_calls, and a page of traces does not carry spans: one indexed read for such a trace, and only for a rule that reads the calls.
+    const spans = readsCalls && (trace.tool_calls === undefined || trace.tool_calls.length === 0) ? (trace.spans ?? (await storage.getSpansByTraceId(tenantId, trace.trace_id))) : trace.spans;
     const result = rule.evaluate({
       output: trace.output,
       input: trace.input,
+      /*
+       * What the agent did. An action_policy reads nothing else, and
+       * previewed without it every stored trace skipped as "No tool calls
+       * to check against the policy": the one rule type whose author most
+       * needs to see which stored runs it would stop could not be shown one.
+       */
+      toolCalls: trace.tool_calls,
+      spans,
+      tools: trace.tools,
       ...costContextOf(trace),
       tokenUsage: trace.token_usage,
       regexBudget,
