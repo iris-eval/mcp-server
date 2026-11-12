@@ -104,9 +104,17 @@ Log an agent execution trace with spans, tool calls, and metrics.
 
 **ToolDescriptor**
 
-One entry of the catalogue, in the shape `tools/list` returns it: `name`, and optionally `title`, `description`, `inputSchema`, `outputSchema` and `annotations` (`readOnlyHint`, `destructiveHint` and the others the protocol defines). A catalogue holds at most 200 entries and 262,144 bytes, and no name twice.
+One entry of the catalogue, in the shape `tools/list` returns it: `name`, and optionally `title`, `description`, `inputSchema`, `outputSchema` and `annotations` (`readOnlyHint`, `destructiveHint` and the others the protocol defines); `execution` and `_meta` are accepted and not read. `log_trace` and `POST /api/v1/traces` refuse a catalogue of more than 200 entries or 262,144 bytes, and one that names a tool twice; `evaluate_output` refuses more than 200 entries.
 
-A call is matched to its entry by name. The name looked up first is the one the call was made by. A host that reaches its tools through MCP may call them `mcp__<server>__<tool>` where the server's `tools/list` says `<tool>`, so when the catalogue has no entry under the called name, the tool's own name is looked up, the part after the server's. A `tools/list` result pasted as it is therefore works on such a host, and a catalogue that lists two servers' tools by their full names gives each call its own entry, because the exact name wins. Any other prefix a host adds is not taken off: give the catalogue the names the agent calls. Every rule that reads the catalogue matches this way: `valid_tool_arguments`, `tool_choice`, the reread count of `no_tool_loop`, and the hints `no_unusual_action` reads.
+A call is matched to its entry by name. The name looked up first is the one the call was made by. A host that reaches its tools through MCP may call them `mcp__<server>__<tool>` where the server's `tools/list` says `<tool>`, so when the catalogue has no entry under the called name, the tool's own name is looked up, the part after the server's. A run on such a host is then judged against a `tools/list` result pasted as it is: `valid_tool_arguments` checks each call by its tool's schema, `tool_choice` counts it as a call to that tool, and each says in its result when an entry was reached by the tool's own name.
+
+The server's part of the name is compared with nothing, because a catalogue names no server: an entry named `search` is reached by `mcp__docs__search` and by `mcp__tickets__search` alike. Three things follow.
+
+- An entry reached by a tool's own name is believed when it says the tool acts (`readOnlyHint: false`, or `destructiveHint: true`) and not when it says the tool only reads. `no_unusual_action` then places the call by its name, and `no_tool_loop` counts rereads only through a tool whose entry is under the name it was called by.
+- When two called names lead to one entry, it is the tool of at most one of them: `valid_tool_arguments` checks neither call, and says which entry and what to list.
+- When the agent can reach more than one tool of the same name (a `search` on each of a pair of servers, or one server connected twice), list each under the name the agent calls it by. Every entry is then exact, and the exact name wins.
+
+Any other prefix a host adds is not taken off, and a host can also change characters of a name (a tool listed as `orders.list` may be called `mcp__shop__orders_list`). For those, give the catalogue the names the agent calls.
 
 **TokenUsage**
 

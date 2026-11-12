@@ -4,7 +4,7 @@ import { countSentences } from '../text/sentences.js';
 import { withoutValueBreaks } from '../text/structured.js';
 import { thresholdSourceOf } from '../thresholds.js';
 import { MAX_ASK_CHARS, MIN_MEASURABLE_TERMS, answerIndex, coversPart, hitsPart, measurableParts, requiredHits, splitAsk, type AskPart } from '../text/asks.js';
-import { catalogueEntry, catalogueIndex } from '../catalogue.js';
+import { catalogueIndex, catalogueMatch } from '../catalogue.js';
 import { checkArguments, compileToolSchema, type ArgumentCheck } from '../schema-validator.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
 import { skipWithoutTrajectory } from './trajectory.js';
@@ -186,7 +186,7 @@ export const validToolArguments: EvalRule = {
   needs: ['tool_calls', 'tools_catalogue'],
   question: 'tool_use_correct',
   classes: ['invalid_tool_call'],
-  // 2: a call named mcp__<server>__<tool> is matched to the catalogue by the tool's own name too (catalogue.ts, catalogueEntry).
+  // 2: a call named mcp__<server>__<tool> is matched to the catalogue by the tool's own name too (catalogue.ts, catalogueMatch).
   version: 2,
   /*
    * Not critical. Recovery detection is a heuristic over tool NAMES — an
@@ -238,10 +238,40 @@ export const validToolArguments: EvalRule = {
      */
     let refusedSchema = false;
 
-    for (const step of steps) {
-      const tool = catalogueEntry(catalogue, step.name);
-      if (tool === undefined) {
+    /*
+     * The catalogue names no server. An entry reached by a tool's own name
+     * (catalogue.ts, catalogueMatch) is that tool's when one called name
+     * leads to it. When two do (mcp__docs__search and mcp__tickets__search
+     * on one entry `search`), it is the tool of at most one of them, and a
+     * schema that is not a call's own would fail a correct call or pass a
+     * wrong one. Neither is checked, and the reason says what to list.
+     */
+    const matches = steps.map((step) => catalogueMatch(catalogue, step.name));
+    const calledAs = new Map<string, Set<string>>();
+    for (const [i, match] of matches.entries()) {
+      if (match === undefined) continue;
+      const names = calledAs.get(match.tool.name) ?? new Set<string>();
+      names.add(steps[i].name);
+      calledAs.set(match.tool.name, names);
+    }
+    /** The entry a call was checked against, when it was reached by the tool's own name. */
+    const ownNameEntry = (i: number): string | null => (matches[i]?.by === 'own' ? matches[i]!.tool.name : null);
+    /** Entries more than one called name leads to: said in the message, with what to do. */
+    const sharedEntries = new Set<string>();
+
+    for (const [i, step] of steps.entries()) {
+      const match = matches[i];
+      if (match === undefined) {
         checks.push({ state: 'invalid', keyword: 'not_in_catalogue' });
+        continue;
+      }
+      const tool = match.tool;
+      const leadingToIt = calledAs.get(tool.name)!.size;
+      if (match.by === 'own' && leadingToIt > 1) {
+        const why = `the catalogue has one entry, ${tool.name}, and ${leadingToIt} called names lead to it; list each tool under the name it is called by`;
+        checks.push({ state: 'unchecked', reason: why });
+        uncheckedReasons.set(step.name, why);
+        sharedEntries.add(tool.name);
         continue;
       }
       if (tool.inputSchema === undefined) {
@@ -290,6 +320,10 @@ export const validToolArguments: EvalRule = {
      * an agent that retries with different, also-wrong-but-schema-valid
      * arguments scores as recovered, and that miss belongs to
      * no_silent_tool_failure rather than to this rule.
+     *
+     * The name is the one the call was made by. A call under another name
+     * that reaches the same entry is not a retry of this one: read as one,
+     * mcp__a__get_product would be "recovered" by mcp__b__get_product.
      */
     const recoveredLater = (index: number): boolean => {
       if (checks[index].keyword === 'not_in_catalogue') return false;
@@ -305,20 +339,29 @@ export const validToolArguments: EvalRule = {
     ];
     if (unchecked > 0) evidence.push({ type: 'count', stat: 'calls_unchecked', unit: 'calls', value: unchecked });
     if (recovered.length > 0) evidence.push({ type: 'count', stat: 'retries_after_invalid_call', unit: 'calls', value: recovered.length });
+    // Said on every result, pass or fail: a schema reached by a tool's own name is the right one only if no other server has a tool of that name.
+    const byOwnName = checks.filter((c, i) => c.state !== 'unchecked' && ownNameEntry(i) !== null).length;
+    if (byOwnName > 0) evidence.push({ type: 'count', stat: 'calls_matched_by_own_name', unit: 'calls', value: byOwnName });
     for (const i of [...unrecovered, ...recovered]) {
       if (evidence.length >= MAX_EVIDENCE_ITEMS) break;
       const c = checks[i];
       const suffix = recovered.includes(i) ? ' (recovered by a later call)' : '';
+      const against = ownNameEntry(i) === null ? '' : `, by the schema of the catalogue's ${ownNameEntry(i)}`;
       const label =
         c.keyword === 'not_in_catalogue'
           ? 'not in the tools catalogue'
-          : `arguments rejected: ${c.instancePath ?? '(root)'} ${c.keyword ?? 'schema'}${suffix}`;
+          : `arguments rejected: ${c.instancePath ?? '(root)'} ${c.keyword ?? 'schema'}${against}${suffix}`;
       evidence.push({ type: 'toolCall', index: i, toolName: steps[i].name, label });
     }
 
     const value = { stat: 'unrecovered_invalid_calls', unit: 'calls', value: unrecovered.length };
     const uncheckedNote =
       unchecked > 0 ? ` (${unchecked} call${unchecked === 1 ? '' : 's'} not checked: ${[...uncheckedReasons.keys()].slice(0, 2).join(', ')})` : '';
+    const ownNameNote = byOwnName > 0 ? `; ${byOwnName} matched to the catalogue by the tool's own name` : '';
+    const sharedNote =
+      sharedEntries.size > 0
+        ? `. More than one called name leads to the catalogue's ${[...sharedEntries].slice(0, 2).join(' and ')}: list each tool under the name it is called by to have its calls checked`
+        : '';
 
     if (unrecovered.length === 0) {
       const retried = recovered.length > 0 ? `; ${recovered.length} invalid call${recovered.length === 1 ? '' : 's'} the agent retried successfully` : '';
@@ -328,7 +371,7 @@ export const validToolArguments: EvalRule = {
         score: 1,
         value,
         evidence,
-        message: `Every checked call was callable (${checked} of ${steps.length} checked${retried})${uncheckedNote}${scope}`,
+        message: `Every checked call was callable (${checked} of ${steps.length} checked${retried}${ownNameNote})${uncheckedNote}${sharedNote}${scope}`,
       };
     }
 
@@ -337,7 +380,7 @@ export const validToolArguments: EvalRule = {
       .map((i) =>
         checks[i].keyword === 'not_in_catalogue'
           ? `${steps[i].name} (not in the catalogue)`
-          : `${steps[i].name} (${checks[i].instancePath ?? '(root)'} ${checks[i].keyword ?? 'schema'})`,
+          : `${steps[i].name} (${checks[i].instancePath ?? '(root)'} ${checks[i].keyword ?? 'schema'}${ownNameEntry(i) === null ? '' : `, by the schema of the catalogue's ${ownNameEntry(i)}`})`,
       )
       .join('; ');
     return {
@@ -346,7 +389,7 @@ export const validToolArguments: EvalRule = {
       score: Math.max(0, 1 - unrecovered.length / Math.max(1, steps.length)),
       value,
       evidence,
-      message: `Invalid tool call${unrecovered.length === 1 ? '' : 's'} the agent never recovered from: ${named}${uncheckedNote}${scope}`,
+      message: `Invalid tool call${unrecovered.length === 1 ? '' : 's'} the agent never recovered from: ${named}${uncheckedNote}${sharedNote}${scope}`,
     };
   },
 };

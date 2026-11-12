@@ -28,7 +28,7 @@
  */
 import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type EvalRuleResult, type Evidence } from '../../types/eval.js';
 import type { ToolDescriptor } from '../../types/trace.js';
-import { catalogueEntry, catalogueIndex } from '../catalogue.js';
+import { catalogueIndex, catalogueMatch } from '../catalogue.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
 import { contentTerms } from '../terms.js';
 import { thresholdSourceOf } from '../thresholds.js';
@@ -72,7 +72,7 @@ export const toolChoice: EvalRule = {
   thresholdKeys: ['tool_choice_margin', 'tool_choice_min_fit'],
   question: 'relevant',
   classes: ['wrong_tool'],
-  // 2: a call named mcp__<server>__<tool> counts as a call to its tool's entry (catalogue.ts, catalogueEntry).
+  // 2: a call named mcp__<server>__<tool> counts as a call to its tool's entry (catalogue.ts, catalogueMatch).
   version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     if (!context.input) {
@@ -101,14 +101,24 @@ export const toolChoice: EvalRule = {
     }
     const steps = stepsOf(context);
     const called = new Set(steps.map((s) => s.name));
-    // The catalogue's entries the calls were made to: a call named mcp__<server>__<tool> is its tool's entry, whichever name the catalogue lists it by.
+    /*
+     * The catalogue's entries the calls were made to: a call named
+     * mcp__<server>__<tool> is its tool's entry, whichever name the
+     * catalogue lists it by. An entry reached by the tool's own name may be
+     * another server's tool of that name (catalogue.ts), and this rule
+     * still counts it as called: "the tool that fits was not called" cannot
+     * be said of a run that called a tool of that name. The message names
+     * the entry beside the call, so the reader can see which was taken.
+     */
     const calledEntries = new Set<string>();
     const calledTerms = new Set<string>();
+    const calledAs: string[] = [];
     for (const name of called) {
-      const tool = catalogueEntry(catalogue, name);
-      if (!tool) continue;
-      calledEntries.add(tool.name);
-      for (const t of toolTerms(tool)) calledTerms.add(t);
+      const match = catalogueMatch(catalogue, name);
+      calledAs.push(match?.by === 'own' ? `${name}, read as the catalogue's ${match.tool.name}` : name);
+      if (!match) continue;
+      calledEntries.add(match.tool.name);
+      for (const t of toolTerms(match.tool)) calledTerms.add(t);
     }
     const calledFit = fitOf(actionable, calledTerms);
     let best: { tool: ToolDescriptor; fit: number } | null = null;
@@ -121,7 +131,8 @@ export const toolChoice: EvalRule = {
     const minFit = typeof context.customConfig?.tool_choice_min_fit === 'number' ? (context.customConfig.tool_choice_min_fit as number) : DEFAULT_TOOL_CHOICE_MIN_FIT;
     const fired = best !== null && best.fit >= minFit && best.fit - calledFit >= margin;
     const scope = stepScopeNote(context);
-    const calledList = [...called].join(', ');
+    // A call an engine built in code was handed with no name is in the list as nothing, as it always was.
+    const calledList = calledAs.join(calledAs.some((c) => typeof c === 'string' && c.includes(', ')) ? '; ' : ', ');
     const evidence: Evidence[] = [
       { type: 'count', stat: 'ask_fit_called_tools', unit: 'ratio', value: calledFit, threshold: best === null ? undefined : Math.max(0, best.fit - margin), thresholdSource: thresholdSourceOf(context, 'tool_choice_margin') },
       ...(best !== null ? [{ type: 'count', stat: 'ask_fit_best_uncalled_tool', unit: 'ratio', value: best.fit, threshold: minFit, thresholdSource: thresholdSourceOf(context, 'tool_choice_min_fit') } as Evidence] : []),

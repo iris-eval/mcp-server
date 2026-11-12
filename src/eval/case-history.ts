@@ -90,7 +90,7 @@
  */
 import type { CaseRun, EvalContext } from '../types/eval.js';
 import type { Span, Step, ToolCallRecord, ToolDescriptor } from '../types/trace.js';
-import { READ_TOKENS, ownToolName } from './catalogue.js';
+import { READ_TOKENS, catalogueMatch, declaredEffect, ownToolName } from './catalogue.js';
 import { MAX_STEPS_DERIVED, toSteps } from './steps.js';
 
 export type { CaseRun };
@@ -276,16 +276,19 @@ export function placementByName(name: string): Placement {
  * read-only. A name is matched as the rules read it, by its first
  * MAX_TOOL_NAME_CHARS characters: the name the tool was called by, and when
  * the catalogue has no entry under it, the tool's own (catalogue.ts,
- * catalogueEntry).
+ * catalogueMatch).
+ *
+ * An entry reached by the tool's own name may be another server's tool of
+ * that name, so its word is taken only where it makes the call count
+ * (catalogue.ts, declaredEffect). A read-only hint on a replica's
+ * `run_query` says nothing of `mcp__db_admin__run_query`: taken, it would
+ * turn a first-time write into a look-up that is noted and not counted.
+ * Such a call is placed by its name, as it is with no catalogue.
  */
 export function placementOf(name: string, tools: readonly ToolDescriptor[] | undefined): Placement {
-  const key = toolNameOf(name);
-  const own = toolNameOf(ownToolName(name));
-  const entry = (k: string): ToolDescriptor | undefined => tools?.find((tool) => typeof tool.name === 'string' && toolNameOf(tool.name) === k);
-  const annotations = (entry(key) ?? (own !== key ? entry(own) : undefined))?.annotations;
-  if (annotations?.readOnlyHint === true) return 'reads';
-  if (annotations?.readOnlyHint === false || annotations?.destructiveHint === true) return 'acts';
-  return placementByName(name);
+  const index = new Map<string, ToolDescriptor>();
+  for (const tool of tools ?? []) if (typeof tool.name === 'string') index.set(toolNameOf(tool.name), tool);
+  return declaredEffect(catalogueMatch(index, toolNameOf(name))) ?? placementByName(name);
 }
 
 /* ------------------------------------------------------------------ *
