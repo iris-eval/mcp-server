@@ -602,7 +602,8 @@ describe('through the engine', () => {
         evaluate: () => ({ ruleName: 'probe_unreasoned', passed: false, score: 0, message: 'fired', advisoryWhy }) as unknown as EvalRuleResult,
       });
       const fired = (await e.evaluateAll(ctx)).rule_results.find((r) => r.ruleName === 'probe_unreasoned')!;
-      expect([fired.role, fired.advisory, fired.advisoryWhy], label).toEqual(['risk', undefined, undefined]);
+      // Nothing was set aside: no `advisory`, no reason. Its role is the one any detection with no published accuracy has, since no layer reads it.
+      expect([fired.role, fired.advisory, fired.advisoryWhy], label).toEqual(['advisory', undefined, undefined]);
     }
   });
 

@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
 import { decides } from '../../../src/eval/compose.js';
+import { publishedAccuracyFor } from '../../../src/eval/accuracy.js';
 import type { EvalRuleResult } from '../../../src/types/eval.js';
 
 const root = resolve(__dirname, '..', '..', '..');
@@ -28,7 +29,8 @@ function expectedRole(r: EvalRuleResult, defaultsGate: boolean): string {
   if (r.kind === 'judgment') return 'gate';
   if (r.kind === 'policy') return decides(r, defaultsGate) ? 'gate' : 'advisory';
   if (r.critical === true) return 'veto';
-  if (r.kind === 'detection' || r.kind === 'inference') return 'risk';
+  // Weighed by its published accuracy; with none, no layer reads it.
+  if (r.kind === 'detection' || r.kind === 'inference') return publishedAccuracyFor(r.ruleName) !== null ? 'risk' : 'advisory';
   return 'advisory';
 }
 

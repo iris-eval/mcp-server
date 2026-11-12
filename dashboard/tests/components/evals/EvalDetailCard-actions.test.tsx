@@ -10,7 +10,7 @@ import { render, fireEvent } from '@testing-library/react';
 import { axe } from 'jest-axe';
 import type { EvalResult } from '../../../src/api/types';
 import { EvalDetailCard } from '../../../src/components/evals/EvalDetailCard';
-import { labelSentence, reevaluateSentence, localPrecisionCell } from '../../../src/components/evals/labelText';
+import { labelSentence, labelStanding, reevaluateSentence, localPrecisionCell } from '../../../src/components/evals/labelText';
 
 function evalResult(extra: Partial<EvalResult> = {}): EvalResult {
   return {
@@ -104,6 +104,32 @@ describe('EvalDetailCard — labels and re-scoring', () => {
         rule: { rule: 'no_stub_output', kind: 'inference', entersRisk: true, n: 20, right: 2, wrong: 18, precision: { point: 0.1, lo: 0.028, hi: 0.301 }, local: true, publishedPrecision: 0.96, fireRate: 0.3 },
       }),
     ).toBe('no_stub_output: 20 labels — local precision 10% [3%–30%], in force on this deployment and in the risk estimate.');
+    // A rule the verdict does not weigh: its labels are counted and nothing reads them, which is what the rules page's cell says of the same row.
+    const measurement = { rule: 'keyword_overlap', kind: 'measurement', entersRisk: false, publishedPrecision: null, fireRate: 0.2 };
+    expect(labelSentence({ min: 20, rule: { ...measurement, n: 20, right: 10, wrong: 10, precision: { point: 0.5, lo: 0.299, hi: 0.701 }, local: true } })).toBe(
+      'keyword_overlap: 20 labels — local precision 50% [30%–70%]. No verdict is weighed by the labels of this rule.',
+    );
+    expect(labelSentence({ min: 20, rule: { ...measurement, n: 5, right: 5, wrong: 0, precision: { point: 1, lo: 0.566, hi: 1 }, local: false } })).toBe(
+      'keyword_overlap: 5 of 20 labels, local precision so far 100%. No verdict is weighed by the labels of this rule.',
+    );
+    // A rule with no declared kind in the stats (a custom rule, a plugin's) reads the same way.
+    expect(labelSentence({ min: 20, rule: { ...measurement, rule: 'mentions_competitor', kind: null, n: 20, right: 20, wrong: 0, precision: { point: 1, lo: 0.839, hi: 1 }, local: true } })).toContain(
+      'No verdict is weighed by the labels of this rule.',
+    );
+    // A detection or an inference the deployment set to report only: its labels show on its results.
+    const reportsOnly = { rule: 'no_silent_tool_failure', kind: 'inference', entersRisk: false, publishedPrecision: 0.9, fireRate: 0.3 };
+    expect(labelSentence({ min: 20, rule: { ...reportsOnly, n: 20, right: 2, wrong: 18, precision: { point: 0.1, lo: 0.028, hi: 0.301 }, local: true } })).toBe(
+      'no_silent_tool_failure: 20 labels — local precision 10% [3%–30%], shown on this rule’s results. The rule reports only here, so no verdict is weighed by it.',
+    );
+    expect(labelSentence({ min: 20, rule: { ...reportsOnly, n: 3, right: 2, wrong: 1, precision: { point: 0.667, lo: 0.208, hi: 0.939 }, local: false } })).toBe(
+      'no_silent_tool_failure: 3 of 20 labels, local precision so far 67%; 17 more before this rule’s results show it. The rule reports only here.',
+    );
+    expect([labelStanding({ kind: 'inference', entersRisk: true }), labelStanding({ kind: 'detection', entersRisk: false }), labelStanding({ kind: 'measurement', entersRisk: false }), labelStanding({ kind: null, entersRisk: false })]).toEqual([
+      'in the risk',
+      'on its results',
+      'counted',
+      'counted',
+    ]);
     expect(reevaluateSentence({ before: { verdict: 'fail', passed: false }, after: { verdict: 'pass', passed: true }, changed: true })).toBe('Re-scored: verdict fail → pass.');
     expect(reevaluateSentence({ before: { verdict: 'fail', passed: false }, after: { verdict: 'fail', passed: false }, changed: false })).toBe('Re-scored: verdict unchanged (fail).');
     expect(localPrecisionCell({ n: 0, precision: null })).toBe('no labels yet');
