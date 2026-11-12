@@ -1784,7 +1784,7 @@ Dry-run a rule definition before deploying it: replay it against recent stored t
 }
 ```
 
-`examples` lists up to 5 traces that would fail. `sample` is present only when `sampleOutput` was sent; it carries `passed`, `score`, `message`, `skipped`, and `skipReason` when the rule skipped (for example a regex that exceeded the sandbox budget on that text). The replay shares one regex budget across all traces — a sandbox-defeating pattern shows up as `wouldSkip` almost immediately rather than freezing the server — while the sample is judged with a budget of its own.
+`examples` lists up to 5 traces that would fail. Each stored trace is judged as the deployed rule would judge it: its output and input, its cost and token usage, and for an `action_policy` its tool calls, read from `tool_calls` or, for a trace that arrived over OTLP, from its TOOL spans. A trace with no output, or one with no tool calls under a policy, counts under `wouldSkip`. `sample` is present only when `sampleOutput` was sent; it carries `passed`, `score`, `message`, `skipped`, and `skipReason` when the rule skipped (for example a regex that exceeded the sandbox budget on that text). The replay shares one regex budget across all traces — a sandbox-defeating pattern shows up as `wouldSkip` almost immediately rather than freezing the server — while the sample is judged with a budget of its own.
 
 #### Error Responses
 
