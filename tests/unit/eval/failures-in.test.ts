@@ -82,7 +82,7 @@ describe('failuresIn — the same answers as the definition, read once', () => {
     expect(recoveredSeen).toBeGreaterThan(2_000);
     expect(failuresSeen - recoveredSeen).toBeGreaterThan(2_000);
     expect(reportedSeen).toBeGreaterThan(1_000);
-  });
+  }, 30_000); // 4.1 s under coverage on a CI runner, where the suite gives a test 5 s
 
   it('keeps the reasons and the order: each failure as the definition words it, in the order of the run', () => {
     const next = rng(77);

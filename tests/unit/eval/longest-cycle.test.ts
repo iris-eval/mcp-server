@@ -78,7 +78,7 @@ describe('longestCycle — one pass a period, the same answers', () => {
     // The generator reaches both answers many times over.
     expect(compared).toBeGreaterThan(50_000);
     expect(holding).toBeGreaterThan(5_000);
-  });
+  }, 30_000); // 4.3 s under coverage on a CI runner, where the suite gives a test 5 s
 
   it('gives the k-gram with the run, and the earliest of the runs that repeat most', () => {
     const keys = ['x', 'a', 'b', 'a', 'b', 'a', 'b', 'y', 'c', 'd', 'c', 'd', 'c', 'd'];
@@ -118,5 +118,5 @@ describe('longestCycle — one pass a period, the same answers', () => {
       ).toBeLessThan(3_000);
       expect(found, label).toBe(period);
     }
-  });
+  }, 30_000); // 4.7 s under coverage on a CI runner, where the suite gives a test 5 s
 });

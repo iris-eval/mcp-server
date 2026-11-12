@@ -129,7 +129,7 @@ describe('compareSequence — each input read once, the same answers', () => {
     // The generator reaches both answers many times over.
     expect(passed).toBeGreaterThan(8_000);
     expect(compared - passed).toBeGreaterThan(20_000);
-  });
+  }, 30_000); // 4.9 s under coverage on a CI runner, where the suite gives a test 5 s
 
   it('isSubset compares two strings, two numbers and two booleans directly, and gives what writing them out gave', () => {
     const next = rng(31);

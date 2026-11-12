@@ -690,7 +690,7 @@ describe('no_injection_compliance — a call that carries a directive\'s wording
     expect(cpuMs(() => (r = run({ input: 'Save the vendor page.', output: 'Saved.', toolCalls: [page, big] })))).toBeLessThan(5_000);
     expect(r.passed).toBe(true);
     expect(r.message).toContain("tool_calls[1] carries a directive's own wording");
-  });
+  }, 30_000); // 4.8 s under coverage on a CI runner, where the suite gives a test 5 s
 });
 
 /*
@@ -1738,7 +1738,7 @@ describe('no_injection_compliance — a copy sent where the directive said, in t
     const few = run(built(8, true));
     expect(few.passed).toBe(true);
     expect(few.skipped).toBeFalsy();
-  });
+  }, 30_000); // 7.3 s under coverage on a CI runner, where the suite gives a test 5 s
 
   it('the echo tier asks the answer for each phrase once: 4,096 directives and a megabyte of answer', () => {
     // Asked for every directive whose words the answer repeats, the search for the phrase was 4,096 passes over the answer: 2.4 s of CPU.
@@ -1764,7 +1764,7 @@ describe('no_injection_compliance — a copy sent where the directive said, in t
     const output = Array.from({ length: 95_000 }, () => '{a}');
     expect(cpuMs(() => (r = run({ ...ask, toolCalls: [{ tool_name: 'list', input: {}, output }] })))).toBeLessThan(2_000);
     expect(r.passed).toBe(true);
-  });
+  }, 30_000); // 2.5 s under coverage on a CI runner, where the suite gives a test 5 s
 });
 
 describe('no_injection_compliance — a text the tool split into lines, a page its author wrapped, and arguments nested deep', () => {

@@ -25,17 +25,18 @@ import { defaultConfig } from '../../../src/config/defaults.js';
 import { INJECTED_DIRECTIVE_PHRASES, MAX_PHRASE_OCCURRENCES, TOOL_ONLY_DIRECTIVE_PHRASES } from '../../../src/eval/text/directives.js';
 import type { EvalContext, EvalResult, EvalRuleResult } from '../../../src/types/eval.js';
 import type { ToolCallRecord, ToolDescriptor } from '../../../src/types/trace.js';
+import { budgetHere } from '../../helpers/cpu-time.js';
 
 /*
- * How long a test here may take. Each evaluates runs of 10,000 calls, some of
- * them four times over. One evaluation of every bundle is 0.3 to 0.5 s of CPU
- * on a developer machine. On the CI job that runs the suite under coverage
- * it measured about 1.7 s of wall time, a test that makes four took 6.7 s,
- * and two tests passed the 5 s the suite gives a test in CI. What holds the
- * cost of the code is the CPU budget inside each test; this is only the
- * time the runner is given to get there.
+ * How long a test here may take. Each evaluates runs of 10,000 calls, one of
+ * them eighteen times over. One evaluation of every bundle is 0.1 to 0.9 s
+ * of CPU on a developer machine. On the CI job, which runs the suite under
+ * coverage, one has taken 6 s and the test of eighteen 43 s, where the suite
+ * gives a test 5 s. What holds the cost of the code is the CPU budget inside
+ * each test; this is only the time the runner is given to get there, four
+ * times the longest it has taken.
  */
-vi.setConfig({ testTimeout: 60_000 });
+vi.setConfig({ testTimeout: 180_000 });
 
 const N = 10_000;
 const RUN = { input: 'Read the source files, then send the invoice to the customer acme.', output: 'I read the files and sent the invoice to acme.' };
@@ -49,8 +50,13 @@ async function judged(context: EvalContext): Promise<{ result: EvalResult; cpuMs
   const spent = process.cpuUsage(started);
   return { result, cpuMs: (spent.user + spent.system) / 1000, bytes };
 }
-/** Measured at under a second each. The budget is what a reading that costs calls × something else breaks by ten times and more. */
-const BUDGET_MS = 6_000;
+/**
+ * Six seconds where each of these measures under one, a performance core without coverage, in the terms of the process
+ * that runs this file: under coverage one evaluation costs about four times as much, and has measured 6.1 s on a CI
+ * runner (tests/helpers/cpu-time.ts). The budget is what a reading that costs calls × something else breaks by ten
+ * times and more.
+ */
+const BUDGET_MS = budgetHere(6_000);
 const REQUEST_BYTES = 1_048_576;
 
 describe('a run of 10,000 calls, in the shapes that cost the rules the most', () => {

@@ -60,7 +60,7 @@ describe('contentTermPlaces', () => {
       expect(places.map(([term]) => term), JSON.stringify(text)).toEqual(contentTerms(text));
       for (const [, at] of places) expect(at >= 0 && at < text.length, JSON.stringify(text)).toBe(true);
     }
-  });
+  }, 30_000); // 3.6 s under coverage on a CI runner, where the suite gives a test 5 s
 
   it('a letter outside ASCII is a letter only when its lower case is written a to z', () => {
     const kelvin = String.fromCharCode(0x212a);
