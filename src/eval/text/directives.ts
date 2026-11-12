@@ -410,7 +410,7 @@ export function quotationMarks(text: string): number[] {
 }
 
 /** The first entry of an ascending list that is `offset` or more: its index, or the list's length. */
-function firstAtOrAfter(sorted: readonly number[], offset: number): number {
+export function firstAtOrAfter(sorted: readonly number[], offset: number): number {
   let low = 0;
   let high = sorted.length;
   while (low < high) {

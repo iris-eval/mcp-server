@@ -1,7 +1,7 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-11-12T15:07:23.863Z for v0.21.0 (local generating commit `e3de1d4e` — branch commits are squashed on merge, so cite the version).
-Corpus version `7b96e8e2c64b` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
+Generated 2026-11-12T17:28:04.246Z for v0.21.0 (local generating commit `a5e9ab9a` — branch commits are squashed on merge, so cite the version).
+Corpus version `5c3cc8d26cdb` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
 
@@ -30,7 +30,7 @@ The positive class is the violation: precision = of the outputs the rule failed,
 | `no_hallucination_markers` | safety | reader | 90 | 46 | 0 | 34 | 0 | 12 | 44 | 100.0% [89.8, 100.0] | 73.9% [59.7, 84.4] | 0.850 [75.8, 92.1] | [73.7, 91.1] | 100.0% / 100.0% |
 | `no_silent_tool_failure` | safety | reader | 74 | 38 | 0 | 29 | 0 | 9 | 36 | 100.0% [88.3, 100.0] | 76.3% [60.8, 87.0] | 0.866 [76.7, 94.0] | [75.8, 93.0] | 100.0% / 100.0% |
 | `grounded_in_reads` | safety | reader | 30 | 14 | 0 | 14 | 0 | 0 | 16 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] | 1.000 [100.0, 100.0] | [88.0, 99.9] | 100.0% / 100.0% |
-| `no_injection_compliance` | safety | reader | 83 | 42 | 0 | 31 | 1 | 11 | 40 | 96.9% [84.3, 99.5] | 73.8% [58.9, 84.7] | 0.838 [73.4, 91.9] | [71.5, 90.5] | 61.4% / 96.8% |
+| `no_injection_compliance` | safety | reader | 85 | 43 | 0 | 32 | 1 | 11 | 41 | 97.0% [84.7, 99.5] | 74.4% [59.8, 85.1] | 0.842 [74.6, 92.3] | [72.3, 90.8] | 62.2% / 96.9% |
 | `cost_under_threshold` | cost | own definition | 24 | 10 | 2 | 10 | 0 | 0 | 14 | 100.0% [72.3, 100.0] | 100.0% [72.3, 100.0] | 1.000 [100.0, 100.0] | [83.5, 99.9] | 100.0% / 100.0% |
 | `verbosity_ratio` | cost | own definition | 24 | 12 | 1 | 12 | 0 | 0 | 12 | 100.0% [75.8, 100.0] | 100.0% [75.8, 100.0] | 1.000 [100.0, 100.0] | [85.3, 99.9] | 100.0% / 100.0% |
 | `no_tool_loop` | cost | own definition | 37 | 18 | 0 | 18 | 0 | 0 | 19 | 100.0% [82.4, 100.0] | 100.0% [82.4, 100.0] | 1.000 [100.0, 100.0] | [90.4, 99.9] | 100.0% / 100.0% |
@@ -80,7 +80,7 @@ for each positive the rule caught untransformed with a span into raw text — th
 | `no_pii` | 49 | 44 | 44 |
 | `no_injection_patterns` | 45 | 44 | 44 |
 | `no_blocklist_words` | 15 | 15 | 15 |
-| `no_injection_compliance` | 42 | 31 | 28 |
+| `no_injection_compliance` | 43 | 32 | 29 |
 
 | Rule | Transform | n | still caught | Recall (95% CI) | dropped |
 |---|---|--:|--:|---|---|
@@ -105,13 +105,13 @@ for each positive the rule caught untransformed with a span into raw text — th
 | `no_blocklist_words` | tab | 15 | 14 | 93.3% [70.2, 98.8] | blocklist-010 |
 | `no_blocklist_words` | linebreak | 15 | 14 | 93.3% [70.2, 98.8] | blocklist-010 |
 | `no_blocklist_words` | case | 15 | 15 | 100.0% [79.6, 100.0] | none |
-| `no_injection_compliance` | zero_width | 28 | 28 | 100.0% [87.9, 100.0] | none |
-| `no_injection_compliance` | homoglyph | 28 | 28 | 100.0% [87.9, 100.0] | none |
-| `no_injection_compliance` | fullwidth | 28 | 28 | 100.0% [87.9, 100.0] | none |
-| `no_injection_compliance` | nbsp | 28 | 28 | 100.0% [87.9, 100.0] | none |
-| `no_injection_compliance` | tab | 28 | 27 | 96.4% [82.3, 99.4] | injc-067 |
-| `no_injection_compliance` | linebreak | 28 | 27 | 96.4% [82.3, 99.4] | injc-067 |
-| `no_injection_compliance` | case | 28 | 28 | 100.0% [87.9, 100.0] | none |
+| `no_injection_compliance` | zero_width | 29 | 29 | 100.0% [88.3, 100.0] | none |
+| `no_injection_compliance` | homoglyph | 29 | 29 | 100.0% [88.3, 100.0] | none |
+| `no_injection_compliance` | fullwidth | 29 | 29 | 100.0% [88.3, 100.0] | none |
+| `no_injection_compliance` | nbsp | 29 | 29 | 100.0% [88.3, 100.0] | none |
+| `no_injection_compliance` | tab | 29 | 28 | 96.5% [82.8, 99.4] | injc-067 |
+| `no_injection_compliance` | linebreak | 29 | 28 | 96.5% [82.8, 99.4] | injc-067 |
+| `no_injection_compliance` | case | 29 | 29 | 100.0% [88.3, 100.0] | none |
 
 - `zero_width` — a zero-width space (U+200B) inserted at the middle of the span
 - `homoglyph` — every Latin a e o p c x (and capitals) inside the span replaced by its Cyrillic lookalike
@@ -159,7 +159,7 @@ each custom rule type built by createCustomRule under the family's config and ru
 <!-- latency:start -->
 ## How long one evaluation takes
 
-EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1401; p50 0.946 ms, p95 4.787 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
+EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1403; p50 1.855 ms, p95 8.612 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
 
 Re-measured on every `npm run proof` and excluded from `--check`: it is a property of the machine, so CI cannot hold it byte-for-byte.
 
