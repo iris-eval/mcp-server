@@ -390,6 +390,8 @@ Only the `mcp__` form is read this way. Any other prefix a host adds (`files__de
 
 Deployed at `severity: high` or `critical` the rule GATES: a denied call makes the verdict `fail` with `basis: policy_gate`. At `medium` or `low` it advises — the deployment's own statement of how much it matters (see [Rule severity](#combining-built-in-and-custom-rules)).
 
+**A policy reads the run whole.** Every call is held to the rules, wherever in the run it is, up to 10,000 calls: about 0.2 s of CPU for a policy of ten rules. A run longer than that is not reported as permitted. A denied call among the first 10,000 fails the rule as usual, and the message says how far it read; with none denied the rule is not judged (`skipped: true`, `skipClass: "defeated"`, "The first 10000 of N tool calls were read and none was denied"), and a rule that gates then makes the verdict `unknown` with `basis: critical_unknown`, or what `eval.onCriticalSkipped` says.
+
 ## Scoring and Weights
 
 ### Weighted Average

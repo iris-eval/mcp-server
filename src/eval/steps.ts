@@ -46,6 +46,22 @@ import type { Span, Step, StepSource, ToolCallRecord } from '../types/trace.js';
 export const MAX_STEPS_DERIVED = 500;
 
 /**
+ * The ceiling on the trajectory an action policy reads.
+ *
+ * MAX_STEPS_DERIVED is for rules whose work grows faster than the number of
+ * calls. A policy does one bounded match for each call and rule, so it reads
+ * a run whole: read to the 500th call, `deny: delete_*` deployed to gate
+ * passed a run whose 501st call was delete_file, and said all 500 calls
+ * were permitted (#1011). This ceiling exists so that the work is bounded
+ * whatever arrives: measured, a policy of ten rules costs 12 to 22 µs of
+ * CPU a call and the largest a deployment can write (100 allow and 100 deny
+ * rules, each with a binding) 47 µs, so ten thousand calls are about 0.2 s
+ * and 0.5 s. A run longer than it is never reported as permitted
+ * (rules/custom.ts).
+ */
+export const MAX_STEPS_POLICY = 10_000;
+
+/**
  * Where a span's fields are read from, in order, first hit wins.
  *
  * Exported because it is a guess about other people's emitters, and a guess
@@ -210,17 +226,25 @@ function toolSpansInOrder(spans: readonly Span[]): Span[] {
  * counts, and `stepScopeNote` puts it in a rule's own message.
  */
 export function toSteps(context: Pick<EvalContext, 'toolCalls' | 'spans'>): Step[] {
+  return stepsUpTo(context, MAX_STEPS_DERIVED).steps;
+}
+
+/**
+ * The first `max` steps of the trajectory, by the same precedence, and how
+ * many the record holds. For a reader with a ceiling of its own: a policy
+ * reads to MAX_STEPS_POLICY, and needs the count to say what it did not read.
+ */
+export function stepsUpTo(context: Pick<EvalContext, 'toolCalls' | 'spans'>, max: number): { steps: Step[]; available: number } {
   const calls = context.toolCalls;
   if (Array.isArray(calls) && calls.length > 0) {
-    return calls.slice(0, MAX_STEPS_DERIVED).map((call, i) => stepFromCall(call, i));
+    return { steps: calls.slice(0, max).map((call, i) => stepFromCall(call, i)), available: calls.length };
   }
   const spans = context.spans;
   if (Array.isArray(spans) && spans.length > 0) {
-    return toolSpansInOrder(spans)
-      .slice(0, MAX_STEPS_DERIVED)
-      .map((span, i) => stepFromSpan(span, i));
+    const tool = toolSpansInOrder(spans);
+    return { steps: tool.slice(0, max).map((span, i) => stepFromSpan(span, i)), available: tool.length };
   }
-  return [];
+  return { steps: [], available: 0 };
 }
 
 /**

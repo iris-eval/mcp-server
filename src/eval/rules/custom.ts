@@ -8,7 +8,7 @@ import { MAX_PATTERN_LENGTH } from './regex-budget.js';
 import { checkArguments, compileToolSchema } from '../schema-validator.js';
 import { allowRuleForOwnName, compileActionPolicy, matchPolicyRule } from '../action-policy.js';
 import { MAX_TOOL_NAME_CHARS } from '../case-history.js';
-import { stepsOf, stepStatsOf } from '../steps.js';
+import { MAX_STEPS_POLICY, stepsOf, stepStatsOf, stepsUpTo } from '../steps.js';
 import { costBasisNote } from '../cost-basis.js';
 
 /** A part of a tool's name as a policy's message quotes it. A name is whatever the caller sent, with no limit of its own, and the message already carries the name the call was made by; the part read from it is held to a length. */
@@ -306,7 +306,7 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
     mechanism: meta?.mechanism ?? 'formula',
     needs: meta?.needs ?? ['output'],
     classes: [],
-    // action_policy is at 2: its deny rules read the tool's own name inside mcp__<server>__<tool> (action-policy.ts). Every other custom type means what it meant.
+    // action_policy is at 2: its deny rules read the tool's own name inside mcp__<server>__<tool> (action-policy.ts), and it reads a run whole where it read the first 500 calls (#1011). Both since the last release, so one step. Every other custom type means what it meant.
     version: definition.type === 'action_policy' ? 2 : 1,
     evaluate(context: EvalContext): EvalRuleResult {
       switch (definition.type) {
@@ -464,9 +464,22 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
           if ('error' in compiled) return configError(definition, `action_policy ${compiled.error}`);
           const { policy } = compiled;
 
-          const steps = stepsOf(context);
+          /*
+           * A policy reads the run whole. The list the trajectory rules
+           * share stops at MAX_STEPS_DERIVED, which is right for work that
+           * grows faster than the number of calls and wrong for a policy:
+           * read to there, a deny rule deployed to gate passed a run whose
+           * 501st call it denies, and reported every call permitted (#1011).
+           * So the calls past that list are derived here, to a ceiling of
+           * the policy's own.
+           */
+          const derived = stepsOf(context);
+          const stats = stepStatsOf(context);
+          const whole = stats.available > derived.length ? stepsUpTo(context, MAX_STEPS_POLICY) : { steps: derived, available: derived.length };
+          const steps = whole.steps;
+          /** Calls past the policy's ceiling. With any of these the policy has not read the run, and does not say it permitted it. */
+          const unread = whole.available - steps.length;
           if (steps.length === 0) {
-            const stats = stepStatsOf(context);
             return {
               ruleName: definition.name,
               passed: false,
@@ -564,6 +577,7 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
           }
 
           evidence.push({ type: 'count', stat: 'tool_calls_checked', unit: 'calls', value: steps.length });
+          if (unread > 0) evidence.push({ type: 'count', stat: 'tool_calls_not_read', unit: 'calls', value: unread });
           /*
            * A traversal ATTEMPT is surfaced even when the policy permits the
            * call. Denying on it would invent a policy the author did not
@@ -575,6 +589,7 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
 
           const suffix = `${escaping > 0 ? `; ${escaping} argument${escaping === 1 ? '' : 's'} used \`..\` to climb out of its own root` : ''}${truncated > 0 ? `; ${truncated} argument${truncated === 1 ? '' : 's'} exceeded the match length and only the head was checked` : ''}`;
 
+          const readNote = unread > 0 ? `. The first ${steps.length} of ${whole.available} tool calls were read: a policy reads at most ${MAX_STEPS_POLICY} calls of a run` : '';
           if (denied.length > 0) {
             const first = denied[0];
             return {
@@ -583,7 +598,27 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
               score: 0,
               value: { stat: 'denied_tool_calls', unit: 'calls', value: denied.length },
               evidence,
-              message: `Action policy: ${denied.length} of ${steps.length} tool call${steps.length === 1 ? '' : 's'} denied — tool_calls[${first.index}] (${first.tool}) by ${first.why}. ${modeNote}; ${posture}${suffix}`,
+              message: `Action policy: ${denied.length} of ${steps.length} tool call${steps.length === 1 ? '' : 's'} denied — tool_calls[${first.index}] (${first.tool}) by ${first.why}. ${modeNote}; ${posture}${suffix}${readNote}`,
+            };
+          }
+          /*
+           * Nothing denied among the calls read, and calls left unread: the
+           * policy was asked about the run and cannot answer for it. A skip
+           * with the evidence marked incomplete, so that a rule deployed to
+           * gate makes the verdict what eval.onCriticalSkipped says, and
+           * the message never says "all N permitted" of a run with more
+           * than N calls.
+           */
+          if (unread > 0) {
+            return {
+              ruleName: definition.name,
+              passed: false,
+              score: 0,
+              skipped: true,
+              evidenceIncomplete: true,
+              skipReason: `partial_trajectory: ${steps.length} of ${whole.available} tool calls read`,
+              evidence,
+              message: `Action policy: not judged. The first ${steps.length} of ${whole.available} tool calls were read and none was denied; the other ${unread} ${unread === 1 ? 'was' : 'were'} not read: a policy reads at most ${MAX_STEPS_POLICY} calls of a run. ${modeNote}; ${posture}${suffix}`,
             };
           }
           return {

@@ -525,6 +525,10 @@
           "budgetExceeded": {
             "type": "boolean"
           },
+          "threw": {
+            "description": "the rule threw while it judged this output and gave no answer; its skipClass is defeated",
+            "type": "boolean"
+          },
           "kind": {
             "type": "string",
             "enum": [

@@ -28,6 +28,21 @@ import { NEEDS } from './failure-classes.js';
 import { publishedProvenance } from './accuracy.js';
 
 /**
+ * Why the defeated rules among `rows` could not judge, in the words a
+ * coverage line carries. A row stored before these flags were kept says
+ * only that it was defeated, and reads as the one cause there was then.
+ */
+function defeatedBy(rows: readonly EvalRuleResult[]): string {
+  const defeated = rows.filter((r) => r.skipClass === 'defeated');
+  const causes = [
+    ...(defeated.some((r) => r.threw === true) ? ['the rule threw'] : []),
+    ...(defeated.some((r) => r.evidenceIncomplete === true) ? ['the evidence it reads was cut'] : []),
+    ...(defeated.some((r) => r.threw !== true && r.evidenceIncomplete !== true) ? ['sandbox budget'] : []),
+  ];
+  return causes.join('; ');
+}
+
+/**
  * Which evaluation questions were judged, which were not and why. At write
  * time the engine passes the inputs the call carried, and a read passes the
  * same from the stored evidence record. A row stored before that record
@@ -69,7 +84,7 @@ export function deriveCoverage(ruleResults: readonly EvalRuleResult[], present?:
     const defeated = rows.filter((r) => r.skipClass === 'defeated').map((r) => r.ruleName);
     const broken = rows.filter((r) => r.skipClass === 'config_invalid').map((r) => r.ruleName);
     if (defeated.length > 0) {
-      questions.push({ id, status: 'unjudged', why: `defeated: ${defeated.join(', ')} could not judge this output (sandbox budget)` });
+      questions.push({ id, status: 'unjudged', why: `defeated: ${defeated.join(', ')} could not judge this output (${defeatedBy(rows)})` });
       continue;
     }
     if (broken.length > 0) {
