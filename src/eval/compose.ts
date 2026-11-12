@@ -39,6 +39,7 @@
  */
 import type { EvalResult, EvalRuleResult, EvidenceRecord, Interpretation, Need, Role, Verdict, VerdictLayer, VerdictNode } from '../types/eval.js';
 import { riskEstimate, detectorsOf, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
+import { publishedAccuracyFor } from './accuracy.js';
 import { verdictConfidence, MIN_BIN_N, MIN_BIN_PATTERNS, type ConfidenceCall } from './confidence.js';
 import { PUBLISHED_CALIBRATION } from './published-calibration.js';
 import { decides, isCritical } from './gate.js';
@@ -137,7 +138,8 @@ export function roleOf(r: EvalRuleResult, cfg: ComposeConfig): Role {
   if (r.kind === 'judgment') return 'gate';
   if (r.kind === 'policy') return decides(r, cfg.defaultsGate) ? 'gate' : 'advisory';
   if (isCritical(r)) return 'veto';
-  if (r.kind === 'detection' || r.kind === 'inference') return 'risk';
+  // A detection or an inference is weighed by its published accuracy. One with none (a plugin's) is read by no layer: it reports.
+  if (r.kind === 'detection' || r.kind === 'inference') return publishedAccuracyFor(r.ruleName) !== null ? 'risk' : 'advisory';
   return 'advisory';
 }
 
@@ -653,6 +655,8 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
       text: `${verdict.basis} decided this verdict, and it is not the only layer that would have: ${said.join('; ')}. Clearing ${verdict.by.join(', ') || 'the first'} alone does not clear the verdict.`,
     });
   }
+  /** The rules the risk estimate read on this evaluation, found when the first fire on a passing verdict asks. */
+  let weighedRows: Set<string> | undefined;
   for (const r of result.rule_results) {
     if (!fired(r)) continue;
     if (verdict.by.includes(r.ruleName) || laterRules.has(r.ruleName)) continue;
@@ -724,6 +728,33 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
       continue;
     }
     if (verdict.state === 'pass') {
+      /*
+       * A fire the risk estimate does not read took no part in the verdict,
+       * and is told that and what would make it decide. It used to be told
+       * that "on its published accuracy this rule alone does not carry the
+       * risk" and to raise eval.falsePassCost: a measurement has no such
+       * accuracy and is in no estimate, so the reason was not the reason
+       * and the setting moved nothing (#988). The same sentence went to a
+       * plugin's detection, which has no published family either, and with
+       * twenty labels on it to "the precision your labels measured", for a
+       * precision nothing weighs.
+       */
+      weighedRows ??= new Set(detectorsOf(result).map((d) => d.name));
+      if (!weighedRows.has(r.ruleName)) {
+        const plugin = r.origin === 'plugin';
+        out.push({
+          severity: 'note',
+          addressee: 'operator',
+          rule: r.ruleName,
+          text: plugin
+            ? `${r.ruleName} failed and took no part in this verdict: the risk estimate weighs a rule by a published accuracy, and a plugin's rule has none. Its failure is reported and scored. Declare the rule critical in the plugin to have its failure fail the verdict.`
+            : r.kind === 'measurement'
+              ? `${r.ruleName} failed and took no part in this verdict: it is a measurement, which reports a number and decides no verdict. Name it in eval.criticalRules to have its failure fail the verdict.`
+              : `${r.ruleName} failed and took no part in this verdict: the risk estimate reads a detection or an inference that has a published accuracy, and this rule is not one. Its failure is reported and scored.`,
+          ...(!plugin && r.kind === 'measurement' ? { configKey: 'eval.criticalRules' } : {}),
+        });
+        continue;
+      }
       /*
        * A fire weighed by the deployment's own labels is told so. On its
        * published accuracy the same fire can carry the verdict: it passed

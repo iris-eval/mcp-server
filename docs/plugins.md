@@ -55,7 +55,7 @@ A plugin runs in-process with the server's privileges — that is the point of t
 ## What a loaded plugin does
 
 - Fires on every evaluation of its `evalType`, alongside the built-ins and the deployed custom rules.
-- Its result carries `origin: "plugin"`, `kind`, `mechanism`, `ruleVersion` and an `uncertainty` stamped by kind: `policy` for a policy rule; for a detection or inference, `unmeasured` until the deployment's own labels measure it — twenty labels on its fires give it a local precision like any other rule ([how that is measured](https://iris-eval.com/proof)).
+- Its result carries `origin: "plugin"`, `kind`, `mechanism`, `ruleVersion` and an `uncertainty` stamped by kind: `policy` for a policy rule; for a detection or inference, `unmeasured` until the deployment's own labels measure it: twenty labels on its fires give it a local precision, shown on its results ([how that is measured](https://iris-eval.com/proof)). The verdict weighs a rule by a published accuracy, and a plugin's rule has none, so its `role` is `advisory` and it decides a verdict only when it is critical.
 - `critical: true` makes a failing plugin veto `passed` (the `policy_gate` basis, as a high-severity custom rule does); without it the failure is reported and scored but does not gate.
 - A plugin that throws, or returns a result without a boolean `passed`, a score outside 0–1 or a `message`, **skips that evaluation** as `config_invalid` naming itself. The server never goes down for a rule.
 - `list_rules` lists it under `plugins` with its metadata, its path and its pinned hash — never its code.
