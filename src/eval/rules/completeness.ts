@@ -178,7 +178,7 @@ export const expectedCoverage: EvalRule = {
 export const validToolArguments: EvalRule = {
   name: 'valid_tool_arguments',
   description:
-    "Tool calls must be callable. Fails when a call names a tool absent from the supplied catalogue, or carries arguments the tool's own JSON Schema rejects, AND no later call to the same tool succeeded — a mistyped argument the agent noticed and retried is recorded, not failed. Needs the `tools` catalogue (your MCP tools/list result, verbatim); without it the rule SKIPS rather than passes, because a call cannot be checked against a schema nobody supplied. A schema Iris declines to compile leaves that tool's calls unchecked and names which tool and why",
+    "Tool calls must be callable. Fails when a call names a tool absent from the supplied catalogue, or carries arguments the tool's own JSON Schema rejects, AND no later call to the same tool succeeded — a mistyped argument the agent noticed and retried is recorded, not failed. A call named mcp__<server>__<tool> is matched to the entry under that name and, when there is none, to the entry under the tool's own name, and the result says so; when more than one called name leads to one entry that way, those calls are not checked and the result says what to list. Needs the `tools` catalogue (your MCP tools/list result, verbatim); without it the rule SKIPS rather than passes, because a call cannot be checked against a schema nobody supplied. A schema Iris declines to compile leaves that tool's calls unchecked and names which tool and why",
   evalType: 'completeness',
   weight: 1,
   kind: 'detection',

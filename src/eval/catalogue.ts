@@ -135,6 +135,18 @@ export function declaredEffect(match: CatalogueMatch | undefined): 'reads' | 'ac
 }
 
 /**
+ * The entry whose read-only word was not taken for a call: one reached by
+ * the tool's own name that says `readOnlyHint: true`. Undefined when there
+ * is no such entry. A result names it, with what to list: someone who
+ * pasted a tools/list result marked the tool read-only, and without the
+ * sentence sees the call counted as an action, or its rereads not counted,
+ * with nothing to say why.
+ */
+export function readOnlyWordNotTaken(match: CatalogueMatch | undefined): ToolDescriptor | undefined {
+  return match !== undefined && match.by === 'own' && match.tool.annotations?.readOnlyHint === true ? match.tool : undefined;
+}
+
+/**
  * Does this step read, or act?
  *
  * Three-valued on purpose. `unknown` is a real answer — the catalogue is

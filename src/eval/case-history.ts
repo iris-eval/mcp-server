@@ -90,7 +90,7 @@
  */
 import type { CaseRun, EvalContext } from '../types/eval.js';
 import type { Span, Step, ToolCallRecord, ToolDescriptor } from '../types/trace.js';
-import { READ_TOKENS, catalogueMatch, declaredEffect, ownToolName } from './catalogue.js';
+import { READ_TOKENS, catalogueMatch, declaredEffect, ownToolName, readOnlyWordNotTaken } from './catalogue.js';
 import { MAX_STEPS_DERIVED, toSteps } from './steps.js';
 
 export type { CaseRun };
@@ -286,9 +286,28 @@ export function placementByName(name: string): Placement {
  * Such a call is placed by its name, as it is with no catalogue.
  */
 export function placementOf(name: string, tools: readonly ToolDescriptor[] | undefined): Placement {
+  return declaredEffect(catalogueMatch(indexOf(tools), toolNameOf(name))) ?? placementByName(name);
+}
+
+/** The catalogue by name, each name as the rules read it. */
+function indexOf(tools: readonly ToolDescriptor[] | undefined): Map<string, ToolDescriptor> {
   const index = new Map<string, ToolDescriptor>();
   for (const tool of tools ?? []) if (typeof tool.name === 'string') index.set(toolNameOf(tool.name), tool);
-  return declaredEffect(catalogueMatch(index, toolNameOf(name))) ?? placementByName(name);
+  return index;
+}
+
+/**
+ * Of the tools named, the ones the catalogue marks read-only in an entry
+ * that was reached by the tool's own name, each with that entry's name: the
+ * word placementOf did not take. A result says it (rules/case-history.ts).
+ */
+export function readOnlyWordsNotTaken(names: readonly string[], tools: readonly ToolDescriptor[] | undefined): Array<{ called: string; entry: string }> {
+  if (tools === undefined || tools.length === 0) return [];
+  const index = indexOf(tools);
+  return names.flatMap((called) => {
+    const entry = readOnlyWordNotTaken(catalogueMatch(index, toolNameOf(called)));
+    return entry === undefined ? [] : [{ called, entry: toolNameOf(entry.name) }];
+  });
 }
 
 /* ------------------------------------------------------------------ *

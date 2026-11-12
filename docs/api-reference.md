@@ -110,7 +110,7 @@ A call is matched to its entry by name. The name looked up first is the one the 
 
 The server's part of the name is compared with nothing, because a catalogue names no server: an entry named `search` is reached by `mcp__docs__search` and by `mcp__tickets__search` alike. Three things follow.
 
-- An entry reached by a tool's own name is believed when it says the tool acts (`readOnlyHint: false`, or `destructiveHint: true`) and not when it says the tool only reads. `no_unusual_action` then places the call by its name, and `no_tool_loop` counts rereads only through a tool whose entry is under the name it was called by.
+- An entry reached by a tool's own name is believed when it says the tool acts (`readOnlyHint: false`, or `destructiveHint: true`) and not when it says the tool only reads. `no_unusual_action` then places the call by its name, and `no_tool_loop` counts rereads only through a tool whose entry is under the name it was called by. Each says in its result when a read-only word was not taken, for which call, and what to list.
 - When two called names lead to one entry, it is the tool of at most one of them: `valid_tool_arguments` checks neither call, and says which entry and what to list.
 - When the agent can reach more than one tool of the same name (a `search` on each of a pair of servers, or one server connected twice), list each under the name the agent calls it by. Every entry is then exact, and the exact name wins.
 

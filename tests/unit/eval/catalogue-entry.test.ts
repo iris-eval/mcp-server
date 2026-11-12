@@ -17,7 +17,7 @@
  * two called names lead to it, no call's arguments are judged by it.
  */
 import { describe, expect, it } from 'vitest';
-import { catalogueIndex, catalogueMatch, declaredEffect, ownToolName, readFamilyOf } from '../../../src/eval/catalogue.js';
+import { catalogueIndex, catalogueMatch, declaredEffect, ownToolName, readFamilyOf, readOnlyWordNotTaken } from '../../../src/eval/catalogue.js';
 import { placementOf } from '../../../src/eval/case-history.js';
 import { validToolArguments } from '../../../src/eval/rules/completeness.js';
 import { toolChoice } from '../../../src/eval/rules/tool-choice.js';
@@ -123,6 +123,12 @@ describe('what the catalogue says a tool does, by how its entry was found', () =
     expect(placementOf('mcp__shop__status', [{ name: 'status', annotations: { readOnlyHint: true } }])).toBe('unplaced');
     expect(declaredEffect({ tool: { name: 'status', annotations: { readOnlyHint: true } }, by: 'own' })).toBeNull();
     expect(declaredEffect({ tool: { name: 'status', annotations: { readOnlyHint: true } }, by: 'called' })).toBe('reads');
+    // The word that was not taken is that one and no other: a read-only word, in an entry reached by the tool's own name.
+    expect(readOnlyWordNotTaken({ tool: { name: 'status', annotations: { readOnlyHint: true } }, by: 'own' })?.name).toBe('status');
+    expect(readOnlyWordNotTaken({ tool: { name: 'status', annotations: { readOnlyHint: true } }, by: 'called' })).toBeUndefined();
+    expect(readOnlyWordNotTaken({ tool: { name: 'status', annotations: { readOnlyHint: false } }, by: 'own' })).toBeUndefined();
+    expect(readOnlyWordNotTaken({ tool: { name: 'status' }, by: 'own' })).toBeUndefined();
+    expect(readOnlyWordNotTaken(undefined)).toBeUndefined();
     // The exact entry wins over the own-name entry, and is believed.
     expect(placementOf('mcp__shop__get_product', [{ name: 'get_product', annotations: { readOnlyHint: false } }, { name: 'mcp__shop__get_product', annotations: { readOnlyHint: true } }])).toBe('reads');
     // readFamilyOf, the describing reader, takes the same line, and reads the tool's words and not the server's.
@@ -155,6 +161,61 @@ describe('what the catalogue says a tool does, by how its entry was found', () =
     expect(unusual.passed).toBe(false);
     expect(unusual.message).toContain('mcp__db_admin__run_query');
     expect(judged.verdict).toMatchObject({ state: 'fail', by: ['wrong_trajectory'] });
+    // And the result says which word of the catalogue it did not take, and for what, since whoever pasted the catalogue marked run_query read-only.
+    expect(unusual.message).toContain(
+      "; the catalogue marks run_query read-only, and that word is not taken for mcp__db_admin__run_query: the entry was reached by the tool's own name, which another server's tool can share. If the entry is this tool's, list it under the name the tool is called by and its read-only word is taken",
+    );
+  });
+
+  it('a read-only word that was not taken is said only where it was not taken', async () => {
+    const engine = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+    const earlier: CaseRun[] = Array.from({ length: 6 }, () => ({ tools: ['mcp__ci__get_pipeline'] }));
+    const run = (toolName: string, tools: ToolDescriptor[]) =>
+      engine
+        .evaluateAll({
+          input: 'Why did pipeline 7 fail?',
+          output: 'Pipeline 7 failed in its second job, the integration tests, on a timeout.',
+          toolCalls: [
+            { tool_name: 'mcp__ci__get_pipeline', input: { id: 7 }, output: { id: 7, status: 'failed' } },
+            { tool_name: toolName, input: { service: 'api' }, output: { ok: true } },
+          ],
+          tools,
+          caseHistory: earlier,
+        })
+        .then((judged) => judged.rule_results.find((r) => r.ruleName === 'no_unusual_action')!);
+    const NOT_TAKEN = 'and that word is not taken for';
+    // A name that places nothing, marked read-only under the tool's own name: noted, not counted, and the word that was not taken is named.
+    const status = await run('mcp__monitor__status', [{ name: 'status', annotations: { readOnlyHint: true } }]);
+    expect(status.passed).toBe(true);
+    expect(status.message).toContain('(mcp__monitor__status) is noted and not counted');
+    expect(status.message).toContain(`; the catalogue marks status read-only, ${NOT_TAKEN} mcp__monitor__status: the entry was reached by the tool's own name`);
+    // Two such tools: each entry and each called name, once.
+    const both = await engine.evaluateAll({
+      input: 'Why did pipeline 7 fail?',
+      output: 'Pipeline 7 failed in its second job, the integration tests, on a timeout.',
+      toolCalls: [
+        { tool_name: 'mcp__ci__get_pipeline', input: { id: 7 }, output: { id: 7 } },
+        { tool_name: 'mcp__monitor__status', input: {}, output: {} },
+        { tool_name: 'mcp__db_ro__run_query', input: { sql: 'SELECT 1' }, output: {} },
+      ],
+      tools: [{ name: 'status', annotations: { readOnlyHint: true } }, { name: 'run_query', annotations: { readOnlyHint: true } }],
+      caseHistory: earlier,
+    });
+    const two = both.rule_results.find((r) => r.ruleName === 'no_unusual_action')!;
+    expect(two.passed).toBe(false);
+    expect(two.message).toContain(`; the catalogue marks run_query, status read-only, ${NOT_TAKEN} mcp__db_ro__run_query, mcp__monitor__status: each entry was reached by the tool's own name, which another server's tool can share. If an entry is the called tool's, list it under the name the tool is called by and its read-only word is taken`);
+    // Listed under the name it is called by, the word is taken and nothing more is said.
+    const listed = await run('mcp__db_ro__run_query', [{ name: 'mcp__db_ro__run_query', annotations: { readOnlyHint: true } }]);
+    expect(listed.passed).toBe(true);
+    expect(listed.message).toContain('a look-up none of them made (mcp__db_ro__run_query) is noted and not counted');
+    expect(listed.message).not.toContain(NOT_TAKEN);
+    // An entry reached by the own name that says the tool acts is taken at its word, and one with no word has none to take.
+    expect((await run('mcp__ci__status', [{ name: 'status', annotations: { readOnlyHint: false } }])).message).not.toContain(NOT_TAKEN);
+    expect((await run('mcp__monitor__status', [{ name: 'status' }])).message).not.toContain(NOT_TAKEN);
+    // A tool the case has called before is not in the sentence, whatever the catalogue says of it.
+    expect((await run('mcp__ci__get_pipeline', [{ name: 'get_pipeline', annotations: { readOnlyHint: true } }])).message).not.toContain(NOT_TAKEN);
+    // With no catalogue there is no word.
+    expect((await run('mcp__db_ro__run_query', [])).message).not.toContain(NOT_TAKEN);
   });
 
   it('the count of wasted reads takes a read-only word from the entry under the called name only', () => {
@@ -170,7 +231,19 @@ describe('what the catalogue says a tool does, by how its entry was found', () =
     // Under a prefixed name the entries are reached by the tools' own names, and their read-only word is not taken.
     const prefixed = noToolLoop.evaluate({ ...RUN, toolCalls: reads('mcp__files__'), tools: files } as EvalContext);
     expect(prefixed.passed).toBe(true);
-    expect(prefixed.message).toContain('looked read-shaped but the catalogue does not say so');
+    // The result says what was left out and why, and what to list: whoever pasted the catalogue marked both tools read-only.
+    expect(prefixed.message).toContain(
+      "; 4 calls went through tools the catalogue marks read-only under the tool's own name (read_file, cat_file), a word that is taken only under the name a tool is called by, since another server's tool can share the own name. If those entries are these tools', list them as mcp__files__read_file, mcp__files__cat_file to have rereads through them counted",
+    );
+    expect(prefixed.message).not.toContain('the catalogue does not say so');
+    // A read-shaped call the catalogue has no read-only word for, under either name, is still said the old way.
+    const unlisted = noToolLoop.evaluate({ ...RUN, toolCalls: reads('mcp__files__'), tools: [{ name: 'write_file', annotations: { readOnlyHint: false } }] } as EvalContext);
+    expect(unlisted.message).toContain('4 more calls looked read-shaped but the catalogue does not say so');
+    expect(unlisted.message).not.toContain("under the tool's own name");
+    // One tool, one call: the singular.
+    const single = noToolLoop.evaluate({ ...RUN, toolCalls: reads('mcp__files__').slice(0, 1), tools: files } as EvalContext);
+    expect(single.message).toContain("; 1 call went through a tool the catalogue marks read-only under the tool's own name (read_file)");
+    expect(single.message).toContain("If that entry is this tool's, list it as mcp__files__read_file to have rereads through it counted");
     // Listed by the names the agent calls, the count is made.
     const listed = files.map((tool) => ({ ...tool, name: `mcp__files__${tool.name}` }));
     expect(noToolLoop.evaluate({ ...RUN, toolCalls: reads('mcp__files__'), tools: listed } as EvalContext).passed).toBe(false);
