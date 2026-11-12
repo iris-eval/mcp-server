@@ -112,13 +112,22 @@ export function eachString(value: unknown, visit: (text: string, isKey: boolean)
 }
 
 /**
- * What stands between two strings of a structure read as one text: a line
- * of its own that no word, sentence or phrase reads across. A bar and not a
- * blank line, because a run of line breaks sends the whole text down the
- * fold's slow path (text/normalise.ts): a megabyte of JSON text cost a
- * quarter of a second read with blank lines between its strings.
+ * What stands between two strings of a structure read as one text: a
+ * closing bracket and a line break. No word, sentence or phrase reads
+ * across it, and it is chosen so that a string reads at its two ends as it
+ * would read alone (text/directives.ts): a closing bracket is what may
+ * follow the end of a sentence or a closing quotation mark, as the end of
+ * the text may, and it begins no list item or table row after a line break
+ * that ends the string; a line break before the next string is what the
+ * start of a text is to a mark that opens there.
+ *
+ * Not a blank line: a run of line breaks sends the whole text down the
+ * fold's slow path (text/normalise.ts), and a megabyte of JSON text cost a
+ * quarter of a second read that way. And nothing that begins with a space:
+ * a string that ended in one ran into it and read a character shorter than
+ * the same text alone.
  */
-export const BETWEEN_STRINGS = '\n|\n';
+export const BETWEEN_STRINGS = ')\n';
 
 /**
  * A tool value as one text, with where each of its strings begins.

@@ -761,7 +761,7 @@ export function findDirectives(readings: readonly DirectiveReading[], starts: re
   const found: Array<{ hit: DirectiveHit; raw: number }> = [];
   const views: DirectiveHit[][] = readings.map(() => []);
   const marks: Array<number[] | undefined> = readings.map(() => undefined);
-  /** A phrase at `at` in one reading, with its payload. (No phrase runs from one string of a structure into the next: BETWEEN_STRINGS stands between them, and no phrase holds a bar.) */
+  /** A phrase at `at` in one reading, with its payload. (No phrase runs from one string of a structure into the next: BETWEEN_STRINGS stands between them, and no phrase holds a bracket.) */
   const view = (which: number, phrase: string, at: number, raw: number): DirectiveHit => {
     const { flat, normalised } = readings[which];
     const end = at + phrase.length;
