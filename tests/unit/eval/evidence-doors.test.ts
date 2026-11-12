@@ -141,7 +141,8 @@ describe('the doors', () => {
     expect(filled.reference_trace_id).toBe(traceId);
     expect(filled).not.toHaveProperty('trace_id');
     expect((filled.provenance as { beside?: string[] }).beside).toEqual(['tool_calls']);
-    expect(evidenceOf(filled)).toEqual({ recordedBy: 'agent', carried: ['output'] });
+    // The ask it carries is the stored one, read from the trace because the call omitted it (#1023); the evidence is still the agent's.
+    expect(evidenceOf(filled)).toEqual({ recordedBy: 'agent', carried: ['input', 'output'] });
     // The trace's verdict is still the one the record earned.
     const evals = await storage.getEvalsByTraceId(LOCAL_TENANT, traceId);
     const ofRecord = evals.filter((e) => e.trace_id === traceId);

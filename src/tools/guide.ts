@@ -66,7 +66,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
       'Inputs decide what can be judged: input is REQUIRED when eval_type="relevance" (keyword_overlap, topic_consistency and answers_the_ask compare the output against it, tool_choice reads it beside tool_calls and tools; all four skip without it) and grounds the hallucination signals; ' +
       'tool_calls (or a trace_id) feed the trajectory rules, and tools lets them check argument validity; cost_usd and token_usage feed the cost rules; expected feeds expected_coverage. ' +
       'A rule without its input SKIPS, is named, and never counts as a pass: an evaluation with no trajectory data reports "not judged", never "clean". custom_rules always fire, whatever eval_type says. ' +
-      'trace_id names a stored trace. Passed alone (output, input, tool_calls, tools, cost_usd and token_usage are then read from the trace, under every bundle), the call scores the trace as stored and the row is the trace\'s verdict, superseding its earlier one. ' +
+      'trace_id names a stored trace, and what the call omits of output, input, tool_calls, tools, cost_usd and token_usage is read from it. Passed alone, the call scores the trace as stored, under every bundle, and the row is the trace\'s verdict, superseding its earlier one. ' +
       'Passed with any of those that differs from what the trace stored, or with one eval_type, the row is kept beside the trace instead: the response carries reference_trace_id, not trace_id, and a sentence saying what differed, and the trace\'s verdict is unchanged in every run, comparison and export. ' +
       'An evaluation cannot replace the verdict of the trace it names. One row is stored either way.',
     whenNot:
@@ -82,7 +82,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
       expected_trajectory:
         'What the agent was expected to DO: tool_calls [{ tool_name, input? }] with a mode (strict | unordered | subset | superset | ordered_subset, default ordered_subset) and args (exact | subset, default subset) for tool_sequence; step_budget and tolerance (default 1.5) for step_budget',
       input:
-        'Original input for context (the ask + any source material the agent was given) — REQUIRED when eval_type="relevance" (keyword_overlap, topic_consistency and answers_the_ask compare the output against it, tool_choice reads it beside tool_calls and tools; all four skip without it); also grounds the safety bundle\'s hallucination signals',
+        'Original input for context (the ask + any source material the agent was given) — REQUIRED when eval_type="relevance" (keyword_overlap, topic_consistency and answers_the_ask compare the output against it, tool_choice reads it beside tool_calls and tools; all four skip without it); also grounds the safety bundle\'s hallucination signals; omitted, the ask stored on trace_id is used',
       custom_rules:
         'Custom evaluation rules, max 10 per call (deploy persistent rule sets via deploy_rule instead) — fires REGARDLESS of eval_type; pass eval_type="custom" if you want ONLY these. Each entry accepts exactly name, type, config, weight, severity — an unknown key is rejected',
       cost_usd:
