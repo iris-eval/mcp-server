@@ -5304,13 +5304,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "59b8e39b13ba"
+        "compositeVersion": "caa13e5c9488"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "e8138005752c",
+        "corpusVersion": "e777f6add399",
         "customCorpusVersion": "506945ab966b"
       }
     },
@@ -5323,8 +5323,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-11-12T00:18:30.222Z",
-  "generatedFromCommit": "8e7ccd29",
+  "generatedAt": "2026-11-12T01:26:57.937Z",
+  "generatedFromCommit": "71af5513",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5412,14 +5412,14 @@
     ]
   },
   "proof": {
-    "commit": "8e7ccd29",
+    "commit": "71af5513",
     "composite": {
-      "compositeVersion": "59b8e39b13ba",
+      "compositeVersion": "caa13e5c9488",
       "confidence": {
         "changed": {
           "of": 112,
           "toDecisive": 0,
-          "toMarginal": 81
+          "toMarginal": 82
         },
         "intervalOnly": {
           "decisive": {
@@ -5435,23 +5435,23 @@
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.4385,
-                1
+                0.3006,
+                0.9544
               ],
               "k": 3,
-              "n": 3,
-              "patterns": 2,
-              "rate": 1
+              "n": 4,
+              "patterns": 3,
+              "rate": 0.75
             },
             "test": {
               "ci95": [
-                0.4295,
-                0.8027
+                0.4079,
+                0.7784
               ],
               "k": 14,
-              "n": 22,
-              "patterns": 9,
-              "rate": 0.6364
+              "n": 23,
+              "patterns": 10,
+              "rate": 0.6087
             }
           },
           "marginal": {
@@ -5467,23 +5467,23 @@
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.0945,
-                0.9055
+                0.2065,
+                1
               ],
               "k": 1,
-              "n": 2,
-              "patterns": 2,
-              "rate": 0.5
+              "n": 1,
+              "patterns": 1,
+              "rate": 1
             },
             "test": {
               "ci95": [
-                0.3057,
-                0.8632
+                0.3589,
+                0.9178
               ],
               "k": 5,
-              "n": 8,
-              "patterns": 5,
-              "rate": 0.625
+              "n": 7,
+              "patterns": 4,
+              "rate": 0.7143
             }
           }
         },
@@ -5638,14 +5638,14 @@
               "to": 1
             }
           ],
-          "compositeVersion": "59b8e39b13ba",
+          "compositeVersion": "caa13e5c9488",
           "prior": 0.5,
           "priorMode": "per-output",
           "split": "dev",
-          "version": "b3168a782c32"
+          "version": "7adb2067442f"
         }
       },
-      "corpusVersion": "e8138005752c",
+      "corpusVersion": "e777f6add399",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -7140,7 +7140,7 @@
       },
       "version": "0.21.0"
     },
-    "corpusVersion": "e8138005752c",
+    "corpusVersion": "e777f6add399",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -7765,7 +7765,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-11-12T00:17:30.207Z",
+    "generatedAt": "2026-11-12T01:25:44.437Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7784,8 +7784,8 @@
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
       "n": 1349,
-      "p50Ms": 0.932,
-      "p95Ms": 6.277
+      "p50Ms": 1.59,
+      "p95Ms": 7.989
     },
     "method": {
       "ci": "wilson-95",

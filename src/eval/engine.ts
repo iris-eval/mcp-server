@@ -714,8 +714,17 @@ export class EvalEngine {
       // ruleId / category sit right after the name so a reader scanning
       // rule_results sees WHICH deployed rule (and which bundle) spoke.
       const { ruleName, advisoryWhy: ownReason, ...rest } = raw;
-      // Only the engine says a result took no part in the verdict: a flag a rule set on its own result is not carried.
-      delete rest.advisory;
+      /*
+       * What a result found is the rule's to say. Its standing is not:
+       * whether it took part in the verdict, whether it vetoes and who
+       * decided that, what kind of claim it is, what the composer did with
+       * it and what state it is in are stamped here from the rule's
+       * declaration and the deployment's configuration. A field of that kind
+       * that a rule set on its own result is not carried: carried, a result
+       * that said `critical: true` vetoed while its row read advisory, and
+       * one that said `critical: false` lost the veto its rule declares.
+       */
+      for (const standing of ['advisory', 'critical', 'criticalSource', 'kind', 'role', 'state'] as const) delete rest[standing];
       /*
        * A result that reports and takes no part in the verdict. Stamped on
        * the row, like `critical`, so a stored row re-composes as it was

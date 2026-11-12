@@ -605,6 +605,42 @@ describe('through the engine', () => {
     }
   });
 
+  /*
+   * What a result found is the rule's to say; its standing is the engine's.
+   * A rule that set `critical`, `kind`, `role` or `state` on its own result
+   * used to have it carried onto the row over the engine's stamp: a result
+   * that said critical vetoed while its row read advisory, and one that
+   * said not critical lost the veto its rule declares.
+   */
+  it('a rule cannot give its own result a standing: critical, kind, role and state are the engine\'s to stamp', async () => {
+    const run = async (declared: { kind?: 'detection' | 'policy'; critical?: boolean }, returned: Record<string, unknown>) => {
+      const e = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+      e.registerRule('completeness', {
+        name: 'probe_standing',
+        description: 'a rule that says what standing its own result has',
+        evalType: 'completeness',
+        weight: 1,
+        ...declared,
+        evaluate: () => ({ ruleName: 'probe_standing', passed: false, score: 0, message: 'fired', ...returned }) as unknown as EvalRuleResult,
+      });
+      const result = await e.evaluateAll(ctx);
+      return { row: result.rule_results.find((r) => r.ruleName === 'probe_standing')!, verdict: result.verdict! };
+    };
+    // A detection that is not critical says it is, and gives a reason for reporting only: it reports only, and vetoes nothing.
+    const claimsVeto = await run({ kind: 'detection' }, { critical: true, criticalSource: 'config', advisoryWhy: 'the rule says so' });
+    expect(claimsVeto.row).toMatchObject({ critical: false, criticalSource: 'default', role: 'advisory', advisory: true });
+    expect(claimsVeto.verdict.basis).not.toBe('detector_veto');
+    // A rule declared critical says its result is not: the veto its rule declares stands.
+    const disownsVeto = await run({ kind: 'detection', critical: true }, { critical: false, role: 'advisory' });
+    expect(disownsVeto.row).toMatchObject({ critical: true, role: 'veto' });
+    expect(disownsVeto.verdict).toMatchObject({ state: 'fail', basis: 'detector_veto', by: ['probe_standing'] });
+    // A rule that declares no kind does not become a policy by saying so, and a failed result is not a pass by saying so.
+    const claimsKind = await run({}, { kind: 'policy', state: 'pass' });
+    expect(claimsKind.row.kind).toBeUndefined();
+    expect(claimsKind.row.state).toBe('fail');
+    expect(claimsKind.verdict.basis).not.toBe('policy_gate');
+  });
+
   it('a deployment that names it in eval.advisoryRules is the standing reason, at any length of history', async () => {
     const quiet = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, { ...defaultConfig.eval, advisoryRules: ['no_unusual_action'] });
     const result = await quiet.evaluateAll({ ...ctx, caseHistory: history(CASE_HISTORY_MIN) });
