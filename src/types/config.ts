@@ -203,9 +203,8 @@ export interface IrisConfig {
     /**
      * Whether the deployment SET eval.prior (loadConfig records it, as it
      * records configuredThresholdKeys), so a verdict can say whose prior it
-     * used: `config` when this is true, `estimated` when the deployment's
-     * own labels implied one, `default` otherwise. Never written by a user;
-     * reserved like configuredThresholdKeys.
+     * used: `config` when this is true, `default` otherwise. Never written
+     * by a user; reserved like configuredThresholdKeys.
      */
     priorConfigured?: boolean;
   };

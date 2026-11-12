@@ -11,11 +11,16 @@
  * deployment. Labels on fires measure precision only; the surface says
  * "local precision", never "local accuracy".
  *
- * The prior estimate: a rule that fires on a fraction f of traffic with
- * local precision p̂ sees f·p̂ true fires, and f·p̂ ≈ π·sens, so
- * π̂ = f·p̂ / sens — labelled `estimated`, with the interval that follows
- * from p̂'s. The sampling suggestion names the rule whose next label
- * narrows the most traffic-weighted uncertainty: gain_r = f_r ·
+ * How often a rule's failure is present: a rule that fires on a fraction
+ * f of traffic with local precision p̂ sees f·p̂ true fires, and
+ * f·p̂ ≈ π·sens, so π̂ = f·p̂ / sens, with the interval that follows from
+ * p̂'s. It is reported beside the rule's labels (local-labels.ts,
+ * prevalence) and no verdict reads it. Through 0.21.0 it stood as the
+ * prior of every failure class, so twenty labels on one rule moved what a
+ * fire of every other rule was worth, whichever way the labels went
+ * (engine.ts, effectivePrior). The sampling suggestion names the rule
+ * whose next label narrows the most traffic-weighted uncertainty:
+ * gain_r = f_r ·
  * (halfwidth(n_r) − halfwidth(n_r + 1)) at p̂_r. Issues are fires grouped
  * by rule and evidence signature, so ten fires of one pattern read as one
  * issue with a count.
@@ -72,9 +77,13 @@ export interface EstimatedPrior {
 }
 
 /**
- * The prior a rule's own fires imply: f · p̂ / sens, with the interval that
- * follows from p̂'s Wilson interval. Null when the rule has not reached
- * LOCAL_LABEL_MIN labels, fires on nothing, or has no published sensitivity.
+ * How often the failure a rule looks for is present, as the rule's own
+ * labelled fires imply it: f · p̂ / sens, with the interval that follows
+ * from p̂'s Wilson interval. It takes the published sensitivity as the
+ * rule's sensitivity on this traffic, which labels on fires cannot check.
+ * Null when the rule has not reached LOCAL_LABEL_MIN labels, fires on
+ * nothing, or has no published sensitivity. It keeps the name of what it
+ * was first used as; it is reported, and is the prior of no verdict.
  */
 export function estimatedPrior(rule: LocalPrecision, fireRate: number, sensitivity: number): EstimatedPrior | null {
   if (!rule.local || rule.precision === null || !(fireRate > 0) || !(sensitivity > 0)) return null;
