@@ -43,10 +43,12 @@ export const TT = {
   sigRegressionAlarm: 'This agent’s own stream shifted: a rule’s fail rate crossed its CUSUM line at this evaluation, about ten points over the baseline set on the agent’s earlier evaluations. Reports, never gates.',
 
   // Labels on your own traffic. Labels are written on fires, so they measure precision only.
-  labelRight: 'This rule was right to fire here. Your labels on a rule’s fires build its local precision — how often its fires are right on YOUR traffic — and at twenty labels that number replaces the published one on every verdict this deployment makes.',
+  labelRight: 'This rule was right to fire here. Your labels on a rule’s fires build its local precision — how often its fires are right on YOUR traffic — and at twenty labels that number replaces the published one wherever this rule fires.',
   labelWrong: 'This rule was wrong to fire here — a false positive on your traffic. Counted into the rule’s local precision; at twenty labels the rule’s fires carry your number instead of the published one.',
   localPrecision: 'Right ÷ (right + wrong) over your labels on this rule’s fires, with a 95% Wilson interval. It measures precision only: nothing here says what a quiet rule missed, so the surface never says “local accuracy”.',
   localInForce: 'Twenty or more labels: on this deployment the rule’s fires carry this precision instead of the published positive predictive value, in the risk estimate and on every row.',
+  localOnResults: 'Twenty or more labels: this rule’s fires show this precision on their results. The rule reports only on this deployment, so no verdict is weighed by it.',
+  localCounted: 'Twenty or more labels, counted and shown here. Only a detection or an inference has a published number for your labels to replace, so no result of this rule changes.',
   prevalence: 'How often the failure a rule looks for is present on your traffic, estimated from your own labels on its fires: a rule that fires on a fraction f of your traffic with local precision p sees f·p true fires, and f·p ≈ prevalence × sensitivity, so prevalence ≈ f·p ÷ sensitivity, at the sensitivity published for the rule. It is information. Your labels change what the labelled rule’s own fires are worth, and no verdict is weighed by this estimate.',
   samplingSuggestion: 'Which rule’s next label narrows the most uncertainty on your traffic: the fire rate times how much one more label would shrink the interval. A suggestion, never a requirement.',
   reevaluate: 'Score this trace again under the rules, thresholds and labels as they stand now. The earlier evaluation is kept and the new one names it, so the change between them is the finding.',

@@ -60,11 +60,11 @@ function builtInClassesOf(ruleName: string): readonly string[] {
 }
 
 /**
- * `weighs` says whose fires the deployment weighs, for the suggestion. An
- * engine gives its own answer (refreshLocalLabels); with no engine it is
- * the rule's kind.
+ * `decides` says on whose fires a label can change pass or fail, for the
+ * suggestion. An engine gives its own answer (refreshLocalLabels): a rule
+ * it weighs and that does not veto. With no engine it is the rule's kind.
  */
-export async function buildLocalLabelSource(storage: IStorageAdapter, tenantId: TenantId, weighs: (ruleName: string) => boolean = isWeighedKind): Promise<LocalLabelSource> {
+export async function buildLocalLabelSource(storage: IStorageAdapter, tenantId: TenantId, decides: (ruleName: string) => boolean = isWeighedKind): Promise<LocalLabelSource> {
   const [tallies, fires] = await Promise.all([storage.labelTallies(tenantId), storage.ruleFireStats(tenantId, LOCAL_LABEL_WINDOW)]);
   const precision = new Map(tallies.map((t) => [t.ruleName, localPrecision(t)] as const));
   const fireRates = new Map(fires.map((f) => [f.ruleName, f.judged > 0 ? f.fired / f.judged : 0] as const));
@@ -90,13 +90,14 @@ export async function buildLocalLabelSource(storage: IStorageAdapter, tenantId: 
   prevalence.sort((a, b) => (a.ruleName < b.ruleName ? -1 : a.ruleName > b.ruleName ? 1 : 0));
 
   /*
-   * The suggestion names only a rule whose labels can move a verdict: a
-   * label on the fire of a measurement, or of a rule the deployment set to
-   * report only, informs the table and nothing else, and asking a reader
-   * for it first would spend their attention on a number no decision reads.
+   * The suggestion names only a rule whose labels can change pass or fail.
+   * A label on the fire of a measurement, or of a rule the deployment set
+   * to report only, informs the table and nothing else. A label on the
+   * fire of a rule that vetoes cannot undo the veto. Asking a reader for
+   * either first would spend their attention on a number no decision reads.
    */
   const candidates = [...fireRates.entries()]
-    .filter(([ruleName, f]) => f > 0 && weighs(ruleName))
+    .filter(([ruleName, f]) => f > 0 && decides(ruleName))
     .map(([ruleName, fireRate]) => ({ precision: precision.get(ruleName) ?? localPrecision({ ruleName, right: 0, wrong: 0 }), fireRate }));
 
   return { precision, fireRates, prevalence, suggestion: samplingSuggestion(candidates), refreshedAt: new Date().toISOString() };
@@ -104,7 +105,7 @@ export async function buildLocalLabelSource(storage: IStorageAdapter, tenantId: 
 
 /** Rebuild the source from storage and install it on the engine every evaluation goes through. */
 export async function refreshLocalLabels(engine: EvalEngine, storage: IStorageAdapter, tenantId: TenantId): Promise<LocalLabelSource> {
-  const source = await buildLocalLabelSource(storage, tenantId, (ruleName) => engine.weighsFiresOf(ruleName));
+  const source = await buildLocalLabelSource(storage, tenantId, (ruleName) => engine.labelsCanDecide(ruleName));
   engine.setLocalLabels(source);
   return source;
 }

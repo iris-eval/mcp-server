@@ -12,7 +12,7 @@ import type {
   Provenance,
 } from '../types/eval.js';
 import { getRulesForType, createCustomRule } from './rules/index.js';
-import { criticalityResolver, type CriticalityOverrides, type EffectiveCriticality } from './criticality.js';
+import { builtInRules, criticalityResolver, type CriticalityOverrides, type EffectiveCriticality } from './criticality.js';
 import { bundleState, compose, interpretations, roleOf, COMPOSER_RULES, DEFAULT_COMPOSE, type ComposeConfig } from './compose.js';
 import { inputsPresent, ruleStateOf, stampRuleResult, type PriorInForce } from './stamp.js';
 import { isWeighedKind, type LocalLabelSource } from './local-labels.js';
@@ -304,6 +304,19 @@ export class EvalEngine {
    */
   weighsFiresOf(ruleName: string): boolean {
     return isWeighedKind(ruleName) && !(this.criticalityOverrides?.advisoryRules?.includes(ruleName) ?? false);
+  }
+
+  /**
+   * Whether a label on this rule's fires can change pass or fail: its fires
+   * are weighed, and none of them is a veto. A rule that vetoes, by its own
+   * declaration or by eval.criticalRules, fails every output it fires on
+   * whatever its labels say; they move only the estimate that verdict
+   * carries. This is what the suggestion of what to label next reads.
+   */
+  labelsCanDecide(ruleName: string): boolean {
+    if (!this.weighsFiresOf(ruleName)) return false;
+    const rule = builtInRules().find((r) => r.name === ruleName);
+    return rule !== undefined && !this.criticality(rule).critical;
   }
 
   /**

@@ -1,6 +1,6 @@
 # The verdict, measured — the composite corpus
 
-Generated 2026-11-12T02:46:26.899Z for v0.21.0 (local generating commit `ebec3188` — branch commits are squashed on merge, so cite the version).
+Generated 2026-11-12T03:40:28.413Z for v0.21.0 (local generating commit `1efc74a0` — branch commits are squashed on merge, so cite the version).
 Composite version `caa13e5c9488` (sha256 over proof/composite/*.json, the real transcripts and the family corpus `e777f6add399`). Reproduce with `npm run proof -- --composite`; CI runs `npm run proof -- --check --composite`.
 
 145 cases: 24 real transcripts (the held-out line: staged, not production traffic) and 121 composed; 100 must not ship, 45 may, 0 unlabelled. Split: 111 dev / 34 test, fnv1a(id + "iris-composite-split-v1") % 100 < 70 → dev, else test; never stored. Headline numbers are the test split. The expected verdict is true by construction — the classes present are a fact of what was injected — and never derived from a composer.
@@ -150,7 +150,7 @@ No rule fires 20 times on the dev split, where a deployment's labels would come 
 | `no_tool_loop` | `tool_loop` | 2 of 29 | all right | 1 of 10 | 11 of 24 | 0 of 2 | 0 of 32 |
 |  |  |  | all wrong | 1 of 10 | 13 of 24 | 2 of 2 | 0 of 32 |
 
-Each of the 20 labellings reads the test split again, 680 readings in all. Where the labelled rule fired, the verdict changed in 12 of 38. Where it did not, the verdict is the one given without labels in all 642: the same state, the same basis, the same risk estimate and interval. Labels are read in one place, the weight of the labelled rule's own fire. A critical rule's fire is a veto, which no label weighs, and labelling one changed no verdict it fired on.
+Each of the 20 labellings reads the test split again, 680 readings in all. Where the labelled rule fired, the verdict changed in 12 of 38. Where it did not, the verdict is the one given without labels in all 642: the same state, the same basis, the same risk estimate and interval. Labels are read in one place, the weight of the labelled rule's own fire. A critical rule's fire is a veto, which no label undoes: labelling one changed the state of no verdict it fired on.
 
 ## Threshold sweep (dev split only, per-output prior)
 

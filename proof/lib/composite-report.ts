@@ -808,7 +808,7 @@ function renderOneRuleLabelled(L: string[], o: OneRuleLabelled): void {
   const vetoing = o.rows.filter((row) => row.vetoes);
   if (vetoing.length > 0) {
     const moved = vetoing.reduce((t, row) => t + row.changedWhereFired.k, 0);
-    sentences.push(moved === 0 ? "A critical rule's fire is a veto, which no label weighs, and labelling one changed no verdict it fired on." : `A critical rule's fire is a veto; ${moved} verdicts changed where a labelled critical rule fired.`);
+    sentences.push(moved === 0 ? "A critical rule's fire is a veto, which no label undoes: labelling one changed the state of no verdict it fired on." : `A critical rule's fire is a veto; ${moved} verdicts changed state where a labelled critical rule fired.`);
   }
   L.push(sentences.join(' '));
   L.push('');

@@ -724,11 +724,23 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
       continue;
     }
     if (verdict.state === 'pass') {
+      /*
+       * A fire weighed by the deployment's own labels is told so. On its
+       * published accuracy the same fire can carry the verdict: it passed
+       * here because the labels call the rule wrong on this traffic, and a
+       * sentence that named the published number would send the reader to
+       * the one setting that did not decide it.
+       */
+      const u = r.uncertainty;
+      const weighedBy =
+        u !== undefined && u.basis === 'local_labels'
+          ? `at the precision your ${u.n} labels on its fires measured (${Math.round(u.precision.point * u.n)} right)`
+          : 'on its published accuracy';
       out.push({
         severity: 'note',
         addressee: 'operator',
         rule: r.ruleName,
-        text: `${r.ruleName} failed but the verdict passed: on its published accuracy this rule alone does not carry the risk past your loss threshold. Raise eval.falsePassCost to block on weaker evidence (the loss threshold is 1 / (1 + falsePassCost)).`,
+        text: `${r.ruleName} failed but the verdict passed: ${weighedBy} this rule alone does not carry the risk past your loss threshold. Raise eval.falsePassCost to block on weaker evidence (the loss threshold is 1 / (1 + falsePassCost)).`,
         configKey: 'eval.falsePassCost',
       });
     }

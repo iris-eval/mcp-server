@@ -116,6 +116,10 @@ describe('local precision on the engine', () => {
     }
     // The risk estimate read the deployment's own number and says so.
     expect(twenty.verdict?.state).toBe('pass');
+    // And the fire that did not carry the verdict is told why in those terms: it passed on the labels, not on the published number.
+    const why = twenty.interpretations?.find((i) => i.rule === 'no_stub_output' && i.configKey === 'eval.falsePassCost');
+    expect(why?.text).toContain('no_stub_output failed but the verdict passed: at the precision your 20 labels on its fires measured (2 right) this rule alone does not carry the risk past your loss threshold.');
+    expect(why?.text).not.toContain('published accuracy');
     expect(twenty.verdict?.risk?.pBad).toBeLessThan(before.verdict!.risk!.pBad);
     expect(twenty.verdict?.risk?.assumptions.some((a) => a.includes('local precision') && a.includes('no_stub_output (20 labels)'))).toBe(true);
 
@@ -261,8 +265,15 @@ describe('local precision on the engine', () => {
     expect(reportOnly().weighsFiresOf('no_silent_tool_failure')).toBe(true);
     expect(reportOnly().weighsFiresOf('min_output_length')).toBe(false);
     expect(reportOnly().weighsFiresOf('a-rule-of-my-own')).toBe(false);
-    // A rule that vetoes is weighed: its labels move the estimate the verdict carries.
+    // A rule that vetoes is weighed: its labels move the estimate the verdict carries. They cannot change pass or fail, which is what the suggestion reads.
     expect(newEngine().weighsFiresOf('no_pii')).toBe(true);
+    expect(newEngine().labelsCanDecide('no_pii')).toBe(false);
+    expect(newEngine().labelsCanDecide('no_stub_output')).toBe(true);
+    const promoted = new EvalEngine(0.7, defaultConfig.eval.ruleThresholds, { ...defaultConfig.eval, criticalRules: ['no_stub_output'] });
+    expect(promoted.weighsFiresOf('no_stub_output')).toBe(true);
+    expect(promoted.labelsCanDecide('no_stub_output')).toBe(false);
+    expect(reportOnly().labelsCanDecide('no_stub_output')).toBe(false);
+    expect(newEngine().labelsCanDecide('min_output_length')).toBe(false);
 
     const plain = await reportOnly().evaluateAll(EMPTY_PROMISE);
     expect(firedOn(plain)).toContain('no_stub_output');

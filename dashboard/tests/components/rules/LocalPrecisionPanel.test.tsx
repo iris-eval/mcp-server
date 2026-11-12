@@ -53,6 +53,8 @@ describe('LocalPrecisionPanel', () => {
     expect(container.querySelector('[data-local-in-force="no_stub_output"]')?.textContent).toBe('yes · in the risk');
     expect(container.querySelector('[data-local-precision="no_tool_loop"]')?.textContent).toBe('0.75 [0.30, 0.95] · n = 4');
     expect(container.querySelector('[data-local-in-force="no_tool_loop"]')).toBeNull();
+    // Where the number replaces the published one, in the panel's own words.
+    expect(container.textContent).toContain('it replaces the published number wherever that rule fires. Nothing else in a verdict reads your labels.');
     expect(container.textContent).toContain('16 more');
     expect(container.querySelector('[data-local-precision="min_output_length"]')?.textContent).toBe('no labels yet');
     expect(container.querySelector('[data-label-count="no_stub_output"]')?.textContent).toBe('2 right · 18 wrong');
@@ -67,6 +69,19 @@ describe('LocalPrecisionPanel', () => {
     // The panel no longer calls anything a prior: the labels are not one.
     expect(container.textContent).not.toMatch(/prior/i);
     expect(container.querySelector('[data-sampling-suggestion="no_tool_loop"]')?.textContent).toBe('Next: label a no_tool_loop fire next: 4 labelled, ±33 points, fires on 12% of your traffic.');
+  });
+
+  it('says "in force" only where a result carries your number: a report-only rule on its results, a measurement counted', () => {
+    const row = (rule: string, kind: string, entersRisk: boolean) => ({ rule, kind, entersRisk, n: 20, right: 15, wrong: 5, precision: { point: 0.75, lo: 0.53, hi: 0.89 }, local: true, publishedPrecision: 0.9, fireRate: 0.2 });
+    useLabelStatsMock.mockReturnValue(query({ ...stats, rules: [row('no_stub_output', 'inference', true), row('no_tool_loop', 'detection', false), row('sentence_count', 'measurement', false)], prevalence: [], suggestion: null }));
+    const { container } = render(<MemoryRouter><LocalPrecisionPanel /></MemoryRouter>);
+    expect(container.querySelector('[data-local-in-force="no_stub_output"]')?.textContent).toBe('yes · in the risk');
+    // A detection the deployment set to report only: its results show the number and no verdict is weighed by it.
+    expect(container.querySelector('[data-local-in-force="no_tool_loop"]')?.textContent).toBe('yes · on its results');
+    // A measurement has no number for labels to replace.
+    expect(container.querySelector('[data-local-in-force="sentence_count"]')).toBeNull();
+    expect(container.querySelector('[data-local-counted="sentence_count"]')?.textContent).toBe('counted');
+    expect(container.querySelector('[data-label-summary]')?.textContent).toBe('60 labels on 3 rules · in force on 2');
   });
 
   it('with nothing labelled and nothing firing, says so and invents no number', () => {

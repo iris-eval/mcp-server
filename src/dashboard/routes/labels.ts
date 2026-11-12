@@ -48,7 +48,7 @@ const IssuesQuery = strictQuery({
 export interface LabelStatsRow {
   rule: string;
   kind: string | null;
-  /** Whether this rule's fires enter the risk estimate, so its labels can move a verdict: a detection or inference the deployment has not set to report only. */
+  /** Whether this rule's fires enter the risk estimate, so its labels change what a verdict weighs: a detection or inference the deployment has not set to report only. A rule that vetoes is one too, though no label changes pass or fail where it fires. */
   entersRisk: boolean;
   n: number;
   right: number;

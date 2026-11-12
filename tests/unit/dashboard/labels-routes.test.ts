@@ -196,6 +196,26 @@ describe('a rule the deployment set to report only', () => {
   }, 120_000);
 });
 
+describe('a rule whose fire vetoes', () => {
+  it('is weighed and is not the rule suggested for the next label: no label changes pass or fail where it fires', async () => {
+    // The stub rule promoted to veto: it is the only detection or inference that fires on this traffic.
+    const h = await harness(true, { ...defaultConfig.eval, criticalRules: ['no_stub_output'] });
+    const scored: Array<{ traceId: string; evalId: string; verdict: string | undefined }> = [];
+    for (let i = 0; i < 20; i++) scored.push(await h.scoreOne(i));
+    expect(scored.every((s) => s.verdict === 'fail')).toBe(true);
+    const before = await call(h.app, 'GET', '/api/v1/labels/stats');
+    expect((before.body.rules as Array<Record<string, unknown>>).find((r) => r.rule === 'no_stub_output')).toMatchObject({ entersRisk: true, fireRate: 1 });
+    expect(before.body.suggestion).toBeNull();
+
+    for (let i = 0; i < 20; i++) await call(h.app, 'POST', '/api/v1/labels', { eval_id: scored[i].evalId, rule: 'no_stub_output', label: 'wrong' });
+    const after = await h.engine.evaluateAll({ output: STUB, input: 'Summarise the notes.' });
+    // Twenty labels calling its fires wrong, and the stub still fails: the deployment said every fire of this rule decides.
+    expect(after.verdict).toMatchObject({ state: 'fail', basis: 'detector_veto', by: ['no_stub_output'] });
+    expect((await call(h.app, 'GET', '/api/v1/labels/stats')).body.suggestion).toBeNull();
+    await h.store.close();
+  }, 120_000);
+});
+
 describe('POST /evaluations/:id/reevaluate', () => {
   it('keeps the earlier row, names it, and after twenty labels calling the rule wrong the re-score passes what the published number failed', async () => {
     const h = await harness();

@@ -13,7 +13,8 @@
  *     estimated prior all flipped verdicts under one hash;
  *   - a deployment's labels reached the configuration hash only through the
  *     prior once estimated from them, so the hash moved as traffic arrived
- *     and stood still when a label changed what a fire was worth.
+ *     and stood still for a label that left the rule's precision where it
+ *     was, though the fire was worth something else.
  *
  * And a stored verdict that was `unknown` for missing required evidence
  * read back as a pass, because the setting was not stored with the row.

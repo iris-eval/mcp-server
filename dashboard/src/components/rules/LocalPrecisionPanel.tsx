@@ -51,7 +51,9 @@ export function LocalPrecisionPanel() {
     .sort((a, b) => b.n - a.n || (b.fireRate ?? 0) - (a.fireRate ?? 0) || a.rule.localeCompare(b.rule));
   const labelled = data.rules.filter((r) => r.n > 0);
   const totalLabels = labelled.reduce((sum, r) => sum + r.n, 0);
-  const inForce = labelled.filter((r) => r.local).length;
+  // In force: the rule's results carry your number. Only a detection or an inference has a number to replace; a measurement's labels are counted and shown.
+  const carries = (r: LabelStatsRow): boolean => r.local && (r.kind === 'detection' || r.kind === 'inference');
+  const inForce = labelled.filter(carries).length;
 
   const columns: Column<LabelStatsRow>[] = [
     { key: 'rule', header: 'Rule', render: (r) => <code data-label-rule={r.rule}>{r.rule}</code> },
@@ -83,10 +85,16 @@ export function LocalPrecisionPanel() {
       header: 'In force',
       width: '9rem',
       render: (r) =>
-        r.local ? (
-          <Tooltip content={TT.localInForce}>
+        carries(r) ? (
+          <Tooltip content={r.entersRisk ? TT.localInForce : TT.localOnResults}>
             <span tabIndex={0} style={styles.inForce} data-local-in-force={r.rule}>
-              yes{r.entersRisk ? ' · in the risk' : ''}
+              {r.entersRisk ? 'yes · in the risk' : 'yes · on its results'}
+            </span>
+          </Tooltip>
+        ) : r.local ? (
+          <Tooltip content={TT.localCounted}>
+            <span tabIndex={0} style={styles.muted} data-local-counted={r.rule}>
+              counted
             </span>
           </Tooltip>
         ) : (
@@ -117,8 +125,8 @@ export function LocalPrecisionPanel() {
       </div>
       <p style={styles.muted}>
         On any trace, a fired rule asks whether it was right to fire. Right ÷ (right + wrong) over your answers is the rule’s local precision on
-        your traffic, and at {data.min} labels it replaces the published number on every verdict this deployment makes. Labels measure
-        precision only: nothing here says what a quiet rule missed.
+        your traffic, and at {data.min} labels it replaces the published number wherever that rule fires. Nothing else in a verdict reads
+        your labels. Labels measure precision only: nothing here says what a quiet rule missed.
       </p>
       {data.prevalence.length > 0 && (
         <Tooltip content={TT.prevalence}>
