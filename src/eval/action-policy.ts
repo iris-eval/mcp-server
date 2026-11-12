@@ -29,8 +29,19 @@
  * fires if EITHER matches while an allow rule is satisfied only if BOTH do.
  * Deny globs fold case; allow globs do not. A `..` that climbs out of its
  * root is reported even on a passing result rather than silently absorbed.
+ *
+ * A TOOL'S NAME HAS TWO FORMS TOO. A host that reaches its tools through MCP
+ * can call them `mcp__<server>__<tool>`, and a policy is written by someone
+ * who knows the tool and not the host's spelling. So a deny rule is tried
+ * against the name the call was made by AND against the tool's own name,
+ * and fires on either; an allow rule is satisfied only by the name the call
+ * was made by. Matched against the called name alone, `deny: delete_*`
+ * stopped `delete_file` and permitted `mcp__files__delete_file`: a policy
+ * the host's naming had switched off. An allow rule keeps the one form
+ * because the other would admit every server's tool of that name.
  */
 import { normalise } from './text/normalise.js';
+import { ownToolName } from './case-history.js';
 
 /** Longest glob accepted. A policy is written by a person; this is generous. */
 export const MAX_GLOB_LENGTH = 512;
@@ -442,6 +453,12 @@ export interface PolicyMatch {
   index: number;
   matched: boolean;
   bindings: PolicyBinding[];
+  /**
+   * Which form of the tool's name the rule's glob matched: the name the call
+   * was made by, or the tool's own name inside `mcp__<server>__<tool>`.
+   * Absent when it matched neither. Only a deny rule is tried on the second.
+   */
+  toolMatchedBy?: 'called' | 'own';
 }
 
 /**
@@ -480,9 +497,41 @@ function checkBinding(input: unknown, binding: PolicyBindingSpec, favourDenial: 
  * match. A binding whose pointer addresses nothing does not match — a deny
  * rule on `{"/path": "/etc/**"}` should not fire on a call that carries no
  * path at all, and an allow rule should not be satisfied by an absent value.
+ *
+ * The tool name is the name the call was made by, and for a deny rule also
+ * the tool's own name (this file's header says why): `favourDenial` is the
+ * one switch for every ambiguity, the name's among them.
  */
 export function matchPolicyRule(rule: PolicyRule, index: number, toolName: string, input: unknown, favourDenial: boolean): PolicyMatch {
-  const tool = favourDenial ? matchGlob(rule.tool.toLowerCase(), toolName.toLowerCase()) : matchGlob(rule.tool, toolName);
+  const toolMatchedBy = toolFormMatched(rule.tool, toolName, favourDenial);
+  const tool = toolMatchedBy !== null;
   const bindings = tool ? rule.args.map((binding) => checkBinding(input, binding, favourDenial)) : [];
-  return { rule, index, matched: tool && bindings.every((b) => b.matched), bindings };
+  return { rule, index, matched: tool && bindings.every((b) => b.matched), bindings, ...(toolMatchedBy !== null ? { toolMatchedBy } : {}) };
+}
+
+/** Which form of a called tool's name a rule's glob matches, if any: the called name first, and for a deny rule the tool's own name after it. */
+function toolFormMatched(glob: string, toolName: string, favourDenial: boolean): 'called' | 'own' | null {
+  if (!favourDenial) return matchGlob(glob, toolName) ? 'called' : null;
+  const folded = glob.toLowerCase();
+  const called = toolName.toLowerCase();
+  if (matchGlob(folded, called)) return 'called';
+  // The own name of the folded name: a deny rule folds case everywhere, the prefix included.
+  const own = ownToolName(called);
+  return own !== called && matchGlob(folded, own) ? 'own' : null;
+}
+
+/**
+ * The allow rule that would have been satisfied had it been held to the
+ * tool's own name, for a call no allow rule matched: what the message names
+ * so the author can see why a correct call on a host that prefixes was
+ * denied, and what to write. Null when the call's name has one form, or no
+ * rule matches the other.
+ */
+export function allowRuleForOwnName(allow: readonly PolicyRule[], toolName: string, input: unknown): { index: number; rule: PolicyRule; ownName: string } | null {
+  const ownName = ownToolName(toolName);
+  if (ownName === toolName) return null;
+  for (const [index, rule] of allow.entries()) {
+    if (matchPolicyRule(rule, index, ownName, input, false).matched) return { index, rule, ownName };
+  }
+  return null;
 }

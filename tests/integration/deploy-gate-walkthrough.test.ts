@@ -120,6 +120,27 @@ describe('step 3 — an action_policy rule at severity high', () => {
     config: { deny: [{ tool: 'delete_*' }] },
   } as unknown as CustomRuleDefinition;
 
+  it('gates the same tool called through an MCP server, on a host that names its tools mcp__<server>__<tool>', async () => {
+    const engine = new EvalEngine();
+    engine.registerRule('custom', createCustomRule(NO_DELETES, 'high'), NO_DELETES.name);
+    const gated = await engine.evaluateAll({
+      input: 'Clean up the staging repo.',
+      output: 'Done — removed the staging repository.',
+      toolCalls: [{ tool_name: 'mcp__github__delete_repo', input: { name: 'staging' }, output: 'deleted' }],
+    });
+    expect(gated.passed).toBe(false);
+    expect(gated.verdict).toMatchObject({ state: 'fail', basis: 'policy_gate' });
+    expect(gated.verdict?.by).toContain('no_deletes_in_prod');
+    expect(gated.rule_results.find((r) => r.ruleName === 'no_deletes_in_prod')?.message).toContain("which matches the tool's own name");
+    // Another tool of that server is not the policy's business.
+    const allowed = await engine.evaluateAll({
+      input: 'List the staging repos.',
+      output: 'There are two: staging-a and staging-b.',
+      toolCalls: [{ tool_name: 'mcp__github__list_repos', input: {}, output: 'staging-a, staging-b' }],
+    });
+    expect(allowed.verdict?.basis).not.toBe('policy_gate');
+  });
+
   it('gates a trace that calls a forbidden tool: basis policy_gate, by the rule, and the rule says it gates', async () => {
     const engine = new EvalEngine();
     engine.registerRule('custom', createCustomRule(NO_DELETES, 'high'), NO_DELETES.name);

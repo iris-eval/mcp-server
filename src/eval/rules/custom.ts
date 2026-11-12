@@ -6,7 +6,7 @@ import { readNumericConfig, describeKeys } from './config-keys.js';
 import { sandboxedRegexTest, REGEX_MATCH_BUDGET_MS } from './regex-sandbox.js';
 import { MAX_PATTERN_LENGTH } from './regex-budget.js';
 import { checkArguments, compileToolSchema } from '../schema-validator.js';
-import { compileActionPolicy, matchPolicyRule } from '../action-policy.js';
+import { allowRuleForOwnName, compileActionPolicy, matchPolicyRule } from '../action-policy.js';
 import { stepsOf, stepStatsOf } from '../steps.js';
 import { costBasisNote } from '../cost-basis.js';
 
@@ -498,7 +498,9 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
                 if (binding.truncated) truncated += 1;
               }
               if (match.matched) {
-                verdict = { why: `deny[${at}] (tool ${JSON.stringify(rule.tool)})`, match };
+                // Said when the rule caught the tool under a name the host did not call it by: the reader sees one name in the call and another in the rule.
+                const form = match.toolMatchedBy === 'own' ? ", which matches the tool's own name" : '';
+                verdict = { why: `deny[${at}] (tool ${JSON.stringify(rule.tool)}${form})`, match };
                 break;
               }
             }
@@ -516,7 +518,20 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
                 }
               }
               if (!allowed) {
-                verdict = { why: 'no allow rule matched it', match: null };
+                /*
+                 * An allow rule is held to the name the call was made by. On
+                 * a host that calls tools mcp__<server>__<tool>, a rule
+                 * written for the tool's own name then matches nothing, and
+                 * the author is told which rule and what the call was named.
+                 */
+                const near = allowRuleForOwnName(policy.allow, step.name, step.input);
+                verdict = {
+                  why:
+                    near === null
+                      ? 'no allow rule matched it'
+                      : `no allow rule matched it: allow[${near.index}] (tool ${JSON.stringify(near.rule.tool)}) matches the tool's own name, ${near.ownName}, and an allow rule is held to the name the call was made by`,
+                  match: null,
+                };
               }
             }
             if (verdict === null) continue;
