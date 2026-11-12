@@ -257,6 +257,11 @@ describe('action_policy — the documentation\'s examples', () => {
     }
     expect(configs.length).toBeGreaterThanOrEqual(3);
     for (const config of configs) expect(compileActionPolicy(config), JSON.stringify(config)).toHaveProperty('policy');
+    // And the example with a binding does what the sentence under it says, word for word.
+    const bound = configs.find((c) => JSON.stringify(c).includes('"args"'))!;
+    const reads = (path: string) => run(bound, [{ tool_name: 'read_file', input: { path }, output: 'x' }]).passed;
+    expect(section).toContain('denies a read of `/etc/passwd` and of `/etc/ssh/sshd_config`, and permits `/workspace/notes.md`');
+    expect([reads('/etc/passwd'), reads('/etc/ssh/sshd_config'), reads('/workspace/notes.md')]).toEqual([false, false, true]);
   });
 });
 
@@ -270,14 +275,42 @@ describe('action_policy — a tool the host calls mcp__<server>__<tool>', () => 
     const bare = run(deny, [del('delete_file')], 'critical');
     expect(bare.passed).toBe(false);
     expect(bare.message).toContain('tool_calls[0] (delete_file) by deny[0] (tool "delete_*")');
-    for (const name of ['mcp__files__delete_file', 'mcp__github__delete_repository', 'mcp__claude_ai_Files__delete_file']) {
+    for (const [name, read] of [['mcp__files__delete_file', 'delete_file'], ['mcp__github__delete_repository', 'delete_repository'], ['mcp__claude_ai_Files__delete_file', 'delete_file']]) {
       const r = run(deny, [del(name)], 'critical');
       expect(r.passed, name).toBe(false);
-      expect(r.message, name).toContain(`tool_calls[0] (${name}) by deny[0] (tool "delete_*", which matches the tool's own name)`);
-      expect((r.evidence ?? []).some((e) => e.type === 'toolCall' && e.toolName === name && e.label.includes("which matches the tool's own name")), name).toBe(true);
+      expect(r.message, name).toContain(`tool_calls[0] (${name}) by deny[0] (tool "delete_*", which matches ${read}, read as the tool's own name)`);
+      expect((r.evidence ?? []).some((e) => e.type === 'toolCall' && e.toolName === name && e.label.includes(`which matches ${read}, read as the tool's own name`)), name).toBe(true);
     }
     // Deny folds case, the prefix included.
     expect(run(deny, [del('MCP__Files__Delete_File')], 'critical').passed).toBe(false);
+  });
+
+  it('where the server\'s part ends is not written in the name: a deny rule reads the own name from every "__" after the prefix', () => {
+    const deny = { deny: [{ tool: 'delete_*' }] };
+    // As Claude Code writes servers labelled "files (prod)", "files.", "files v2!", "my  files" and "files__prod", and a gateway whose tool is github__delete_file.
+    for (const name of [
+      'mcp__files__prod___delete_file',
+      'mcp__files___delete_file',
+      'mcp__files_v2___delete_file',
+      'mcp__my__files__delete_file',
+      'mcp__files__prod__delete_file',
+      'mcp__gateway__github__delete_file',
+    ]) {
+      const r = run(deny, [del(name)], 'critical');
+      expect(r.passed, name).toBe(false);
+      expect(r.message, name).toContain("which matches delete_file, read as the tool's own name");
+    }
+    // The price, stated: a piece of a server's label after a "__" is read the same way, and the message shows the name that was read.
+    const label = run(deny, [del('mcp__backup__delete_stale___list_snapshots')], 'critical');
+    expect(label.passed).toBe(false);
+    expect(label.message).toContain("which matches delete_stale___list_snapshots, read as the tool's own name");
+    // A name with a great many "__" costs one match, and is still judged.
+    const long = `mcp__${'a__'.repeat(20_000)}delete_file`;
+    const spent = cpuMs(() => {
+      expect(run(deny, [del(long)], 'critical').passed).toBe(false);
+      expect(run(deny, [del(`mcp__${'a__'.repeat(20_000)}read_file`)], 'critical').passed).toBe(true);
+    });
+    expect(spent).toBeLessThan(2_000);
   });
 
   it('a deny rule does not fire on a server\'s label, or on another tool of the same server', () => {
@@ -325,7 +358,7 @@ describe('action_policy — a tool the host calls mcp__<server>__<tool>', () => 
     expect(run(both, [del('mcp__files__read_file')]).passed).toBe(true);
     const denied = run(both, [del('mcp__files__delete_file')]);
     expect(denied.passed).toBe(false);
-    expect(denied.message).toContain('by deny[0] (tool "delete_*", which matches the tool\'s own name)');
+    expect(denied.message).toContain('by deny[0] (tool "delete_*", which matches delete_file, read as the tool\'s own name)');
   });
 });
 

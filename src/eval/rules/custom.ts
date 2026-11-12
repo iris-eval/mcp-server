@@ -301,7 +301,8 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
     mechanism: meta?.mechanism ?? 'formula',
     needs: meta?.needs ?? ['output'],
     classes: [],
-    version: 1,
+    // action_policy is at 2: its deny rules read the tool's own name inside mcp__<server>__<tool> (action-policy.ts). Every other custom type means what it meant.
+    version: definition.type === 'action_policy' ? 2 : 1,
     evaluate(context: EvalContext): EvalRuleResult {
       switch (definition.type) {
         case 'regex_match': {
@@ -498,8 +499,9 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
                 if (binding.truncated) truncated += 1;
               }
               if (match.matched) {
-                // Said when the rule caught the tool under a name the host did not call it by: the reader sees one name in the call and another in the rule.
-                const form = match.toolMatchedBy === 'own' ? ", which matches the tool's own name" : '';
+                // Said when the rule caught the tool under a name the host did not call it by, with the name that was read: the reader sees one name in the call and another in the rule, and a piece of a server's label can be what matched.
+                const form =
+                  match.toolMatchedBy !== 'own' ? '' : match.ownNameRead !== undefined ? `, which matches ${match.ownNameRead}, read as the tool's own name` : ", which matches a part of the name read as the tool's own name";
                 verdict = { why: `deny[${at}] (tool ${JSON.stringify(rule.tool)}${form})`, match };
                 break;
               }

@@ -131,7 +131,7 @@ describe('step 3 — an action_policy rule at severity high', () => {
     expect(gated.passed).toBe(false);
     expect(gated.verdict).toMatchObject({ state: 'fail', basis: 'policy_gate' });
     expect(gated.verdict?.by).toContain('no_deletes_in_prod');
-    expect(gated.rule_results.find((r) => r.ruleName === 'no_deletes_in_prod')?.message).toContain("which matches the tool's own name");
+    expect(gated.rule_results.find((r) => r.ruleName === 'no_deletes_in_prod')?.message).toContain("which matches delete_repo, read as the tool's own name");
     // Another tool of that server is not the policy's business.
     const allowed = await engine.evaluateAll({
       input: 'List the staging repos.',

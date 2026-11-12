@@ -30,15 +30,25 @@
  * Deny globs fold case; allow globs do not. A `..` that climbs out of its
  * root is reported even on a passing result rather than silently absorbed.
  *
- * A TOOL'S NAME HAS TWO FORMS TOO. A host that reaches its tools through MCP
- * can call them `mcp__<server>__<tool>`, and a policy is written by someone
- * who knows the tool and not the host's spelling. So a deny rule is tried
- * against the name the call was made by AND against the tool's own name,
- * and fires on either; an allow rule is satisfied only by the name the call
- * was made by. Matched against the called name alone, `deny: delete_*`
- * stopped `delete_file` and permitted `mcp__files__delete_file`: a policy
- * the host's naming had switched off. An allow rule keeps the one form
- * because the other would admit every server's tool of that name.
+ * A TOOL'S NAME HAS MORE THAN ONE READING TOO. A host that reaches its tools
+ * through MCP can call them `mcp__<server>__<tool>`, and a policy is written
+ * by someone who knows the tool and not the host's spelling. So a deny rule
+ * is tried against the name the call was made by AND against the tool's own
+ * name, and fires on either; an allow rule is satisfied only by the name
+ * the call was made by. Matched against the called name alone,
+ * `deny: delete_*` stopped `delete_file` and permitted
+ * `mcp__files__delete_file`: a policy the host's naming had switched off. An
+ * allow rule keeps the one form because the other would admit every
+ * server's tool of that name.
+ *
+ * Where the server's part ends is not written in the name either. A host
+ * builds the name from a server's label, and a label can come out with "__"
+ * in it: Claude Code writes a server labelled "files (prod)" as
+ * `files__prod_`, so its delete_file is `mcp__files__prod___delete_file`.
+ * Every "__" after the prefix is a place the tool's own name may begin, and
+ * a deny rule reads it from each of them (toolFormMatched). A piece of a
+ * server's label can then deny a call, which is the direction this file
+ * resolves every doubt in.
  */
 import { normalise } from './text/normalise.js';
 import { ownToolName } from './case-history.js';
@@ -459,6 +469,8 @@ export interface PolicyMatch {
    * Absent when it matched neither. Only a deny rule is tried on the second.
    */
   toolMatchedBy?: 'called' | 'own';
+  /** The own name the glob matched, case-folded, for the message: the reader sees the name that was read. Absent when it lies past the places looked at to name it. */
+  ownNameRead?: string;
 }
 
 /**
@@ -503,21 +515,57 @@ function checkBinding(input: unknown, binding: PolicyBindingSpec, favourDenial: 
  * one switch for every ambiguity, the name's among them.
  */
 export function matchPolicyRule(rule: PolicyRule, index: number, toolName: string, input: unknown, favourDenial: boolean): PolicyMatch {
-  const toolMatchedBy = toolFormMatched(rule.tool, toolName, favourDenial);
-  const tool = toolMatchedBy !== null;
+  const form = toolFormMatched(rule.tool, toolName, favourDenial);
+  const tool = form !== null;
   const bindings = tool ? rule.args.map((binding) => checkBinding(input, binding, favourDenial)) : [];
-  return { rule, index, matched: tool && bindings.every((b) => b.matched), bindings, ...(toolMatchedBy !== null ? { toolMatchedBy } : {}) };
+  return {
+    rule,
+    index,
+    matched: tool && bindings.every((b) => b.matched),
+    bindings,
+    ...(form !== null ? { toolMatchedBy: form.by } : {}),
+    ...(form?.read !== undefined ? { ownNameRead: form.read } : {}),
+  };
 }
 
-/** Which form of a called tool's name a rule's glob matches, if any: the called name first, and for a deny rule the tool's own name after it. */
-function toolFormMatched(glob: string, toolName: string, favourDenial: boolean): 'called' | 'own' | null {
-  if (!favourDenial) return matchGlob(glob, toolName) ? 'called' : null;
+/** The prefix a host puts before a server's label and a tool's name. */
+const MCP_PREFIX = 'mcp__';
+/** How many places after the prefix a matched own name is looked for, to name it in the message. The match itself is one glob match and has no such bound. */
+const OWN_NAME_READINGS = 32;
+
+/**
+ * Which form of a called tool's name a rule's glob matches, if any: the
+ * called name first, and for a deny rule the tool's own name after it.
+ *
+ * The own name is read from every "__" after the prefix (this file's header
+ * says why), and from the case-folded name, since a deny rule folds case
+ * everywhere, the prefix included. "Does the glob match from any of those
+ * places" is one match of `mcp__*__<glob>`: the matcher's cost, once,
+ * however many "__" a name holds. A name built to hold thousands of them
+ * cannot multiply the work, so it cannot stall the policy.
+ */
+function toolFormMatched(glob: string, toolName: string, favourDenial: boolean): { by: 'called' | 'own'; read?: string } | null {
+  if (!favourDenial) return matchGlob(glob, toolName) ? { by: 'called' } : null;
   const folded = glob.toLowerCase();
   const called = toolName.toLowerCase();
-  if (matchGlob(folded, called)) return 'called';
-  // The own name of the folded name: a deny rule folds case everywhere, the prefix included.
-  const own = ownToolName(called);
-  return own !== called && matchGlob(folded, own) ? 'own' : null;
+  if (matchGlob(folded, called)) return { by: 'called' };
+  if (!called.startsWith(MCP_PREFIX) || !matchGlob(`${MCP_PREFIX}*__${folded}`, called)) return null;
+  const read = ownNameRead(folded, called);
+  return { by: 'own', ...(read !== null ? { read } : {}) };
+}
+
+/** The first own name the glob matches, looking at the first OWN_NAME_READINGS places one may begin; null when it begins later. */
+function ownNameRead(folded: string, called: string): string | null {
+  let from = MCP_PREFIX.length;
+  for (let looked = 0; looked < OWN_NAME_READINGS; looked += 1) {
+    const at = called.indexOf('__', from);
+    if (at === -1) return null;
+    const rest = called.slice(at + 2);
+    if (rest !== '' && matchGlob(folded, rest)) return rest;
+    // One character on, so "___" is read at both of its places.
+    from = at + 1;
+  }
+  return null;
 }
 
 /**

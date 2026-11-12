@@ -85,7 +85,8 @@ describe('rule metadata — the registry declares everything, in registered voca
       expect(rule.kind, type).toBe('policy');
       expect(MECHANISMS, type).toContain(rule.mechanism);
       expect(rule.needs!.length, type).toBeGreaterThan(0);
-      expect(rule.version).toBe(1);
+      // The one custom type whose meaning has changed carries the change in its version.
+      expect(rule.version, type).toBe(type === 'action_policy' ? 2 : 1);
     }
     expect(createCustomRule({ name: 'c', type: 'cost_threshold', config: {} }).needs).toEqual(['cost']);
   });

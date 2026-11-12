@@ -675,7 +675,7 @@ Measured cells name the file and key; measurable cells name the harness; stated 
 
 ### `action_policy` (the custom rule types)
 
-- **Q1** measured — proof/results.json → custom.types[action_policy] (conformance to the documented definition under a declared config on 30 cases)
+- **Q1** measured — proof/results.json → custom.types[action_policy] (conformance to the documented definition under a declared config on 34 cases)
 - **Q2** stated — proof/corpus/custom/action_policy.json → definition and boundary cases (the definition names the limit; the family holds the boundary cases)
 - **Q3** stated — proof/corpus/custom/action_policy.json → definition, config (the author's own constraint under the config the family declares)
 - **Q4** stated — proof/corpus/custom/action_policy.json → definition (a constraint, not a detector)
