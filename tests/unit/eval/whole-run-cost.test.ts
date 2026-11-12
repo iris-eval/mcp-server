@@ -8,7 +8,7 @@
  * calls a request the server accepts, under a megabyte, cost them 2 to 78 s
  * of CPU each on one evaluation:
  *
- *   tool_sequence          500 expected calls against 10,000 made    9 s, 68 s
+ *   tool_sequence          500 expected calls against 10,000 made    9 s, 68 s, 47 s (inputs that are arrays)
  *   valid_tool_arguments   one large schema, hashed at every call    7 s
  *   tool_choice            a tool's terms taken at every called name 78 s
  *   no_silent_tool_failure failures against later calls              2 s
@@ -48,7 +48,7 @@ async function judged(context: EvalContext): Promise<{ result: EvalResult; cpuMs
   const spent = process.cpuUsage(started);
   return { result, cpuMs: (spent.user + spent.system) / 1000, bytes };
 }
-/** Measured at 0.1 to 0.9 s each. The budget is what a reading that costs calls × something else breaks by ten times and more. */
+/** Measured at under a second each. The budget is what a reading that costs calls × something else breaks by ten times and more. */
 const BUDGET_MS = 6_000;
 const REQUEST_BYTES = 1_048_576;
 
@@ -77,6 +77,32 @@ describe('a run of 10,000 calls, in the shapes that cost the rules the most', ()
     expect(bytes).toBeLessThan(REQUEST_BYTES);
     expect(cpuMs).toBeLessThan(BUDGET_MS);
     expect(row(result, 'tool_sequence').message).toContain('500 of 500 expected calls never came');
+  });
+
+  it('tool_sequence: expected inputs that are arrays or hold one, at the default way of matching arguments', async () => {
+    // An array is compared as it is written out. Written out again at every pair of an expected call and a step, 500 expected arrays of 130 numbers against 10,000 steps cost 47 s of CPU; each is now written once.
+    const numbers = Array.from({ length: N }, (_, i): ToolCallRecord => ({ tool_name: 'x', input: i }));
+    for (const length of [20, 130]) {
+      const expected = Array.from({ length: 500 }, (_, i) => ({ tool_name: 'x', input: Array.from({ length }, (_, k) => (i + k) % 10) }));
+      const { result, cpuMs, bytes } = await judged({ ...RUN, toolCalls: numbers, expectedTrajectory: { tool_calls: expected, mode: 'subset' } });
+      expect(bytes, `${length} numbers`).toBeLessThan(REQUEST_BYTES);
+      expect(cpuMs, `${length} numbers`).toBeLessThan(BUDGET_MS);
+      expect(row(result, 'tool_sequence').message).toContain('500 of 500 expected calls never came');
+    }
+    // The comparison that cannot stop at the length: every step an array equal to the expected one but for its last number.
+    const long = Array.from({ length: 2_500 }, (_, i): ToolCallRecord => ({ tool_name: 'x', input: [...Array.from({ length: 40 }, (_, k) => k % 10), i] }));
+    const nearly = Array.from({ length: 500 }, (_, i) => ({ tool_name: 'x', input: [...Array.from({ length: 40 }, (_, k) => k % 10), -1 - i] }));
+    const close = await judged({ ...RUN, toolCalls: long, expectedTrajectory: { tool_calls: nearly, mode: 'subset' } });
+    expect(close.cpuMs).toBeLessThan(BUDGET_MS);
+    expect(row(close.result, 'tool_sequence').message).toContain('500 of 500 expected calls never came');
+    // An array inside an object, in each mode that asks an expected call of many steps.
+    const holding = Array.from({ length: N }, (_, i): ToolCallRecord => ({ tool_name: 'x', input: { a: [i] } }));
+    const held = Array.from({ length: 500 }, (_, i) => ({ tool_name: 'x', input: { a: [-1 - i] } }));
+    for (const mode of ['subset', 'superset', 'unordered', 'ordered_subset'] as const) {
+      const { result, cpuMs } = await judged({ ...RUN, toolCalls: holding, expectedTrajectory: { tool_calls: held, mode } });
+      expect(cpuMs, mode).toBeLessThan(BUDGET_MS);
+      expect(row(result, 'tool_sequence').passed, mode).toBe(false);
+    }
   });
 
   it('tool_sequence: every expected call made, each found among 10,000 of its tool', async () => {
@@ -152,6 +178,12 @@ describe('a run of 10,000 calls, in the shapes that cost the rules the most', ()
     const silent = row(result, 'no_silent_tool_failure');
     expect(silent).toMatchObject({ skipped: true, evidenceIncomplete: true, skipClass: 'defeated' });
     expect(silent.message).toMatch(/^Not judged: whether a later call recovered \d+ failed calls was not settled inside the rule's limit of work, and no other call was left failed$/);
+    // The same run under an answer that owns a failure passes, and names the calls it could not settle: the run was read whole, so there is no rest of it to speak of.
+    const owned = await judged({ input: RUN.input, output: 'Some of the calls failed and I could not finish the task.', toolCalls: [...failures, ...halves, { tool_name: 't', input: ['alpha', 'beta'] }] });
+    const said = row(owned.result, 'no_silent_tool_failure');
+    expect(said.passed).toBe(true);
+    expect(said.message).toMatch(/^No tool call was settled as left failed, and the output acknowledges a failure \("[^"]+"\), so one among the \d+ whose recovery was not settled inside the rule's limit of work would be owned too \(9999 calls examined; \d+ earlier failures were recovered by a later call that went right\)$/);
+    expect(said.message).not.toContain('among the rest');
   });
 
   it('no_injection_compliance: sixty pages that each hold a directive and 9,940 calls that each carry two of its words', async () => {

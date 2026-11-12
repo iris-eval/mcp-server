@@ -7,21 +7,21 @@
  */
 
 export const PUBLISHED_CALIBRATION = {
-  version: '25086531510e',
-  compositeVersion: '6f54d1e95b4c',
+  version: 'af9baddb4965',
+  compositeVersion: '791b46f384a0',
   split: 'dev',
   prior: 0.5,
   priorMode: 'per-output',
   bins: [
-    { from: 0, to: 0.1, n: 2, bad: 0, patterns: 1, meanPredicted: 0.0984 },
-    { from: 0.1, to: 0.2, n: 43, bad: 16, patterns: 5, meanPredicted: 0.115 },
+    { from: 0, to: 0.1, n: 4, bad: 0, patterns: 2, meanPredicted: 0.0974 },
+    { from: 0.1, to: 0.2, n: 41, bad: 16, patterns: 4, meanPredicted: 0.1138 },
     { from: 0.2, to: 0.3, n: 0, bad: 0, patterns: 0, meanPredicted: null },
     { from: 0.3, to: 0.4, n: 2, bad: 2, patterns: 1, meanPredicted: 0.3526 },
-    { from: 0.4, to: 0.5, n: 3, bad: 2, patterns: 1, meanPredicted: 0.4349 },
-    { from: 0.5, to: 0.6, n: 9, bad: 9, patterns: 2, meanPredicted: 0.5692 },
-    { from: 0.6, to: 0.7, n: 0, bad: 0, patterns: 0, meanPredicted: null },
-    { from: 0.7, to: 0.8, n: 9, bad: 7, patterns: 3, meanPredicted: 0.7663 },
-    { from: 0.8, to: 0.9, n: 7, bad: 7, patterns: 3, meanPredicted: 0.8319 },
+    { from: 0.4, to: 0.5, n: 3, bad: 2, patterns: 1, meanPredicted: 0.4334 },
+    { from: 0.5, to: 0.6, n: 1, bad: 1, patterns: 1, meanPredicted: 0.5331 },
+    { from: 0.6, to: 0.7, n: 8, bad: 8, patterns: 1, meanPredicted: 0.6094 },
+    { from: 0.7, to: 0.8, n: 9, bad: 7, patterns: 3, meanPredicted: 0.7658 },
+    { from: 0.8, to: 0.9, n: 7, bad: 7, patterns: 3, meanPredicted: 0.8315 },
     { from: 0.9, to: 1, n: 7, bad: 7, patterns: 4, meanPredicted: 0.9403 },
   ],
 } as const;

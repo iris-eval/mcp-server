@@ -28,16 +28,46 @@ export const DEFAULT_ARGS_MODE: ExpectedArgsMode = 'subset';
 export const DEFAULT_STEP_TOLERANCE = 1.5;
 export const SEQUENCE_MODES: readonly ExpectedTrajectoryMode[] = ['strict', 'unordered', 'subset', 'superset', 'ordered_subset'];
 
-/** `want` is a subset of `have`: every key of an object present with a value that is itself a subset; arrays and scalars must be equal. */
-export function isSubset(want: unknown, have: unknown): boolean {
+/**
+ * A value as stableStringify writes it, written once for each object or
+ * array it is asked of. An expectation's arrays are compared with every
+ * step's: written out again at each comparison, 500 expected calls whose
+ * input is an array of 130 numbers cost 47 s of CPU against 10,000 steps.
+ */
+export function writtenOnce(): (value: unknown) => string {
+  const memo = new WeakMap<object, string>();
+  return (value) => {
+    if (value === null || typeof value !== 'object') return stableStringify(value);
+    let text = memo.get(value);
+    if (text === undefined) {
+      text = stableStringify(value);
+      memo.set(value, text);
+    }
+    return text;
+  };
+}
+
+/** `want` is a subset of `have`: every key of an object present with a value that is itself a subset; arrays and scalars must be equal. `written` is how a value is written out to be compared (writtenOnce, for many comparisons of the same values). */
+export function isSubset(want: unknown, have: unknown, written: (value: unknown) => string = stableStringify): boolean {
   // Two strings, two finite numbers or two booleans are equal as written exactly when they are equal: no need to write either out, which for a long string cost its length at every comparison.
   if (typeof want === 'string' && typeof have === 'string') return want === have;
   if (typeof want === 'number' && typeof have === 'number' && Number.isFinite(want) && Number.isFinite(have)) return want === have;
   if (typeof want === 'boolean' && typeof have === 'boolean') return want === have;
-  if (want === null || typeof want !== 'object' || Array.isArray(want)) return stableStringify(want) === stableStringify(have);
+  if (want === null || typeof want !== 'object' || Array.isArray(want)) {
+    // An array is written as an array of its length and as nothing else, so anything else is unequal before either is written out. The answer is the same without this line; a step that is not such an array is then written out at every comparison, which measured three times the cost.
+    if (Array.isArray(want) && !(Array.isArray(have) && have.length === want.length)) return false;
+    return written(want) === written(have);
+  }
   if (have === null || typeof have !== 'object' || Array.isArray(have)) return false;
   const h = have as Record<string, unknown>;
-  return Object.entries(want as Record<string, unknown>).every(([k, v]) => v === undefined || (k in h && isSubset(v, h[k])));
+  const w = want as Record<string, unknown>;
+  // The object's own keys, read in place: listed into an array of pairs at every comparison, they were most of what a comparison of two small objects cost.
+  for (const k in w) {
+    if (!Object.hasOwn(w, k)) continue;
+    const v = w[k];
+    if (v !== undefined && !(k in h && isSubset(v, h[k], written))) return false;
+  }
+  return true;
 }
 
 /** Does an actual step satisfy an expected call? The name must match; the input only when the expectation carries one. */
@@ -53,11 +83,15 @@ const describeExpected = (e: ExpectedToolCall): string => (e.input === undefined
  * callMatches for one comparison of an expectation with a run, asked by
  * position.
  *
- * The answers are callMatches'. What differs is the work: each input is
- * normalised once, and an expected call is asked only of the steps of its
- * tool. Asked of every step, with both inputs normalised again at every
- * question, 500 expected calls against a run of 10,000 took 9 s of CPU, and
- * 68 s with inputs of a thousand characters; the list the rules read was
+ * The answers are callMatches'. What differs is the work: an expected call
+ * is asked only of the steps of its tool, and no input is written out more
+ * than once. Under `exact` each input is normalised once. Under `subset`
+ * strings, numbers and booleans are compared as they are, and an array or
+ * an object that has to be written out to be compared is written once
+ * (writtenOnce). Asked of every step, with both inputs normalised again at
+ * every question, 500 expected calls against a run of 10,000 took 9 s of
+ * CPU, 68 s with inputs of a thousand characters, and 47 s under `subset`
+ * with inputs that are arrays of 130 numbers; the list the rules read was
  * 500 calls long then, and held it to a twentieth of that.
  */
 interface Matching {
@@ -83,12 +117,13 @@ function matchingOf(expected: readonly ExpectedToolCall[], steps: readonly Step[
   };
   const stepsAt = byTool(steps.map((s) => s.name));
   const expectedAt = byTool(expected.map((e) => e.tool_name));
+  const written = writtenOnce();
   return {
     matches(j, i) {
       const e = expected[i];
       if (steps[j].name !== e.tool_name) return false;
       if (e.input === undefined) return true;
-      if (args !== 'exact') return isSubset(e.input, steps[j].input);
+      if (args !== 'exact') return isSubset(e.input, steps[j].input, written);
       return (stepInput[j] ??= normaliseInput(steps[j].input)) === (expectedInput[i] ??= normaliseInput(e.input));
     },
     stepsOf: (tool) => stepsAt.get(tool) ?? NONE,

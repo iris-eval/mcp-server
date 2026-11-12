@@ -104,8 +104,8 @@ export function maxCycleLength(callCount: number): number {
 }
 
 /**
- * The longest repeated sequence worth reporting, at any period from 2 up to
- * maxCycleLength(n) — or null when the repetition was a POLL. Every period
+ * The longest repeated sequence worth reporting that was not a POLL, at
+ * any period from 2 up to maxCycleLength(n), or null. Every period
  * is searched at every length of run: one pass over the calls for each
  * (trajectory.ts, longestCycleIn), n² / 3 comparisons in all.
  *
@@ -121,15 +121,23 @@ export function maxCycleLength(callCount: number): number {
 function findCycle(keys: readonly string[], calls: readonly Step[]): { k: number; start: number; repetitions: number; gramIndices: number[] } | null {
   const ids = internKeys(keys);
   for (let k = 2; k <= maxCycleLength(keys.length); k += 1) {
-    const cycle = longestCycleIn(ids, k);
-    if (cycle === null || cycle.repetitions <= MAX_TWO_CALL_CYCLES) continue;
-    const occurrences: number[] = [];
-    for (let r = 0; r < cycle.repetitions; r += 1) occurrences.push(cycle.start + r * k);
-    // A regular cadence is a machine waiting, not a machine stuck. Today's
-    // rule scores a wait as a loop, so this can only turn a false positive
-    // into a true negative.
-    if (looksLikePolling(occurrences.map((i) => calls[i]?.startedAt))) continue;
-    return { k, start: cycle.start, repetitions: cycle.repetitions, gramIndices: occurrences.slice(0, 1).flatMap((s) => Array.from({ length: k }, (_, i) => s + i)) };
+    /*
+     * A regular cadence is a machine waiting, not a machine stuck, so a
+     * repeated sequence that was a poll is passed over. And only that one
+     * is: the longest sequence of a period that is not a poll is the one
+     * asked. Until 0.22.0 the longest of a period was asked alone, and when
+     * it was a poll the search went on to the next period, past a loop of
+     * the same length as the poll (two calls polled four times over, then
+     * two other calls in turn three times with no cadence).
+     */
+    const cycle = longestCycleIn(ids, k, (start, repetitions) => {
+      if (repetitions <= MAX_TWO_CALL_CYCLES) return false;
+      const times: Array<string | undefined> = [];
+      for (let r = 0; r < repetitions; r += 1) times.push(calls[start + r * k]?.startedAt);
+      return !looksLikePolling(times);
+    });
+    if (cycle === null) continue;
+    return { k, start: cycle.start, repetitions: cycle.repetitions, gramIndices: Array.from({ length: k }, (_, i) => cycle.start + i) };
   }
   return null;
 }
@@ -178,11 +186,13 @@ function targetRereads(
     seen.push(at);
     byTarget.set(key, seen);
   }
+  // The most-read target that was not polled. Until 0.22.0 the most-read target was asked alone: when that was a log read at a steady cadence, a file read five times behind it was never looked at.
   let worst: { key: string; count: number; indices: number[] } | null = null;
   for (const [key, indices] of byTarget) {
-    if (worst === null || indices.length > worst.count) worst = { key, count: indices.length, indices };
+    if (worst !== null && indices.length <= worst.count) continue;
+    if (looksLikePolling(indices.map((i) => calls[i]?.startedAt))) continue;
+    worst = { key, count: indices.length, indices };
   }
-  if (worst !== null && looksLikePolling(worst.indices.map((i) => calls[i]?.startedAt))) worst = null;
   const shapedNote = readShapedByName > 0
     ? `; ${readShapedByName} more call${readShapedByName === 1 ? '' : 's'} looked read-shaped but the catalogue does not say so`
     : '';
@@ -212,7 +222,7 @@ function targetRereads(
 export const noToolLoop: EvalRule = {
   name: 'no_tool_loop',
   description:
-    'The agent must not repeat itself. Fails when one tool is called with an identical input (object keys sorted, whitespace collapsed) more than max_tool_repeats times — default 3, config key `max_tool_repeats` — or when a sequence of two or more distinct calls repeats consecutively more than twice (A,B,A,B,A,B; A,B,C,D,A,B,C,D,A,B,C,D). Reads the trajectory from tool_calls, or from OpenTelemetry TOOL spans when no tool_calls were sent; skips when neither is provided, so an evaluation with no trajectory reports "not judged" rather than clean. Catches the wasted spend a cost threshold cannot see: five identical calls can still bill under a per-evaluation cost limit. Every call repeated past the allowance is asked whether it was a poll, so a poll does not hide a loop behind it. It reads a run of up to 10,000 tool calls whole, and looks for a repeated sequence of every length such a run can hold. Of a longer run a loop found among the first 10,000 calls is reported, and otherwise the rule is not judged',
+    'The agent must not repeat itself. Fails when one tool is called with an identical input (object keys sorted, whitespace collapsed) more than max_tool_repeats times — default 3, config key `max_tool_repeats` — or when a sequence of two or more distinct calls repeats consecutively more than twice (A,B,A,B,A,B; A,B,C,D,A,B,C,D,A,B,C,D). Reads the trajectory from tool_calls, or from OpenTelemetry TOOL spans when no tool_calls were sent; skips when neither is provided, so an evaluation with no trajectory reports "not judged" rather than clean. Catches the wasted spend a cost threshold cannot see: five identical calls can still bill under a per-evaluation cost limit. Each of its three readings (a call repeated past the allowance, a repeated sequence, a target read again) passes over a repetition that was a poll and asks the next, so a poll does not hide a loop behind it. It reads a run of up to 10,000 tool calls whole, and looks for a repeated sequence of every length such a run can hold. Of a longer run a loop found among the first 10,000 calls is reported, and otherwise the rule is not judged',
   evalType: 'cost',
   weight: 1,
   kind: 'detection',
@@ -221,7 +231,7 @@ export const noToolLoop: EvalRule = {
   thresholdKeys: ['max_tool_repeats', 'max_target_rereads'],
   question: 'tool_use_correct',
   classes: ['tool_loop'],
-  // 2: reads a run whole where it read the first 500 calls, and does not report a run it read in part as free of loops (#1013); and asks every call repeated past the allowance whether it was a poll, where it asked the most repeated one.
+  // 2: reads a run whole where it read the first 500 calls, and does not report a run it read in part as free of loops (#1013); and asks every call repeated past the allowance whether it was a poll, where it asked the most repeated one, and likewise the longest repeated sequence of each length and the most-read target that were not polls.
   version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     const skip = skipWithoutTrajectory('no_tool_loop', context);

@@ -682,8 +682,13 @@ export function internKeys(keys: readonly string[]): Int32Array {
  * every period of a run of 10,000 calls takes under 0.1 s.
  * tests/unit/eval/longest-cycle.test.ts holds it to the earlier scan on
  * generated sequences.
+ *
+ * `accept` leaves a run out of the answer: the longest run it takes is
+ * returned. The loop rule passes over a run that was a poll with it, so
+ * that the longest run of a period being a poll does not end the search of
+ * that period (rules/cost.ts, findCycle).
  */
-export function longestCycleIn(ids: Int32Array, k: number): { start: number; repetitions: number } | null {
+export function longestCycleIn(ids: Int32Array, k: number, accept?: (start: number, repetitions: number) => boolean): { start: number; repetitions: number } | null {
   const n = ids.length;
   if (k < 1 || n < k * 2) return null;
   let best: { start: number; repetitions: number } | null = null;
@@ -697,7 +702,7 @@ export function longestCycleIn(ids: Int32Array, k: number): { start: number; rep
     while (i < n && ids[i] === ids[i - k]) i += 1;
     // ids[from − k .. i) has period k.
     const repetitions = Math.floor((i - from + k) / k);
-    if (repetitions >= 2 && (best === null || repetitions > best.repetitions) && !hasSmallerPeriod(ids, from - k, k)) best = { start: from - k, repetitions };
+    if (repetitions >= 2 && (best === null || repetitions > best.repetitions) && !hasSmallerPeriod(ids, from - k, k) && (accept === undefined || accept(from - k, repetitions))) best = { start: from - k, repetitions };
   }
   return best;
 }

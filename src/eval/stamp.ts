@@ -242,7 +242,16 @@ export function stampRuleResult(
    * layer).
    */
   const couldNotAnswer = skipClass !== undefined && skipClass !== 'not_applicable';
-  const asked = lacked.length > 0 || couldNotAnswer ? askedOf(rule, context, effective, options) : undefined;
+  /*
+   * A rule the deployment set to report only (eval.advisoryRules) is asked
+   * for by nobody, whatever threshold stands beside it. Its fire takes no
+   * part in the verdict, so its silence takes none either: read as asked,
+   * a loop check the deployment had told to report made the verdict
+   * unknown on a run it read in part, where a loop it found would have
+   * changed nothing.
+   */
+  const reportsOnly = effective.advisory === true;
+  const asked = !reportsOnly && (lacked.length > 0 || couldNotAnswer) ? askedOf(rule, context, effective, options) : undefined;
   /*
    * A result an LLM judge decided (answers_the_ask with a relevance judge,
    * #649) is a judgment, whatever the rule declares for its lexical

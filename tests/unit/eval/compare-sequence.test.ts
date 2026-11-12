@@ -12,7 +12,7 @@
  * and holds the two together on generated runs in every mode.
  */
 import { describe, expect, it } from 'vitest';
-import { compareSequence, isSubset, SEQUENCE_MODES, type SequenceOutcome } from '../../../src/eval/rules/expected-trajectory.js';
+import { compareSequence, isSubset, SEQUENCE_MODES, writtenOnce, type SequenceOutcome } from '../../../src/eval/rules/expected-trajectory.js';
 import { normaliseInput, stableStringify } from '../../../src/eval/rules/trajectory.js';
 import { toSteps } from '../../../src/eval/steps.js';
 import type { ExpectedArgsMode, ExpectedToolCall, ExpectedTrajectoryMode } from '../../../src/types/eval.js';
@@ -140,5 +140,39 @@ describe('compareSequence — each input read once, the same answers', () => {
       expect(isSubset(want, have), `${stableStringify(want)} in ${stableStringify(have)}`).toBe(isSubsetAsWritten(want, have));
     }
     for (const a of values) for (const b of values) expect(isSubset({ k: a, other: 1 }, { k: b, other: 1, more: 2 })).toBe(isSubsetAsWritten({ k: a, other: 1 }, { k: b, other: 1, more: 2 }));
+  });
+
+  it('an array or an object is written out once for a whole comparison, and the answers are the ones writing it out each time gave', () => {
+    const next = rng(47);
+    const pick = <T>(items: readonly T[]): T => items[Math.floor(next() * items.length)];
+    const SCALARS: unknown[] = ['a.ts', '', 1, 0, -0, 2.5, true, false, null, undefined, NaN];
+    const value = (depth: number): unknown => {
+      const kind = depth > 2 ? 0 : Math.floor(next() * 4);
+      if (kind === 1) return Array.from({ length: Math.floor(next() * 4) }, () => value(depth + 1));
+      if (kind === 2) return Object.fromEntries(Array.from({ length: Math.floor(next() * 4) }, () => [pick(['a', 'b', 'c']), value(depth + 1)]));
+      return pick(SCALARS);
+    };
+    const written = writtenOnce();
+    // The same values are asked again and again, as an expectation's are against every step.
+    const pool = Array.from({ length: 120 }, () => value(0));
+    let subsets = 0;
+    for (let i = 0; i < 40_000; i += 1) {
+      const want = pick(pool);
+      const have = pick(pool);
+      const answer = isSubsetAsWritten(want, have);
+      if (answer) subsets += 1;
+      expect(isSubset(want, have, written), `${stableStringify(want)} in ${stableStringify(have)}`).toBe(answer);
+      expect(isSubset(want, have)).toBe(answer);
+    }
+    expect(subsets).toBeGreaterThan(500);
+    // A key the expectation inherits is not one it names, and a key set to undefined asks for nothing.
+    const inherited = Object.create({ path: 'a.ts' }) as Record<string, unknown>;
+    inherited.mode = 'r';
+    expect(isSubset(inherited, { mode: 'r' })).toBe(isSubsetAsWritten(inherited, { mode: 'r' }));
+    expect(isSubset({ path: undefined, mode: 'r' }, { mode: 'r' })).toBe(true);
+    // An array is equal only to an array of its length, which is settled before either is written out.
+    expect(isSubset([1, 2], [1, 2, 3], written)).toBe(false);
+    expect(isSubset([1, 2], '[1,2]', written)).toBe(false);
+    expect(isSubset([1, [2, { a: null }]], [1, [2, { a: null }]], written)).toBe(true);
   });
 });

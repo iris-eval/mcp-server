@@ -162,6 +162,29 @@ describe('the rules read a run of more than 500 calls whole', () => {
     expect(waiting.message).toContain('get_status ran 6× at a regular cadence');
   });
 
+  it('no_tool_loop: a poll hides no loop in the other two readings either: a sequence of the poll\'s own length, a target read again behind a polled one', () => {
+    const at = (ms: number) => new Date(Date.UTC(2026, 0, 1) + ms).toISOString();
+    const span = (i: number, name: string, input: Record<string, unknown>, ms: number) => ({ span_id: `s${i}`, trace_id: 't', name, kind: 'TOOL' as const, status_code: 'OK' as const, start_time: at(ms), attributes: { 'tool.name': name, 'tool.input': input } });
+    // Two calls polled four times over at a steady cadence, then two other calls in turn three times with none.
+    const polled = Array.from({ length: 4 }, (_, r) => [span(2 * r, 'get_status', { id: 'build-7' }, r * 10_000), span(2 * r + 1, 'get_log', { id: 'build-7' }, r * 10_000 + 200)]).flat();
+    const turns = [0, 150, 400, 500, 900, 1_000].map((ms, i) => span(100 + i, i % 2 === 0 ? 'open_page' : 'close_page', { n: 1 }, 60_000 + ms));
+    const behind = noToolLoop.evaluate({ output: 'done', spans: [...polled, ...turns], customConfig: { max_tool_repeats: 10 } } as unknown as EvalContext);
+    expect(behind.passed).toBe(false);
+    expect(behind.message).toContain('open_page ({"n":1}), close_page ({"n":1}) alternate for 3 repetitions');
+    // The poll alone is still a machine waiting, and the loop alone is still a loop.
+    expect(noToolLoop.evaluate({ output: 'done', spans: polled, customConfig: { max_tool_repeats: 10 } } as unknown as EvalContext).passed).toBe(true);
+    expect(noToolLoop.evaluate({ output: 'done', spans: turns } as unknown as EvalContext).passed).toBe(false);
+    // One log read six times ten seconds apart through three read-only tools, then one file read five times with no cadence.
+    const tools: ToolDescriptor[] = ['read_file', 'cat', 'head'].map((name) => ({ name, description: 'Read a file.', inputSchema: { type: 'object', properties: { path: { type: 'string' } } }, annotations: { readOnlyHint: true } }));
+    const names = ['read_file', 'cat', 'head'];
+    const watched = Array.from({ length: 6 }, (_, i) => span(200 + i, names[i % 3], { path: 'build.log', n: i }, i * 10_000));
+    const reread = [0, 300, 700, 12_000, 12_100].map((ms, i) => span(300 + i, names[i % 3], { path: 'report.md', n: i }, 90_000 + ms));
+    const target = noToolLoop.evaluate({ output: 'done', spans: [...watched, ...reread], tools } as unknown as EvalContext);
+    expect(target.passed).toBe(false);
+    expect(target.message).toContain('the same target was read 5 times through 3 tools');
+    expect(noToolLoop.evaluate({ output: 'done', spans: watched, tools } as unknown as EvalContext).passed).toBe(true);
+  });
+
   it('a run of the list\'s whole length is read inside a CPU budget, in the shapes that cost the most', async () => {
     // Every call distinct; every call failing; every other call failing. Measured at 0.3 to 0.7 s each; the budget is the bound a search that grew with the square of the run would break.
     const failing = (i: number): ToolCallRecord => ({ tool_name: 'read_file', input: { path: `src/f${i}.ts` }, output: 'x', error: 'ENOENT: no such file or directory' });
@@ -277,6 +300,16 @@ describe('past the list, a rule does not answer for the run', () => {
     expect(row(unasked, 'no_tool_loop')).toMatchObject({ skipped: true, skipClass: 'defeated' });
     expect(row(unasked, 'no_tool_loop').asked).toBeUndefined();
     expect(unasked.verdict?.basis).not.toBe('critical_unknown');
+    // A rule the deployment set to report only is asked for by nobody: a loop it found would not have touched the verdict, and its silence does not either.
+    const reporting = new EvalEngine(defaultConfig.eval.defaultThreshold, { ...defaultConfig.eval.ruleThresholds, max_tool_repeats: 2 }, { ...defaultConfig.eval, advisoryRules: ['no_tool_loop'], configuredThresholdKeys: ['max_tool_repeats'] });
+    const silent = await reporting.evaluateAll({ ...RUN, toolCalls: longer([read(N)]) });
+    expect(row(silent, 'no_tool_loop')).toMatchObject({ skipped: true, skipClass: 'defeated' });
+    expect(row(silent, 'no_tool_loop').asked).toBeUndefined();
+    expect(silent.verdict?.basis).not.toBe('critical_unknown');
+    expect(silent.verdict?.by ?? []).not.toContain('no_tool_loop');
+    const looping = await reporting.evaluateAll({ ...RUN, toolCalls: [read(1), read(1), read(1), read(1), read(2)] });
+    expect(row(looping, 'no_tool_loop')).toMatchObject({ passed: false, advisory: true });
+    expect(looping.verdict?.by ?? []).not.toContain('no_tool_loop');
     // And eval.onCriticalSkipped decides it, as for a critical rule.
     const accepted = await engine({ onCriticalSkipped: 'pass' }).evaluateAll({ ...RUN, toolCalls: longer([read(N)]), expectedTrajectory: { tool_calls: [{ tool_name: 'read_file' }], mode: 'superset', step_budget: N * 2 } });
     expect(accepted.verdict?.basis).not.toBe('critical_unknown');

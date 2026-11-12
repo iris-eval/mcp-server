@@ -3492,7 +3492,7 @@
         "cells": {
           "q1": {
             "evidence": "proof/results.json → rules[no_injection_compliance]",
-            "note": "precision, recall and F1 on 59 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
+            "note": "precision, recall and F1 on 69 labelled cases with Wilson and credible 95% intervals; in-sample, same-model labelled until the blind label lands",
             "status": "measured"
           },
           "q10": {
@@ -5304,13 +5304,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "6f54d1e95b4c"
+        "compositeVersion": "791b46f384a0"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "280a72a86620",
+        "corpusVersion": "e3d055900096",
         "customCorpusVersion": "93e38960b2a0"
       }
     },
@@ -5323,8 +5323,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-11-12T10:21:03.681Z",
-  "generatedFromCommit": "f1df0b73",
+  "generatedAt": "2026-11-12T12:35:54.711Z",
+  "generatedFromCommit": "8064f15e",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5412,9 +5412,9 @@
     ]
   },
   "proof": {
-    "commit": "f1df0b73",
+    "commit": "8064f15e",
     "composite": {
-      "compositeVersion": "6f54d1e95b4c",
+      "compositeVersion": "791b46f384a0",
       "confidence": {
         "changed": {
           "of": 112,
@@ -5560,17 +5560,17 @@
             {
               "bad": 0,
               "from": 0,
-              "meanPredicted": 0.0984,
-              "n": 2,
-              "patterns": 1,
+              "meanPredicted": 0.0974,
+              "n": 4,
+              "patterns": 2,
               "to": 0.1
             },
             {
               "bad": 16,
               "from": 0.1,
-              "meanPredicted": 0.115,
-              "n": 43,
-              "patterns": 5,
+              "meanPredicted": 0.1138,
+              "n": 41,
+              "patterns": 4,
               "to": 0.2
             },
             {
@@ -5592,31 +5592,31 @@
             {
               "bad": 2,
               "from": 0.4,
-              "meanPredicted": 0.4349,
+              "meanPredicted": 0.4334,
               "n": 3,
               "patterns": 1,
               "to": 0.5
             },
             {
-              "bad": 9,
+              "bad": 1,
               "from": 0.5,
-              "meanPredicted": 0.5692,
-              "n": 9,
-              "patterns": 2,
+              "meanPredicted": 0.5331,
+              "n": 1,
+              "patterns": 1,
               "to": 0.6
             },
             {
-              "bad": 0,
+              "bad": 8,
               "from": 0.6,
-              "meanPredicted": null,
-              "n": 0,
-              "patterns": 0,
+              "meanPredicted": 0.6094,
+              "n": 8,
+              "patterns": 1,
               "to": 0.7
             },
             {
               "bad": 7,
               "from": 0.7,
-              "meanPredicted": 0.7663,
+              "meanPredicted": 0.7658,
               "n": 9,
               "patterns": 3,
               "to": 0.8
@@ -5624,7 +5624,7 @@
             {
               "bad": 7,
               "from": 0.8,
-              "meanPredicted": 0.8319,
+              "meanPredicted": 0.8315,
               "n": 7,
               "patterns": 3,
               "to": 0.9
@@ -5638,14 +5638,14 @@
               "to": 1
             }
           ],
-          "compositeVersion": "6f54d1e95b4c",
+          "compositeVersion": "791b46f384a0",
           "prior": 0.5,
           "priorMode": "per-output",
           "split": "dev",
-          "version": "25086531510e"
+          "version": "af9baddb4965"
         }
       },
-      "corpusVersion": "280a72a86620",
+      "corpusVersion": "e3d055900096",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -7118,20 +7118,20 @@
             "rate": 0.7748
           },
           "calibration": {
-            "auc": 0.8284,
+            "auc": 0.8258,
             "bins": [
               {
                 "from": 0,
-                "meanPredicted": 0.0984,
-                "n": 2,
+                "meanPredicted": 0.0974,
+                "n": 4,
                 "observedRate": 0,
                 "to": 0.1
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1151,
-                "n": 46,
-                "observedRate": 0.3696,
+                "meanPredicted": 0.1139,
+                "n": 44,
+                "observedRate": 0.3864,
                 "to": 0.2
               },
               {
@@ -7150,35 +7150,35 @@
               },
               {
                 "from": 0.4,
-                "meanPredicted": 0.4349,
+                "meanPredicted": 0.4334,
                 "n": 3,
                 "observedRate": 0.6667,
                 "to": 0.5
               },
               {
                 "from": 0.5,
-                "meanPredicted": 0.5692,
-                "n": 9,
+                "meanPredicted": 0.5331,
+                "n": 1,
                 "observedRate": 1,
                 "to": 0.6
               },
               {
                 "from": 0.6,
-                "meanPredicted": 0.6805,
-                "n": 3,
+                "meanPredicted": 0.6286,
+                "n": 11,
                 "observedRate": 1,
                 "to": 0.7
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7486,
+                "meanPredicted": 0.748,
                 "n": 28,
                 "observedRate": 0.8929,
                 "to": 0.8
               },
               {
                 "from": 0.8,
-                "meanPredicted": 0.8319,
+                "meanPredicted": 0.8315,
                 "n": 7,
                 "observedRate": 1,
                 "to": 0.9
@@ -7191,8 +7191,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.1883,
-            "ece": 0.2214,
+            "brier": 0.1865,
+            "ece": 0.2234,
             "n": 111
           },
           "falseBlock": {
@@ -7248,14 +7248,14 @@
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1166,
+                "meanPredicted": 0.1145,
                 "n": 12,
                 "observedRate": 0.5,
                 "to": 0.2
               },
               {
                 "from": 0.2,
-                "meanPredicted": 0.2923,
+                "meanPredicted": 0.2907,
                 "n": 1,
                 "observedRate": 1,
                 "to": 0.3
@@ -7283,35 +7283,35 @@
               },
               {
                 "from": 0.6,
-                "meanPredicted": 0.6805,
+                "meanPredicted": 0.6797,
                 "n": 1,
                 "observedRate": 1,
                 "to": 0.7
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7518,
+                "meanPredicted": 0.7512,
                 "n": 6,
                 "observedRate": 1,
                 "to": 0.8
               },
               {
                 "from": 0.8,
-                "meanPredicted": 0.8342,
+                "meanPredicted": 0.8338,
                 "n": 2,
                 "observedRate": 1,
                 "to": 0.9
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9542,
+                "meanPredicted": 0.9541,
                 "n": 1,
                 "observedRate": 1,
                 "to": 1
               }
             ],
-            "brier": 0.2511,
-            "ece": 0.3317,
+            "brier": 0.252,
+            "ece": 0.3331,
             "n": 24
           },
           "falseBlock": {
@@ -7360,21 +7360,21 @@
             "bins": [
               {
                 "from": 0,
-                "meanPredicted": 0.0984,
+                "meanPredicted": 0.0966,
                 "n": 1,
                 "observedRate": 0,
                 "to": 0.1
               },
               {
                 "from": 0.1,
-                "meanPredicted": 0.1149,
+                "meanPredicted": 0.1132,
                 "n": 16,
                 "observedRate": 0.5,
                 "to": 0.2
               },
               {
                 "from": 0.2,
-                "meanPredicted": 0.2923,
+                "meanPredicted": 0.2907,
                 "n": 1,
                 "observedRate": 1,
                 "to": 0.3
@@ -7388,35 +7388,35 @@
               },
               {
                 "from": 0.4,
-                "meanPredicted": 0.4349,
+                "meanPredicted": 0.4334,
                 "n": 2,
                 "observedRate": 1,
                 "to": 0.5
               },
               {
                 "from": 0.5,
-                "meanPredicted": 0.5737,
-                "n": 1,
-                "observedRate": 1,
+                "meanPredicted": null,
+                "n": 0,
+                "observedRate": null,
                 "to": 0.6
               },
               {
                 "from": 0.6,
-                "meanPredicted": null,
-                "n": 0,
-                "observedRate": null,
+                "meanPredicted": 0.6094,
+                "n": 1,
+                "observedRate": 1,
                 "to": 0.7
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7478,
+                "meanPredicted": 0.7472,
                 "n": 7,
                 "observedRate": 1,
                 "to": 0.8
               },
               {
                 "from": 0.8,
-                "meanPredicted": 0.8258,
+                "meanPredicted": 0.8255,
                 "n": 4,
                 "observedRate": 0.75,
                 "to": 0.9
@@ -7429,8 +7429,8 @@
                 "to": 1
               }
             ],
-            "brier": 0.2626,
-            "ece": 0.3158,
+            "brier": 0.2624,
+            "ece": 0.3157,
             "n": 34
           },
           "falseBlock": {
@@ -7530,7 +7530,7 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7244,
+                "meanPredicted": 0.7179,
                 "n": 41,
                 "observedRate": 0.2683,
                 "to": 0.8
@@ -7544,14 +7544,14 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9891,
+                "meanPredicted": 0.9894,
                 "n": 61,
                 "observedRate": 0.9344,
                 "to": 1
               }
             ],
-            "brier": 0.201,
-            "ece": 0.2322,
+            "brier": 0.1988,
+            "ece": 0.23,
             "n": 111
           },
           "falseBlock": {
@@ -7649,7 +7649,7 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7206,
+                "meanPredicted": 0.714,
                 "n": 11,
                 "observedRate": 0.4545,
                 "to": 0.8
@@ -7663,14 +7663,14 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9833,
+                "meanPredicted": 0.983,
                 "n": 12,
                 "observedRate": 1,
                 "to": 1
               }
             ],
-            "brier": 0.1562,
-            "ece": 0.1505,
+            "brier": 0.1547,
+            "ece": 0.1476,
             "n": 24
           },
           "falseBlock": {
@@ -7768,7 +7768,7 @@
               },
               {
                 "from": 0.7,
-                "meanPredicted": 0.7246,
+                "meanPredicted": 0.7182,
                 "n": 13,
                 "observedRate": 0.3846,
                 "to": 0.8
@@ -7782,14 +7782,14 @@
               },
               {
                 "from": 0.9,
-                "meanPredicted": 0.9846,
+                "meanPredicted": 0.9845,
                 "n": 17,
                 "observedRate": 0.9412,
                 "to": 1
               }
             ],
-            "brier": 0.194,
-            "ece": 0.1792,
+            "brier": 0.1924,
+            "ece": 0.1767,
             "n": 34
           },
           "falseBlock": {
@@ -7839,13 +7839,13 @@
             "utility": -35
           },
           {
-            "accuracy": 0.7027,
+            "accuracy": 0.7207,
             "fn": 0,
-            "fp": 33,
+            "fp": 31,
             "tau": 0.1,
-            "tn": 2,
+            "tn": 4,
             "tp": 76,
-            "utility": -33
+            "utility": -31
           },
           {
             "accuracy": 0.8018,
@@ -7929,13 +7929,13 @@
             "utility": -26
           },
           {
-            "accuracy": 0.6937,
-            "fn": 29,
+            "accuracy": 0.7658,
+            "fn": 21,
             "fp": 5,
             "tau": 0.6,
             "tn": 30,
-            "tp": 47,
-            "utility": -34
+            "tp": 55,
+            "utility": -26
           },
           {
             "accuracy": 0.6937,
@@ -8007,7 +8007,7 @@
       },
       "version": "0.21.0"
     },
-    "corpusVersion": "280a72a86620",
+    "corpusVersion": "e3d055900096",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -8635,7 +8635,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-11-12T10:11:56.262Z",
+    "generatedAt": "2026-11-12T12:32:57.048Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -8653,9 +8653,9 @@
         "platform": "win32"
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
-      "n": 1377,
-      "p50Ms": 0.897,
-      "p95Ms": 4.522
+      "n": 1387,
+      "p50Ms": 0.926,
+      "p95Ms": 4.676
     },
     "method": {
       "ci": "wilson-95",
@@ -9720,51 +9720,51 @@
         "category": "safety",
         "ci95": {
           "f1": [
-            0.65,
-            0.9057
+            0.6897,
+            0.9123
           ],
           "precision": [
-            0.7639,
-            0.9911
+            0.8046,
+            0.9929
           ],
           "recall": [
-            0.4934,
-            0.8207
+            0.5383,
+            0.8317
           ]
         },
         "credible95": {
           "f1": [
-            0.6227,
-            0.886
+            0.6686,
+            0.8946
           ],
           "precision": [
-            0.779,
-            0.9939
+            0.8189,
+            0.9951
           ],
           "recall": [
-            0.489,
-            0.8257
+            0.5374,
+            0.8354
           ]
         },
-        "f1": 0.7917,
-        "fn": 9,
+        "f1": 0.8136,
+        "fn": 10,
         "fp": 1,
         "labelBasis": "reading",
-        "n": 59,
+        "n": 69,
         "name": "no_injection_compliance",
-        "negatives": 31,
-        "positives": 28,
+        "negatives": 35,
+        "positives": 34,
         "ppvAt": {
-          "0.01": 0.1752,
-          "0.05": 0.5254,
-          "0.2": 0.8402,
-          "0.5": 0.9546
+          "0.01": 0.1997,
+          "0.05": 0.5653,
+          "0.2": 0.8607,
+          "0.5": 0.9611
         },
-        "precision": 0.95,
-        "recall": 0.6786,
+        "precision": 0.96,
+        "recall": 0.7059,
         "skipped": 0,
-        "tn": 30,
-        "tp": 19
+        "tn": 34,
+        "tp": 24
       },
       {
         "category": "cost",
@@ -10460,85 +10460,89 @@
           "transform": "case"
         },
         {
-          "caught": 18,
+          "caught": 23,
           "ci95": [
-            0.8241,
+            0.8569,
             1
           ],
           "dropped": [],
-          "n": 18,
+          "n": 23,
           "recall": 1,
           "rule": "no_injection_compliance",
           "transform": "zero_width"
         },
         {
-          "caught": 18,
+          "caught": 23,
           "ci95": [
-            0.8241,
+            0.8569,
             1
           ],
           "dropped": [],
-          "n": 18,
+          "n": 23,
           "recall": 1,
           "rule": "no_injection_compliance",
           "transform": "homoglyph"
         },
         {
-          "caught": 18,
+          "caught": 23,
           "ci95": [
-            0.8241,
+            0.8569,
             1
           ],
           "dropped": [],
-          "n": 18,
+          "n": 23,
           "recall": 1,
           "rule": "no_injection_compliance",
           "transform": "fullwidth"
         },
         {
-          "caught": 18,
+          "caught": 23,
           "ci95": [
-            0.8241,
+            0.8569,
             1
           ],
           "dropped": [],
-          "n": 18,
+          "n": 23,
           "recall": 1,
           "rule": "no_injection_compliance",
           "transform": "nbsp"
         },
         {
-          "caught": 18,
+          "caught": 22,
           "ci95": [
-            0.8241,
-            1
+            0.7901,
+            0.9923
           ],
-          "dropped": [],
-          "n": 18,
-          "recall": 1,
+          "dropped": [
+            "injc-067"
+          ],
+          "n": 23,
+          "recall": 0.9565,
           "rule": "no_injection_compliance",
           "transform": "tab"
         },
         {
-          "caught": 18,
+          "caught": 22,
           "ci95": [
-            0.8241,
-            1
+            0.7901,
+            0.9923
           ],
-          "dropped": [],
-          "n": 18,
-          "recall": 1,
+          "dropped": [
+            "injc-067"
+          ],
+          "n": 23,
+          "recall": 0.9565,
           "rule": "no_injection_compliance",
           "transform": "linebreak"
         },
         {
-          "caught": 18,
+          "caught": 23,
           "ci95": [
-            0.8241,
+            0.8569,
             1
           ],
           "dropped": [],
-          "n": 18,
+          "n": 23,
           "recall": 1,
           "rule": "no_injection_compliance",
           "transform": "case"
@@ -10564,10 +10568,10 @@
           "withSpan": 15
         },
         {
-          "firedOriginally": 19,
-          "positives": 28,
+          "firedOriginally": 24,
+          "positives": 34,
           "rule": "no_injection_compliance",
-          "withSpan": 18
+          "withSpan": 23
         }
       ],
       "transforms": [
