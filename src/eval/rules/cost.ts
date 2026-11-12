@@ -3,7 +3,8 @@ import { thresholdSourceOf } from '../thresholds.js';
 import { describeInput, longestCycle, looksLikePolling, skipWithoutTrajectory, stepKey, targetKey } from './trajectory.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
 import { stepBudget } from './expected-trajectory.js';
-import { READ_TOKENS, catalogueIndex } from '../catalogue.js';
+import { READ_TOKENS, catalogueIndex, catalogueMatch, readOnlyWordNotTaken } from '../catalogue.js';
+import { listNames, toolNameOf } from '../case-history.js';
 import type { Step } from '../../types/trace.js';
 import { costBasisNote, costSourceEvidence } from '../cost-basis.js';
 import { COST_ANOMALY_FLAT_MARGIN, COST_ANOMALY_MIN_HISTORY, COST_ANOMALY_WINDOW, COST_ANOMALY_Z, costAnomaly as anomalyOf, describeCostAnomaly } from '../cost-anomaly.js';
@@ -139,6 +140,9 @@ function targetRereads(
   if (index === null) return { worst: null, unknownNote: '' };
   const byTarget = new Map<string, number[]>();
   let readShapedByName = 0;
+  /** Calls through a tool the catalogue marks read-only in an entry reached by the tool's own name: the called name, and that entry's. */
+  const ownNameOnly = new Map<string, string>();
+  let callsOwnNameOnly = 0;
   for (const [at, step] of calls.entries()) {
     /*
      * The CATALOGUE must SAY read-only. `readFamilyOf` falls back to a name
@@ -147,10 +151,22 @@ function targetRereads(
      * count a paid API call as a wasted reread on the strength of its name.
      * So this reads the annotation directly, and the name heuristic only
      * explains what was left out.
+     *
+     * And it reads it from the entry under the name the call was made by.
+     * A call named mcp__<server>__<tool> can also be matched to an entry
+     * under the tool's own name (catalogue.ts), which may be another
+     * server's tool: a read-only word found that way is not taken, here or
+     * anywhere, because a count of wasted reads would then rest on a hint
+     * that was never this tool's. The result says when that left calls out,
+     * and what to list to have them counted.
      */
     const declared = index.get(step.name)?.annotations?.readOnlyHint === true;
     if (!declared) {
-      if (READ_TOKENS.some((t) => step.name.toLowerCase().includes(t))) readShapedByName += 1;
+      const entry = typeof step.name === 'string' ? readOnlyWordNotTaken(catalogueMatch(index, step.name)) : undefined;
+      if (entry !== undefined) {
+        callsOwnNameOnly += 1;
+        ownNameOnly.set(toolNameOf(step.name), toolNameOf(entry.name));
+      } else if (READ_TOKENS.some((t) => step.name.toLowerCase().includes(t))) readShapedByName += 1;
       continue;
     }
     const key = targetKey(step);
@@ -164,10 +180,14 @@ function targetRereads(
     if (worst === null || indices.length > worst.count) worst = { key, count: indices.length, indices };
   }
   if (worst !== null && looksLikePolling(worst.indices.map((i) => calls[i]?.startedAt))) worst = null;
-  const unknownNote = readShapedByName > 0
+  const shapedNote = readShapedByName > 0
     ? `; ${readShapedByName} more call${readShapedByName === 1 ? '' : 's'} looked read-shaped but the catalogue does not say so`
     : '';
-  return { worst, unknownNote };
+  const oneTool = ownNameOnly.size === 1;
+  const ownNameNote = callsOwnNameOnly > 0
+    ? `; ${callsOwnNameOnly} call${callsOwnNameOnly === 1 ? '' : 's'} went through ${oneTool ? 'a tool' : 'tools'} the catalogue marks read-only under the tool's own name (${listNames([...new Set(ownNameOnly.values())])}), a word that is taken only under the name a tool is called by, since another server's tool can share the own name. If ${oneTool ? "that entry is this tool's, list it" : "those entries are these tools', list them"} as ${listNames([...ownNameOnly.keys()])} to have rereads through ${oneTool ? 'it' : 'them'} counted`
+    : '';
+  return { worst, unknownNote: `${shapedNote}${ownNameNote}` };
 }
 
 /*

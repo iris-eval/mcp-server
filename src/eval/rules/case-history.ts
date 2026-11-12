@@ -40,7 +40,7 @@
  * invent one.
  */
 import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type EvalRuleResult, type Evidence } from '../../types/eval.js';
-import { CASE_HISTORY_MIN, CASE_HISTORY_WEIGH_MIN, CASE_HISTORY_WINDOW, caseHistoryOf, droppedSteps, hasNoUsualWay, listNames, toolNameOf, toolsOfSteps, unusualActions } from '../case-history.js';
+import { CASE_HISTORY_MIN, CASE_HISTORY_WEIGH_MIN, CASE_HISTORY_WINDOW, caseHistoryOf, droppedSteps, hasNoUsualWay, listNames, readOnlyWordsNotTaken, toolNameOf, toolsOfSteps, unusualActions } from '../case-history.js';
 import { stepScopeNote, stepStatsOf, stepsOf, trajectoryAbsence } from '../steps.js';
 import { skipWithoutTrajectory } from './trajectory.js';
 
@@ -123,6 +123,19 @@ export const noUnusualAction: EvalRule = {
         ? ''
         : `; ${unplaced.length === 1 ? 'a tool none of them called that neither the catalogue nor its name places' : `${unplaced.length} tools none of them called that neither the catalogue nor their names place`} (${listNames(unplaced)}) ${unplaced.length === 1 ? 'is' : 'are'} noted and not counted: readOnlyHint in the tools catalogue places ${unplaced.length === 1 ? 'it' : 'them'}, false for a tool that acts`;
     /*
+     * The catalogue's read-only word is taken from an entry under the name
+     * a tool was called by, and not from one reached by the tool's own name
+     * (catalogue.ts, declaredEffect). Where that left a call counted as an
+     * action, or placed nowhere, the result says so and what to list:
+     * someone who pasted a tools/list result marked the tool read-only.
+     */
+    const declined = readOnlyWordsNotTaken([...unusual, ...unplaced], context.tools);
+    const one = declined.length === 1;
+    const notTaken =
+      declined.length === 0
+        ? ''
+        : `; the catalogue marks ${listNames([...new Set(declined.map((d) => d.entry))])} read-only, and that word is not taken for ${listNames(declined.map((d) => d.called))}: ${one ? 'the entry was' : 'each entry was'} reached by the tool's own name, which another server's tool can share. If ${one ? "the entry is this tool's" : "an entry is the called tool's"}, list it under the name the tool is called by and its read-only word is taken`;
+    /*
      * Weighed where it was measured. Below CASE_HISTORY_WEIGH_MIN earlier
      * runs the result is the same finding, with the reason it takes no part
      * in the verdict: the engine reads `advisoryWhy` and leaves the result
@@ -145,8 +158,8 @@ export const noUnusualAction: EvalRule = {
       value: { stat: 'unusual_actions', unit: 'tools', value: unusual.length },
       evidence,
       message: passed
-        ? `No unusual action: every tool this run called that is known to act was called in the ${runs(m)} of its case${lookups}${notPlaced}${scope}`
-        : `Unusual action for this case: ${listNames(unusual)}, called in none of its ${runs(m)}${lookups}${notPlaced}${scope}`,
+        ? `No unusual action: every tool this run called that is known to act was called in the ${runs(m)} of its case${lookups}${notPlaced}${notTaken}${scope}`
+        : `Unusual action for this case: ${listNames(unusual)}, called in none of its ${runs(m)}${lookups}${notPlaced}${notTaken}${scope}`,
       ...reportsOnly,
     };
   },
