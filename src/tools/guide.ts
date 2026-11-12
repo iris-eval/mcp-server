@@ -177,6 +177,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
       'eval_type says WHEN it fires (that bundle, and eval_type="all"); severity says what a failure DOES: low and medium only lower the weighted score, high and critical force passed to false and list the rule in critical_failures. ' +
       'definition.type picks the check and definition.config carries its keys: regex_match and regex_no_match take pattern; min_length takes min_length; max_length takes max_length; contains_keywords and excludes_keywords take keywords; cost_threshold takes max_cost; json_schema takes an optional schema; action_policy takes allow and/or deny. ' +
       'action_policy judges the TRAJECTORY: allow and deny rules name a tool by glob and its arguments by JSON Pointer, deny wins, and `allow` being present means a tool it does not name is DENIED. ' +
+      'On a host that calls tools mcp__<server>__<tool>, a deny rule reads the tool\'s own name too, and an allow rule is held to the name the agent calls: write it mcp__<server>__<tool>. ' +
       'It ADVISES until you deploy it at severity high or critical — a deny list you deploy at the default severity does not block, and its own message says so on every result. ' +
       'Any bundle and type combine. Names are unique: a taken name is refused unless replace is true, which retires the earlier rule(s) first and reports them. Argument names are snake_case; the camelCase aliases evalType and sourceMomentId are accepted — pass one spelling of each.',
     whenNot:
