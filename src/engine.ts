@@ -24,7 +24,7 @@ export { rulesByType, getRulesForType } from './eval/rules/index.js';
 export { createCustomRule } from './eval/rules/custom.js';
 export { publishedAccuracyFor, publishedRuleNames, publishedProvenance, ppvInterval, missRateInterval, ppvAt } from './eval/accuracy.js';
 export { toEvaluationResponse } from './eval/response.js';
-export { LOCAL_LABEL_MIN, localPrecision, estimatedPrior, classPriorsFrom, type ClassPrior, type EstimatedPrior, type LocalPrecision } from './eval/labels.js';
+export { LOCAL_LABEL_MIN, localPrecision, estimatedPrior } from './eval/labels.js';
 export { defaultConfig, PKG_VERSION } from './config/defaults.js';
 /*
  * The relevance judge is opt-in here as on the server: an engine calls no

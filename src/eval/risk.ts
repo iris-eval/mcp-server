@@ -68,22 +68,6 @@ export const DEFAULT_PRIOR = 0.5;
  */
 export type PriorMode = 'per-class' | 'per-output';
 export const DEFAULT_PRIOR_MODE: PriorMode = 'per-output';
-
-/**
- * Priors for single failure classes, in place of the share of the prior
- * that class would otherwise get: a deployment's own estimate of how often
- * one failure is present, from its labels on the fires of a rule that looks
- * for it (labels.ts, classPriorsFrom). A class not named here keeps exactly
- * the prior it has without this map, so an estimate for one class moves
- * nothing a fire of another class is worth.
- */
-export type ClassPriors = Readonly<Record<string, number>>;
-
-/** The class priors that bear on these detectors, in class order: the ones for a class at least one of them examines. Empty when none does. */
-function classPriorsInForce(detectors: Detector[], classPriors: ClassPriors | undefined): Array<[string, number]> {
-  if (classPriors === undefined) return [];
-  return FAILURE_CLASS_IDS.filter((cls) => typeof classPriors[cls] === 'number' && detectors.some((d) => d.classes.includes(cls))).map((cls): [string, number] => [cls, classPriors[cls]]);
-}
 /** τ = 1 / (1 + c) with c = 1: a false pass costs the same as a false block. */
 export const DEFAULT_FALSE_PASS_COST = 1;
 export const DEFAULT_TAU = 1 / (1 + DEFAULT_FALSE_PASS_COST);
@@ -162,15 +146,12 @@ function pBadFrom(
   sensOf: (d: Detector) => number,
   specOf: (d: Detector) => number,
   localPpvOf: (d: Detector) => number | null = (d) => (d.local ? localPpv(d.local) : null),
-  classPriors?: ClassPriors,
 ): { pBad: number; perClass: Record<string, number | null> } {
   const perClass: Record<string, number | null> = {};
   let survive = 1;
   const examinedClasses = FAILURE_CLASS_IDS.filter((cls) => detectors.some((d) => d.classes.includes(cls))).length;
-  // Every class's share of the prior is worked out as if no class had an estimate of its own, so an estimate for one changes no other's.
-  const spread = classPrior(prior, mode, examinedClasses);
+  const priorC = classPrior(prior, mode, examinedClasses);
   for (const cls of FAILURE_CLASS_IDS) {
-    const priorC = classPriors?.[cls] ?? spread;
     const examined = detectors.filter((d) => d.classes.includes(cls));
     if (examined.length === 0) {
       perClass[cls] = null;
@@ -243,7 +224,7 @@ function betaSampler(a: number, b: number): (rng: () => number) => number {
 }
 
 /** The 2,000 p_bad draws, in draw order: pBadFrom's arithmetic over flat arrays. */
-function simulate(detectors: Detector[], prior: number, mode: PriorMode, rng: () => number, classPriors?: ClassPriors): Float64Array {
+function simulate(detectors: Detector[], prior: number, mode: PriorMode, rng: () => number): Float64Array {
   const n = detectors.length;
   const sensDraw = detectors.map((d) => betaSampler(d.counts.tp + 0.5, d.counts.fn + 0.5));
   const specDraw = detectors.map((d) => betaSampler(d.counts.tn + 0.5, d.counts.fp + 0.5));
@@ -264,18 +245,16 @@ function simulate(detectors: Detector[], prior: number, mode: PriorMode, rng: ()
   const slot = Int32Array.from(detectors, (d) => lastByName.get(d.name)!);
   const ownSlot = Int32Array.from(detectors, (d) => lastLocalByName.get(d.name) ?? -1);
 
-  const classes: { cls: string; examined: Int32Array; fired: Int32Array; priorC: number }[] = [];
+  const classes: { examined: Int32Array; fired: Int32Array }[] = [];
   for (const cls of FAILURE_CLASS_IDS) {
     const examined: number[] = [];
     detectors.forEach((d, i) => {
       if (d.classes.includes(cls)) examined.push(i);
     });
     if (examined.length === 0) continue;
-    classes.push({ cls, examined: Int32Array.from(examined), fired: Int32Array.from(examined.filter((i) => detectors[i].fired)), priorC: 0 });
+    classes.push({ examined: Int32Array.from(examined), fired: Int32Array.from(examined.filter((i) => detectors[i].fired)) });
   }
-  // The same spread as the point estimate, then a class's own estimate where it has one.
-  const spread = classPrior(prior, mode, classes.length);
-  for (const c of classes) c.priorC = classPriors?.[c.cls] ?? spread;
+  const priorC = classPrior(prior, mode, classes.length);
 
   const sens = new Float64Array(n);
   const spec = new Float64Array(n);
@@ -289,7 +268,7 @@ function simulate(detectors: Detector[], prior: number, mode: PriorMode, rng: ()
       if (o !== null) own[i] = o(rng);
     }
     let survive = 1;
-    for (const { examined, fired, priorC } of classes) {
+    for (const { examined, fired } of classes) {
       let q: number;
       if (fired.length > 0) {
         q = -Infinity;
@@ -324,21 +303,19 @@ function simulate(detectors: Detector[], prior: number, mode: PriorMode, rng: ()
 }
 
 /** The seeded draws for these detectors, in draw order. The seed names every input except the classes, as it always has. */
-function drawsFor(detectors: Detector[], prior: number, mode: PriorMode, classPriors?: ClassPriors): Float64Array {
-  // Class priors are named in the seed only when one bears on these detectors: without them the stream is the one it always was.
-  const own = classPriorsInForce(detectors, classPriors);
+function drawsFor(detectors: Detector[], prior: number, mode: PriorMode): Float64Array {
   const rng = mulberry32(
     fnv1a(
-      `risk:${PUBLISHED_ACCURACY_CORPUS_VERSION}:${mode}:${prior.toFixed(3)}:${detectors.map((d) => `${d.name}${d.fired ? '!' : ''}${d.local ? `@${d.local.right}/${d.local.wrong}` : ''}`).join(',')}${own.length > 0 ? `:classes:${own.map(([cls, pi]) => `${cls}=${pi.toFixed(4)}`).join(',')}` : ''}`,
+      `risk:${PUBLISHED_ACCURACY_CORPUS_VERSION}:${mode}:${prior.toFixed(3)}:${detectors.map((d) => `${d.name}${d.fired ? '!' : ''}${d.local ? `@${d.local.right}/${d.local.wrong}` : ''}`).join(',')}`,
     ),
   );
   // Every sens/spec from its Beta(count + ½) posterior, and a local precision from Beta(right + ½, wrong + ½).
-  return simulate(detectors, prior, mode, rng, classPriors);
+  return simulate(detectors, prior, mode, rng);
 }
 
 /** The unsorted, unrounded draws behind an estimate; exported so a test can compare every draw, not only the rounded quantiles. */
-export function riskDraws(result: EvalResult, prior: number = DEFAULT_PRIOR, mode: PriorMode = DEFAULT_PRIOR_MODE, classPriors?: ClassPriors): Float64Array {
-  return drawsFor(detectorsOf(result), prior, mode, classPriors);
+export function riskDraws(result: EvalResult, prior: number = DEFAULT_PRIOR, mode: PriorMode = DEFAULT_PRIOR_MODE): Float64Array {
+  return drawsFor(detectorsOf(result), prior, mode);
 }
 
 /*
@@ -364,11 +341,10 @@ const copyEstimate = (e: RiskEstimate): RiskEstimate => ({ ...e, perClass: { ...
  */
 export const RISK_KEY_VERSION = `risk-1:${PUBLISHED_ACCURACY_CORPUS_VERSION}:${RISK_DRAWS}`;
 
-function estimateKey(detectors: Detector[], prior: number, mode: PriorMode, classPriors?: ClassPriors): string {
-  const own = classPriorsInForce(detectors, classPriors);
+function estimateKey(detectors: Detector[], prior: number, mode: PriorMode): string {
   return `${RISK_KEY_VERSION}|${String(prior)}|${mode}|${detectors
     .map((d) => `${d.name}:${d.classes.join('+')}:${d.fired ? 1 : 0}:${d.counts.tp},${d.counts.fp},${d.counts.fn},${d.counts.tn}:${d.local ? `${d.local.right}/${d.local.wrong}` : ''}`)
-    .join(';')}${own.length > 0 ? `|classes:${own.map(([cls, pi]) => `${cls}=${String(pi)}`).join(',')}` : ''}`;
+    .join(';')}`;
 }
 
 function cacheEstimate(key: string, estimate: RiskEstimate): void {
@@ -377,23 +353,23 @@ function cacheEstimate(key: string, estimate: RiskEstimate): void {
   if (estimateCache.size > ESTIMATE_CACHE_MAX) estimateCache.delete(estimateCache.keys().next().value!);
 }
 
-function estimateFor(detectors: Detector[], prior: number, mode: PriorMode, classPriors?: ClassPriors): { key: string; estimate: RiskEstimate } {
-  const key = estimateKey(detectors, prior, mode, classPriors);
+function estimateFor(detectors: Detector[], prior: number, mode: PriorMode): { key: string; estimate: RiskEstimate } {
+  const key = estimateKey(detectors, prior, mode);
   const cached = estimateCache.get(key);
   if (cached !== undefined) {
     cacheEstimate(key, cached);
     return { key, estimate: cached };
   }
-  const estimate = computeRiskEstimate(detectors, prior, mode, classPriors);
+  const estimate = computeRiskEstimate(detectors, prior, mode);
   cacheEstimate(key, estimate);
   return { key, estimate };
 }
 
 /** p_bad with a 95% credible interval from the Beta posteriors of every detector's sensitivity and specificity. */
-export function riskEstimate(result: EvalResult, prior: number = DEFAULT_PRIOR, mode: PriorMode = DEFAULT_PRIOR_MODE, classPriors?: ClassPriors): RiskEstimate | null {
+export function riskEstimate(result: EvalResult, prior: number = DEFAULT_PRIOR, mode: PriorMode = DEFAULT_PRIOR_MODE): RiskEstimate | null {
   const detectors = detectorsOf(result);
   if (detectors.length === 0) return null;
-  return copyEstimate(estimateFor(detectors, prior, mode, classPriors).estimate);
+  return copyEstimate(estimateFor(detectors, prior, mode).estimate);
 }
 
 /**
@@ -407,10 +383,10 @@ export interface StoredRiskEstimate {
   estimate: RiskEstimate;
 }
 
-export function storedRiskEstimate(result: EvalResult, prior: number = DEFAULT_PRIOR, mode: PriorMode = DEFAULT_PRIOR_MODE, classPriors?: ClassPriors): StoredRiskEstimate | null {
+export function storedRiskEstimate(result: EvalResult, prior: number = DEFAULT_PRIOR, mode: PriorMode = DEFAULT_PRIOR_MODE): StoredRiskEstimate | null {
   const detectors = detectorsOf(result);
   if (detectors.length === 0) return null;
-  const { key, estimate } = estimateFor(detectors, prior, mode, classPriors);
+  const { key, estimate } = estimateFor(detectors, prior, mode);
   return { key, estimate: copyEstimate(estimate) };
 }
 
@@ -447,7 +423,7 @@ export function clearRiskEstimateCache(): void {
   estimateCache.clear();
 }
 
-function computeRiskEstimate(detectors: Detector[], prior: number, mode: PriorMode, classPriors?: ClassPriors): RiskEstimate {
+function computeRiskEstimate(detectors: Detector[], prior: number, mode: PriorMode): RiskEstimate {
   /*
    * Jeffreys half-counts in the POINT estimate, not only in the draws.
    *
@@ -462,10 +438,9 @@ function computeRiskEstimate(detectors: Detector[], prior: number, mode: PriorMo
    * something. Found while writing up the composer, not by
    * reading it.
    */
-  const point = pBadFrom(detectors, prior, mode, sensOf, specOf, undefined, classPriors);
+  const point = pBadFrom(detectors, prior, mode, sensOf, specOf);
   const localised = detectors.filter((d) => d.local !== undefined);
-  const own = classPriorsInForce(detectors, classPriors);
-  const draws = drawsFor(detectors, prior, mode, classPriors).sort();
+  const draws = drawsFor(detectors, prior, mode).sort();
   const at = (q: number): number => draws[Math.min(draws.length - 1, Math.max(0, Math.ceil(q * draws.length) - 1))];
   // The point uses the observed rates; a rate at exactly 1 (no false positives
   // in the family) puts the point above every posterior draw, so the interval
@@ -484,7 +459,6 @@ function computeRiskEstimate(detectors: Detector[], prior: number, mode: PriorMo
       ...(localised.length > 0
         ? [`local precision from this deployment's labels replaces the published positive predictive value for: ${localised.map((d) => `${d.name} (${d.local!.right + d.local!.wrong} labels)`).join(', ')}`]
         : []),
-      ...(own.length > 0 ? [`the prior of ${own.map(([cls, pi]) => `${cls} is ${round4(pi)}`).join(', ')}, estimated from this deployment's labels; every other class keeps its share of prior ${prior}`] : []),
     ],
   };
 }

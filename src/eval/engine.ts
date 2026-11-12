@@ -15,7 +15,7 @@ import { getRulesForType, createCustomRule } from './rules/index.js';
 import { criticalityResolver, type CriticalityOverrides, type EffectiveCriticality } from './criticality.js';
 import { bundleState, compose, interpretations, roleOf, COMPOSER_RULES, DEFAULT_COMPOSE, type ComposeConfig } from './compose.js';
 import { inputsPresent, ruleStateOf, stampRuleResult, type PriorInForce } from './stamp.js';
-import type { LocalLabelSource } from './local-labels.js';
+import { isWeighedKind, type LocalLabelSource } from './local-labels.js';
 import { toSteps } from './steps.js';
 import { readStructured, spanInOutput, type StructuredOutput } from './text/structured.js';
 import { toolsHash } from './catalogue.js';
@@ -246,14 +246,21 @@ export class EvalEngine {
 
   /**
    * The prior in force and where it came from: the deployment's own
-   * eval.prior when it set one, else the default. A configured prior always
-   * wins — the deployment said so.
+   * eval.prior when it set one, else the default.
    *
-   * Until 0.22.0 there was a third source: the prior the deployment's
-   * labels implied, in force for every class once one rule had
-   * LOCAL_LABEL_MIN labels. That estimate is of one failure class, the
-   * labelled rule's, and it now stands for that class alone
-   * (effectiveClassPriors). A row stored under the old reading carries
+   * Through 0.21.0 there was a third source. Once a rule had
+   * LOCAL_LABEL_MIN labels, how often its failure is present was estimated
+   * from them (fire rate x precision / published sensitivity) and used as
+   * the prior of every class. So labels on one rule's fires moved what
+   * every other rule's fire was worth, whichever way the labels went, and
+   * with a rule that fires often and is labelled right, an answer no rule
+   * had fired on failed. Used for the labelled rule's own class alone, the
+   * second of those still happened, and a second rule of that class was
+   * still moved by the first one's labels. Labels are evidence about the
+   * fires they were put on: they change what those fires are worth
+   * (stamp.ts, local_labels) and nothing else. The estimate is still
+   * worked out and reported (local-labels.ts, prevalence); no verdict reads
+   * it. A row stored under the old reading carries
    * `priorSource: "estimated"` and re-composes from its own stamp.
    */
   private effectivePrior(): PriorInForce {
@@ -261,32 +268,9 @@ export class EvalEngine {
     return { pi: this.compose.prior, source: 'default' };
   }
 
-  /**
-   * The class priors in force: for each failure class a labelled rule looks
-   * for, the prior the deployment's labels on that rule's fires imply.
-   * None when no rule has LOCAL_LABEL_MIN labels, and none on a deployment
-   * that set eval.prior, whose word stands for every class.
-   */
-  private effectiveClassPriors(): Record<string, number> | undefined {
-    if (this.criticalityOverrides?.priorConfigured === true) return undefined;
-    const priors = this.localLabels?.classPriors ?? [];
-    if (priors.length === 0) return undefined;
-    return Object.fromEntries(priors.map((p) => [p.class, p.pi]));
-  }
-
-  /** The prior a rule's own number is stated at: the estimate for its failure classes where the labels give one, else the prior in force. */
-  private statedPriorFor(rule: EvalRule): PriorInForce {
-    const classPriors = this.effectiveClassPriors();
-    const own = (rule.classes ?? []).flatMap((cls) => (classPriors?.[cls] !== undefined ? [classPriors[cls]] : []));
-    if (own.length === 0) return this.effectivePrior();
-    // The prior that any of the rule's estimated classes is present.
-    return { pi: 1 - own.reduce((none, pi) => none * (1 - pi), 1), source: 'estimated' };
-  }
-
   /** The composer configuration with the prior in force. */
   private effectiveCompose(): ComposeConfig {
-    const classPriors = this.effectiveClassPriors();
-    return { ...this.compose, prior: this.effectivePrior().pi, ...(classPriors !== undefined ? { classPriors } : {}) };
+    return { ...this.compose, prior: this.effectivePrior().pi };
   }
 
   /**
@@ -298,7 +282,6 @@ export class EvalEngine {
    */
   private composerFacts(): NonNullable<Provenance['composer']> {
     const prior = this.effectivePrior();
-    const classPriors = this.effectiveClassPriors();
     return {
       defaultsGate: this.compose.defaultsGate,
       falsePassCost: this.compose.falsePassCost,
@@ -306,14 +289,39 @@ export class EvalEngine {
       prior: prior.pi,
       priorSource: prior.source,
       priorMode: this.compose.priorMode,
-      ...(classPriors !== undefined ? { classPriors } : {}),
       calibration: PUBLISHED_CALIBRATION.version,
       ...(this.compose.requiredEvidence.length > 0 ? { requiredEvidence: [...this.compose.requiredEvidence] } : {}),
       rules: COMPOSER_RULES,
     };
   }
 
-  /** The configuration hash for a verdict produced now: thresholds, criticality, the judge, and every composer setting that is not the shipped one. */
+  /**
+   * Whether this engine weighs the rule's fires in the risk estimate, and
+   * so whether labels on them can move a verdict: a built-in detection or
+   * inference the deployment has not set to report only
+   * (eval.advisoryRules). A rule that vetoes is weighed too: its labels
+   * move the estimate the verdict carries, though not the veto.
+   */
+  weighsFiresOf(ruleName: string): boolean {
+    return isWeighedKind(ruleName) && !(this.criticalityOverrides?.advisoryRules?.includes(ruleName) ?? false);
+  }
+
+  /**
+   * The labels in force: each rule whose fires this engine weighs by the
+   * deployment's own labels, with the counts that weigh them. The same
+   * test the stamp applies to a fire (stamp.ts, `local`), over the rules
+   * this engine weighs; a label on any other rule's fire is counted and
+   * shown and weighs nothing.
+   */
+  private labelsInForce(): Array<{ rule: string; right: number; wrong: number }> {
+    const inForce: Array<{ rule: string; right: number; wrong: number }> = [];
+    for (const p of this.localLabels?.precision.values() ?? []) {
+      if (p.local && this.weighsFiresOf(p.ruleName)) inForce.push({ rule: p.ruleName, right: p.right, wrong: p.wrong });
+    }
+    return inForce;
+  }
+
+  /** The configuration hash for a verdict produced now: thresholds, criticality, the judge, every composer setting that is not the shipped one, and the labels in force. */
   private configHashNow(): string {
     const prior = this.effectivePrior();
     return configHash({
@@ -331,8 +339,8 @@ export class EvalEngine {
         prior: prior.pi,
         priorSource: prior.source,
         priorMode: this.compose.priorMode,
-        classPriors: this.effectiveClassPriors(),
       },
+      localLabels: this.labelsInForce(),
     });
   }
 
@@ -798,7 +806,7 @@ export class EvalEngine {
         state: ruleStateOf(raw),
         ...rest,
         ...stampRuleResult(rule, raw, context, effective, {
-          prior: this.statedPriorFor(rule),
+          prior: this.effectivePrior(),
           local: this.localLabels?.precision.get(rule.name),
           deployed: ruleId !== undefined,
           judgeInForce: this.relevanceJudge !== null,

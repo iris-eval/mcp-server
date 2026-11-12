@@ -46,7 +46,7 @@ test.describe('an empty database — the first run', () => {
     await expect(page.locator('[data-roster="true"]')).toBeVisible();
     await expect(page.locator('[data-local-precision-panel="true"]')).toBeVisible();
     await expect(page.locator('[data-label-summary]')).toHaveText('0 labels on 0 rules · in force on 0');
-    await expect(page.locator('[data-estimated-prior]')).toHaveCount(0);
+    await expect(page.locator('[data-prevalence]')).toHaveCount(0);
 
     expect(errors, `page errors on the empty database: ${errors.join(' | ')}`).toEqual([]);
   });

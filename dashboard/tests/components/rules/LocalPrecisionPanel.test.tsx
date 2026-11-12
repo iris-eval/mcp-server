@@ -1,7 +1,7 @@
 /*
  * The local-precision panel: your labels per rule, the local
  * precision with its interval, whether it is in force, the published number
- * beside it, the estimated prior and what to label next — every number from
+ * beside it, how often each labelled rule's failure is present and what to label next — every number from
  * /labels/stats, nothing typed here.
  */
 import React from 'react';
@@ -28,7 +28,7 @@ const stats: LabelStats = {
   ],
   min: 20,
   window: 2000,
-  classPriors: [{ class: 'stub', pi: 0.041, lo: 0.0105, hi: 0.113, ruleName: 'no_stub_output', fireRate: 0.3, sensitivity: 0.8 }],
+  prevalence: [{ ruleName: 'no_stub_output', classes: ['stub'], pi: 0.041, lo: 0.0105, hi: 0.113, fireRate: 0.3, sensitivity: 0.8 }],
   suggestion: { ruleName: 'no_tool_loop', n: 4, halfwidthPoints: 33, fireRate: 0.12, sentence: 'label a no_tool_loop fire next: 4 labelled, ±33 points, fires on 12% of your traffic' },
   refreshedAt: '2026-09-20T18:00:00.000Z',
 };
@@ -58,20 +58,22 @@ describe('LocalPrecisionPanel', () => {
     expect(container.querySelector('[data-label-count="no_stub_output"]')?.textContent).toBe('2 right · 18 wrong');
   });
 
-  it('says the prior the labels imply, for which failure and no other, and which rule to label next, in the server’s words', () => {
+  it('says how often the labelled rule’s failure is present, that no verdict is weighed by it, and which rule to label next, in the server’s words', () => {
     const { container } = render(<MemoryRouter><LocalPrecisionPanel /></MemoryRouter>);
-    const prior = container.querySelector('[data-class-priors]')!;
-    expect(prior.getAttribute('data-class-priors')).toBe('stub');
-    expect(container.querySelector('[data-class-prior="stub"]')?.textContent).toContain('stub 0.04 [0.01, 0.11], from no_stub_output (fires on 30% of your traffic)');
-    expect(prior.textContent).toContain('Each is the prior for that failure alone: a rule that looks for any other failure is weighed as before.');
+    const estimate = container.querySelector('[data-prevalence]')!;
+    expect(estimate.getAttribute('data-prevalence')).toBe('no_stub_output');
+    expect(container.querySelector('[data-prevalence-rule="no_stub_output"]')?.textContent).toBe('the failure no_stub_output looks for is present on about 4% of your traffic [1%, 11%]');
+    expect(estimate.textContent).toBe('Estimated from your labels: the failure no_stub_output looks for is present on about 4% of your traffic [1%, 11%]. An estimate takes its rule to find the failure as often on your traffic as on the published corpus. It is information: no verdict is weighed by it.');
+    // The panel no longer calls anything a prior: the labels are not one.
+    expect(container.textContent).not.toMatch(/prior/i);
     expect(container.querySelector('[data-sampling-suggestion="no_tool_loop"]')?.textContent).toBe('Next: label a no_tool_loop fire next: 4 labelled, ±33 points, fires on 12% of your traffic.');
   });
 
   it('with nothing labelled and nothing firing, says so and invents no number', () => {
-    useLabelStatsMock.mockReturnValue(query({ ...stats, rules: stats.rules.map((r) => ({ ...r, n: 0, right: 0, wrong: 0, precision: null, local: false, fireRate: 0 })), classPriors: [], suggestion: null }));
+    useLabelStatsMock.mockReturnValue(query({ ...stats, rules: stats.rules.map((r) => ({ ...r, n: 0, right: 0, wrong: 0, precision: null, local: false, fireRate: 0 })), prevalence: [], suggestion: null }));
     const { container } = render(<MemoryRouter><LocalPrecisionPanel /></MemoryRouter>);
     expect(container.querySelector('[data-label-summary]')?.textContent).toBe('0 labels on 0 rules · in force on 0');
-    expect(container.querySelector('[data-class-priors]')).toBeNull();
+    expect(container.querySelector('[data-prevalence]')).toBeNull();
     expect(container.querySelector('[data-sampling-suggestion]')).toBeNull();
     expect(container.textContent).toContain('No labels yet, and no rule has fired on your recent traffic.');
   });

@@ -38,7 +38,7 @@
  * shows a default says it is a recommendation.
  */
 import type { EvalResult, EvalRuleResult, EvidenceRecord, Interpretation, Need, Role, Verdict, VerdictLayer, VerdictNode } from '../types/eval.js';
-import { riskEstimate, detectorsOf, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type ClassPriors, type PriorMode } from './risk.js';
+import { riskEstimate, detectorsOf, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
 import { verdictConfidence, MIN_BIN_N, MIN_BIN_PATTERNS, type ConfidenceCall } from './confidence.js';
 import { PUBLISHED_CALIBRATION } from './published-calibration.js';
 import { decides, isCritical } from './gate.js';
@@ -75,13 +75,6 @@ export interface ComposeConfig {
   prior: number;
   /** How that prior is spread over the failure classes the detectors examine. */
   priorMode: PriorMode;
-  /**
-   * The prior of single failure classes, where the deployment's labels on
-   * a rule's fires estimate one (risk.ts, ClassPriors). Absent when no
-   * labels do, and on a deployment that set eval.prior, whose word stands
-   * for every class.
-   */
-  classPriors?: ClassPriors;
   /**
    * The calibration table the confidence label is read from, by composite
    * version. Absent when judging now: the table this build ships. A stored
@@ -325,7 +318,7 @@ function walk(
    * verdict that came through a measured risk is a different sentence from
    * one where nothing could be estimated, and both end here.
    */
-  const risk = riskEstimate(result as EvalResult, cfg.prior, cfg.priorMode, cfg.classPriors);
+  const risk = riskEstimate(result as EvalResult, cfg.prior, cfg.priorMode);
   const t = tau(cfg.falsePassCost);
   const by =
     risk === null
@@ -366,11 +359,9 @@ export function calibrationAvailable(cfg: Pick<ComposeConfig, 'calibration'>): b
 export function confidenceCall(
   result: Pick<EvalResult, 'rule_results'>,
   risk: { pBad: number; lo: number; hi: number },
-  cfg: Pick<ComposeConfig, 'prior' | 'priorMode' | 'falsePassCost' | 'classPriors'>,
+  cfg: Pick<ComposeConfig, 'prior' | 'priorMode' | 'falsePassCost'>,
 ): ConfidenceCall {
-  const detectors = detectorsOf(result as EvalResult);
-  // The table was measured with the published error rates at the shipped prior for every class: a fire weighed by the deployment's precision, or a class weighed at the deployment's own prior, is a setting it did not measure.
-  const localLabels = detectors.some((d) => d.local !== undefined) || detectors.some((d) => d.classes.some((cls) => cfg.classPriors?.[cls] !== undefined));
+  const localLabels = detectorsOf(result as EvalResult).some((d) => d.local !== undefined);
   return verdictConfidence(risk, tau(cfg.falsePassCost), { prior: cfg.prior, priorMode: cfg.priorMode, localLabels });
 }
 
@@ -752,23 +743,36 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
    * naming the weighed rules that fired. A veto is not weighed, so a
    * verdict a critical rule decided gets no such sentence.
    *
-   * The sentence says everything labels do, and how far they reach. At
-   * LOCAL_LABEL_MIN labels the prior of the labelled rule's own failure
-   * class is estimated from them too, unless the deployment set eval.prior
-   * (engine.effectiveClassPriors), and no other class's prior moves: a
-   * reader invited to label one rule is told the labels stop at that rule's
-   * class.
+   * The sentence says everything labels do, and that is one thing: the
+   * labelled rule's fires are weighed by the precision the labels show.
+   * No other rule's fire, and no rule's silence, is weighed differently
+   * for them (engine.effectivePrior says why), so a reader invited to
+   * label one rule is told how far the labels reach.
+   *
+   * A verdict stamped with a prior estimated from labels was given by
+   * 0.14.0 through 0.21.0, where labels did reach every rule, through that
+   * prior. It reads back as it was given, so it is not told that nothing
+   * else read the labels: it gets the note after this one, which says how
+   * it was weighed and how to have it weighed as verdicts are now.
    */
+  const weighedAtLabelsPrior = result.provenance?.composer?.priorSource === 'estimated';
   if (verdict.basis === 'risk_over_loss') {
     const weighedFires = result.rule_results.filter((r) => fired(r) && r.advisory !== true && !isCritical(r) && (r.kind === 'detection' || r.kind === 'inference')).map((r) => r.ruleName);
     if (weighedFires.length > 0) {
       out.push({
         severity: 'note',
         addressee: 'operator',
-        text: `The risk estimate that failed this verdict rests on ${weighedFires.join(', ')}. If ${weighedFires.length === 1 ? 'its fires are' : 'their fires are'} not failures on your traffic, label them, or name the rule in eval.advisoryRules to have it report and take no part in the verdict. From ${LOCAL_LABEL_MIN} labels on a rule's fires two things change: that rule's fires are weighed by the precision you measured, and the prior of the failure class it looks for is estimated from your labels, unless you set eval.prior. What a fire of a rule for any other class is worth does not move.`,
+        text: `The risk estimate that failed this verdict rests on ${weighedFires.join(', ')}. If ${weighedFires.length === 1 ? 'its fires are' : 'their fires are'} not failures on your traffic, label them, or name the rule in eval.advisoryRules to have it report and take no part in the verdict. From ${LOCAL_LABEL_MIN} labels on a rule's fires, that rule's fires are weighed by the precision you measured.${weighedAtLabelsPrior ? '' : " Nothing else in a verdict reads your labels: every other rule's fire, and that rule's silence, are weighed as before."}`,
         configKey: 'eval.advisoryRules',
       });
     }
+  }
+  if (weighedAtLabelsPrior) {
+    out.push({
+      severity: 'note',
+      addressee: 'operator',
+      text: `This verdict was weighed at a prior of ${Math.round(cfg.prior * 1e4) / 1e4} that an earlier version estimated from your labels and applied to every rule. A verdict given now starts from your eval.prior or the default, and labels change what the labelled rule's own fires are worth and nothing else, so this one can read differently today. Re-evaluating it weighs it that way.`,
+    });
   }
   const unanswered = verdict.basis === 'critical_unknown' ? verdict : (verdict.also ?? []).find((l) => l.basis === 'critical_unknown');
   if (unanswered !== undefined) {

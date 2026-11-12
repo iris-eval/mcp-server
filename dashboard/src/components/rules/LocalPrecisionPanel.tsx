@@ -5,7 +5,8 @@
  * labelled right or wrong, the local precision with its Wilson interval,
  * whether that number is in force (twenty labels), the published precision
  * beside it, and how often the rule fires on your traffic. Above the
- * table: the prior your labels imply, and which rule to label next.
+ * table: how often your labels imply each labelled rule's failure is
+ * present, and which rule to label next.
  * Labels measure precision only, so nothing here says "local accuracy".
  */
 import type { CSSProperties } from 'react';
@@ -119,17 +120,17 @@ export function LocalPrecisionPanel() {
         your traffic, and at {data.min} labels it replaces the published number on every verdict this deployment makes. Labels measure
         precision only: nothing here says what a quiet rule missed.
       </p>
-      {data.classPriors.length > 0 && (
-        <Tooltip content={TT.classPriors}>
-          <p style={styles.fact} tabIndex={0} data-class-priors={data.classPriors.map((p) => p.class).join(' ')}>
+      {data.prevalence.length > 0 && (
+        <Tooltip content={TT.prevalence}>
+          <p style={styles.fact} tabIndex={0} data-prevalence={data.prevalence.map((p) => p.ruleName).join(' ')}>
             Estimated from your labels:{' '}
-            {data.classPriors.map((p, i) => (
-              <span key={p.class} data-class-prior={p.class}>
-                {i > 0 ? '; ' : ''}
-                <code>{p.class}</code> {p.pi.toFixed(2)} [{p.lo.toFixed(2)}, {p.hi.toFixed(2)}], from {p.ruleName} (fires on {pct(p.fireRate)} of your traffic)
+            {data.prevalence.map((p, i) => (
+              <span key={p.ruleName} data-prevalence-rule={p.ruleName}>
+                {i > 0 ? '; ' : ''}the failure {p.ruleName} looks for is present on about {pct(p.pi)} of your traffic [{pct(p.lo)}, {pct(p.hi)}]
               </span>
             ))}
-            . Each is the prior for that failure alone: a rule that looks for any other failure is weighed as before. Your <code>eval.prior</code>, when set, wins.
+            . An estimate takes its rule to find the failure as often on your traffic as on the published corpus. It is information: no verdict is
+            weighed by it.
           </p>
         </Tooltip>
       )}

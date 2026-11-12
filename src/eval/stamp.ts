@@ -25,10 +25,10 @@ import { round4 } from './stats.js';
 import type { LocalPrecision } from './labels.js';
 import { thresholdSetBy } from './thresholds.js';
 
-/** The prior in force and where it came from — the engine resolves it once per evaluation. */
+/** The prior in force and where it came from — the engine resolves it once per evaluation. A deployment's labels are not a source of it (engine.ts, effectivePrior). */
 export interface PriorInForce {
   pi: number;
-  source: 'default' | 'config' | 'estimated';
+  source: 'default' | 'config';
 }
 
 export interface StampOptions {
@@ -155,8 +155,8 @@ export function skipClassOf(raw: EvalRuleResult): SkipClass | undefined {
 /**
  * The uncertainty a result carries, by the kind of claim it makes. A skipped
  * rule made no claim and gets none. The prior is the corpus default until a
- * deployment states its own prevalence (the compose-by-kind release) or the
- * own-traffic labels estimate one.
+ * deployment states its own prevalence (eval.prior). Its labels on a rule's
+ * fires change that rule's number, and are not a source of the prior.
  */
 export function uncertaintyOf(rule: EvalRule, raw: EvalRuleResult, options: StampOptions = {}): Uncertainty | undefined {
   if (raw.skipped || rule.kind === undefined) return undefined;
@@ -197,9 +197,9 @@ export function uncertaintyOf(rule: EvalRule, raw: EvalRuleResult, options: Stam
        * be even, and at an even prior its positive predictive value can read
        * far above the precision that was measured: no_unusual_action's did,
        * because most of its runs are ones where nothing was wrong. So while
-       * the deployment has neither set a prior nor labelled enough to
-       * estimate one, such a rule's number is stated at its family's own
-       * mix, where it is the one that was observed. The verdict is not
+       * the deployment has not set a prior, such a rule's number is stated
+       * at its family's own mix, where it is the one that was observed. The
+       * verdict is not
        * weighed by this field (risk.ts spreads the prior in force over the
        * classes examined); it is what a reader is told a fire, or a silence,
        * is worth.

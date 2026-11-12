@@ -6,13 +6,15 @@
  * twenty it carries `local_labels` and the risk estimate reads the
  * deployment's own precision — so a verdict that failed on the published
  * number passes when the deployment has found the rule wrong eighteen
- * times in twenty. The labels also estimate how often the rule's own
- * failure class is present, and that estimate is the prior of that class
- * and of no other: a verdict that rests on another rule's fire is where it
- * was. The prior in force for every class without an estimate is the
- * deployment's when it set one, the default otherwise, and the provenance
- * says which and names each class the labels estimated. A stored row
- * re-composes on read to the same verdict from its own stamp.
+ * times in twenty. That is everything the labels do. An output the
+ * labelled rule did not fire on is judged exactly as it is without them,
+ * whichever way they went and however often the rule fires: the prior in
+ * force is the deployment's when it set one and the default otherwise.
+ * What the labels say about how often the failure is present is reported
+ * and weighs nothing. The configuration hash carries the labels in force,
+ * which a rule set to report only has none of. A stored row re-composes on
+ * read to the same verdict from its own stamp, a row written before 0.22.0
+ * included, and that one says how it was weighed.
  */
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -21,14 +23,23 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import { compose, DEFAULT_COMPOSE } from '../../../src/eval/compose.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
-import { localPrecision, type ClassPrior } from '../../../src/eval/labels.js';
+import { localPrecision } from '../../../src/eval/labels.js';
 import { buildLocalLabelSource, type LocalLabelSource } from '../../../src/eval/local-labels.js';
-import { FAILURE_CLASS_IDS } from '../../../src/eval/failure-classes.js';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
+import type { EvalResult } from '../../../src/types/eval.js';
 import type { IStorageAdapter } from '../../../src/types/query.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 
 const STUB = 'TODO: write the summary.';
+
+/** No rule fires on it. */
+const CLEAN = {
+  input: 'Which products does the shop carry, and what does the first one cost?',
+  output: 'The shop carries three products: the Kona 250 g bag at 18.50 USD, the Maui 250 g bag at 17.00 USD and the sampler at 29.00 USD. The first one, the Kona bag, costs 18.50 USD.',
+};
+
+/** no_stub_output fires and says_something, the other rule that looks for a stub, stays quiet. */
+const EMPTY_PROMISE = { input: 'What is the refund policy for opened items?', output: 'I will look into that and get back to you.' };
 
 /** A failed tool call the answer does not mention: no_silent_tool_failure fires and no_stub_output stays quiet. */
 const SILENT_FAILURE = {
@@ -37,25 +48,31 @@ const SILENT_FAILURE = {
   toolCalls: [{ tool_name: 'send_invoice', input: { id: 7 }, output: null, error: 'upstream timeout after 3 retries' }],
 };
 
-const STUB_PRIOR: ClassPrior = { class: 'stub', pi: 0.12, lo: 0.05, hi: 0.2, ruleName: 'no_stub_output', fireRate: 0.3, sensitivity: 0.8 };
-
-function source(right: number, wrong: number, classPriors: ClassPrior[] = []): LocalLabelSource {
+function source(right: number, wrong: number): LocalLabelSource {
   return {
     precision: new Map([['no_stub_output', localPrecision({ ruleName: 'no_stub_output', right, wrong })]]),
     fireRates: new Map([['no_stub_output', 0.3]]),
-    classPriors,
+    prevalence: [],
     suggestion: null,
     refreshedAt: new Date().toISOString(),
   };
 }
 
-/** The source a deployment's storage gives when one rule has these labels and fired on `fired` of `judged` evaluations. */
-function sourceFromStorage(ruleName: string, right: number, wrong: number, fired: number, judged: number): Promise<LocalLabelSource> {
-  const storage = { labelTallies: async () => [{ ruleName, right, wrong }], ruleFireStats: async () => [{ ruleName, judged, fired }] } as unknown as IStorageAdapter;
+/** The source a deployment's storage gives when these rules have these labels and fired on `fired` of `judged` evaluations. */
+function sourceFromStorage(rules: Array<{ ruleName: string; right: number; wrong: number; fired: number; judged: number }>): Promise<LocalLabelSource> {
+  const storage = {
+    labelTallies: async () => rules.map(({ ruleName, right, wrong }) => ({ ruleName, right, wrong })),
+    ruleFireStats: async () => rules.map(({ ruleName, fired, judged }) => ({ ruleName, fired, judged })),
+  } as unknown as IStorageAdapter;
   return buildLocalLabelSource(storage, LOCAL_TENANT);
 }
 
 const newEngine = (): EvalEngine => new EvalEngine(0.7, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+
+/** Everything an evaluation says that a reader or a gate acts on. */
+const answer = (r: EvalResult) => ({ verdict: r.verdict, passed: r.passed, score: r.score, rule_results: r.rule_results, interpretations: r.interpretations });
+
+const firedOn = (r: EvalResult): string[] => r.rule_results.filter((x) => !x.skipped && x.passed === false).map((x) => x.ruleName);
 
 const dirs: string[] = [];
 const stores: SqliteAdapter[] = [];
@@ -113,82 +130,157 @@ describe('local precision on the engine', () => {
     expect(after.verdict?.state).toBe('fail');
   });
 
-  it('the prior in force is the default or the deployment’s own; the labels’ estimate is the prior of the labelled rule’s class and of no other', async () => {
-    const engine = newEngine();
-    const plain = await engine.evaluateAll({ output: STUB });
+  it('the prior in force is the default, or the deployment’s own: labels are not a source of it', async () => {
+    const plain = await newEngine().evaluateAll({ output: STUB });
     expect(plain.provenance?.composer).toMatchObject({ prior: 0.5, priorSource: 'default' });
-    expect(plain.provenance?.composer).not.toHaveProperty('classPriors');
     expect(plain.rule_results.find((r) => r.ruleName === 'no_pii')!.uncertainty).toMatchObject({ basis: 'published_accuracy', prior: { pi: 0.5, source: 'default' } });
 
-    engine.setLocalLabels(source(2, 18, [STUB_PRIOR]));
-    const estimated = await engine.evaluateAll({ output: STUB });
-    // The prior every class starts from is still the default, and the one class the labels speak for is named with its own.
-    expect(estimated.provenance?.composer).toMatchObject({ prior: 0.5, priorSource: 'default', classPriors: { stub: 0.12 } });
-    // A rule for another class states its number at the prior it had.
-    expect(estimated.rule_results.find((r) => r.ruleName === 'no_pii')!.uncertainty).toMatchObject({ prior: { pi: 0.5, source: 'default' } });
-    // A rule for the labelled class, labelled or not, states its number at the estimate.
-    expect(estimated.rule_results.find((r) => r.ruleName === 'says_something')!.uncertainty).toMatchObject({ prior: { pi: 0.12, source: 'estimated' } });
-    expect(estimated.verdict?.risk?.assumptions.some((a) => a.includes('the prior of stub is 0.12') && a.includes('every other class keeps its share of prior 0.5'))).toBe(true);
+    // Twenty labels on a rule that fires on three evaluations in ten: through 0.21.0 this set the prior of every class to about 0.04.
+    const labels = await sourceFromStorage([{ ruleName: 'no_stub_output', right: 2, wrong: 18, fired: 300, judged: 1000 }]);
+    expect(labels.prevalence).toHaveLength(1);
+    const labelled = newEngine();
+    labelled.setLocalLabels(labels);
+    const withLabels = await labelled.evaluateAll({ output: STUB });
+    expect(withLabels.provenance?.composer).toMatchObject({ prior: 0.5, priorSource: 'default' });
+    // A quiet rule for another failure states its number at the prior it always had.
+    expect(withLabels.rule_results.find((r) => r.ruleName === 'no_pii')!.uncertainty).toEqual(plain.rule_results.find((r) => r.ruleName === 'no_pii')!.uncertainty);
+    expect(withLabels.verdict?.risk?.assumptions.join(' ')).not.toMatch(/estimated/);
 
     const configured = new EvalEngine(0.7, defaultConfig.eval.ruleThresholds, { ...defaultConfig.eval, prior: 0.3, priorConfigured: true });
-    configured.setLocalLabels(source(2, 18, [STUB_PRIOR]));
+    configured.setLocalLabels(labels);
     const own = await configured.evaluateAll({ output: STUB });
-    // The deployment's own eval.prior stands for every class, the labelled one included.
     expect(own.provenance?.composer).toMatchObject({ prior: 0.3, priorSource: 'config' });
-    expect(own.provenance?.composer).not.toHaveProperty('classPriors');
     expect(own.rule_results.find((r) => r.ruleName === 'no_pii')!.uncertainty).toMatchObject({ prior: { pi: 0.3, source: 'config' } });
-    expect(own.rule_results.find((r) => r.ruleName === 'says_something')!.uncertainty).toMatchObject({ prior: { pi: 0.3, source: 'config' } });
   });
 
-  it('twenty labels on one rule’s fires leave a verdict that rests on another rule’s fire where it was, whichever way the labels went', async () => {
-    const plain = await newEngine().evaluateAll(SILENT_FAILURE);
-    expect(plain.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['silent_tool_failure'] });
-    expect(plain.rule_results.find((r) => r.ruleName === 'no_stub_output')!.passed).toBe(true);
-    const plainRisk = plain.verdict!.risk!;
+  it('an output the labelled rule did not fire on is judged exactly as without labels, whichever way they went and however often the rule fires', async () => {
+    const contexts = { CLEAN, EMPTY_PROMISE, SILENT_FAILURE, STUB: { output: STUB } };
+    const plain = Object.fromEntries(await Promise.all(Object.entries(contexts).map(async ([name, context]) => [name, await newEngine().evaluateAll(context)] as const)));
+    // What each output is: nothing fired; the stub rule fired and its sibling did not; a rule for another failure fired.
+    expect(firedOn(plain.CLEAN)).toEqual([]);
+    expect(plain.CLEAN.verdict).toMatchObject({ state: 'pass' });
+    expect(firedOn(plain.EMPTY_PROMISE)).toContain('no_stub_output');
+    expect(firedOn(plain.EMPTY_PROMISE)).not.toContain('says_something');
+    expect(plain.SILENT_FAILURE.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['silent_tool_failure'] });
+    expect(firedOn(plain.SILENT_FAILURE)).not.toContain('no_stub_output');
 
-    // A stub rule that fires on 2% of traffic: twenty labels put the prior of its class at a few percent or at the floor.
-    for (const [right, wrong] of [[0, 20], [20, 0], [10, 10]] as const) {
-      const labelled = newEngine();
-      const src = await sourceFromStorage('no_stub_output', right, wrong, 20, 1000);
-      expect(src.classPriors.map((p) => p.class)).toEqual(['stub']);
-      expect(src.classPriors[0].pi).toBeLessThan(0.05);
-      labelled.setLocalLabels(src);
-      const after = await labelled.evaluateAll(SILENT_FAILURE);
-
-      expect(after.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['silent_tool_failure'] });
-      // Every class but the labelled rule's own is weighed exactly as it was, the class the verdict rests on among them.
-      const risk = after.verdict!.risk!;
-      for (const cls of FAILURE_CLASS_IDS) {
-        if (cls === 'stub') continue;
-        expect(risk.perClass[cls], cls).toBe(plainRisk.perClass[cls]);
+    const labellings = [
+      // A rule that fires on one evaluation in five, every fire called right: through 0.21.0 this failed the clean answer.
+      { ruleName: 'says_something', right: 20, wrong: 0, fired: 200, judged: 1000 },
+      { ruleName: 'says_something', right: 0, wrong: 20, fired: 200, judged: 1000 },
+      { ruleName: 'no_stub_output', right: 20, wrong: 0, fired: 600, judged: 1000 },
+      // Rare, and every fire called wrong: through 0.21.0 this passed the verdict another rule had failed.
+      { ruleName: 'no_stub_output', right: 0, wrong: 20, fired: 20, judged: 1000 },
+      { ruleName: 'no_stub_output', right: 10, wrong: 10, fired: 100, judged: 1000 },
+      { ruleName: 'no_silent_tool_failure', right: 20, wrong: 0, fired: 300, judged: 1000 },
+      { ruleName: 'no_hallucination_markers', right: 20, wrong: 0, fired: 500, judged: 1000 },
+    ];
+    let compared = 0;
+    for (const labelling of labellings) {
+      const engine = newEngine();
+      engine.setLocalLabels(await sourceFromStorage([labelling]));
+      for (const [name, context] of Object.entries(contexts)) {
+        if (firedOn(plain[name]).includes(labelling.ruleName)) continue;
+        const after = await engine.evaluateAll(context);
+        expect(answer(after), `${name} with ${labelling.right} right and ${labelling.wrong} wrong on ${labelling.ruleName}`).toEqual(answer(plain[name]));
+        compared += 1;
       }
-      // The labelled class is the one thing that moved: its rules were quiet here, and it is rarer than the default took it to be.
-      expect(risk.perClass.stub).toBeLessThan(plainRisk.perClass.stub!);
-      expect(plainRisk.pBad - risk.pBad).toBeGreaterThan(0);
-      expect(plainRisk.pBad - risk.pBad).toBeLessThan(0.01);
-      // The fire that failed the verdict states the number it stated without labels.
-      const fire = (r: typeof plain) => r.rule_results.find((x) => x.ruleName === 'no_silent_tool_failure')!.uncertainty;
-      expect(fire(after)).toEqual(fire(plain));
     }
+    // Every pairing but the seven where the labelled rule is one that fired: the stub rule on the two stubs, three labellings each, and the tool-failure rule on its own fire.
+    expect(compared).toBe(labellings.length * 4 - 7);
   });
 
-  it('a verdict no rule of the labelled class examined does not move at all, and is seeded as it was', async () => {
-    // no_unusual_action reads a case's history; a call that carries none is not examined for its class.
-    const plain = await newEngine().evaluateAll(SILENT_FAILURE);
-    expect(plain.verdict!.risk!.perClass.wrong_trajectory).toBeNull();
-    const labelled = newEngine();
-    labelled.setLocalLabels(await sourceFromStorage('no_unusual_action', 0, 20, 20, 1000));
-    const after = await labelled.evaluateAll(SILENT_FAILURE);
-    expect(after.provenance?.composer).toMatchObject({ classPriors: { wrong_trajectory: 0.01 } });
-    expect(after.verdict!.risk).toEqual(plain.verdict!.risk);
-    expect(after.verdict!.state).toBe(plain.verdict!.state);
-    expect(after.verdict!.confidence).toBe(plain.verdict!.confidence);
+  it('where the labelled rule fired, the verdict reads the precision of the labels and not how often the rule fires', async () => {
+    const plain = await newEngine().evaluateAll(EMPTY_PROMISE);
+    expect(plain.verdict?.state).toBe('fail');
+    const at = async (right: number, wrong: number, fired: number): Promise<EvalResult> => {
+      const engine = newEngine();
+      engine.setLocalLabels(await sourceFromStorage([{ ruleName: 'no_stub_output', right, wrong, fired, judged: 1000 }]));
+      return engine.evaluateAll(EMPTY_PROMISE);
+    };
+    // Called wrong eighteen times in twenty, the fire no longer carries the verdict, at any fire rate.
+    const rare = await at(2, 18, 10);
+    const common = await at(2, 18, 600);
+    expect(rare.verdict?.state).toBe('pass');
+    expect(answer(common)).toEqual(answer(rare));
+    // Called right every time, it carries more than the published number did, at any fire rate.
+    const rightRare = await at(20, 0, 10);
+    const rightCommon = await at(20, 0, 600);
+    expect(rightRare.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['stub'] });
+    expect(rightRare.verdict!.risk!.pBad).toBeGreaterThan(plain.verdict!.risk!.pBad);
+    expect(answer(rightCommon)).toEqual(answer(rightRare));
+  });
+
+  it('the source reports how often each labelled rule’s failure is present: one entry a rule, in name order, for the rules whose fires a verdict weighs', async () => {
+    const src = await sourceFromStorage([
+      { ruleName: 'says_something', right: 20, wrong: 0, fired: 50, judged: 1000 },
+      { ruleName: 'no_stub_output', right: 12, wrong: 8, fired: 250, judged: 1000 },
+      { ruleName: 'no_pii', right: 18, wrong: 2, fired: 40, judged: 1000 },
+      // Not reported: a measurement, a rule one label short, and a rule that fires on nothing.
+      { ruleName: 'min_output_length', right: 20, wrong: 0, fired: 300, judged: 1000 },
+      { ruleName: 'no_tool_loop', right: 19, wrong: 0, fired: 100, judged: 1000 },
+      { ruleName: 'no_hallucination_markers', right: 20, wrong: 0, fired: 0, judged: 1000 },
+    ]);
+    expect(src.prevalence.map((p) => p.ruleName)).toEqual(['no_pii', 'no_stub_output', 'says_something']);
+    expect(src.prevalence.map((p) => p.classes)).toEqual([['pii_leak', 'credential_leak'], ['stub'], ['stub']]);
+    // Two rules that look for the same failure each say what their own labels imply; neither is picked over the other.
+    const [, stub, says] = src.prevalence;
+    expect(stub).toMatchObject({ fireRate: 0.25 });
+    expect(stub.pi).toBeCloseTo((0.25 * 0.6) / stub.sensitivity, 10);
+    expect(says.pi).toBeCloseTo((0.05 * 1) / says.sensitivity, 10);
+    expect(stub.lo).toBeLessThan(stub.pi);
+    expect(stub.hi).toBeGreaterThan(stub.pi);
+    expect((await sourceFromStorage([])).prevalence).toEqual([]);
+  });
+
+  it('the configuration hash carries the labels in force: it moves with a label that weighs a fire, and with nothing else the labels touch', async () => {
+    const hashWith = async (rules: Parameters<typeof sourceFromStorage>[0]): Promise<string> => {
+      const engine = newEngine();
+      engine.setLocalLabels(await sourceFromStorage(rules));
+      return (await engine.evaluateAll(CLEAN)).provenance!.configHash;
+    };
+    const none = (await newEngine().evaluateAll(CLEAN)).provenance!.configHash;
+    const twenty = await hashWith([{ ruleName: 'no_stub_output', right: 2, wrong: 18, fired: 50, judged: 1000 }]);
+    expect(twenty).not.toBe(none);
+    // More traffic under the same labels is the same configuration: through 0.21.0 it was another.
+    expect(await hashWith([{ ruleName: 'no_stub_output', right: 2, wrong: 18, fired: 60, judged: 1100 }])).toBe(twenty);
+    // One more label weighs the rule's fires differently, whether or not it moves the precision's point.
+    expect(await hashWith([{ ruleName: 'no_stub_output', right: 2, wrong: 19, fired: 50, judged: 1000 }])).not.toBe(twenty);
+    const allRight = await hashWith([{ ruleName: 'no_stub_output', right: 20, wrong: 0, fired: 50, judged: 1000 }]);
+    expect(await hashWith([{ ruleName: 'no_stub_output', right: 21, wrong: 0, fired: 50, judged: 1000 }])).not.toBe(allRight);
+    // Labels that weigh nothing leave it alone: one short of the floor, and a measurement's.
+    expect(await hashWith([{ ruleName: 'no_stub_output', right: 1, wrong: 18, fired: 50, judged: 1000 }])).toBe(none);
+    expect(await hashWith([{ ruleName: 'min_output_length', right: 20, wrong: 0, fired: 300, judged: 1000 }])).toBe(none);
+  });
+
+  it('a rule the deployment set to report only is not weighed: its labels are not labels in force and move nothing', async () => {
+    const reportOnly = (): EvalEngine => new EvalEngine(0.7, defaultConfig.eval.ruleThresholds, { ...defaultConfig.eval, advisoryRules: ['no_stub_output'] });
+    expect(newEngine().weighsFiresOf('no_stub_output')).toBe(true);
+    expect(reportOnly().weighsFiresOf('no_stub_output')).toBe(false);
+    // The setting is about one rule: the others are weighed as they were, and a measurement or a rule nobody ships never is.
+    expect(reportOnly().weighsFiresOf('no_silent_tool_failure')).toBe(true);
+    expect(reportOnly().weighsFiresOf('min_output_length')).toBe(false);
+    expect(reportOnly().weighsFiresOf('a-rule-of-my-own')).toBe(false);
+    // A rule that vetoes is weighed: its labels move the estimate the verdict carries.
+    expect(newEngine().weighsFiresOf('no_pii')).toBe(true);
+
+    const plain = await reportOnly().evaluateAll(EMPTY_PROMISE);
+    expect(firedOn(plain)).toContain('no_stub_output');
+    expect(plain.rule_results.find((r) => r.ruleName === 'no_stub_output')).toMatchObject({ advisory: true });
+    for (const [right, wrong] of [[20, 0], [0, 20]] as const) {
+      const engine = reportOnly();
+      engine.setLocalLabels(await sourceFromStorage([{ ruleName: 'no_stub_output', right, wrong, fired: 300, judged: 1000 }]));
+      const labelled = await engine.evaluateAll(EMPTY_PROMISE);
+      // On the rule's own fire: the verdict is the one given without labels, under the same configuration.
+      expect(labelled.verdict, `${right} right, ${wrong} wrong`).toEqual(plain.verdict);
+      expect(labelled.provenance!.configHash).toBe(plain.provenance!.configHash);
+    }
   });
 
   it('a stored row re-composes on read to the same verdict and the same risk, from its own stamp', async () => {
     const s = await store();
     const engine = newEngine();
-    engine.setLocalLabels(source(2, 18, [STUB_PRIOR]));
+    engine.setLocalLabels(await sourceFromStorage([{ ruleName: 'no_stub_output', right: 2, wrong: 18, fired: 300, judged: 1000 }]));
     for (const context of [{ output: STUB }, SILENT_FAILURE]) {
       const written = await engine.evaluateAll(context);
       await s.insertEvalResult(LOCAL_TENANT, written);
@@ -197,13 +289,13 @@ describe('local precision on the engine', () => {
       expect(read.verdict?.basis).toBe(written.verdict?.basis);
       expect(read.verdict?.risk).toEqual(written.verdict?.risk);
       expect(read.verdict?.confidence).toBe(written.verdict?.confidence);
-      expect(read.provenance?.composer).toMatchObject({ prior: 0.5, priorSource: 'default', classPriors: { stub: 0.12 } });
+      expect(read.provenance?.composer).toMatchObject({ prior: 0.5, priorSource: 'default' });
     }
   });
 
-  it('a row stored when one estimate was the prior of every class reads back as it was given', async () => {
+  it('a row stored when the labels’ estimate was the prior of every class reads back as it was given', async () => {
     const s = await store();
-    // Through 0.21.0 the labels' estimate replaced `prior` itself and the row said `estimated`.
+    // Through 0.21.0 the estimate replaced `prior` itself and the row said `estimated`.
     const written = await newEngine().evaluateAll(SILENT_FAILURE);
     written.provenance!.composer = { ...written.provenance!.composer!, prior: 0.12, priorSource: 'estimated' };
     const asGiven = compose(written, { ...DEFAULT_COMPOSE, prior: 0.12 });
@@ -213,5 +305,21 @@ describe('local precision on the engine', () => {
     expect(read.provenance?.composer).toMatchObject({ prior: 0.12, priorSource: 'estimated' });
     expect(read.verdict?.state).toBe(asGiven.state);
     expect(read.verdict?.risk).toEqual(asGiven.risk);
+
+    // It says how it was weighed, and is not told that nothing but the labelled rule's fire read the labels: on this row the prior did.
+    const texts = (read.interpretations ?? []).map((i) => i.text);
+    expect(texts.filter((t) => t.startsWith('This verdict was weighed at a prior of 0.12 that an earlier version estimated from your labels and applied to every rule.'))).toHaveLength(1);
+    expect(texts.join(' ')).toContain('Re-evaluating it weighs it that way.');
+    expect(texts.join(' ')).not.toContain('Nothing else in a verdict reads your labels');
+
+    // A verdict given now carries neither that note nor that stamp, and its sentence says how far labels reach.
+    const now = await newEngine().evaluateAll(SILENT_FAILURE);
+    await s.insertEvalResult(LOCAL_TENANT, now);
+    const nowRead = (await s.getEvalById(LOCAL_TENANT, now.id))!;
+    for (const r of [now, nowRead]) {
+      const said = (r.interpretations ?? []).map((i) => i.text).join(' ');
+      expect(said).not.toContain('earlier version');
+      expect(said).toContain("Nothing else in a verdict reads your labels: every other rule's fire, and that rule's silence, are weighed as before.");
+    }
   });
 });

@@ -153,8 +153,6 @@ export interface ComposerSettings {
   prior: number;
   priorSource: string;
   priorMode: string;
-  /** The priors of single failure classes estimated from the deployment's labels, when there are any. */
-  classPriors?: Readonly<Record<string, number>>;
 }
 
 /** What the composer does when a deployment sets nothing (compose.ts, DEFAULT_COMPOSE; risk.ts). Restated here so this module imports neither. */
@@ -175,15 +173,12 @@ function composerMoved(c: ComposerSettings): Record<string, unknown> {
   if (c.falsePassCost !== SHIPPED_COMPOSER.falsePassCost) moved.falsePassCost = c.falsePassCost;
   if (c.onCriticalSkipped !== SHIPPED_COMPOSER.onCriticalSkipped) moved.onCriticalSkipped = c.onCriticalSkipped;
   if (c.requiredEvidence.length > 0) moved.requiredEvidence = [...c.requiredEvidence].sort();
-  // The prior in force when it is not the shipped one: set in config, or estimated from the deployment's own labels.
+  // The prior in force when it is not the shipped one: set in config. (0.14.0 through 0.21.0 also put one estimated from the deployment's labels here.)
   if (c.priorSource !== SHIPPED_COMPOSER.priorSource || c.prior !== SHIPPED_COMPOSER.prior) {
     moved.prior = c.prior;
     moved.priorSource = c.priorSource;
   }
   if (c.priorMode !== SHIPPED_COMPOSER.priorMode) moved.priorMode = c.priorMode;
-  // A class weighed at the deployment's own prior, when there is one: absent keeps every hash computed without the key as it was.
-  const classPriors = Object.entries(c.classPriors ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-  if (classPriors.length > 0) moved.classPriors = classPriors;
   return moved;
 }
 
@@ -198,6 +193,16 @@ function composerMoved(c: ComposerSettings): Record<string, unknown> {
  * difference between them was the setting that flipped their verdicts.
  * They are appended only where they differ from the shipped ones: a
  * deployment that set none of them hashes exactly as it did.
+ *
+ * `localLabels` carries the labels in force: each rule whose fires are
+ * weighed by the deployment's own labels, with the counts that weigh them.
+ * A fire weighed at 2 right of 20 and one weighed at 20 right of 20 are two
+ * verdicts, so they are two configurations. Through 0.21.0 labels reached
+ * the hash only through the prior estimated from them, which moved with
+ * the labelled rule's fire rate and not with a label that left its
+ * precision where it was: the hash changed as traffic arrived, and stood
+ * still while what a fire was worth changed. Appended only when there are
+ * any: a deployment with no labels in force hashes exactly as it did.
  */
 export function configHash(config: {
   threshold: number;
@@ -207,6 +212,7 @@ export function configHash(config: {
   advisoryRules?: readonly string[];
   judge?: string;
   composer?: ComposerSettings;
+  localLabels?: ReadonlyArray<{ rule: string; right: number; wrong: number }>;
 }): string {
   const moved = config.composer ? composerMoved(config.composer) : {};
   const stable = JSON.stringify({
@@ -219,6 +225,10 @@ export function configHash(config: {
     // The relevance judge in force, when there is one; absent keeps every judge-less hash as it was.
     ...(config.judge !== undefined ? { judge: config.judge } : {}),
     ...(Object.keys(moved).length > 0 ? { composer: moved } : {}),
+    // The labels in force, in rule order, when there are any; absent keeps every hash computed without labels as it was.
+    ...((config.localLabels?.length ?? 0) > 0
+      ? { localLabels: config.localLabels!.map((l) => [l.rule, l.right, l.wrong] as const).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)) }
+      : {}),
   });
   return createHash('sha256').update(stable).digest('hex').slice(0, 16);
 }
