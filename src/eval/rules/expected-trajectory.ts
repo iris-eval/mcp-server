@@ -59,9 +59,9 @@ function writtenAsNull(value: unknown): boolean {
  * An expected object is a subset of a step's input or it is not, and
  * finding out reads the keys they agree in. So a request can be built whose
  * cost is the expected calls times the steps times the keys: 500 expected
- * objects of 40 keys against 2,500 steps that agree with each in every key
- * but the last, under a megabyte, was 51 million comparisons and 2.4 s of
- * CPU. Nothing reads such a pair faster than key by key, so the work has a
+ * objects of 40 keys against 1,800 steps that agree with each in every key
+ * but the last, a request of 858,000 bytes, was 37 million comparisons and
+ * 1.6 s of CPU. Nothing reads such a pair faster than key by key, so the work has a
  * limit instead, as the search for a recovery has (trajectory.ts,
  * RECOVERY_SEARCH_BUDGET), and a comparison that reaches it is not judged.
  * 500 expected calls against 10,000 steps that agree with none of them in
@@ -180,8 +180,6 @@ interface Matching {
   matches(j: number, i: number): boolean;
   /** Where each tool's steps stand in the run, in order. */
   stepsOf(tool: string): readonly number[];
-  /** Which expected calls name each tool, in order. */
-  expectedOf(tool: string): readonly number[];
   /** The comparison reached its limit of work. */
   stopped(): boolean;
 }
@@ -189,17 +187,12 @@ const NONE: readonly number[] = [];
 function matchingOf(expected: readonly ExpectedToolCall[], steps: readonly Step[], args: ExpectedArgsMode, budget: number): Matching {
   const stepInput: Array<string | undefined> = new Array<string | undefined>(steps.length);
   const expectedInput: Array<string | undefined> = new Array<string | undefined>(expected.length);
-  const byTool = (names: readonly string[]): Map<string, number[]> => {
-    const at = new Map<string, number[]>();
-    for (const [index, name] of names.entries()) {
-      const list = at.get(name);
-      if (list === undefined) at.set(name, [index]);
-      else list.push(index);
-    }
-    return at;
-  };
-  const stepsAt = byTool(steps.map((s) => s.name));
-  const expectedAt = byTool(expected.map((e) => e.tool_name));
+  const stepsAt = new Map<string, number[]>();
+  for (const [index, step] of steps.entries()) {
+    const list = stepsAt.get(step.name);
+    if (list === undefined) stepsAt.set(step.name, [index]);
+    else list.push(index);
+  }
   const written = writtenOnce();
   const work: ComparisonWork = { left: budget, asked: new WeakMap() };
   return {
@@ -213,7 +206,6 @@ function matchingOf(expected: readonly ExpectedToolCall[], steps: readonly Step[
       return (stepInput[j] ??= normaliseInput(steps[j].input)) === (expectedInput[i] ??= normaliseInput(e.input));
     },
     stepsOf: (tool) => stepsAt.get(tool) ?? NONE,
-    expectedOf: (tool) => expectedAt.get(tool) ?? NONE,
     stopped: () => work.left < 0,
   };
 }
@@ -309,8 +301,10 @@ function comparedBy(expected: readonly ExpectedToolCall[], steps: readonly Step[
       : { passed: false, matched: expected.length - absent.length, why: `${absent.length} of ${expected.length} expected calls never came (first: ${describeExpected(absent[0])})`, unexpected: [], missing: absent };
   }
   if (mode === 'superset') {
-    // Set semantics: every actual call matches SOME expected call.
-    const outside = steps.filter((s, j) => !matching.expectedOf(s.name).some((i) => matching.matches(j, i)));
+    // Set semantics: every actual call matches SOME expected call. Asked one expected call at a time, of the steps of its tool that nothing has matched yet. Asked a step at a time, every comparison read a different expected object, and the same count of comparisons cost two to four times what `subset` pays for it: 1.3 to 2.9 s of CPU at the limit of work.
+    const inside = new Uint8Array(steps.length);
+    for (const [i, e] of expected.entries()) for (const j of matching.stepsOf(e.tool_name)) if (inside[j] === 0 && matching.matches(j, i)) inside[j] = 1;
+    const outside = steps.filter((_, j) => inside[j] === 0);
     return outside.length === 0
       ? { passed: true, matched: expected.length, why: '', unexpected: [], missing: [] }
       : { passed: false, matched: expected.length, why: `${outside.length} call${outside.length === 1 ? '' : 's'} outside the expected set (first: #${outside[0].index} ${outside[0].name})`, unexpected: outside.map((s) => s.index), missing: [] };

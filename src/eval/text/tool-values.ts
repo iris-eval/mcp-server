@@ -22,14 +22,21 @@
  * string that is itself the JSON text of an object or an array is read as
  * that structure.
  *
- * THE LINES OF ONE TEXT. Strings that stand in a row in one array are the
- * lines of a text the tool split ({ lines: [...] }, a listing, the chunks of
- * a page), and so are the text parts of an MCP result. They are read as
- * that text, one after another with a line break between: a sentence the
- * tool broke between two of them is one sentence. The fields of an object
- * are not: what stands in `signature` is not more of what stands in `body`.
- * Read each on its own, an instruction that a harness returned a line to a
+ * THE LINES OF ONE TEXT. An array whose key says it holds lines
+ * ({ lines: [...] }, `stdout_lines`, `outputLines`) is a text the tool
+ * split, and its strings are read as that text, one after another with a
+ * line break between: a sentence the tool broke between two of them is one
+ * sentence. Read each on its own, an instruction returned a line to a
  * string lost everything after its first line.
+ *
+ * Any other array is read a string at a time, and so are the text parts of
+ * an MCP result and the fields of an object. Two pages a search returned,
+ * the messages of a thread and the cells of a table row are each their own
+ * text: read as one, a sentence planted at the end of the first page ran on
+ * into the second, whose words were then the instruction's, and a list of
+ * two commands was one command. What that costs: a text returned a line to
+ * a string under a key that does not say so, or a line to a text part, is
+ * read line by line.
  */
 
 /** How many times a string that is itself JSON text is opened: a result inside a result inside a result. */
@@ -205,18 +212,21 @@ export function structureOf(value: unknown): unknown {
   return typeof value === 'string' ? (jsonStructure(value) ?? value) : value;
 }
 
-type Pending = { value: unknown; level: number; opened: number; continues?: boolean } | { key: string };
+type Pending = { value: unknown; level: number; opened: number; under?: string; continues?: boolean } | { key: string };
 
-/** A string that is read as text: not the JSON text of a structure that would be opened instead. */
-function isPlainString(value: unknown, opened: number): value is string {
-  return typeof value === 'string' && (opened >= MAX_JSON_TEXT_DEPTH || jsonStructure(value) === undefined);
-}
-
-/** A text part of an MCP result: { type: 'text', text }. */
-function isTextPart(value: unknown, opened: number): value is Record<string, unknown> & { text: string } {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
-  const part = value as Record<string, unknown>;
-  return part.type === 'text' && isPlainString(part.text, opened);
+/**
+ * Whether a key says its array holds the lines of one text: `lines`, or a
+ * name whose last word is that (`stdout_lines`, `output-lines`,
+ * `stdoutLines`). `guidelines` and `headlines` are words of their own.
+ */
+export function saysLines(key: string | undefined): boolean {
+  if (key === undefined || key.length < 5 || key.slice(-5).toLowerCase() !== 'lines') return false;
+  if (key.length === 5) return true;
+  const before = key.charCodeAt(key.length - 6);
+  const capital = before >= 65 && before <= 90;
+  // A new word begins after anything that is no letter and no digit, or with a capital after a small letter or a digit.
+  if (!capital && !(before >= 97 && before <= 122) && !(before >= 48 && before <= 57)) return true;
+  return key.charCodeAt(key.length - 5) === 76 && !capital;
 }
 
 /**
@@ -224,9 +234,7 @@ function isTextPart(value: unknown, opened: number): value is Record<string, unk
  * `visit(text, isKey, continues)` for each key and each string value.
  * Numbers, true, false and null are not text. `visit` may return false to
  * stop. `continues` says the string is the next line of the text the
- * string before it belongs to (THE LINES OF ONE TEXT, above); the text parts
- * of an MCP result are read in a row for that, before what else the parts
- * hold.
+ * string before it belongs to (THE LINES OF ONE TEXT, above).
  *
  * Returns whether the value was read whole: false when `visit` stopped it,
  * a part of it lay deeper than MAX_VALUE_DEPTH, or it held more than
@@ -267,17 +275,15 @@ export function eachString(value: unknown, visit: (text: string, isKey: boolean,
     // Pushed last first, so that they are read first to last.
     if (Array.isArray(current)) {
       const depth = item.opened;
-      if (current.length > 1 && current.every((part) => isTextPart(part, depth))) {
-        // The texts first, in a row; then what else each part holds, with the key its text stood under.
-        const parts = current as Array<Record<string, unknown> & { text: string }>;
-        for (let i = parts.length - 1; i >= 0; i -= 1) {
-          pending.push({ value: { ...parts[i], text: undefined }, level: level + 1, opened: depth });
-          pending.push({ key: 'text' });
+      // The strings of an array are the lines of one text where its key says so, and nowhere else. A line is text whatever it holds: a line that is by itself JSON text ("[]", a line of a JSON Lines file) is not opened, as it is not in the same text returned as one string.
+      if (saysLines(item.under)) {
+        for (let i = current.length - 1; i >= 0; i -= 1) {
+          const line = typeof current[i] === 'string';
+          pending.push({ value: current[i], level: level + 1, opened: line ? MAX_JSON_TEXT_DEPTH : depth, continues: line && i > 0 && typeof current[i - 1] === 'string' });
         }
-        for (let i = parts.length - 1; i >= 0; i -= 1) pending.push({ value: parts[i].text, level: level + 1, opened: MAX_JSON_TEXT_DEPTH, continues: i > 0 });
         continue;
       }
-      for (let i = current.length - 1; i >= 0; i -= 1) pending.push({ value: current[i], level: level + 1, opened: depth, continues: i > 0 && isPlainString(current[i - 1], depth) });
+      for (let i = current.length - 1; i >= 0; i -= 1) pending.push({ value: current[i], level: level + 1, opened: depth });
       continue;
     }
     const record = current as Record<string, unknown>;
@@ -285,7 +291,7 @@ export function eachString(value: unknown, visit: (text: string, isKey: boolean,
       .filter((key) => record[key] !== undefined)
       .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     for (let i = keys.length - 1; i >= 0; i -= 1) {
-      pending.push({ value: record[keys[i]], level: level + 1, opened: item.opened });
+      pending.push({ value: record[keys[i]], level: level + 1, opened: item.opened, under: keys[i] });
       pending.push({ key: keys[i] });
     }
   }
