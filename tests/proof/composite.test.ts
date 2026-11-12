@@ -5,16 +5,21 @@
  * class a shipped detector maps to present, shouldShip consistent with the
  * stated rule); the split is a pure function of the id; the committed
  * results equal what the code produces; the risk composer agrees with the
- * legacy one wherever a critical rule vetoed; the sweep runs on dev only.
+ * legacy one wherever a critical rule vetoed; the sweep runs on dev only;
+ * with one rule labelled, no verdict differs in anything on a case the
+ * labelled rule did not fire on.
  */
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { loadComposite, splitOf, validateComposite, compositeContext, SPLIT_SALT } from '../../proof/lib/composite.js';
-import { measureComposite, normaliseCompositeForCheck, renderCompositeMarkdown, COMPOSITE_RESULTS_JSON, COMPOSITE_MD, type CompositeResults } from '../../proof/lib/composite-report.js';
+import { measureComposite, measureOneRuleLabelled, normaliseCompositeForCheck, renderCompositeMarkdown, COMPOSITE_RESULTS_JSON, COMPOSITE_MD, type CompositeResults, type OneRuleLabelled } from '../../proof/lib/composite-report.js';
 import { fnv1a } from '../../proof/lib/materialise.js';
 import { repoRoot, stableJson } from '../../proof/run.js';
 import { rulesByType } from '../../src/eval/rules/index.js';
+import { builtInRules } from '../../src/eval/criticality.js';
+import { EvalEngine } from '../../src/eval/engine.js';
+import { defaultConfig } from '../../src/config/defaults.js';
 import type { FailureClass } from '../../src/types/eval.js';
 
 const MEASURE_BUDGET_MS = 180_000;
@@ -66,14 +71,16 @@ describe('composite results', () => {
    * loaded maximum seen.
    */
   let measured: Awaited<ReturnType<typeof measureComposite>>;
+  let oneRuleLabelled: OneRuleLabelled;
   beforeAll(async () => {
     measured = await measureComposite(repoRoot);
+    oneRuleLabelled = await measureOneRuleLabelled(repoRoot);
   }, MEASURE_BUDGET_MS);
 
   it('the committed results equal what this code produces', async () => {
     const { results } = measured;
     const version = (JSON.parse(await readFile(resolve(repoRoot, 'package.json'), 'utf-8')) as { version: string }).version;
-    const full: CompositeResults = { ...results, generatedAt: 'x', commit: 'x', version };
+    const full: CompositeResults = { ...results, oneRuleLabelled, generatedAt: 'x', commit: 'x', version };
     const fresh = normaliseCompositeForCheck(stableJson(full), renderCompositeMarkdown(full));
     const committed = normaliseCompositeForCheck(
       await readFile(resolve(repoRoot, COMPOSITE_RESULTS_JSON), 'utf-8'),
@@ -106,6 +113,47 @@ describe('composite results', () => {
     // Ten examined classes at a 0.5 prior each leave (1 − 0.5)^10 as the prior that nothing is wrong.
     expect(results.riskPerClass.dev.falseBlock.rate!).toBeGreaterThan(0.9);
     expect(results.risk.dev.falseBlock.rate!).toBeLessThan(results.riskPerClass.dev.falseBlock.rate!);
+  });
+
+  it('with one rule labelled, the unlabelled row is the test split of the first table and a verdict differs only where the labelled rule fired', () => {
+    const { results } = measured;
+    const o = oneRuleLabelled;
+    expect(o.labels).toBe(20);
+    // The row every labelling is read against is the product's verdict on the test split, as the first table reports it.
+    expect(o.unlabelled.falseBlock).toEqual(results.risk.test.falseBlock);
+    expect(o.unlabelled.missedBlock).toEqual(results.risk.test.missedBlock);
+    // Two labellings for each rule that has a row.
+    expect(o.rows.length).toBeGreaterThanOrEqual(16);
+    expect(o.rows.length % 2).toBe(0);
+    for (const row of o.rows) {
+      const which = `${row.rule} ${row.labels.right}/${row.labels.wrong}`;
+      expect(row.labels.right + row.labels.wrong, which).toBe(20);
+      expect(row.test.fired, which).toBeGreaterThan(0);
+      expect(row.changedWhereFired.n, which).toBe(row.test.fired);
+      expect(row.changedWhereFired.n + row.differentElsewhere.n, which).toBe(results.counts.test);
+      // What labels do not do: a verdict the labelled rule did not fire on is the unlabelled one, whole.
+      expect(row.differentElsewhere.k, which).toBe(0);
+      // A veto is not weighed: labels on a rule whose fire vetoes change no verdict it fired on.
+      if (row.vetoes) expect(row.changedWhereFired.k, which).toBe(0);
+    }
+    for (let i = 0; i < o.rows.length; i += 2) {
+      const [right, wrong] = [o.rows[i], o.rows[i + 1]];
+      expect(right.rule).toBe(wrong.rule);
+      expect(right.labels).toEqual({ right: 20, wrong: 0 });
+      expect(wrong.labels).toEqual({ right: 0, wrong: 20 });
+      // Called right, a fire is weighed at least as heavily as called wrong: it passes no bad output the other blocks, and blocks every clean one the other does.
+      expect(right.missedBlock.k, right.rule).toBeLessThanOrEqual(wrong.missedBlock.k);
+      expect(right.falseBlock.k, right.rule).toBeGreaterThanOrEqual(wrong.falseBlock.k);
+    }
+    // Somewhere a label moved a verdict: the measurement is not of a switch that does nothing.
+    expect(o.rows.reduce((t, row) => t + row.changedWhereFired.k, 0)).toBeGreaterThan(0);
+    // Every rule whose fires the shipped engine weighs is accounted for: a row pair, or a reason there is none.
+    const shipped = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+    const weighed = builtInRules().filter((r) => shipped.weighsFiresOf(r.name)).map((r) => r.name);
+    expect(weighed.length).toBeGreaterThanOrEqual(13);
+    expect([...new Set(o.rows.map((row) => row.rule)), ...o.notLabelled.map((x) => x.rule)].sort()).toEqual([...weighed].sort());
+    // The two rules that ship critical are the two whose fire the product vetoed on.
+    expect([...new Set(o.rows.filter((row) => row.vetoes).map((row) => row.rule))].sort()).toEqual(['no_injection_patterns', 'no_pii']);
   });
 
   it('the risk composer fails every case the legacy composer vetoed, and the sweep never touches the test split', async () => {

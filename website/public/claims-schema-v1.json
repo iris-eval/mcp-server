@@ -184,7 +184,7 @@
         },
         "composite": {
           "type": "object",
-          "description": "The verdict measured on the composite corpus: proof/composite-results.json without its per-case list (accuracy, false-block and missed-block rates, the Newcombe difference, calibration, recall by class, the threshold sweep). Absent until npm run proof -- --composite has run."
+          "description": "The verdict measured on the composite corpus: proof/composite-results.json without its per-case list (accuracy, false-block and missed-block rates, the Newcombe difference, calibration, recall by class, the two rates with a deployment's labels on one rule in force, the threshold sweep). Absent until npm run proof -- --composite has run."
         },
         "transcripts": {
           "type": "object",

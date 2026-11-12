@@ -100,9 +100,9 @@ export function publishedRuleNames(): string[] {
  * three decimals while the interval was computed at the exact value, so
  * the first prevalence asked for answered for every other that rounded the
  * same: after an interval at 0.0101, one at 0.0104 came back as 0.0101's.
- * An estimated prior is a continuous number, so that was reachable. The map
- * is bounded, least recently used out, because an estimated prior moves as
- * a deployment labels.
+ * A prior estimated from a deployment's labels, which 0.14.0 through 0.21.0
+ * used, is a continuous number that moved as the deployment labelled, so
+ * that was reachable. The map is bounded, least recently used out.
  */
 const MEMO_MAX = 4096;
 const memo = new Map<string, Interval | null>();

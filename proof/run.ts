@@ -51,7 +51,7 @@ import { EvalEngine, evaluateRuleAsRead } from '../src/eval/engine.js';
 import { defaultConfig } from '../src/config/defaults.js';
 
 export { contextFor };
-import { measureComposite, renderCompositeMarkdown, renderPublishedCalibration, normaliseCompositeForCheck, COMPOSITE_RESULTS_JSON, COMPOSITE_MD, PUBLISHED_CALIBRATION_TS, type CompositeResults } from './lib/composite-report.js';
+import { measureComposite, measureOneRuleLabelled, renderCompositeMarkdown, renderPublishedCalibration, normaliseCompositeForCheck, COMPOSITE_RESULTS_JSON, COMPOSITE_MD, PUBLISHED_CALIBRATION_TS, type CompositeResults } from './lib/composite-report.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = resolve(here, '..');
@@ -596,7 +596,7 @@ async function composite(check: boolean): Promise<void> {
   const generatedAt = new Date().toISOString();
   const commit = gitCommit(repoRoot);
   const version = (JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf-8')) as { version: string }).version;
-  const results: CompositeResults = { ...partial, generatedAt, commit, version };
+  const results: CompositeResults = { ...partial, oneRuleLabelled: await measureOneRuleLabelled(repoRoot), generatedAt, commit, version };
   const json = stableJson(results);
   const md = renderCompositeMarkdown(results);
   const calibrationTs = renderPublishedCalibration(results);

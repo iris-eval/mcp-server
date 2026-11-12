@@ -299,7 +299,7 @@ function incomparabilityReasons(a: RunSummary, b: RunSummary): string[] {
   if (ra && rb && ra !== rb) why.push(`the ruleset differs (${ra} against ${rb}); different rules were asked, so a difference in the answers is not a difference in the agent`);
   const ca = a.configHashes[0];
   const cb = b.configHashes[0];
-  if (ca && cb && ca !== cb) why.push(`the configuration differs (${ca} against ${cb}); thresholds and criticality decide verdicts, so the same outputs could score differently`);
+  if (ca && cb && ca !== cb) why.push(`the configuration differs (${ca} against ${cb}); thresholds, criticality and the labels in force decide verdicts, so the same outputs could score differently`);
   if (a.agentNames.length === 1 && b.agentNames.length === 1 && a.agentNames[0] !== b.agentNames[0]) {
     why.push(`these are different agents ("${a.agentNames[0]}" and "${b.agentNames[0]}"); two agents differ in ways a pass rate cannot express`);
   }

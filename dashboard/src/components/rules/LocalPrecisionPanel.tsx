@@ -5,7 +5,8 @@
  * labelled right or wrong, the local precision with its Wilson interval,
  * whether that number is in force (twenty labels), the published precision
  * beside it, and how often the rule fires on your traffic. Above the
- * table: the prior your labels imply, and which rule to label next.
+ * table: how often your labels imply each labelled rule's failure is
+ * present, and which rule to label next.
  * Labels measure precision only, so nothing here says "local accuracy".
  */
 import type { CSSProperties } from 'react';
@@ -50,7 +51,9 @@ export function LocalPrecisionPanel() {
     .sort((a, b) => b.n - a.n || (b.fireRate ?? 0) - (a.fireRate ?? 0) || a.rule.localeCompare(b.rule));
   const labelled = data.rules.filter((r) => r.n > 0);
   const totalLabels = labelled.reduce((sum, r) => sum + r.n, 0);
-  const inForce = labelled.filter((r) => r.local).length;
+  // In force: the rule's results carry your number. Only a detection or an inference has a number to replace; a measurement's labels are counted and shown.
+  const carries = (r: LabelStatsRow): boolean => r.local && (r.kind === 'detection' || r.kind === 'inference');
+  const inForce = labelled.filter(carries).length;
 
   const columns: Column<LabelStatsRow>[] = [
     { key: 'rule', header: 'Rule', render: (r) => <code data-label-rule={r.rule}>{r.rule}</code> },
@@ -82,10 +85,16 @@ export function LocalPrecisionPanel() {
       header: 'In force',
       width: '9rem',
       render: (r) =>
-        r.local ? (
-          <Tooltip content={TT.localInForce}>
+        carries(r) ? (
+          <Tooltip content={r.entersRisk ? TT.localInForce : TT.localOnResults}>
             <span tabIndex={0} style={styles.inForce} data-local-in-force={r.rule}>
-              yes{r.entersRisk ? ' · in the risk' : ''}
+              {r.entersRisk ? 'yes · in the risk' : 'yes · on its results'}
+            </span>
+          </Tooltip>
+        ) : r.local ? (
+          <Tooltip content={TT.localCounted}>
+            <span tabIndex={0} style={styles.muted} data-local-counted={r.rule}>
+              counted
             </span>
           </Tooltip>
         ) : (
@@ -116,14 +125,20 @@ export function LocalPrecisionPanel() {
       </div>
       <p style={styles.muted}>
         On any trace, a fired rule asks whether it was right to fire. Right ÷ (right + wrong) over your answers is the rule’s local precision on
-        your traffic, and at {data.min} labels it replaces the published number on every verdict this deployment makes. Labels measure
-        precision only: nothing here says what a quiet rule missed.
+        your traffic, and at {data.min} labels it replaces the published number wherever that rule fires. Nothing else in a verdict reads
+        your labels. Labels measure precision only: nothing here says what a quiet rule missed.
       </p>
-      {data.estimatedPrior && (
-        <Tooltip content={TT.estimatedPrior}>
-          <p style={styles.fact} tabIndex={0} data-estimated-prior={data.estimatedPrior.pi.toFixed(3)}>
-            Prior estimated from your labels: {data.estimatedPrior.pi.toFixed(2)} [{data.estimatedPrior.lo.toFixed(2)}, {data.estimatedPrior.hi.toFixed(2)}],
-            from {data.estimatedPrior.ruleName} (fires on {pct(data.estimatedPrior.fireRate)} of your traffic). Your <code>eval.prior</code>, when set, wins.
+      {data.prevalence.length > 0 && (
+        <Tooltip content={TT.prevalence}>
+          <p style={styles.fact} tabIndex={0} data-prevalence={data.prevalence.map((p) => p.ruleName).join(' ')}>
+            Estimated from your labels:{' '}
+            {data.prevalence.map((p, i) => (
+              <span key={p.ruleName} data-prevalence-rule={p.ruleName}>
+                {i > 0 ? '; ' : ''}the failure {p.ruleName} looks for is present on about {pct(p.pi)} of your traffic [{pct(p.lo)}, {pct(p.hi)}]
+              </span>
+            ))}
+            . An estimate takes its rule to find the failure as often on your traffic as on the published corpus. It is information: no verdict is
+            weighed by it.
           </p>
         </Tooltip>
       )}
