@@ -54,7 +54,8 @@
  *              shell's or an interpreter's (`Bash`, `python`).
  *   reads      the catalogue marks it `readOnlyHint: true`, or the first
  *              verb in its name reads (`get_order`, `list_commits`).
- *   unplaced   neither says: `calculator`, `Glob`, `document_parse`.
+ *   unplaced   neither says: `calculator`, `Glob`, `document_parse`; or
+ *              the name can be read both ways (`search_and_bulk_update`).
  *
  * The name read is the tool's own: of `mcp__<server>__<tool>`, the part
  * after the server's (ownToolName).
@@ -75,8 +76,8 @@
  * moved when it stopped. What the names cannot place (`Task`, `curl`, a
  * name in another language) the catalogue places, and the result names
  * each such tool so a deployment knows which to mark.
- * tests/unit/eval/tool-placement.test.ts holds the reader to the two lists
- * of tool names it is measured on, one it was fitted on and one it was not.
+ * tests/unit/eval/tool-placement.test.ts holds the reader to three lists
+ * of tool names it is measured on, one it was fitted on and two it was not.
  *
  * ONE AGENT'S HISTORY. The earlier runs are the same agent's (the store
  * keys them by case and agent): one ask handed to two agents is one case
@@ -198,7 +199,13 @@ export const RUN_TOKENS: ReadonlySet<string> = new Set(['bash', 'cmd', 'computer
 /**
  * Words that join two verbs in one name. A verb that acts directly after
  * one decides, whatever came first: `find_and_replace`, `get_or_create`.
- * Directly, because a joiner earlier in the name joins something else:
+ *
+ * With other words between, the name can be read two ways and is not
+ * placed: `search_and_bulk_update` acts and `get_name_and_address_for_order`
+ * only reads, and nothing in either name says which. Counting both failed
+ * verdicts on look-ups; reading both as look-ups dropped the actions from
+ * the result without naming them. Unplaced, each is named with what places
+ * it. A joiner whose own verb reads joins nothing that acts:
  * `food_and_beverage_get_order` is a look-up.
  */
 const JOINERS: ReadonlySet<string> = new Set(['and', 'or', 'plus', 'then']);
@@ -206,10 +213,10 @@ const JOINERS: ReadonlySet<string> = new Set(['and', 'or', 'plus', 'then']);
 /**
  * A tool's own name inside the name an agent calls it by. An agent that
  * reaches its tools through MCP calls them `mcp__<server>__<tool>`, and the
- * server part is the deployment's label for where the tool lives: it says
- * nothing of what the tool does. Read with it, every look-up on a server
- * named `store` would act and every action on one named `todo-list` would
- * read.
+ * server part is the deployment's label for where the tool lives: a verb in
+ * it says nothing of what the tool does. Read with it, every look-up on a
+ * server named `store` would act and every action on one named `todo-list`
+ * would read.
  */
 export function ownToolName(name: string): string {
   if (!name.startsWith('mcp__')) return name;
@@ -231,29 +238,40 @@ export function nameWords(name: string): string[] {
 export type Placement = 'acts' | 'reads' | 'unplaced';
 
 /**
- * Where a name alone places a tool. It is the tool's own name that is read
- * (ownToolName). The first verb in it decides; a verb that acts directly
- * after a joiner decides whatever came first; with no verb, a name for
- * something that runs commands acts; and a name with neither is not placed.
+ * Where a name alone places a tool. The verbs are read in the tool's own
+ * name (ownToolName): the first decides, a verb that acts directly after a
+ * joiner decides whatever came first, and one that acts further on after a
+ * joiner leaves a name that began by reading unplaced. With no verb of its
+ * own, a name for something that runs commands acts, and there the server's
+ * name counts too: a server that is a shell says where a command goes, so
+ * `mcp__shell__command` acts as `shell_command` does. A name with neither
+ * is not placed.
  */
 export function placementByName(name: string): Placement {
   const words = nameWords(ownToolName(name));
   let first: Placement | null = null;
-  let afterJoiner = false;
+  // A joiner has been read and the verb it joins has not: `next` when the joiner was the word before, `apart` once a word that is no verb has come between.
+  let joining: 'no' | 'next' | 'apart' = 'no';
+  let twoReadings = false;
   for (const w of words) {
     if (JOINERS.has(w)) {
-      afterJoiner = true;
+      joining = 'next';
       continue;
     }
-    const joined = afterJoiner;
-    afterJoiner = false;
     const kind: Placement | null = ACT_TOKENS.has(w) ? 'acts' : READ_TOKENS.includes(w) ? 'reads' : null;
-    if (kind === null) continue;
+    if (kind === null) {
+      if (joining === 'next') joining = 'apart';
+      continue;
+    }
+    const joined = joining;
+    joining = 'no';
     if (first === null) first = kind;
-    else if (joined && kind === 'acts') return 'acts';
+    else if (kind === 'acts' && joined === 'next') return 'acts';
+    else if (kind === 'acts' && joined === 'apart') twoReadings = true;
   }
+  if (first === 'reads' && twoReadings) return 'unplaced';
   if (first !== null) return first;
-  return words.some((w) => RUN_TOKENS.has(w)) ? 'acts' : 'unplaced';
+  return nameWords(name).some((w) => RUN_TOKENS.has(w)) ? 'acts' : 'unplaced';
 }
 
 /**

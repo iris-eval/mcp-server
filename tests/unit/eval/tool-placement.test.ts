@@ -159,8 +159,8 @@ describe('what a name cannot say', () => {
     for (const name of ['bigquery_insert_rows', 'opensearch_delete_index']) expect(placementByName(name), name).toBe('acts');
   });
 
-  it('two things joined by "and" in a look-up, one of them also a verb that acts, are read as a second verb', () => {
-    for (const name of ['get_order_and_refund_status', 'get_buy_and_sell_orders', 'get_likes_and_comment_count']) expect(placementByName(name), name).toBe('acts');
+  it('two things joined by "and" in a look-up, the second also a verb that acts, are read as a second verb', () => {
+    for (const name of ['get_order_and_refund_status', 'get_buy_and_sell_orders', 'get_likes_and_comment_count', 'get_start_and_stop_times']) expect(placementByName(name), name).toBe('acts');
     // The catalogue settles each of these.
     expect(placementOf('get_order_and_refund_status', [{ name: 'get_order_and_refund_status', annotations: { readOnlyHint: true } }])).toBe('reads');
     expect(placementOf('search_index_delete', [{ name: 'search_index_delete', annotations: { destructiveHint: true } }])).toBe('acts');

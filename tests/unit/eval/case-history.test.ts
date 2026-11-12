@@ -66,8 +66,23 @@ describe('a tool that acts, one that reads, and one nothing places', () => {
     // A verb that reads after a joiner changes nothing either way.
     expect(placementOf('delete_and_list', undefined)).toBe('acts');
     expect(placementOf('get_and_list', undefined)).toBe('reads');
-    // A joiner earlier in the name joins something else: a brand, a department, a step before the look-up.
-    for (const name of ['food_and_beverage_get_order', 'h_and_m_get_order', 'authenticate_then_get_post', 'get_or_tools_schedule']) expect(placementOf(name, undefined), name).toBe('reads');
+    // A joiner whose own verb reads joins nothing that acts: the later word is the thing it reads.
+    for (const name of ['food_and_beverage_get_order', 'h_and_m_get_order', 'authenticate_then_get_post']) expect(placementOf(name, undefined), name).toBe('reads');
+  });
+
+  it('a name that reads and then, some words after a joiner, holds a verb that acts can be read two ways, and is not placed', () => {
+    // A second action, with a word between the joiner and its verb.
+    for (const name of ['search_and_bulk_update', 'find_and_soft_delete', 'lookup_and_auto_assign', 'get_or_auto_create', 'findAllAndBulkUpdate', 'fetch_and_force_push']) expect(placementOf(name, undefined), name).toBe('unplaced');
+    // Two things looked up, and the thing they belong to named by a word that also acts.
+    for (const name of ['get_name_and_address_for_order', 'get_title_and_body_of_post', 'list_users_and_groups_with_write_access', 'get_shipping_and_handling_charge', 'get_or_tools_schedule']) {
+      expect(placementOf(name, undefined), name).toBe('unplaced');
+    }
+    // A name that begins by acting acts, whatever follows; and a later joiner with its verb next to it still decides.
+    expect(placementOf('update_name_and_address_for_order', undefined)).toBe('acts');
+    expect(placementOf('get_name_and_address_for_order_and_delete', undefined)).toBe('acts');
+    // The catalogue places either kind.
+    expect(placementOf('search_and_bulk_update', [{ name: 'search_and_bulk_update', annotations: { readOnlyHint: false } }])).toBe('acts');
+    expect(placementOf('get_name_and_address_for_order', [{ name: 'get_name_and_address_for_order', annotations: { readOnlyHint: true } }])).toBe('reads');
   });
 
   it('a tool reached through MCP is read by its own name, and the server\'s name takes no part', () => {
@@ -86,9 +101,13 @@ describe('a tool that acts, one that reads, and one nothing places', () => {
     for (const name of ['mcp__todo-list__add_task', 'mcp__shopping-list__remove_item', 'mcp__web-search__save_result', 'mcp__google-search__submit_feedback']) {
       expect(placementOf(name, undefined), name).toBe('acts');
     }
-    // Nor does a server named for a shell place a tool whose own name says nothing.
-    expect(placementOf('mcp__computer-use__screenshot', undefined)).toBe('unplaced');
-    expect(placementOf('mcp__shell__status', undefined)).toBe('unplaced');
+    // A verb in the server's name is not the tool's: with no verb of its own, the tool is unplaced.
+    for (const name of ['mcp__store__status', 'mcp__search__index_document', 'mcp__run__status', 'mcp__get__thing']) expect(placementOf(name, undefined), name).toBe('unplaced');
+    // A server that is a shell, an interpreter or a computer is another matter: a tool there with no verb of its own acts, as the same words do without the prefix.
+    for (const name of ['mcp__shell__command', 'mcp__computer-use__type', 'mcp__python-repl__code', 'mcp__terminal__input']) expect(placementOf(name, undefined), name).toBe('acts');
+    expect(placementOf('shell_command', undefined)).toBe('acts');
+    // With a verb of its own, the verb decides there too.
+    for (const name of ['mcp__shell__list_files', 'mcp__computer-use__read_clipboard', 'mcp__terminal__get_output']) expect(placementOf(name, undefined), name).toBe('reads');
     // The catalogue is matched on the name the agent called, whole.
     expect(placementOf('mcp__store__get_products', [{ name: 'mcp__store__get_products', annotations: { readOnlyHint: false } }])).toBe('acts');
   });
@@ -399,16 +418,17 @@ describe('the two rules', () => {
  * counted, its case moved to negative and two were added: the same name
  * placed by the catalogue, and a shell by its name. A third came when the
  * first verb in a name came to decide: a look-up whose object is also a
- * word that acts.
+ * word that acts. Four more came when a tool reached through MCP was read
+ * by its own name and a joiner joined only the verb next to it.
  */
-describe('no_unusual_action does what its definition says, on thirty-five cases labelled by counting', () => {
+describe('no_unusual_action does what its definition says, on thirty-nine cases labelled by counting', () => {
   const file = JSON.parse(readFileSync(join(__dirname, '..', '..', 'fixtures', 'case-history', 'no_unusual_action.definition.json'), 'utf-8')) as {
     cases: Array<{ id: string; label: 'positive' | 'negative'; input?: string; output: string; context?: Partial<EvalContext>; notes: string }>;
   };
 
   it('holds every case, with both labels well represented', () => {
-    expect(file.cases).toHaveLength(35);
-    expect(file.cases.filter((c) => c.label === 'positive').length).toBe(18);
+    expect(file.cases).toHaveLength(39);
+    expect(file.cases.filter((c) => c.label === 'positive').length).toBe(20);
   });
 
   for (const c of file.cases) {
