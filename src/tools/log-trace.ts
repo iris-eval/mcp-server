@@ -101,6 +101,14 @@ export const toolDescriptorSchema = strictNested(
   {
     name: z.string().min(1).max(128),
     title: z.string().max(512).optional(),
+    /*
+     * Carried, never read, like `execution` below. The protocol gave a tool
+     * icons in 2025-11-25, and Iris's own tools carry none, so the first
+     * drift-lock (its own tools/list) could not see the field: a server
+     * that sent icons had its whole catalogue refused for a "misspelled
+     * key". The second drift-lock reads the SDK's list of a tool's fields.
+     */
+    icons: z.array(z.record(z.string(), z.unknown())).optional(),
     description: z.string().max(4096).optional(),
     inputSchema: z.record(z.string(), z.unknown()).optional(),
     outputSchema: z.record(z.string(), z.unknown()).optional(),
@@ -133,8 +141,13 @@ export const toolDescriptorSchema = strictNested(
  * and that sentence is evidence on a security-relevant class. Duplicate
  * names are refused for the same reason: a duplicate silently decides which
  * schema a call is validated against.
+ *
+ * One schema for every door that takes a catalogue from a caller. Until
+ * evaluate_output shared it, that tool took a name twice and any number of
+ * bytes, and which of two entries judged a call depended on the order they
+ * were pasted in.
  */
-const toolsCatalogueSchema = z
+export const toolsCatalogueSchema = z
   .array(toolDescriptorSchema)
   .max(MAX_TOOLS, { message: `a tools catalogue may carry at most ${MAX_TOOLS} entries` })
   .superRefine((tools, ctx) => {
