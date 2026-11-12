@@ -21,17 +21,166 @@
  * stableStringify writes them (keys sorted, a key before its value). A
  * string that is itself the JSON text of an object or an array is read as
  * that structure.
+ *
+ * THE LINES OF ONE TEXT. Strings that stand in a row in one array are the
+ * lines of a text the tool split ({ lines: [...] }, a listing, the chunks of
+ * a page), and so are the text parts of an MCP result. They are read as
+ * that text, one after another with a line break between: a sentence the
+ * tool broke between two of them is one sentence. The fields of an object
+ * are not: what stands in `signature` is not more of what stands in `body`.
+ * Read each on its own, an instruction that a harness returned a line to a
+ * string lost everything after its first line.
  */
 
 /** How many times a string that is itself JSON text is opened: a result inside a result inside a result. */
 export const MAX_JSON_TEXT_DEPTH = 3;
 /**
- * How deep a structure is read. A value parsed from a request is nowhere
- * near it; a structure that refers to itself, which only a caller of the
- * engine in code can build, reaches it, and the reading then stops and says
- * so.
+ * How deep a structure is read: deeper than a request can nest, since a
+ * megabyte of JSON holds half a million levels at most. A structure that
+ * refers to itself, which only a caller of the engine in code can build,
+ * reaches it, and the reading then stops and says so. At 1,000, which it
+ * was, a call whose arguments were wrapped in 1,001 arrays was not read,
+ * and what it carried was not looked at.
  */
-export const MAX_VALUE_DEPTH = 1_000;
+export const MAX_VALUE_DEPTH = 1_000_000;
+/**
+ * How many values of a structure are read. A megabyte of JSON holds at most
+ * half a million; a structure that holds itself twice over, which again only
+ * a caller in code can build, holds 2 to the power of its depth, and read to
+ * the depth alone the reading of it never ended.
+ */
+export const MAX_VALUE_PARTS = 4_000_000;
+
+/** Where the JSON string that opens at `at` ends (the offset past its closing mark), or -1 when it is no JSON string. */
+function jsonStringEnd(text: string, at: number): number {
+  let i = at + 1;
+  while (i < text.length) {
+    const c = text.charCodeAt(i);
+    if (c === 34) return i + 1;
+    if (c < 32) return -1;
+    if (c !== 92) {
+      i += 1;
+      continue;
+    }
+    const escaped = text.charCodeAt(i + 1);
+    // \" \\ \/ \b \f \n \r \t
+    if (escaped === 34 || escaped === 92 || escaped === 47 || escaped === 98 || escaped === 102 || escaped === 110 || escaped === 114 || escaped === 116) {
+      i += 2;
+      continue;
+    }
+    // \u and four hexadecimal digits
+    if (escaped !== 117) return -1;
+    for (let k = i + 2; k < i + 6; k += 1) {
+      const h = text.charCodeAt(k);
+      if (!((h >= 48 && h <= 57) || (h >= 65 && h <= 70) || (h >= 97 && h <= 102))) return -1;
+    }
+    i += 6;
+  }
+  return -1;
+}
+
+const isDigit = (c: number): boolean => c >= 48 && c <= 57;
+
+/** Where the JSON value that is not an object or an array ends when one stands at `at` (a string, a number, true, false, null), or -1. */
+function jsonScalarEnd(text: string, at: number): number {
+  const c = text.charCodeAt(at);
+  if (c === 34) return jsonStringEnd(text, at);
+  if (c === 116) return text.startsWith('true', at) ? at + 4 : -1;
+  if (c === 102) return text.startsWith('false', at) ? at + 5 : -1;
+  if (c === 110) return text.startsWith('null', at) ? at + 4 : -1;
+  let i = c === 45 ? at + 1 : at;
+  // A whole part: a zero alone, or digits that do not begin with one.
+  if (text.charCodeAt(i) === 48) i += 1;
+  else if (isDigit(text.charCodeAt(i))) while (isDigit(text.charCodeAt(i))) i += 1;
+  else return -1;
+  if (text.charCodeAt(i) === 46) {
+    i += 1;
+    if (!isDigit(text.charCodeAt(i))) return -1;
+    while (isDigit(text.charCodeAt(i))) i += 1;
+  }
+  const e = text.charCodeAt(i);
+  if (e === 101 || e === 69) {
+    i += 1;
+    const sign = text.charCodeAt(i);
+    if (sign === 43 || sign === 45) i += 1;
+    if (!isDigit(text.charCodeAt(i))) return -1;
+    while (isDigit(text.charCodeAt(i))) i += 1;
+  }
+  return i;
+}
+
+/**
+ * Whether a text is JSON, read by its grammar and not by parsing it.
+ *
+ * JSON.parse says a text is not JSON by throwing, and a throw costs about
+ * 16 microseconds however short the text. Every string of a tool value
+ * that begins and ends with a bracket was asked that way, three times over
+ * for a call's arguments: a call given 94,000 strings "{a}" cost 6 s of
+ * CPU, under a megabyte. This reads the text once, by its characters, and
+ * JSON.parse is given only what it will accept.
+ */
+export function isJson(text: string): boolean {
+  const n = text.length;
+  /** The arrays (1) and objects (2) that are open. */
+  const open: number[] = [];
+  // What may stand next: 0 a value; 1 a value or the end of an empty array; 2 a comma or the end of the array; 3 a key or the end of an empty object; 4 a key; 5 a colon; 6 a comma or the end of the object; 7 nothing more.
+  let next = 0;
+  const afterValue = (): number => (open.length === 0 ? 7 : open[open.length - 1] === 1 ? 2 : 6);
+  let i = 0;
+  for (;;) {
+    while (i < n) {
+      const space = text.charCodeAt(i);
+      if (space !== 32 && space !== 10 && space !== 13 && space !== 9) break;
+      i += 1;
+    }
+    if (i >= n) return next === 7;
+    const c = text.charCodeAt(i);
+    if (next === 7) return false;
+    if (next === 0 || next === 1) {
+      if (next === 1 && c === 93) {
+        open.pop();
+        next = afterValue();
+        i += 1;
+      } else if (c === 123) {
+        open.push(2);
+        next = 3;
+        i += 1;
+      } else if (c === 91) {
+        open.push(1);
+        next = 1;
+        i += 1;
+      } else {
+        i = jsonScalarEnd(text, i);
+        if (i < 0) return false;
+        next = afterValue();
+      }
+    } else if (next === 3 || next === 4) {
+      if (next === 3 && c === 125) {
+        open.pop();
+        next = afterValue();
+        i += 1;
+      } else {
+        if (c !== 34) return false;
+        i = jsonStringEnd(text, i);
+        if (i < 0) return false;
+        next = 5;
+      }
+    } else if (next === 5) {
+      if (c !== 58) return false;
+      next = 0;
+      i += 1;
+    } else {
+      // 2 or 6: after a value inside an array or an object
+      const closes = next === 2 ? 93 : 125;
+      if (c === 44) next = next === 2 ? 0 : 4;
+      else if (c === closes) {
+        open.pop();
+        next = afterValue();
+      } else return false;
+      i += 1;
+    }
+  }
+}
 
 /** The structure a string holds when it is the JSON text of an object or an array, and undefined when it is not. */
 export function jsonStructure(text: string): object | undefined {
@@ -42,6 +191,7 @@ export function jsonStructure(text: string): object | undefined {
   let to = text.length - 1;
   while (to > from && text.charCodeAt(to) <= 32) to -= 1;
   if (text[to] !== (first === '{' ? '}' : ']')) return undefined;
+  if (!isJson(text)) return undefined;
   try {
     const parsed: unknown = JSON.parse(text);
     return parsed !== null && typeof parsed === 'object' ? parsed : undefined;
@@ -55,27 +205,47 @@ export function structureOf(value: unknown): unknown {
   return typeof value === 'string' ? (jsonStructure(value) ?? value) : value;
 }
 
-type Pending = { value: unknown; level: number; opened: number } | { key: string };
+type Pending = { value: unknown; level: number; opened: number; continues?: boolean } | { key: string };
+
+/** A string that is read as text: not the JSON text of a structure that would be opened instead. */
+function isPlainString(value: unknown, opened: number): value is string {
+  return typeof value === 'string' && (opened >= MAX_JSON_TEXT_DEPTH || jsonStructure(value) === undefined);
+}
+
+/** A text part of an MCP result: { type: 'text', text }. */
+function isTextPart(value: unknown, opened: number): value is Record<string, unknown> & { text: string } {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const part = value as Record<string, unknown>;
+  return part.type === 'text' && isPlainString(part.text, opened);
+}
 
 /**
  * Every string of a tool value, in the order stableStringify writes them:
- * `visit(text, isKey)` for each key and each string value. Numbers, true,
- * false and null are not text. `visit` may return false to stop.
+ * `visit(text, isKey, continues)` for each key and each string value.
+ * Numbers, true, false and null are not text. `visit` may return false to
+ * stop. `continues` says the string is the next line of the text the
+ * string before it belongs to (THE LINES OF ONE TEXT, above); the text parts
+ * of an MCP result are read in a row for that, before what else the parts
+ * hold.
  *
- * Returns whether the value was read whole: false when `visit` stopped it
- * or a part of it lay deeper than MAX_VALUE_DEPTH.
+ * Returns whether the value was read whole: false when `visit` stopped it,
+ * a part of it lay deeper than MAX_VALUE_DEPTH, or it held more than
+ * MAX_VALUE_PARTS values.
  *
  * It keeps its own list of what is still to be read where a function that
  * calls itself would use the stack, so a value nested thousands deep is
  * read like any other.
  */
-export function eachString(value: unknown, visit: (text: string, isKey: boolean) => boolean | void): boolean {
+export function eachString(value: unknown, visit: (text: string, isKey: boolean, continues: boolean) => boolean | void): boolean {
   const pending: Pending[] = [{ value, level: 0, opened: 0 }];
   let whole = true;
+  let read = 0;
   while (pending.length > 0) {
     const item = pending.pop()!;
+    read += 1;
+    if (read > MAX_VALUE_PARTS) return false;
     if ('key' in item) {
-      if (visit(item.key, true) === false) return false;
+      if (visit(item.key, true, false) === false) return false;
       continue;
     }
     const { level, opened } = item;
@@ -83,7 +253,7 @@ export function eachString(value: unknown, visit: (text: string, isKey: boolean)
     if (typeof current === 'string') {
       const inner = opened < MAX_JSON_TEXT_DEPTH ? jsonStructure(current) : undefined;
       if (inner === undefined) {
-        if (visit(current, false) === false) return false;
+        if (visit(current, false, item.continues === true) === false) return false;
         continue;
       }
       current = inner;
@@ -96,7 +266,18 @@ export function eachString(value: unknown, visit: (text: string, isKey: boolean)
     }
     // Pushed last first, so that they are read first to last.
     if (Array.isArray(current)) {
-      for (let i = current.length - 1; i >= 0; i -= 1) pending.push({ value: current[i], level: level + 1, opened: item.opened });
+      const depth = item.opened;
+      if (current.length > 1 && current.every((part) => isTextPart(part, depth))) {
+        // The texts first, in a row; then what else each part holds, with the key its text stood under.
+        const parts = current as Array<Record<string, unknown> & { text: string }>;
+        for (let i = parts.length - 1; i >= 0; i -= 1) {
+          pending.push({ value: { ...parts[i], text: undefined }, level: level + 1, opened: depth });
+          pending.push({ key: 'text' });
+        }
+        for (let i = parts.length - 1; i >= 0; i -= 1) pending.push({ value: parts[i].text, level: level + 1, opened: MAX_JSON_TEXT_DEPTH, continues: i > 0 });
+        continue;
+      }
+      for (let i = current.length - 1; i >= 0; i -= 1) pending.push({ value: current[i], level: level + 1, opened: depth, continues: i > 0 && isPlainString(current[i - 1], depth) });
       continue;
     }
     const record = current as Record<string, unknown>;
@@ -129,15 +310,29 @@ export function eachString(value: unknown, visit: (text: string, isKey: boolean)
  */
 export const BETWEEN_STRINGS = ')\n';
 
+/** What stands between two lines of one text when the first does not end in a line break of its own. */
+export const BETWEEN_LINES = '\n';
+
 /**
- * A tool value as one text, with where each of its strings begins.
+ * A line of a text and the line before it, as they stand in the text: with
+ * a line break between, unless the line before brought its own. A line that
+ * ends in a carriage return is a line of a text with Windows line ends,
+ * split at the line feed: the line feed is what is put back.
+ */
+export function lineBreakAfter(before: string): string {
+  return before.charCodeAt(before.length - 1) === 10 ? '' : BETWEEN_LINES;
+}
+
+/**
+ * A tool value as one text, with where each of its texts begins.
  *
  * A string that is not JSON text is the text itself and `starts` is null.
- * A structure is its strings joined by BETWEEN_STRINGS, and `starts` holds
- * the offset of each, so a reader can keep what it reads inside the string
- * it began in. Reading stops once the text is longer than `limit`: `cut`
- * says the value held more, and `whole` is false when a part of it lay
- * deeper than is read.
+ * A structure is its strings joined by BETWEEN_STRINGS, the lines of one
+ * text by a line break (eachString says which those are), and `starts`
+ * holds the offset of each text, so a reader can keep what it reads inside
+ * the text it began in. Reading stops once the text is longer than `limit`:
+ * `cut` says the value held more, and `whole` is false when a part of it
+ * lay deeper than is read or it held more values than are read.
  */
 export function textOf(value: unknown, limit: number): { text: string; starts: number[] | null; cut: boolean; whole: boolean } {
   // A string longer than is read is not opened: what would be read of it is the start of a JSON text, which is no structure.
@@ -147,18 +342,30 @@ export function textOf(value: unknown, limit: number): { text: string; starts: n
   const starts: number[] = [];
   let length = 0;
   let cut = false;
-  const walked = eachString(structure, (text) => {
+  let before = '';
+  const walked = eachString(structure, (text, _isKey, continues) => {
     if (length > limit) {
       cut = true;
       return false;
     }
-    if (parts.length > 0) length += BETWEEN_STRINGS.length;
-    starts.push(length);
+    if (continues) {
+      // The next line of the text before it: no new text begins.
+      const between = lineBreakAfter(before);
+      parts.push(between);
+      length += between.length;
+    } else {
+      if (parts.length > 0) {
+        parts.push(BETWEEN_STRINGS);
+        length += BETWEEN_STRINGS.length;
+      }
+      starts.push(length);
+    }
     parts.push(text);
     length += text.length;
+    before = text;
     return true;
   });
-  const text = parts.join(BETWEEN_STRINGS);
+  const text = parts.join('');
   // The last string read may itself run past the limit: the value held more than is read then, as surely as when a string was left unvisited.
   return { text, starts, cut: cut || text.length > limit, whole: walked || cut };
 }

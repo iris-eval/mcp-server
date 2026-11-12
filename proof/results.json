@@ -1,6 +1,6 @@
 {
-  "commit": "8064f15e",
-  "corpusVersion": "e3d055900096",
+  "commit": "e3de1d4e",
+  "corpusVersion": "7b96e8e2c64b",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
     "types": [
@@ -628,7 +628,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-11-12T12:32:57.048Z",
+  "generatedAt": "2026-11-12T15:07:23.863Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -641,9 +641,9 @@
       "platform": "win32"
     },
     "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
-    "n": 1387,
-    "p50Ms": 0.926,
-    "p95Ms": 4.676
+    "n": 1401,
+    "p50Ms": 0.946,
+    "p95Ms": 4.787
   },
   "method": {
     "ci": "wilson-95",
@@ -1708,51 +1708,51 @@
       "category": "safety",
       "ci95": {
         "f1": [
-          0.6897,
-          0.9123
+          0.7342,
+          0.9189
         ],
         "precision": [
-          0.8046,
-          0.9929
+          0.8426,
+          0.9945
         ],
         "recall": [
-          0.5383,
-          0.8317
+          0.5893,
+          0.847
         ]
       },
       "credible95": {
         "f1": [
-          0.6686,
-          0.8946
+          0.7155,
+          0.9051
         ],
         "precision": [
-          0.8189,
-          0.9951
+          0.8572,
+          0.9963
         ],
         "recall": [
-          0.5374,
-          0.8354
+          0.5882,
+          0.8504
         ]
       },
-      "f1": 0.8136,
-      "fn": 10,
+      "f1": 0.8378,
+      "fn": 11,
       "fp": 1,
       "labelBasis": "reading",
-      "n": 69,
+      "n": 83,
       "name": "no_injection_compliance",
-      "negatives": 35,
-      "positives": 34,
+      "negatives": 41,
+      "positives": 42,
       "ppvAt": {
-        "0.01": 0.1997,
-        "0.05": 0.5653,
-        "0.2": 0.8607,
-        "0.5": 0.9611
+        "0.01": 0.2341,
+        "0.05": 0.6143,
+        "0.2": 0.8833,
+        "0.5": 0.968
       },
-      "precision": 0.96,
-      "recall": 0.7059,
+      "precision": 0.9688,
+      "recall": 0.7381,
       "skipped": 0,
-      "tn": 34,
-      "tp": 24
+      "tn": 40,
+      "tp": 31
     },
     {
       "category": "cost",
@@ -2362,89 +2362,89 @@
         "transform": "case"
       },
       {
-        "caught": 23,
+        "caught": 28,
         "ci95": [
-          0.8569,
+          0.8794,
           1
         ],
         "dropped": [],
-        "n": 23,
+        "n": 28,
         "recall": 1,
         "rule": "no_injection_compliance",
         "transform": "zero_width"
       },
       {
-        "caught": 23,
+        "caught": 28,
         "ci95": [
-          0.8569,
+          0.8794,
           1
         ],
         "dropped": [],
-        "n": 23,
+        "n": 28,
         "recall": 1,
         "rule": "no_injection_compliance",
         "transform": "homoglyph"
       },
       {
-        "caught": 23,
+        "caught": 28,
         "ci95": [
-          0.8569,
+          0.8794,
           1
         ],
         "dropped": [],
-        "n": 23,
+        "n": 28,
         "recall": 1,
         "rule": "no_injection_compliance",
         "transform": "fullwidth"
       },
       {
-        "caught": 23,
+        "caught": 28,
         "ci95": [
-          0.8569,
+          0.8794,
           1
         ],
         "dropped": [],
-        "n": 23,
+        "n": 28,
         "recall": 1,
         "rule": "no_injection_compliance",
         "transform": "nbsp"
       },
       {
-        "caught": 22,
+        "caught": 27,
         "ci95": [
-          0.7901,
-          0.9923
+          0.8229,
+          0.9937
         ],
         "dropped": [
           "injc-067"
         ],
-        "n": 23,
-        "recall": 0.9565,
+        "n": 28,
+        "recall": 0.9643,
         "rule": "no_injection_compliance",
         "transform": "tab"
       },
       {
-        "caught": 22,
+        "caught": 27,
         "ci95": [
-          0.7901,
-          0.9923
+          0.8229,
+          0.9937
         ],
         "dropped": [
           "injc-067"
         ],
-        "n": 23,
-        "recall": 0.9565,
+        "n": 28,
+        "recall": 0.9643,
         "rule": "no_injection_compliance",
         "transform": "linebreak"
       },
       {
-        "caught": 23,
+        "caught": 28,
         "ci95": [
-          0.8569,
+          0.8794,
           1
         ],
         "dropped": [],
-        "n": 23,
+        "n": 28,
         "recall": 1,
         "rule": "no_injection_compliance",
         "transform": "case"
@@ -2470,10 +2470,10 @@
         "withSpan": 15
       },
       {
-        "firedOriginally": 24,
-        "positives": 34,
+        "firedOriginally": 31,
+        "positives": 42,
         "rule": "no_injection_compliance",
-        "withSpan": 23
+        "withSpan": 28
       }
     ],
     "transforms": [

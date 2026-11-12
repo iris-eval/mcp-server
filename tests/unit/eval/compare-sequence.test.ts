@@ -12,7 +12,7 @@
  * and holds the two together on generated runs in every mode.
  */
 import { describe, expect, it } from 'vitest';
-import { compareSequence, isSubset, SEQUENCE_MODES, writtenOnce, type SequenceOutcome } from '../../../src/eval/rules/expected-trajectory.js';
+import { compareSequence, isSubset, SEQUENCE_COMPARISON_BUDGET, SEQUENCE_MODES, writtenOnce, type ComparisonWork, type SequenceOutcome } from '../../../src/eval/rules/expected-trajectory.js';
 import { normaliseInput, stableStringify } from '../../../src/eval/rules/trajectory.js';
 import { toSteps } from '../../../src/eval/steps.js';
 import type { ExpectedArgsMode, ExpectedToolCall, ExpectedTrajectoryMode } from '../../../src/types/eval.js';
@@ -174,5 +174,121 @@ describe('compareSequence — each input read once, the same answers', () => {
     expect(isSubset([1, 2], [1, 2, 3], written)).toBe(false);
     expect(isSubset([1, 2], '[1,2]', written)).toBe(false);
     expect(isSubset([1, [2, { a: null }]], [1, [2, { a: null }]], written)).toBe(true);
+  });
+});
+
+/*
+ * What one comparison costs. A string against a value of another kind was
+ * written out to be compared, at every pair of an expected call and a step:
+ * 500 expected inputs of 500 characters of source text against 10,000 calls
+ * { path } cost 9 s of CPU, and 17 s when the text held line breaks. And two
+ * objects are compared key by key, so a request can be built whose cost is
+ * the expected calls times the steps times the keys they agree in; that has
+ * a limit, and a comparison that reaches it says so.
+ */
+describe('compareSequence — what a comparison writes out, and its limit of work', () => {
+  it('nothing but an array is written out: a string, a number, a boolean and null are unequal to a value of another kind by their kinds', () => {
+    let writes = 0;
+    const written = (value: unknown): string => {
+      writes += 1;
+      return stableStringify(value);
+    };
+    const long = 'x'.repeat(1_400);
+    const others: unknown[] = [1, 0, true, false, null, undefined, NaN, { a: 1 }, {}, [long], [], 'y'.repeat(1_400)];
+    for (const other of others) {
+      expect(isSubset(long, other, written), stableStringify(other)).toBe(false);
+      expect(isSubset(other, long, written), stableStringify(other)).toBe(false);
+      expect(isSubset({ a: long }, { a: other }, written)).toBe(false);
+    }
+    expect(isSubset(long, 'x'.repeat(1_400), written)).toBe(true);
+    expect(isSubset(null, undefined, written)).toBe(true);
+    expect(isSubset(NaN, null, written)).toBe(true);
+    expect(isSubset(7, 7, written)).toBe(true);
+    expect(writes).toBe(0);
+    // Two arrays of one length are what is written out, and an array against anything else is not.
+    expect(isSubset([1, 2], [1, 3], written)).toBe(false);
+    expect(writes).toBe(2);
+    expect(isSubset([1, 2], [1, 2, 3], written)).toBe(false);
+    expect(isSubset([1, 2], '[1,2]', written)).toBe(false);
+    expect(writes).toBe(2);
+  });
+
+  it('with the keys of an expected object listed once, the answers are the ones reading them in place gives', () => {
+    const next = rng(53);
+    const pick = <T>(items: readonly T[]): T => items[Math.floor(next() * items.length)];
+    const SCALARS: unknown[] = ['a.ts', '', 1, 0, 2.5, true, false, null, undefined, NaN];
+    const value = (depth: number): unknown => {
+      const kind = depth > 2 ? 0 : Math.floor(next() * 4);
+      if (kind === 1) return Array.from({ length: Math.floor(next() * 3) }, () => value(depth + 1));
+      if (kind === 2) return Object.fromEntries(Array.from({ length: Math.floor(next() * 4) }, () => [pick(['a', 'b', 'c', 'toString']), value(depth + 1)]));
+      return pick(SCALARS);
+    };
+    const pool = Array.from({ length: 150 }, () => value(0));
+    const work: ComparisonWork = { left: Number.MAX_SAFE_INTEGER, asked: new WeakMap() };
+    const written = writtenOnce();
+    let subsets = 0;
+    for (let i = 0; i < 40_000; i += 1) {
+      const want = pick(pool);
+      const have = pick(pool);
+      const answer = isSubsetAsWritten(want, have);
+      if (answer) subsets += 1;
+      expect(isSubset(want, have, written, work), `${stableStringify(want)} in ${stableStringify(have)}`).toBe(answer);
+    }
+    expect(subsets).toBeGreaterThan(500);
+    expect(work.left).toBeLessThan(Number.MAX_SAFE_INTEGER - 40_000);
+    // A key the expectation inherits is not one it names, listed once or read in place.
+    const inherited = Object.create({ path: 'a.ts' }) as Record<string, unknown>;
+    inherited.mode = 'r';
+    expect(isSubset(inherited, { mode: 'r' }, written, work)).toBe(true);
+    expect(isSubset({ path: undefined, mode: 'r' }, { mode: 'r' }, written, work)).toBe(true);
+    // A key the step holds with no value is a key it holds: null is written as an absent value is. A key it does not hold at all is not.
+    for (const nothing of [null, NaN]) {
+      expect(isSubset({ a: nothing }, { a: undefined }, written, work)).toBe(isSubsetAsWritten({ a: nothing }, { a: undefined }));
+      expect(isSubset({ a: nothing }, { a: undefined }, written, work)).toBe(true);
+      expect(isSubset({ a: nothing }, { a: undefined })).toBe(true);
+      expect(isSubset({ a: nothing }, {}, written, work)).toBe(false);
+      expect(isSubset({ a: nothing }, {})).toBe(false);
+    }
+  });
+
+  const agreeing = (n: number, last: number): Record<string, number> => {
+    const input: Record<string, number> = {};
+    for (let k = 0; k < n; k += 1) input[`k${k}`] = k % 10;
+    input.z = last;
+    return input;
+  };
+  // 300 steps and 50 expected calls that agree with each other in 40 keys and differ in the last: 15,000 pairs of 42 comparisons.
+  const steps = toSteps({ toolCalls: Array.from({ length: 300 }, (_, i): ToolCallRecord => ({ tool_name: 'x', input: agreeing(40, i) })) });
+  const expected = Array.from({ length: 50 }, (_, i): ExpectedToolCall => ({ tool_name: 'x', input: agreeing(40, -1 - i) }));
+
+  it('the three modes that ask an expected call of many steps give no answer past the limit, and the same answer inside it', () => {
+    for (const mode of ['subset', 'superset', 'unordered'] as const) {
+      const whole = compareSequence(expected, steps, mode, 'subset', 1_000_000);
+      expect(whole.undecided, mode).toBeUndefined();
+      expect(whole.passed, mode).toBe(false);
+      expect(compareSequence(expected, steps, mode, 'subset', 100_000), mode).toEqual({ passed: false, matched: 0, why: '', unexpected: [], missing: [], undecided: true });
+      // Under exact each pair is one comparison of two inputs normalised once: 15,000 of them.
+      expect(compareSequence(expected, steps, mode, 'exact', 15_000).undecided, mode).toBeUndefined();
+      expect(compareSequence(expected, steps, mode, 'exact', 14_000).undecided, mode).toBe(true);
+    }
+    expect(compareSequence(expected, steps, 'subset', 'subset').undecided).toBeUndefined();
+    expect(SEQUENCE_COMPARISON_BUDGET).toBe(20_000_000);
+  });
+
+  it('the two modes that walk the run once settle their finding, and ordered_subset leaves unsaid only what it could not look for', () => {
+    const strict = compareSequence(expected, steps, 'strict', 'subset', 100_000);
+    expect(strict.undecided).toBeUndefined();
+    expect(strict.why).toContain('call 1 was x, expected x(');
+    const ordered = compareSequence(expected, steps, 'ordered_subset', 'subset', 100_000);
+    expect(ordered.undecided).toBeUndefined();
+    expect(ordered.passed).toBe(false);
+    expect(ordered.matched).toBe(0);
+    expect(ordered.missing).toHaveLength(50);
+    // Whether the call came at all, somewhere out of order, is looked for with work of its own; when that runs out the finding says only what the walk settled.
+    expect(ordered.why).toContain('did not come in order (0 of 50 in order)');
+    expect(compareSequence(expected, steps, 'ordered_subset', 'subset', 1_000_000).why).toContain('never came (0 of 50 in order)');
+    // A walk that itself runs out has settled nothing.
+    expect(compareSequence(expected, steps, 'ordered_subset', 'subset', 1_000).undecided).toBe(true);
+    expect(compareSequence(expected, steps, 'strict', 'subset', 10).undecided).toBe(true);
   });
 });

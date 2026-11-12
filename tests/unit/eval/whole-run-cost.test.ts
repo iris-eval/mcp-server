@@ -105,6 +105,67 @@ describe('a run of 10,000 calls, in the shapes that cost the rules the most', ()
     }
   });
 
+  it('tool_sequence: an expected input that is a string against steps of another kind, and the other way round', async () => {
+    // A string against a number, an object, true or nothing was written out to be compared at every pair: 9 s for 500 characters of source text against 10,000 calls { path }, 17 s when the text held line breaks or quotation marks.
+    const source = (i: number, length: number): string => `${String(i).padStart(4, '0')}${'  if (x) {\n\treturn "y";\n  }\n'.repeat(Math.ceil(length / 28)).slice(0, length - 4)}`;
+    const expectedText = Array.from({ length: 500 }, (_, i) => ({ tool_name: 'x', input: source(i, 500) }));
+    const shapes: Array<[string, ToolCallRecord[]]> = [
+      ['a number', Array.from({ length: N }, (_, i): ToolCallRecord => ({ tool_name: 'x', input: i }))],
+      ['{ path }', Array.from({ length: N }, (_, i): ToolCallRecord => ({ tool_name: 'x', input: { path: `src/f${i}.ts` } }))],
+      ['true', Array.from({ length: N }, (): ToolCallRecord => ({ tool_name: 'x', input: true }))],
+      ['no input', Array.from({ length: N }, (): ToolCallRecord => ({ tool_name: 'x' }))],
+    ];
+    for (const [label, toolCalls] of shapes) {
+      for (const mode of ['subset', 'superset', 'unordered', 'ordered_subset'] as const) {
+        const { result, cpuMs, bytes } = await judged({ ...RUN, toolCalls, expectedTrajectory: { tool_calls: expectedText, mode } });
+        expect(bytes, `${label}, ${mode}`).toBeLessThan(REQUEST_BYTES);
+        expect(cpuMs, `${label}, ${mode}`).toBeLessThan(BUDGET_MS);
+        expect(row(result, 'tool_sequence'), `${label}, ${mode}`).toMatchObject({ passed: false, state: 'fail' });
+      }
+    }
+    // The other way round: steps that are long strings of characters JSON escapes, an expected input that is a number.
+    const tabs = Array.from({ length: 1_000 }, (): ToolCallRecord => ({ tool_name: 'x', input: '\t'.repeat(440) }));
+    const numbers = Array.from({ length: 500 }, (_, i) => ({ tool_name: 'x', input: -1 - i }));
+    const mirror = await judged({ ...RUN, toolCalls: tabs, expectedTrajectory: { tool_calls: numbers, mode: 'subset' } });
+    expect(mirror.cpuMs).toBeLessThan(BUDGET_MS);
+    expect(row(mirror.result, 'tool_sequence').message).toContain('500 of 500 expected calls never came');
+    // And one level down, where an expectation names the one argument that matters.
+    const nested = await judged({ ...RUN, toolCalls: shapes[1][1].map((call) => ({ ...call, input: { a: (call.input as { path: string }).path } })), expectedTrajectory: { tool_calls: expectedText.map((e) => ({ ...e, input: { a: e.input } })), mode: 'subset' } });
+    expect(nested.cpuMs).toBeLessThan(BUDGET_MS);
+    expect(row(nested.result, 'tool_sequence').message).toContain('500 of 500 expected calls never came');
+  });
+
+  it('tool_sequence: objects that agree in every key but the last stop the comparison at its limit of work, and the verdict is not a pass', async () => {
+    // Nothing compares such a pair faster than key by key: 500 expected objects of 40 keys against 2,500 steps is 51 million comparisons, and was 2.4 s. Past 20 million the rule gives no answer.
+    const agreeing = (n: number, last: number): Record<string, number> => {
+      const input: Record<string, number> = {};
+      for (let k = 0; k < n; k += 1) input[`k${k}`] = k % 10;
+      input.z = last;
+      return input;
+    };
+    const toolCalls = Array.from({ length: 2_500 }, (_, i): ToolCallRecord => ({ tool_name: 'x', input: agreeing(40, i) }));
+    const expected = Array.from({ length: 500 }, (_, i) => ({ tool_name: 'x', input: agreeing(40, -1 - i) }));
+    for (const mode of ['subset', 'superset', 'unordered'] as const) {
+      const { result, cpuMs, bytes } = await judged({ ...RUN, toolCalls, expectedTrajectory: { tool_calls: expected, mode, step_budget: 5_000 } });
+      expect(bytes, mode).toBeLessThan(REQUEST_BYTES);
+      expect(cpuMs, mode).toBeLessThan(BUDGET_MS);
+      const sequence = row(result, 'tool_sequence');
+      expect(sequence, mode).toMatchObject({ passed: false, skipped: true, evidenceIncomplete: true });
+      expect(sequence.message, mode).toBe(`Not judged: comparing the 500 expected calls with the 2500 made (${mode}, args subset) was not settled inside the rule's limit of work, 20,000,000 values compared`);
+      // The caller asked for this comparison by sending an expectation: a check that was asked for and could not answer does not pass.
+      expect(result.verdict?.state, mode).toBe('unknown');
+    }
+    // The default mode walks the run once and settles its finding; it leaves unsaid only whether the call came somewhere out of order.
+    const ordered = await judged({ ...RUN, toolCalls, expectedTrajectory: { tool_calls: expected, step_budget: 5_000 } });
+    expect(ordered.cpuMs).toBeLessThan(BUDGET_MS);
+    expect(row(ordered.result, 'tool_sequence')).toMatchObject({ passed: false, state: 'fail' });
+    expect(row(ordered.result, 'tool_sequence').message).toContain('did not come in order (0 of 500 in order)');
+    // Half as many steps is inside the limit, and is answered.
+    const inside = await judged({ ...RUN, toolCalls: toolCalls.slice(0, 900), expectedTrajectory: { tool_calls: expected, mode: 'subset', step_budget: 5_000 } });
+    expect(row(inside.result, 'tool_sequence')).toMatchObject({ passed: false, state: 'fail' });
+    expect(row(inside.result, 'tool_sequence').message).toContain('500 of 500 expected calls never came');
+  });
+
   it('tool_sequence: every expected call made, each found among 10,000 of its tool', async () => {
     // The other way round: nothing fails early, and each expected call has to be found.
     const toolCalls = Array.from({ length: N }, (_, i): ToolCallRecord => ({ tool_name: 'x', input: { a: i } }));
