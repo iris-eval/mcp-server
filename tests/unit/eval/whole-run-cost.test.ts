@@ -19,11 +19,22 @@
  * fails here too. Every shape is one evaluate_output would accept: at most
  * 1,048,576 bytes, 500 expected calls, a catalogue of at most 262,144 bytes.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
 import type { EvalContext, EvalResult, EvalRuleResult } from '../../../src/types/eval.js';
 import type { ToolCallRecord, ToolDescriptor } from '../../../src/types/trace.js';
+
+/*
+ * How long a test here may take. Each evaluates runs of 10,000 calls, some of
+ * them four times over. One evaluation of every bundle is 0.3 to 0.5 s of CPU
+ * on a developer machine. On the CI job that runs the suite under coverage
+ * it measured about 1.7 s of wall time, a test that makes four took 6.7 s,
+ * and two tests passed the 5 s the suite gives a test in CI. What holds the
+ * cost of the code is the CPU budget inside each test; this is only the
+ * time the runner is given to get there.
+ */
+vi.setConfig({ testTimeout: 60_000 });
 
 const N = 10_000;
 const RUN = { input: 'Read the source files, then send the invoice to the customer acme.', output: 'I read the files and sent the invoice to acme.' };
