@@ -12,13 +12,25 @@ import { builtInRules } from './criticality.js';
 import { sensitivity } from './stats.js';
 import { LOCAL_LABEL_WINDOW, estimatedPrior, localPrecision, samplingSuggestion, type EstimatedPrior, type LocalPrecision, type SamplingSuggestion } from './labels.js';
 
+/** How often the failure one labelled rule looks for is present on this deployment's traffic, as that rule's labels and fire rate imply it. */
+export interface RulePrevalence extends EstimatedPrior {
+  /** The failure classes the rule declares: the estimate is that one of them is present. */
+  classes: readonly string[];
+}
+
 export interface LocalLabelSource {
   /** Per rule, the local precision from the deployment's labels — every rule with at least one label. */
   precision: Map<string, LocalPrecision>;
   /** Per rule, the fraction of the newest LOCAL_LABEL_WINDOW evaluations it fired on, over those it ran on. */
   fireRates: Map<string, number>;
-  /** The prior the labels imply, when a detection or inference has reached LOCAL_LABEL_MIN and fires; null otherwise. */
-  estimatedPrior: EstimatedPrior | null;
+  /**
+   * What the labels imply about how often a failure is present: one entry
+   * for each detection or inference that has reached LOCAL_LABEL_MIN labels
+   * and fires, in rule-name order. The labels routes report it. No verdict
+   * reads it: what the engine takes from this source is `precision`, for
+   * the labelled rule's own fires (engine.ts, effectivePrior).
+   */
+  prevalence: RulePrevalence[];
   /** Which rule's next label buys the most. */
   suggestion: SamplingSuggestion | null;
   refreshedAt: string;
@@ -32,45 +44,68 @@ export function builtInKindOf(ruleName: string): string | undefined {
   return builtInRules().find((r) => r.name === ruleName)?.kind;
 }
 
-export async function buildLocalLabelSource(storage: IStorageAdapter, tenantId: TenantId): Promise<LocalLabelSource> {
+/**
+ * Whether a rule is of a kind the risk estimate weighs: a built-in
+ * detection or inference. Whether a deployment weighs it is the engine's
+ * answer (EvalEngine.weighsFiresOf): one it named in eval.advisoryRules
+ * reports only, and labels on its fires move no verdict.
+ */
+export function isWeighedKind(ruleName: string): boolean {
+  return RISK_KINDS.has(builtInKindOf(ruleName) ?? '');
+}
+
+/** The failure classes a built-in rule declares; none for a custom rule, or one that declares none. */
+function builtInClassesOf(ruleName: string): readonly string[] {
+  return builtInRules().find((r) => r.name === ruleName)?.classes ?? [];
+}
+
+/**
+ * `decides` says on whose fires a label can change pass or fail, for the
+ * suggestion. An engine gives its own answer (refreshLocalLabels): a rule
+ * it weighs and that does not veto. With no engine it is the rule's kind.
+ */
+export async function buildLocalLabelSource(storage: IStorageAdapter, tenantId: TenantId, decides: (ruleName: string) => boolean = isWeighedKind): Promise<LocalLabelSource> {
   const [tallies, fires] = await Promise.all([storage.labelTallies(tenantId), storage.ruleFireStats(tenantId, LOCAL_LABEL_WINDOW)]);
   const precision = new Map(tallies.map((t) => [t.ruleName, localPrecision(t)] as const));
   const fireRates = new Map(fires.map((f) => [f.ruleName, f.judged > 0 ? f.fired / f.judged : 0] as const));
 
   /*
-   * The prior estimate reads only the kinds that enter the risk: a
-   * measurement's published "sensitivity" is conformance to a formula, and
-   * a prior derived from it would say how often outputs are short, not how
-   * often they are bad. Over the rules that qualify, the largest estimate
-   * wins — π is the prior that ANY class is present, and each rule sees
-   * only its own.
+   * How often each labelled rule's failure is present, for the kinds the
+   * risk estimate weighs: a measurement's published "sensitivity" is
+   * conformance to a formula, and an estimate derived from it would say how
+   * often outputs are short, not how often they are bad. Each rule speaks
+   * for the failure it looks for, so there is one entry a rule and no
+   * largest one to pick. The list is for the reader of the labels routes
+   * and is the prior of no verdict, so a rule set to report only is in it
+   * too: its labelled fires say as much about the traffic as any other's.
    */
-  let estimate: EstimatedPrior | null = null;
+  const prevalence: RulePrevalence[] = [];
   for (const p of precision.values()) {
-    const kind = builtInKindOf(p.ruleName);
-    if (kind === undefined || !RISK_KINDS.has(kind)) continue;
+    if (!isWeighedKind(p.ruleName)) continue;
     const published = publishedAccuracyFor(p.ruleName);
     const sens = published ? sensitivity(published) : null;
     const e = estimatedPrior(p, fireRates.get(p.ruleName) ?? 0, sens ?? 0);
-    if (e !== null && (estimate === null || e.pi > estimate.pi)) estimate = e;
+    if (e !== null) prevalence.push({ ...e, classes: builtInClassesOf(p.ruleName) });
   }
+  prevalence.sort((a, b) => (a.ruleName < b.ruleName ? -1 : a.ruleName > b.ruleName ? 1 : 0));
 
   /*
-   * The suggestion, likewise, names only a rule whose labels can move a
-   * verdict: a label on a measurement's fire informs the table and nothing
-   * else, and asking a reader for it first would spend their attention on
-   * a number no decision reads.
+   * The suggestion names only a rule whose labels can change pass or fail.
+   * A label on the fire of a measurement, or of a rule the deployment set
+   * to report only, informs the table and nothing else. A label on the
+   * fire of a rule that vetoes cannot undo the veto. Asking a reader for
+   * either first would spend their attention on a number no decision reads.
    */
   const candidates = [...fireRates.entries()]
-    .filter(([ruleName, f]) => f > 0 && RISK_KINDS.has(builtInKindOf(ruleName) ?? ''))
+    .filter(([ruleName, f]) => f > 0 && decides(ruleName))
     .map(([ruleName, fireRate]) => ({ precision: precision.get(ruleName) ?? localPrecision({ ruleName, right: 0, wrong: 0 }), fireRate }));
 
-  return { precision, fireRates, estimatedPrior: estimate, suggestion: samplingSuggestion(candidates), refreshedAt: new Date().toISOString() };
+  return { precision, fireRates, prevalence, suggestion: samplingSuggestion(candidates), refreshedAt: new Date().toISOString() };
 }
 
 /** Rebuild the source from storage and install it on the engine every evaluation goes through. */
 export async function refreshLocalLabels(engine: EvalEngine, storage: IStorageAdapter, tenantId: TenantId): Promise<LocalLabelSource> {
-  const source = await buildLocalLabelSource(storage, tenantId);
+  const source = await buildLocalLabelSource(storage, tenantId, (ruleName) => engine.labelsCanDecide(ruleName));
   engine.setLocalLabels(source);
   return source;
 }

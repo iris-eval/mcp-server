@@ -3,7 +3,7 @@
  *
  *   POST /labels                         — label one rule's FIRE on one evaluation right or wrong
  *   GET  /labels?eval_id=                — the labels on one evaluation
- *   GET  /labels/stats                   — per rule: labels, local precision, whether it is in force; the estimated prior; what to label next
+ *   GET  /labels/stats                   — per rule: labels, local precision, whether it is in force; how often each labelled rule's failure is present; what to label next
  *   GET  /issues                         — fires grouped by (rule, evidence signature) over the recent window
  *   POST /evaluations/:id/reevaluate     — score a stored evaluation's trace again under the engine as it stands now
  *
@@ -22,7 +22,7 @@ import type { EvalEngine } from '../../eval/engine.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import { strictBody, strictQuery } from '../validation.js';
 import { LOCAL_LABEL_MIN, LOCAL_LABEL_WINDOW, localPrecision } from '../../eval/labels.js';
-import { buildLocalLabelSource, builtInKindOf, refreshLocalLabels, type LocalLabelSource } from '../../eval/local-labels.js';
+import { buildLocalLabelSource, builtInKindOf, isWeighedKind, refreshLocalLabels, type LocalLabelSource } from '../../eval/local-labels.js';
 import { publishedAccuracyFor } from '../../eval/accuracy.js';
 import { builtInRules } from '../../eval/criticality.js';
 import { caseHistoryFor, costHistoryFor } from '../../eval/ingest.js';
@@ -48,7 +48,7 @@ const IssuesQuery = strictQuery({
 export interface LabelStatsRow {
   rule: string;
   kind: string | null;
-  /** Whether this rule's fires enter the risk estimate, so its labels can move a verdict. */
+  /** Whether this rule's fires enter the risk estimate, so its labels change what a verdict weighs: a detection or inference the deployment has not set to report only. A rule that vetoes is one too, though no label changes pass or fail where it fires. */
   entersRisk: boolean;
   n: number;
   right: number;
@@ -64,12 +64,13 @@ export interface LabelStats {
   rules: LabelStatsRow[];
   min: number;
   window: number;
-  estimatedPrior: LocalLabelSource['estimatedPrior'];
+  /** How often each labelled rule's failure is present on this deployment's traffic, as its labels imply it: one entry for each rule that enters the risk estimate, has `min` labels and fires. Information for the reader; no verdict is weighed by it. */
+  prevalence: LocalLabelSource['prevalence'];
   suggestion: LocalLabelSource['suggestion'];
   refreshedAt: string;
 }
 
-function statsOf(source: LocalLabelSource): LabelStats {
+function statsOf(source: LocalLabelSource, weighs: (ruleName: string) => boolean): LabelStats {
   const names = new Set<string>([...builtInRules().map((r) => r.name), ...source.precision.keys(), ...source.fireRates.keys()]);
   const rules: LabelStatsRow[] = [...names].sort().map((rule) => {
     const p = source.precision.get(rule) ?? localPrecision({ ruleName: rule, right: 0, wrong: 0 });
@@ -77,7 +78,7 @@ function statsOf(source: LocalLabelSource): LabelStats {
     return {
       rule,
       kind,
-      entersRisk: kind === 'detection' || kind === 'inference',
+      entersRisk: weighs(rule),
       n: p.n,
       right: p.right,
       wrong: p.wrong,
@@ -87,13 +88,15 @@ function statsOf(source: LocalLabelSource): LabelStats {
       fireRate: source.fireRates.get(rule) ?? null,
     };
   });
-  return { rules, min: LOCAL_LABEL_MIN, window: LOCAL_LABEL_WINDOW, estimatedPrior: source.estimatedPrior, suggestion: source.suggestion, refreshedAt: source.refreshedAt };
+  return { rules, min: LOCAL_LABEL_MIN, window: LOCAL_LABEL_WINDOW, prevalence: source.prevalence, suggestion: source.suggestion, refreshedAt: source.refreshedAt };
 }
 
 export function registerLabelRoutes(router: Router, storage: IStorageAdapter, options: { evalEngine?: EvalEngine } = {}): void {
   const engine = options.evalEngine;
   const refresh = (tenantId: TenantId): Promise<LocalLabelSource> =>
     engine ? refreshLocalLabels(engine, storage, tenantId) : buildLocalLabelSource(storage, tenantId);
+  // Whose fires are weighed: the engine's answer, which knows the rules the deployment set to report only; without one, the rule's kind.
+  const weighs = (ruleName: string): boolean => (engine ? engine.weighsFiresOf(ruleName) : isWeighedKind(ruleName));
 
   router.post('/labels', async (req, res) => {
     try {
@@ -123,8 +126,8 @@ export function registerLabelRoutes(router: Router, storage: IStorageAdapter, op
         note: body.note ?? null,
       });
       const source = await refresh(tenantId);
-      const stats = statsOf(source);
-      res.status(201).json({ label, rule: stats.rules.find((r) => r.rule === body.rule) ?? null, min: LOCAL_LABEL_MIN, estimatedPrior: stats.estimatedPrior, suggestion: stats.suggestion });
+      const stats = statsOf(source, weighs);
+      res.status(201).json({ label, rule: stats.rules.find((r) => r.rule === body.rule) ?? null, min: LOCAL_LABEL_MIN, prevalence: stats.prevalence, suggestion: stats.suggestion });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
         res.status(400).json(validationErrorBody('Invalid request body', (err as unknown as { issues: unknown }).issues));
@@ -154,7 +157,7 @@ export function registerLabelRoutes(router: Router, storage: IStorageAdapter, op
     // Rebuilt from storage on every read and installed on the engine, so the
     // panel and the verdicts read one source even after the store changed
     // underneath a running server (a reset, a restore).
-    res.json(statsOf(await refresh(tenantId)));
+    res.json(statsOf(await refresh(tenantId), weighs));
   });
 
   router.get('/issues', async (req, res) => {

@@ -10,7 +10,11 @@
  *   - the configuration hash left out every composer setting, so gating on
  *     shipped defaults, a different loss ratio, a different handling of a
  *     critical check that could not answer, required evidence and an
- *     estimated prior all flipped verdicts under one hash.
+ *     estimated prior all flipped verdicts under one hash;
+ *   - a deployment's labels reached the configuration hash only through the
+ *     prior once estimated from them, so the hash moved as traffic arrived
+ *     and stood still for a label that left the rule's precision where it
+ *     was, though the fire was worth something else.
  *
  * And a stored verdict that was `unknown` for missing required evidence
  * read back as a pass, because the setting was not stored with the row.
@@ -77,16 +81,27 @@ describe('the configuration hash covers every setting that decides a verdict', (
     ['what a critical check that could not answer does', { onCriticalSkipped: 'pass' }],
     ['the evidence required', { requiredEvidence: ['tool_calls'] }],
     ['a prior the deployment set', { prior: 0.2, priorSource: 'config' }],
-    ['a prior estimated from its labels', { prior: 0.0368, priorSource: 'estimated' }],
     ['how the prior is spread', { priorMode: 'per-class' }],
   ])('%s changes it', (_name, moved) => {
     expect(configHash({ ...base, composer: { ...shipped, ...moved } })).not.toBe(configHash(base));
   });
 
-  it('two estimated priors are two configurations: a run before the labels and one after are not the same measurement', () => {
-    const a = configHash({ ...base, composer: { ...shipped, prior: 0.11, priorSource: 'estimated' } });
-    const b = configHash({ ...base, composer: { ...shipped, prior: 0.04, priorSource: 'estimated' } });
-    expect(a).not.toBe(b);
+  it('the labels in force are part of it: a run before the labels and one after are not the same measurement', () => {
+    const twenty = configHash({ ...base, localLabels: [{ rule: 'no_stub_output', right: 2, wrong: 18 }] });
+    expect(twenty).not.toBe(configHash(base));
+    // One more label is another weight for the same fire.
+    expect(configHash({ ...base, localLabels: [{ rule: 'no_stub_output', right: 2, wrong: 19 }] })).not.toBe(twenty);
+    // Twenty labels, the other way round.
+    expect(configHash({ ...base, localLabels: [{ rule: 'no_stub_output', right: 18, wrong: 2 }] })).not.toBe(twenty);
+    // The same counts on another rule weigh another rule's fires.
+    expect(configHash({ ...base, localLabels: [{ rule: 'no_tool_loop', right: 2, wrong: 18 }] })).not.toBe(twenty);
+  });
+
+  it('the order the labelled rules come in is not part of it, and no labels in force hashes exactly as it did', () => {
+    const two = [{ rule: 'no_stub_output', right: 2, wrong: 18 }, { rule: 'no_tool_loop', right: 20, wrong: 0 }];
+    expect(configHash({ ...base, localLabels: two })).toBe(configHash({ ...base, localLabels: [...two].reverse() }));
+    expect(configHash({ ...base, localLabels: [] })).toBe(configHash(base));
+    expect(configHash({ ...base, composer: shipped, localLabels: [] })).toBe(configHash(base));
   });
 
   it('the engine stamps it: the same output passes and fails under two settings, and the two verdicts carry two hashes', async () => {
