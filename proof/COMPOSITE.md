@@ -1,6 +1,6 @@
 # The verdict, measured — the composite corpus
 
-Generated 2026-11-12T01:25:47.735Z for v0.21.0 (local generating commit `71af5513` — branch commits are squashed on merge, so cite the version).
+Generated 2026-11-12T03:40:28.413Z for v0.21.0 (local generating commit `1efc74a0` — branch commits are squashed on merge, so cite the version).
 Composite version `caa13e5c9488` (sha256 over proof/composite/*.json, the real transcripts and the family corpus `e777f6add399`). Reproduce with `npm run proof -- --composite`; CI runs `npm run proof -- --check --composite`.
 
 145 cases: 24 real transcripts (the held-out line: staged, not production traffic) and 121 composed; 100 must not ship, 45 may, 0 unlabelled. Split: 111 dev / 34 test, fnv1a(id + "iris-composite-split-v1") % 100 < 70 → dev, else test; never stored. Headline numbers are the test split. The expected verdict is true by construction — the classes present are a fact of what was injected — and never derived from a composer.
@@ -119,6 +119,38 @@ How often each label was right about shipping, under the rule through 0.18.0 and
 | real transcripts, test split only (staged) | shipped | none labelled | 4 of 5, 80.0% [37.5, 96.4]; 4 patterns |
 | dev (in-sample) | interval only (through 0.18.0) | 43 of 59, 72.9% [60.4, 82.6]; 13 patterns | 17 of 23, 73.9% [53.5, 87.5]; 7 patterns |
 | dev (in-sample) | shipped | none labelled | 60 of 82, 73.2% [62.7, 81.6]; 20 patterns |
+
+## With one rule labelled (test split)
+
+A deployment can label a rule's fires right or wrong. From 20 labels on one rule, that rule's fires are weighed by the precision the labels show, in place of the published one. Nothing else in a verdict reads the labels: every other rule's fire, and the labelled rule's silence, are weighed as they are without them. These are the verdict's two rates with that in force, one rule labelled at a time.
+
+No rule fires 20 times on the dev split, where a deployment's labels would come from (the most is 18, `no_pii`), so the labels are stated, not drawn: all 20 right, and all 20 wrong, the two ends of what 20 labels can say. They are not this corpus's word on the rule: an all-wrong row shows what the verdict does when a deployment says the rule's fires are not failures on its traffic. Each row is the test split judged by the shipped engine with those labels in force; a verdict that was not checked counts as a block. No row for `says_something` (it fired on no test case), `no_unusual_action` (no test case gives it what it reads) or `tool_choice` (it fired on no test case): a rule with no fire has nothing for its labels to weigh.
+
+| Rule labelled | The class it looks for | Fired on, of the test cases it ran on | 20 labels | False blocks on clean | Missed blocks | Verdicts changed where it fired | Verdicts different in anything where it did not |
+|---|---|--:|---|---|---|--:|--:|
+| none | | | | 1 of 10 | 11 of 24 | | |
+| `valid_tool_arguments` | `invalid_tool_call` | 1 of 2 | all right | 1 of 10 | 11 of 24 | 0 of 1 | 0 of 33 |
+|  |  |  | all wrong | 1 of 10 | 11 of 24 | 0 of 1 | 0 of 33 |
+| `ask_coverage` | `incomplete_ask` | 1 of 1 | all right | 1 of 10 | 10 of 24 | 1 of 1 | 0 of 33 |
+|  |  |  | all wrong | 1 of 10 | 11 of 24 | 0 of 1 | 0 of 33 |
+| `no_pii` (its fire is a veto) | `pii_leak`, `credential_leak` | 3 of 34 | all right | 1 of 10 | 11 of 24 | 0 of 3 | 0 of 31 |
+|  |  |  | all wrong | 1 of 10 | 11 of 24 | 0 of 3 | 0 of 31 |
+| `no_injection_patterns` (its fire is a veto) | `injection` | 1 of 34 | all right | 1 of 10 | 11 of 24 | 0 of 1 | 0 of 33 |
+|  |  |  | all wrong | 1 of 10 | 11 of 24 | 0 of 1 | 0 of 33 |
+| `no_stub_output` | `stub` | 3 of 34 | all right | 1 of 10 | 9 of 24 | 2 of 3 | 0 of 31 |
+|  |  |  | all wrong | 1 of 10 | 11 of 24 | 0 of 3 | 0 of 31 |
+| `no_hallucination_markers` | `fabrication` | 1 of 34 | all right | 1 of 10 | 11 of 24 | 0 of 1 | 0 of 33 |
+|  |  |  | all wrong | 1 of 10 | 12 of 24 | 1 of 1 | 0 of 33 |
+| `no_silent_tool_failure` | `silent_tool_failure` | 3 of 29 | all right | 1 of 10 | 11 of 24 | 0 of 3 | 0 of 31 |
+|  |  |  | all wrong | 1 of 10 | 13 of 24 | 2 of 3 | 0 of 31 |
+| `grounded_in_reads` | `ungrounded` | 3 of 13 | all right | 1 of 10 | 11 of 24 | 0 of 3 | 0 of 31 |
+|  |  |  | all wrong | 1 of 10 | 14 of 24 | 3 of 3 | 0 of 31 |
+| `no_injection_compliance` | `injection_compliance` | 1 of 28 | all right | 1 of 10 | 11 of 24 | 0 of 1 | 0 of 33 |
+|  |  |  | all wrong | 1 of 10 | 12 of 24 | 1 of 1 | 0 of 33 |
+| `no_tool_loop` | `tool_loop` | 2 of 29 | all right | 1 of 10 | 11 of 24 | 0 of 2 | 0 of 32 |
+|  |  |  | all wrong | 1 of 10 | 13 of 24 | 2 of 2 | 0 of 32 |
+
+Each of the 20 labellings reads the test split again, 680 readings in all. Where the labelled rule fired, the verdict changed in 12 of 38. Where it did not, the verdict is the one given without labels in all 642: the same state, the same basis, the same risk estimate and interval. Labels are read in one place, the weight of the labelled rule's own fire. A critical rule's fire is a veto, which no label undoes: labelling one changed the state of no verdict it fired on.
 
 ## Threshold sweep (dev split only, per-output prior)
 

@@ -30,6 +30,10 @@
  * number is the test split; the shipped τ stays the loss-derived 0.5 and the
  * sweep's argmax is published as a check on the loss model, never adopted.
  *
+ * One more table reads the verdict with a deployment's own labels in force
+ * (measureOneRuleLabelled): one rule labelled at a time, and the two rates
+ * on the test split under those labels.
+ *
  * Writes proof/composite-results.json and proof/COMPOSITE.md; `--check
  * --composite` regenerates both to a temp path and fails on any difference.
  */
@@ -47,6 +51,11 @@ import { compose, DEFAULT_COMPOSE } from '../../src/eval/compose.js';
 import type { Verdict } from '../../src/types/eval.js';
 import { legacyWouldShip } from './legacy-composer.js';
 import { verdictConfidence, testable, MIN_BIN_N, MIN_BIN_PATTERNS, type CalibrationTable, type Confidence } from '../../src/eval/confidence.js';
+import { builtInRules } from '../../src/eval/criticality.js';
+import { LOCAL_LABEL_MIN } from '../../src/eval/labels.js';
+import { buildLocalLabelSource } from '../../src/eval/local-labels.js';
+import type { IStorageAdapter } from '../../src/types/query.js';
+import { LOCAL_TENANT } from '../../src/types/tenant.js';
 
 export const COMPOSITE_RESULTS_JSON = 'proof/composite-results.json';
 export const COMPOSITE_MD = 'proof/COMPOSITE.md';
@@ -169,6 +178,44 @@ export interface LabelAccuracy {
   marginal: { test: PatternRate; dev: PatternRate; realTranscriptsTest: PatternRate };
 }
 
+/** A count of changed verdicts over the test cases it could have been. */
+export interface Changed {
+  k: number;
+  n: number;
+}
+
+/** The test split judged with one rule labelled: the verdict's two rates, and which verdicts differ from the unlabelled ones. */
+export interface LabelledRuleRow {
+  rule: string;
+  /** The failure classes the rule looks for. */
+  classes: FailureClass[];
+  /** Whether the product's verdict on a case this rule fired on, with no labels, was a veto by this rule: a veto is not weighed, so labels do not move it. */
+  vetoes: boolean;
+  /** Test cases the rule ran on and fired on: the fires its labels have to weigh. */
+  test: { ran: number; fired: number };
+  labels: { right: number; wrong: number };
+  falseBlock: Rate;
+  missedBlock: Rate;
+  /** Test cases the labelled rule fired on whose verdict changed state from the one given without labels. */
+  changedWhereFired: Changed;
+  /** Test cases the labelled rule did not fire on whose verdict differs in anything from the one given without labels: its state, its basis, the risk estimate or its interval. */
+  differentElsewhere: Changed;
+}
+
+export interface OneRuleLabelled {
+  split: 'test';
+  /** Labels on the one rule: the floor at which a deployment's labels are in force. */
+  labels: number;
+  method: string;
+  /** The same engine with no labels: the row every other is read against. */
+  unlabelled: { falseBlock: Rate; missedBlock: Rate };
+  /** The most any one rule fired on the dev split: why the labels are stated and not drawn. */
+  mostDevFires: { rule: string; fired: number };
+  /** The detections and inferences with no row, and why. */
+  notLabelled: Array<{ rule: string; reason: string }>;
+  rows: LabelledRuleRow[];
+}
+
 export interface CompositeResults {
   schemaVersion: 1;
   compositeVersion: string;
@@ -219,6 +266,8 @@ export interface CompositeResults {
     /** Risk-decided, labelled test verdicts, and how many of them share a detector-firing pattern with a dev verdict. */
     overlap: { test: number; sharedWithDev: number; testPatterns: number; sharedPatterns: number };
   };
+  /** The verdict's two rates with a deployment's labels on one rule in force (measureOneRuleLabelled). */
+  oneRuleLabelled: OneRuleLabelled;
   cases: CaseRow[];
 }
 
@@ -307,7 +356,116 @@ function labelAccuracy(rows: CaseRow[], label: (r: CaseRow) => Confidence | null
   return { decisive: per('decisive'), marginal: per('marginal') };
 }
 
-export async function measureComposite(root: string, engine?: EvalEngine): Promise<{ loaded: LoadedComposite; rows: CaseRow[]; results: Omit<CompositeResults, 'generatedAt' | 'commit' | 'version'> }> {
+/**
+ * The verdict with a deployment's labels on one rule in force.
+ *
+ * A deployment's labels do one thing at LOCAL_LABEL_MIN: the labelled
+ * rule's fires are weighed by the precision the labels show, in place of
+ * the published one. This measures the product doing that, one rule at a
+ * time: the source is built by the product's own buildLocalLabelSource from
+ * a stand-in store that holds one rule's labels and fire counts, installed
+ * on the shipped engine, and the test split is judged by that engine.
+ *
+ * It also measures what the labels do not do. Where the labelled rule did
+ * not fire, the whole verdict is compared with the one the unlabelled
+ * engine gave, down to the risk estimate and its interval, and the count
+ * of differences is published.
+ *
+ * The labels are stated, not drawn. No rule fires LOCAL_LABEL_MIN times on
+ * the dev split, where a deployment's labels would come from, so each rule
+ * gets the two ends of what that many labels can say: every one right, and
+ * every one wrong.
+ *
+ * Nothing about a rule is decided here. Whose fires are weighed, and so
+ * whose labels can move a verdict, is the shipped engine's answer
+ * (weighsFiresOf), and whether a rule's fire is a veto is read off the
+ * verdicts the product gave.
+ *
+ * Kept out of measureComposite: a caller that measures the corpus through
+ * its own engine (proof/judge) is not asking this, and the test split is
+ * judged again here once for each labelling.
+ */
+export async function measureOneRuleLabelled(root: string): Promise<OneRuleLabelled> {
+  const loaded = await loadComposite(root);
+  const newEngine = (): EvalEngine => new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+  const plain = newEngine();
+  const cases: Array<{ split: Split; shouldShip: boolean | null; context: ReturnType<typeof compositeContext>; verdict: string; state: Verdict['state']; ran: Set<string>; fired: Set<string> }> = [];
+  /** The rules the product's verdict named as vetoing, on any case. */
+  const vetoed = new Set<string>();
+  for (const c of loaded.cases) {
+    const context = compositeContext(loaded, c);
+    const result = await plain.evaluateAll(context);
+    if (result.verdict!.basis === 'detector_veto') for (const name of result.verdict!.by) vetoed.add(name);
+    cases.push({
+      split: splitOf(c.id),
+      shouldShip: c.expected.shouldShip,
+      context,
+      verdict: JSON.stringify(result.verdict),
+      state: result.verdict!.state,
+      ran: new Set(result.rule_results.filter((r) => !r.skipped).map((r) => r.ruleName)),
+      fired: new Set(result.rule_results.filter((r) => !r.skipped && r.passed === false).map((r) => r.ruleName)),
+    });
+  }
+  const dev = cases.filter((c) => c.split === 'dev');
+  const test = cases.filter((c) => c.split === 'test');
+  const clean = test.filter((c) => c.shouldShip === true);
+  const bad = test.filter((c) => c.shouldShip === false);
+  // As in every table here, a verdict that was not checked counts as a block: it did not let the output through.
+  const rates = (stateOf: (c: (typeof cases)[number]) => Verdict['state']): { falseBlock: Rate; missedBlock: Rate } => ({
+    falseBlock: rate(clean.filter((c) => stateOf(c) !== 'pass').length, clean.length),
+    missedBlock: rate(bad.filter((c) => stateOf(c) === 'pass').length, bad.length),
+  });
+
+  const weighed = builtInRules().filter((r) => plain.weighsFiresOf(r.name));
+  const rows: LabelledRuleRow[] = [];
+  const notLabelled: OneRuleLabelled['notLabelled'] = [];
+  let mostDevFires = { rule: '', fired: 0 };
+  for (const rule of weighed) {
+    const devFired = dev.filter((c) => c.fired.has(rule.name)).length;
+    if (devFired > mostDevFires.fired) mostDevFires = { rule: rule.name, fired: devFired };
+    const ran = test.filter((c) => c.ran.has(rule.name)).length;
+    const firedOn = test.filter((c) => c.fired.has(rule.name));
+    const elsewhere = test.filter((c) => !c.fired.has(rule.name));
+    if (firedOn.length === 0) {
+      notLabelled.push({ rule: rule.name, reason: ran === 0 ? 'no test case gives it what it reads' : 'it fired on no test case' });
+      continue;
+    }
+    for (const [right, wrong] of [[LOCAL_LABEL_MIN, 0], [0, LOCAL_LABEL_MIN]] as const) {
+      const store = {
+        labelTallies: async () => [{ ruleName: rule.name, right, wrong }],
+        ruleFireStats: async () => [{ ruleName: rule.name, judged: ran, fired: firedOn.length }],
+      } as unknown as IStorageAdapter;
+      const engine = newEngine();
+      engine.setLocalLabels(await buildLocalLabelSource(store, LOCAL_TENANT));
+      const labelled = new Map<(typeof cases)[number], { state: Verdict['state']; verdict: string }>();
+      for (const c of test) {
+        const verdict = (await engine.evaluateAll(c.context)).verdict!;
+        labelled.set(c, { state: verdict.state, verdict: JSON.stringify(verdict) });
+      }
+      rows.push({
+        rule: rule.name,
+        classes: [...(rule.classes ?? [])] as FailureClass[],
+        vetoes: vetoed.has(rule.name),
+        test: { ran, fired: firedOn.length },
+        labels: { right, wrong },
+        ...rates((c) => labelled.get(c)!.state),
+        changedWhereFired: { k: firedOn.filter((c) => labelled.get(c)!.state !== c.state).length, n: firedOn.length },
+        differentElsewhere: { k: elsewhere.filter((c) => labelled.get(c)!.verdict !== c.verdict).length, n: elsewhere.length },
+      });
+    }
+  }
+  return {
+    split: 'test',
+    labels: LOCAL_LABEL_MIN,
+    method: `for each rule whose fires the shipped engine weighs (a detection or an inference) that fired on a test case: the shipped engine with ${LOCAL_LABEL_MIN} stated labels on that rule alone, all right and then all wrong, read through buildLocalLabelSource (src/eval/local-labels.ts); the test split judged with those labels in force; a verdict that was not checked counts as a block; where the labelled rule did not fire, the whole verdict is compared with the unlabelled one`,
+    unlabelled: rates((c) => c.state),
+    mostDevFires,
+    notLabelled,
+    rows,
+  };
+}
+
+export async function measureComposite(root: string, engine?: EvalEngine): Promise<{ loaded: LoadedComposite; rows: CaseRow[]; results: Omit<CompositeResults, 'generatedAt' | 'commit' | 'version' | 'oneRuleLabelled'> }> {
   const loaded = await loadComposite(root);
   const issues = validateComposite(loaded);
   if (issues.length > 0) throw new Error(`composite corpus validation failed:\n  ${issues.join('\n  ')}`);
@@ -438,7 +596,7 @@ export async function measureComposite(root: string, engine?: EvalEngine): Promi
   const byClass: Record<string, number> = {};
   for (const r of rows) for (const cls of r.classes) byClass[cls] = (byClass[cls] ?? 0) + 1;
 
-  const results: Omit<CompositeResults, 'generatedAt' | 'commit' | 'version'> = {
+  const results: Omit<CompositeResults, 'generatedAt' | 'commit' | 'version' | 'oneRuleLabelled'> = {
     schemaVersion: 1,
     compositeVersion: loaded.compositeVersion,
     corpusVersion: loaded.corpusVersion,
@@ -593,6 +751,7 @@ export function renderCompositeMarkdown(r: CompositeResults): string {
     }
   }
   L.push('');
+  renderOneRuleLabelled(L, r.oneRuleLabelled);
   L.push(`## Threshold sweep (dev split only, ${r.sweep.variant} prior)`);
   L.push('');
   L.push(`${r.sweep.note}. Utility-optimal τ on dev: **${r.sweep.argmaxUtility.toFixed(2)}**; shipped τ (loss-derived): **${r.sweep.shippedTau.toFixed(2)}**.`);
@@ -614,6 +773,45 @@ export function renderCompositeMarkdown(r: CompositeResults): string {
   L.push(`Read proof/README.md and docs/proof.md before quoting a number: the composed cases are built from the same synthetic, same-model-labelled families the per-rule numbers come from, so the accuracy here is corpus-conditional. The real-transcript line is held out of every per-rule rate the composer reads, but it is not a sample of production traffic: the ${staged.length} runs were scripted with an intended failure (${stagedBad} of ${staged.length} bad by design, a ${staged.length ? Math.round((stagedBad / staged.length) * 100) : 0}% base rate), and several rules were revised after an acceptance pass on them. Read it as a held-out check, not a field error rate.`);
   L.push('');
   return L.join('\n');
+}
+
+const kOfN = (x: { k: number; n: number }): string => `${x.k} of ${x.n}`;
+
+function renderOneRuleLabelled(L: string[], o: OneRuleLabelled): void {
+  const n = o.labels;
+  L.push('## With one rule labelled (test split)');
+  L.push('');
+  L.push(`A deployment can label a rule's fires right or wrong. From ${n} labels on one rule, that rule's fires are weighed by the precision the labels show, in place of the published one. Nothing else in a verdict reads the labels: every other rule's fire, and the labelled rule's silence, are weighed as they are without them. These are the verdict's two rates with that in force, one rule labelled at a time.`);
+  L.push('');
+  const without = o.notLabelled.map((x) => `\`${x.rule}\` (${x.reason})`);
+  const unlabelledRules = without.length === 0 ? '' : ` No row for ${without.length === 1 ? without[0] : `${without.slice(0, -1).join(', ')} or ${without[without.length - 1]}`}: a rule with no fire has nothing for its labels to weigh.`;
+  L.push(`No rule fires ${n} times on the dev split, where a deployment's labels would come from (the most is ${o.mostDevFires.fired}, \`${o.mostDevFires.rule}\`), so the labels are stated, not drawn: all ${n} right, and all ${n} wrong, the two ends of what ${n} labels can say. They are not this corpus's word on the rule: an all-wrong row shows what the verdict does when a deployment says the rule's fires are not failures on its traffic. Each row is the test split judged by the shipped engine with those labels in force; a verdict that was not checked counts as a block.${unlabelledRules}`);
+  L.push('');
+  L.push(`| Rule labelled | The class it looks for | Fired on, of the test cases it ran on | ${n} labels | False blocks on clean | Missed blocks | Verdicts changed where it fired | Verdicts different in anything where it did not |`);
+  L.push('|---|---|--:|---|---|---|--:|--:|');
+  L.push(`| none | | | | ${kOfN(o.unlabelled.falseBlock)} | ${kOfN(o.unlabelled.missedBlock)} | | |`);
+  for (const row of o.rows) {
+    const first = row.labels.wrong === 0;
+    L.push(`| ${first ? `\`${row.rule}\`${row.vetoes ? ' (its fire is a veto)' : ''}` : ''} | ${first ? row.classes.map((c) => `\`${c}\``).join(', ') : ''} | ${first ? kOfN({ k: row.test.fired, n: row.test.ran }) : ''} | ${first ? 'all right' : 'all wrong'} | ${kOfN(row.falseBlock)} | ${kOfN(row.missedBlock)} | ${kOfN(row.changedWhereFired)} | ${kOfN(row.differentElsewhere)} |`);
+  }
+  L.push('');
+  const sum = (pick: (row: LabelledRuleRow) => Changed): Changed => o.rows.reduce((t, row) => ({ k: t.k + pick(row).k, n: t.n + pick(row).n }), { k: 0, n: 0 });
+  const fired = sum((row) => row.changedWhereFired);
+  const elsewhere = sum((row) => row.differentElsewhere);
+  const sentences: string[] = [];
+  sentences.push(`Each of the ${o.rows.length} labellings reads the test split again, ${fired.n + elsewhere.n} readings in all. Where the labelled rule fired, the verdict changed in ${kOfN(fired)}.`);
+  if (elsewhere.k === 0) {
+    sentences.push(`Where it did not, the verdict is the one given without labels in all ${elsewhere.n}: the same state, the same basis, the same risk estimate and interval. Labels are read in one place, the weight of the labelled rule's own fire.`);
+  } else {
+    sentences.push(`Where it did not, ${kOfN(elsewhere)} verdicts differ from the ones given without labels.`);
+  }
+  const vetoing = o.rows.filter((row) => row.vetoes);
+  if (vetoing.length > 0) {
+    const moved = vetoing.reduce((t, row) => t + row.changedWhereFired.k, 0);
+    sentences.push(moved === 0 ? "A critical rule's fire is a veto, which no label undoes: labelling one changed the state of no verdict it fired on." : `A critical rule's fire is a veto; ${moved} verdicts changed state where a labelled critical rule fired.`);
+  }
+  L.push(sentences.join(' '));
+  L.push('');
 }
 
 /** Strips the fields that legitimately change on every run/commit. */

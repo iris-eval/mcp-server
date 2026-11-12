@@ -724,11 +724,23 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
       continue;
     }
     if (verdict.state === 'pass') {
+      /*
+       * A fire weighed by the deployment's own labels is told so. On its
+       * published accuracy the same fire can carry the verdict: it passed
+       * here because the labels call the rule wrong on this traffic, and a
+       * sentence that named the published number would send the reader to
+       * the one setting that did not decide it.
+       */
+      const u = r.uncertainty;
+      const weighedBy =
+        u !== undefined && u.basis === 'local_labels'
+          ? `at the precision your ${u.n} labels on its fires measured (${Math.round(u.precision.point * u.n)} right)`
+          : 'on its published accuracy';
       out.push({
         severity: 'note',
         addressee: 'operator',
         rule: r.ruleName,
-        text: `${r.ruleName} failed but the verdict passed: on its published accuracy this rule alone does not carry the risk past your loss threshold. Raise eval.falsePassCost to block on weaker evidence (the loss threshold is 1 / (1 + falsePassCost)).`,
+        text: `${r.ruleName} failed but the verdict passed: ${weighedBy} this rule alone does not carry the risk past your loss threshold. Raise eval.falsePassCost to block on weaker evidence (the loss threshold is 1 / (1 + falsePassCost)).`,
         configKey: 'eval.falsePassCost',
       });
     }
@@ -743,21 +755,36 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
    * naming the weighed rules that fired. A veto is not weighed, so a
    * verdict a critical rule decided gets no such sentence.
    *
-   * The sentence says everything labels do. At LOCAL_LABEL_MIN labels the
-   * prior every rule is weighed at is estimated from them too, unless the
-   * deployment set eval.prior (engine.effectivePrior): a reader invited to
-   * label one rule is told that the labels reach the others.
+   * The sentence says everything labels do, and that is one thing: the
+   * labelled rule's fires are weighed by the precision the labels show.
+   * No other rule's fire, and no rule's silence, is weighed differently
+   * for them (engine.effectivePrior says why), so a reader invited to
+   * label one rule is told how far the labels reach.
+   *
+   * A verdict stamped with a prior estimated from labels was given by
+   * 0.14.0 through 0.21.0, where labels did reach every rule, through that
+   * prior. It reads back as it was given, so it is not told that nothing
+   * else read the labels: it gets the note after this one, which says how
+   * it was weighed and how to have it weighed as verdicts are now.
    */
+  const weighedAtLabelsPrior = result.provenance?.composer?.priorSource === 'estimated';
   if (verdict.basis === 'risk_over_loss') {
     const weighedFires = result.rule_results.filter((r) => fired(r) && r.advisory !== true && !isCritical(r) && (r.kind === 'detection' || r.kind === 'inference')).map((r) => r.ruleName);
     if (weighedFires.length > 0) {
       out.push({
         severity: 'note',
         addressee: 'operator',
-        text: `The risk estimate that failed this verdict rests on ${weighedFires.join(', ')}. If ${weighedFires.length === 1 ? 'its fires are' : 'their fires are'} not failures on your traffic, label them, or name the rule in eval.advisoryRules to have it report and take no part in the verdict. From ${LOCAL_LABEL_MIN} labels on a rule's fires two things change: that rule's fires are weighed by the precision you measured, and the prior every rule is weighed at is estimated from your labels, unless you set eval.prior.`,
+        text: `The risk estimate that failed this verdict rests on ${weighedFires.join(', ')}. If ${weighedFires.length === 1 ? 'its fires are' : 'their fires are'} not failures on your traffic, label them, or name the rule in eval.advisoryRules to have it report and take no part in the verdict. From ${LOCAL_LABEL_MIN} labels on a rule's fires, that rule's fires are weighed by the precision you measured.${weighedAtLabelsPrior ? '' : " Nothing else in a verdict reads your labels: every other rule's fire, and that rule's silence, are weighed as before."}`,
         configKey: 'eval.advisoryRules',
       });
     }
+  }
+  if (weighedAtLabelsPrior) {
+    out.push({
+      severity: 'note',
+      addressee: 'operator',
+      text: `This verdict was weighed at a prior of ${Math.round(cfg.prior * 1e4) / 1e4} that an earlier version estimated from your labels and applied to every rule. A verdict given now starts from your eval.prior or the default, and labels change what the labelled rule's own fires are worth and nothing else, so this one can read differently today. Re-evaluating it weighs it that way.`,
+    });
   }
   const unanswered = verdict.basis === 'critical_unknown' ? verdict : (verdict.also ?? []).find((l) => l.basis === 'critical_unknown');
   if (unanswered !== undefined) {

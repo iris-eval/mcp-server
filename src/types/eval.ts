@@ -557,11 +557,13 @@ export interface Provenance {
     onCriticalSkipped: 'unknown' | 'fail' | 'pass';
     /**
      * The prior the risk estimate used and where it came from:
-     * `config` when the deployment set eval.prior, `estimated` when the
-     * deployment's own labels implied one, `default` otherwise. Flat, not
-     * nested, so a stored row re-composes on read by spreading this object
-     * over the defaults. Absent on rows written before 0.14.0, which read
-     * back under the default prior and say so.
+     * `config` when the deployment set eval.prior, `default` otherwise.
+     * `estimated` is on rows written by 0.14.0 through 0.21.0 only, when a
+     * prior implied by the deployment's labels stood for every class; such
+     * a row still reads back at the prior it carries. Flat, not nested, so
+     * a stored row re-composes on read by spreading this object over the
+     * defaults. Absent on rows written before 0.14.0, which read back under
+     * the default prior and say so.
      */
     prior?: number;
     priorSource?: 'default' | 'config' | 'estimated';
@@ -645,11 +647,13 @@ export interface NarrowedArgument {
 
 /**
  * The prior a result's error rate is stated at, and where it came from: the
- * shipped default, the deployment's `eval.prior`, the estimate its labels
- * imply, or `family`, the share of the rule's own proof family that is
- * positive. A family labelled outside Iris holds the mix its runs had, and
- * while the deployment has neither set nor estimated a prior that rule's
- * number is stated at that mix, where it is the one that was observed.
+ * shipped default, the deployment's `eval.prior`, or `family`, the share
+ * of the rule's own proof family that is positive. A family labelled
+ * outside Iris holds the mix its runs had, and while the deployment has not
+ * set a prior that rule's number is stated at that mix, where it is the one
+ * that was observed. `estimated` is on results written by 0.14.0 through
+ * 0.21.0, which stated a number at a prior implied by the deployment's
+ * labels.
  */
 export type StatedPrior = { pi: number; source: 'default' | 'config' | 'estimated' | 'family' };
 

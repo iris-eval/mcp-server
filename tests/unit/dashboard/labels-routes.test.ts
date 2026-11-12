@@ -6,7 +6,10 @@
  *   the floor and the per-rule rows; GET /issues groups the fires;
  *   POST /evaluations/:id/reevaluate keeps the old row and names it — and
  *   after twenty labels calling the rule wrong, the re-score passes what
- *   the published number failed. The bold sentence, end to end.
+ *   the published number failed. The bold sentence, end to end. The same
+ *   twenty labels leave a verdict that rests on another rule's fire exactly
+ *   as it was: what they say about how often the failure is present is
+ *   reported, and is the prior of nothing.
  */
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -22,6 +25,13 @@ import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 
 const STUB = 'TODO: write the summary.';
+
+/** A failed tool call the answer does not mention: the verdict rests on no_silent_tool_failure, and no_stub_output is quiet. */
+const SILENT_FAILURE = {
+  output: 'The invoice was sent to the customer and the balance is confirmed for the account.',
+  input: 'Send the invoice and confirm the balance.',
+  toolCalls: [{ tool_name: 'send_invoice', input: { id: 7 }, output: null, error: 'upstream timeout after 3 retries' }],
+};
 
 const dirs: string[] = [];
 const stores: SqliteAdapter[] = [];
@@ -39,13 +49,13 @@ interface Harness {
   scoreOne(i: number): Promise<{ traceId: string; evalId: string; verdict: string | undefined }>;
 }
 
-async function harness(withEngine = true): Promise<Harness> {
+async function harness(withEngine = true, evalConfig: ConstructorParameters<typeof EvalEngine>[2] = defaultConfig.eval): Promise<Harness> {
   const dir = mkdtempSync(join(tmpdir(), 'iris-labels-routes-'));
   dirs.push(dir);
   const store = new SqliteAdapter(join(dir, 'iris.db'));
   await store.initialize();
   stores.push(store);
-  const engine = new EvalEngine(0.7, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+  const engine = new EvalEngine(0.7, defaultConfig.eval.ruleThresholds, evalConfig);
   await refreshLocalLabels(engine, store, LOCAL_TENANT);
   const app = express();
   app.use(express.json());
@@ -135,7 +145,8 @@ describe('GET /labels/stats and GET /issues', () => {
     expect(stub).toMatchObject({ n: 1, right: 0, wrong: 1, local: false, entersRisk: true, fireRate: 1 });
     expect(typeof stub.publishedPrecision).toBe('number');
     expect(rows.find((r) => r.rule === 'no_pii')).toMatchObject({ n: 0, fireRate: 0 });
-    expect(stats.body.estimatedPrior).toBeNull();
+    expect(stats.body.prevalence).toEqual([]);
+    expect(stats.body).not.toHaveProperty('estimatedPrior');
     // The suggestion names a rule whose labels can move a verdict — never a measurement's.
     const suggestion = stats.body.suggestion as { ruleName: string; n: number; sentence: string };
     expect(rows.find((r) => r.rule === suggestion.ruleName)).toMatchObject({ entersRisk: true });
@@ -156,12 +167,63 @@ describe('GET /labels/stats and GET /issues', () => {
   });
 });
 
+describe('a rule the deployment set to report only', () => {
+  it('reads entersRisk false and is not the rule suggested for the next label; twenty labels on it are counted, reported, and move no verdict', async () => {
+    const h = await harness(true, { ...defaultConfig.eval, advisoryRules: ['no_stub_output'] });
+    const scored: Array<{ traceId: string; evalId: string; verdict: string | undefined }> = [];
+    for (let i = 0; i < 20; i++) scored.push(await h.scoreOne(i));
+    const before = await h.engine.evaluateAll({ output: STUB, input: 'Summarise the notes.' });
+    expect(before.rule_results.find((r) => r.ruleName === 'no_stub_output')).toMatchObject({ passed: false, advisory: true });
+
+    for (let i = 0; i < 20; i++) {
+      const r = await call(h.app, 'POST', '/api/v1/labels', { eval_id: scored[i].evalId, rule: 'no_stub_output', label: 'right' });
+      expect(r.status).toBe(201);
+    }
+    const stats = await call(h.app, 'GET', '/api/v1/labels/stats');
+    const rows = stats.body.rules as Array<Record<string, unknown>>;
+    expect(rows.find((r) => r.rule === 'no_stub_output')).toMatchObject({ kind: 'inference', n: 20, right: 20, local: true, entersRisk: false, fireRate: 1 });
+    // Another rule of the same kind is weighed as it was.
+    expect(rows.find((r) => r.rule === 'no_silent_tool_failure')).toMatchObject({ entersRisk: true });
+    // The stub rule is the only detection or inference that fires on this traffic, and its labels move no verdict: nothing is suggested.
+    expect(stats.body.suggestion).toBeNull();
+    // What its labelled fires say about the traffic is still reported.
+    expect((stats.body.prevalence as Array<{ ruleName: string }>).map((p) => p.ruleName)).toEqual(['no_stub_output']);
+
+    const after = await h.engine.evaluateAll({ output: STUB, input: 'Summarise the notes.' });
+    expect(after.verdict).toEqual(before.verdict);
+    expect(after.provenance!.configHash).toBe(before.provenance!.configHash);
+    await h.store.close();
+  }, 120_000);
+});
+
+describe('a rule whose fire vetoes', () => {
+  it('is weighed and is not the rule suggested for the next label: no label changes pass or fail where it fires', async () => {
+    // The stub rule promoted to veto: it is the only detection or inference that fires on this traffic.
+    const h = await harness(true, { ...defaultConfig.eval, criticalRules: ['no_stub_output'] });
+    const scored: Array<{ traceId: string; evalId: string; verdict: string | undefined }> = [];
+    for (let i = 0; i < 20; i++) scored.push(await h.scoreOne(i));
+    expect(scored.every((s) => s.verdict === 'fail')).toBe(true);
+    const before = await call(h.app, 'GET', '/api/v1/labels/stats');
+    expect((before.body.rules as Array<Record<string, unknown>>).find((r) => r.rule === 'no_stub_output')).toMatchObject({ entersRisk: true, fireRate: 1 });
+    expect(before.body.suggestion).toBeNull();
+
+    for (let i = 0; i < 20; i++) await call(h.app, 'POST', '/api/v1/labels', { eval_id: scored[i].evalId, rule: 'no_stub_output', label: 'wrong' });
+    const after = await h.engine.evaluateAll({ output: STUB, input: 'Summarise the notes.' });
+    // Twenty labels calling its fires wrong, and the stub still fails: the deployment said every fire of this rule decides.
+    expect(after.verdict).toMatchObject({ state: 'fail', basis: 'detector_veto', by: ['no_stub_output'] });
+    expect((await call(h.app, 'GET', '/api/v1/labels/stats')).body.suggestion).toBeNull();
+    await h.store.close();
+  }, 120_000);
+});
+
 describe('POST /evaluations/:id/reevaluate', () => {
   it('keeps the earlier row, names it, and after twenty labels calling the rule wrong the re-score passes what the published number failed', async () => {
     const h = await harness();
     const scored: Array<{ traceId: string; evalId: string; verdict: string | undefined }> = [];
     for (let i = 0; i < 20; i++) scored.push(await h.scoreOne(i));
     expect(scored.every((s) => s.verdict === 'fail')).toBe(true);
+    const otherRuleBefore = await h.engine.evaluateAll(SILENT_FAILURE);
+    expect(otherRuleBefore.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['silent_tool_failure'] });
 
     // Nineteen labels: still the published number, still a fail.
     for (let i = 0; i < 19; i++) {
@@ -178,7 +240,12 @@ describe('POST /evaluations/:id/reevaluate', () => {
     const twentieth = await call(h.app, 'POST', '/api/v1/labels', { eval_id: scored[19].evalId, rule: 'no_stub_output', label: 'wrong' });
     expect(twentieth.status).toBe(201);
     expect(twentieth.body.rule).toMatchObject({ n: 20, right: 2, wrong: 18, local: true });
-    expect(twentieth.body.estimatedPrior).not.toBeNull();
+    // The labels say how often a stub is present on this traffic. That is reported, for the rule it came from.
+    const prevalence = twentieth.body.prevalence as Array<{ ruleName: string; classes: string[]; pi: number; fireRate: number }>;
+    expect(prevalence).toHaveLength(1);
+    expect(prevalence[0]).toMatchObject({ ruleName: 'no_stub_output', classes: ['stub'], fireRate: 1 });
+    expect(prevalence[0].pi).toBeLessThan(0.2);
+    expect(twentieth.body).not.toHaveProperty('estimatedPrior');
 
     const moved = await call(h.app, 'POST', `/api/v1/evaluations/${scored[19].evalId}/reevaluate`);
     expect(moved.status).toBe(201);
@@ -186,10 +253,11 @@ describe('POST /evaluations/:id/reevaluate', () => {
     expect(moved.body.before).toMatchObject({ verdict: 'fail' });
     expect(moved.body.after).toMatchObject({ verdict: 'pass', passed: true });
     expect(moved.body.changed).toBe(true);
-    const evaluation = moved.body.evaluation as { id: string; provenance: { supersedes: string; composer: { priorSource: string } }; rule_results: Array<{ ruleName: string; uncertainty?: { basis: string; n?: number } }> };
+    const evaluation = moved.body.evaluation as { id: string; provenance: { supersedes: string; composer: Record<string, unknown> }; rule_results: Array<{ ruleName: string; uncertainty?: { basis: string; n?: number } }> };
     expect(evaluation.id).not.toBe(scored[19].evalId);
     expect(evaluation.provenance.supersedes).toBe(scored[19].evalId);
-    expect(evaluation.provenance.composer.priorSource).toBe('estimated');
+    // The prior is the one every verdict here had: the labels moved the labelled rule's fire, and that is all.
+    expect(evaluation.provenance.composer).toMatchObject({ prior: 0.5, priorSource: 'default' });
     expect(evaluation.rule_results.find((r) => r.ruleName === 'no_stub_output')!.uncertainty).toMatchObject({ basis: 'local_labels', n: 20 });
 
     // Both rows stand on the trace; the newest is the re-score.
@@ -198,6 +266,13 @@ describe('POST /evaluations/:id/reevaluate', () => {
     expect(rows.map((r) => r.id)).toContain(evaluation.id);
     expect(rows.find((r) => r.id === evaluation.id)!.verdict?.state).toBe('pass');
     expect(rows.find((r) => r.id === scored[19].evalId)!.verdict?.state).toBe('fail');
+
+    // A verdict that rests on another rule's fire is what it was, to the last number: the twenty labels say nothing about a fire they were not put on.
+    const otherRuleAfter = await h.engine.evaluateAll(SILENT_FAILURE);
+    expect(otherRuleAfter.verdict).toEqual(otherRuleBefore.verdict);
+    expect(otherRuleAfter.rule_results).toEqual(otherRuleBefore.rule_results);
+    // What changed is named: the two were judged under two configurations, the labels in force being part of one.
+    expect(otherRuleAfter.provenance!.configHash).not.toBe(otherRuleBefore.provenance!.configHash);
     await h.store.close();
   }, 120_000);
 
