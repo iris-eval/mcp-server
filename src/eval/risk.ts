@@ -108,7 +108,7 @@ const localPpv = (l: { right: number; wrong: number }): number => (l.right + 0.5
  */
 
 /** The evaluated detections and inferences with a published family, one entry per rule. */
-export function detectorsOf(result: EvalResult): Detector[] {
+export function detectorsOf(result: Pick<EvalResult, 'rule_results'>): Detector[] {
   const out: Detector[] = [];
   for (const r of result.rule_results) {
     if (r.skipped) continue;
