@@ -81,7 +81,7 @@ Log an agent execution trace with spans, tool calls, and metrics.
 | `token_usage` | `TokenUsage` | No | -- | Token usage breakdown |
 | `cost_usd` | `number` | No | -- | Total cost in USD, stored as reported. Omitted, Iris estimates it from `token_usage` (or the spans' token counts) and the model (`metadata.model` or the spans') at list price, and marks it `cost_source: "estimated"`; see [cost.md](cost.md) |
 | `metadata` | `Record<string, unknown>` | No | -- | Arbitrary metadata key-value pairs |
-| `tools` | `ToolDescriptor[]` | No | -- | What the agent could have called — your MCP `tools/list` result, verbatim; stored on the trace and reused by `evaluate_output`. Each entry is a tool as the protocol defines one: a key the protocol does not give a tool is refused by name, so a misspelled `inputSchema` cannot pass for a tool with no schema. At most 200 entries and 262,144 bytes, and no name twice; a catalogue over a limit is refused, never cut |
+| `tools` | `ToolDescriptor[]` | No | -- | What the agent could have called — your MCP `tools/list` result, verbatim; stored on the trace and reused by `evaluate_output`. Each entry is a tool as the protocol defines one: a key the protocol does not give a tool is refused by name, so a misspelled `inputSchema` cannot pass for a tool with no schema. At most 200 entries and 262,144 bytes, and no name twice; a catalogue over a limit is refused, never cut. How a call is matched to its entry: [ToolDescriptor](#nested-types) |
 | `run` | `string` | No | -- | The batch this execution belongs to, for `compare_runs`; never inferred |
 | `case_key` | `string` | No | derived from `input` | What makes this the same question as a trace in another run |
 | `session_id` | `string` | No | the SEP-414 baggage `session_id`, when sent | The conversation this turn belongs to; the trace drawer shows the other turns, `get_traces` and `GET /api/v1/traces` filter by it, `compare_traces` can group by it |
@@ -101,6 +101,20 @@ Log an agent execution trace with spans, tool calls, and metrics.
 | `output` | `unknown` | No | Tool output payload |
 | `latency_ms` | `number` | No | Tool call duration in milliseconds |
 | `error` | `string` | No | Error message if the call failed |
+
+**ToolDescriptor**
+
+One entry of the catalogue, in the shape `tools/list` returns it: `name`, and optionally `title`, `description`, `inputSchema`, `outputSchema` and `annotations` (`readOnlyHint`, `destructiveHint` and the others the protocol defines); `icons`, `execution` and `_meta` are accepted and not read, and any other key is refused by name. `log_trace`, `POST /api/v1/traces` and `evaluate_output` each refuse a catalogue of more than 200 entries or 262,144 bytes, and one that names a tool twice.
+
+A call is matched to its entry by name. The name looked up first is the one the call was made by. A host that reaches its tools through MCP may call them `mcp__<server>__<tool>` where the server's `tools/list` says `<tool>`, so when the catalogue has no entry under the called name, the tool's own name is looked up, the part after the server's. A run on such a host is then judged against a `tools/list` result pasted as it is: `valid_tool_arguments` checks each call by its tool's schema, `tool_choice` counts it as a call to that tool, and each says in its result when an entry was reached by the tool's own name.
+
+The server's part of the name is compared with nothing, because a catalogue names no server: an entry named `search` is reached by `mcp__docs__search` and by `mcp__tickets__search` alike. Three things follow.
+
+- An entry reached by a tool's own name is believed when it says the tool acts (`readOnlyHint: false`, or `destructiveHint: true`) and not when it says the tool only reads. `no_unusual_action` then places the call by its name, and `no_tool_loop` counts rereads only through a tool whose entry is under the name it was called by. Each says in its result when a read-only word was not taken, for which call, and what to list.
+- When two called names lead to one entry, it is the tool of at most one of them: `valid_tool_arguments` checks neither call, and says which entry and what to list.
+- When the agent can reach more than one tool of the same name (a `search` on each of a pair of servers, or one server connected twice), list each under the name the agent calls it by. Every entry is then exact, and the exact name wins.
+
+Any other prefix a host adds is not taken off, and a host can also change characters of a name (a tool listed as `orders.list` may be called `mcp__shop__orders_list`). For those, give the catalogue the names the agent calls.
 
 **TokenUsage**
 

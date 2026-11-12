@@ -1949,7 +1949,7 @@
           "tools_catalogue"
         ],
         "question": "relevant",
-        "version": 1
+        "version": 2
       },
       {
         "classes": [
@@ -1991,7 +1991,7 @@
           "tools_catalogue"
         ],
         "question": "tool_use_correct",
-        "version": 1
+        "version": 2
       },
       {
         "classes": [
@@ -5323,8 +5323,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-11-12T04:23:13.018Z",
-  "generatedFromCommit": "aa19eca9",
+  "generatedAt": "2026-11-12T05:10:00.718Z",
+  "generatedFromCommit": "29cf71bf",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,

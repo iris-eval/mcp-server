@@ -7,6 +7,32 @@
  * schema. The catalogue closes it, and it is carried in the MCP `tools/list`
  * shape verbatim so an MCP agent pastes the result it already has.
  *
+ * A pasted `tools/list` names each tool as its server does. The host that
+ * calls it may not: one that reaches its tools through MCP can call them
+ * `mcp__<server>__<tool>`. So a call is looked up under the name it was
+ * made by and then under the tool's own (catalogueMatch). Matched by exact
+ * name alone, no call on such a host was in a catalogue pasted as
+ * documented, and a correct run failed for calling tools "not in the
+ * catalogue".
+ *
+ * A catalogue names no server, so an entry found under a tool's own name
+ * may be another server's tool of that name. That bounds what such an
+ * entry is taken for:
+ *
+ *   - its schema and its description are read, and the result says the
+ *     entry was reached by the tool's own name (valid_tool_arguments,
+ *     tool_choice);
+ *   - its word that the tool only reads is not taken. That word stops a
+ *     call counting as an action and makes a repeat count as a wasted
+ *     read, and it is another tool's word when the server differs. Its
+ *     word that the tool acts is taken (declaredEffect);
+ *   - when two called names lead to one entry by their own name, it is the
+ *     tool of at most one of them, and no call's arguments are judged by
+ *     it (valid_tool_arguments).
+ *
+ * A deployment whose agent can reach two tools of one name lists each
+ * under the name the agent calls it by, and every entry is then exact.
+ *
  * Server-only, like the step layer and for the same reason: the website's
  * vendored rule library has no catalogue and never will, so pinning this
  * would ship it into a browser bundle for a path that cannot be taken.
@@ -56,6 +82,71 @@ export function catalogueIndex(context: EvalContext): Map<string, ToolDescriptor
 }
 
 /**
+ * A tool's own name inside the name an agent calls it by. An agent that
+ * reaches its tools through MCP can call them `mcp__<server>__<tool>`, and
+ * the server part is the deployment's label for where the tool lives. The
+ * first `__` after a server's part ends it, as Claude Code reads the names
+ * it writes; a name of any other shape, one with no server's part among
+ * them, is its own. So is a call that carries no name: an engine built in
+ * code can be handed one, and the rules say what they make of it.
+ */
+export function ownToolName(name: string): string {
+  if (typeof name !== 'string' || !name.startsWith('mcp__')) return name;
+  const at = name.indexOf('__', 'mcp__'.length);
+  return at <= 'mcp__'.length || at + 2 >= name.length ? name : name.slice(at + 2);
+}
+
+/** An entry of the catalogue found for a called tool, and how: under the name the call was made by, or under the tool's own name. */
+export interface CatalogueMatch {
+  tool: ToolDescriptor;
+  by: 'called' | 'own';
+}
+
+/**
+ * The catalogue's entry for a called tool: under the name the call was made
+ * by, and when there is none, under the tool's own name. The exact name
+ * wins, so a catalogue that lists two servers' tools by their full names
+ * gives each call its own entry. An entry found by the own name is the
+ * weaker find (this file's header says why), and `by` is how a rule tells.
+ */
+export function catalogueMatch(index: ReadonlyMap<string, ToolDescriptor>, calledName: string): CatalogueMatch | undefined {
+  const exact = index.get(calledName);
+  if (exact !== undefined) return { tool: exact, by: 'called' };
+  const own = ownToolName(calledName);
+  if (own === calledName) return undefined;
+  const entry = index.get(own);
+  return entry === undefined ? undefined : { tool: entry, by: 'own' };
+}
+
+/**
+ * What the catalogue says a called tool does, as far as its word is taken.
+ * An entry under the called name speaks for the tool either way. One found
+ * under the tool's own name may be another server's tool, so its word is
+ * taken only where it makes the call count: `readOnlyHint: false`, or
+ * `destructiveHint: true` on a tool it does not call read-only. Null when
+ * the catalogue says nothing that is taken.
+ */
+export function declaredEffect(match: CatalogueMatch | undefined): 'reads' | 'acts' | null {
+  const annotations = match?.tool.annotations;
+  if (match === undefined || annotations === undefined) return null;
+  if (annotations.readOnlyHint === true) return match.by === 'called' ? 'reads' : null;
+  if (annotations.readOnlyHint === false || annotations.destructiveHint === true) return 'acts';
+  return null;
+}
+
+/**
+ * The entry whose read-only word was not taken for a call: one reached by
+ * the tool's own name that says `readOnlyHint: true`. Undefined when there
+ * is no such entry. A result names it, with what to list: someone who
+ * pasted a tools/list result marked the tool read-only, and without the
+ * sentence sees the call counted as an action, or its rereads not counted,
+ * with nothing to say why.
+ */
+export function readOnlyWordNotTaken(match: CatalogueMatch | undefined): ToolDescriptor | undefined {
+  return match !== undefined && match.by === 'own' && match.tool.annotations?.readOnlyHint === true ? match.tool : undefined;
+}
+
+/**
  * Does this step read, or act?
  *
  * Three-valued on purpose. `unknown` is a real answer — the catalogue is
@@ -64,10 +155,13 @@ export function catalogueIndex(context: EvalContext): Map<string, ToolDescriptor
  * signal) or to stay quiet (correct for anything that fires).
  */
 export function readFamilyOf(step: Step, tools?: readonly ToolDescriptor[]): 'read' | 'not_read' | 'unknown' {
-  const declared = tools?.find((tool) => tool.name === step.name)?.annotations?.readOnlyHint;
-  if (declared === true) return 'read';
+  const match = catalogueMatch(new Map((tools ?? []).map((tool) => [tool.name, tool] as const)), step.name);
+  const declared = match?.tool.annotations?.readOnlyHint;
+  // The word of an entry reached by the tool's own name is taken only where it says the tool does more than read (declaredEffect).
+  if (declared === true && match?.by === 'called') return 'read';
   if (declared === false) return 'not_read';
-  const tokens = step.name.toLowerCase().split(/[-_. ]+/);
+  // The name's own words: a server's label says nothing of what its tool does.
+  const tokens = ownToolName(step.name).toLowerCase().split(/[-_. ]+/);
   return tokens.some((token) => READ_TOKENS.includes(token)) ? 'read' : 'unknown';
 }
 

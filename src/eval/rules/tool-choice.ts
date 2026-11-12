@@ -28,7 +28,7 @@
  */
 import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type EvalRuleResult, type Evidence } from '../../types/eval.js';
 import type { ToolDescriptor } from '../../types/trace.js';
-import { catalogueIndex } from '../catalogue.js';
+import { catalogueIndex, catalogueMatch } from '../catalogue.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
 import { contentTerms } from '../terms.js';
 import { thresholdSourceOf } from '../thresholds.js';
@@ -63,7 +63,7 @@ export function fitOf(ask: ReadonlySet<string>, terms: ReadonlySet<string>): num
 export const toolChoice: EvalRule = {
   name: 'tool_choice',
   description:
-    "The right tool for the ask, from the catalogue: fit(T) is the share of the ask's ACTIONABLE terms — the content terms some tool's name, description or input property names mention — found in T's; the ask's other words (its subject) count for and against no tool. Fails when the best tool the agent did NOT call fits at least tool_choice_min_fit (0.5) and beats the union of the tools it DID call by at least tool_choice_margin (0.34), naming both tools and both fits. Judged over the whole trajectory, so several tools that each serve part of the ask are not wrong for the parts the others served. Lexical: a description that never mentions the ask's words cannot be chosen. Skips without the input, a trajectory or a catalogue, when the ask has fewer than two content terms, or when no tool mentions any of them",
+    "The right tool for the ask, from the catalogue: fit(T) is the share of the ask's ACTIONABLE terms — the content terms some tool's name, description or input property names mention — found in T's; the ask's other words (its subject) count for and against no tool. Fails when the best tool the agent did NOT call fits at least tool_choice_min_fit (0.5) and beats the union of the tools it DID call by at least tool_choice_margin (0.34), naming both tools and both fits. Judged over the whole trajectory, so several tools that each serve part of the ask are not wrong for the parts the others served. A call named mcp__<server>__<tool> counts as a call to the catalogue's entry under that name, or, when there is none, to the entry under the tool's own name, and the result says so. Lexical: a description that never mentions the ask's words cannot be chosen. Skips without the input, a trajectory or a catalogue, when the ask has fewer than two content terms, or when no tool mentions any of them",
   evalType: 'relevance',
   weight: 1,
   kind: 'detection',
@@ -72,7 +72,8 @@ export const toolChoice: EvalRule = {
   thresholdKeys: ['tool_choice_margin', 'tool_choice_min_fit'],
   question: 'relevant',
   classes: ['wrong_tool'],
-  version: 1,
+  // 2: a call named mcp__<server>__<tool> counts as a call to its tool's entry (catalogue.ts, catalogueMatch).
+  version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     if (!context.input) {
       return { ruleName: 'tool_choice', passed: false, score: 0, message: 'No input provided', skipped: true, skipReason: 'context.input not provided' };
@@ -100,15 +101,29 @@ export const toolChoice: EvalRule = {
     }
     const steps = stepsOf(context);
     const called = new Set(steps.map((s) => s.name));
+    /*
+     * The catalogue's entries the calls were made to: a call named
+     * mcp__<server>__<tool> is its tool's entry, whichever name the
+     * catalogue lists it by. An entry reached by the tool's own name may be
+     * another server's tool of that name (catalogue.ts), and this rule
+     * still counts it as called: "the tool that fits was not called" cannot
+     * be said of a run that called a tool of that name. The message names
+     * the entry beside the call, so the reader can see which was taken.
+     */
+    const calledEntries = new Set<string>();
     const calledTerms = new Set<string>();
+    const calledAs: string[] = [];
     for (const name of called) {
-      const tool = catalogue.get(name);
-      if (tool) for (const t of toolTerms(tool)) calledTerms.add(t);
+      const match = catalogueMatch(catalogue, name);
+      calledAs.push(match?.by === 'own' ? `${name}, read as the catalogue's ${match.tool.name}` : name);
+      if (!match) continue;
+      calledEntries.add(match.tool.name);
+      for (const t of toolTerms(match.tool)) calledTerms.add(t);
     }
     const calledFit = fitOf(actionable, calledTerms);
     let best: { tool: ToolDescriptor; fit: number } | null = null;
     for (const tool of catalogue.values()) {
-      if (called.has(tool.name)) continue;
+      if (calledEntries.has(tool.name)) continue;
       const fit = fitOf(actionable, toolTerms(tool));
       if (best === null || fit > best.fit || (fit === best.fit && tool.name < best.tool.name)) best = { tool, fit };
     }
@@ -116,7 +131,8 @@ export const toolChoice: EvalRule = {
     const minFit = typeof context.customConfig?.tool_choice_min_fit === 'number' ? (context.customConfig.tool_choice_min_fit as number) : DEFAULT_TOOL_CHOICE_MIN_FIT;
     const fired = best !== null && best.fit >= minFit && best.fit - calledFit >= margin;
     const scope = stepScopeNote(context);
-    const calledList = [...called].join(', ');
+    // A call an engine built in code was handed with no name is in the list as nothing, as it always was.
+    const calledList = calledAs.join(calledAs.some((c) => typeof c === 'string' && c.includes(', ')) ? '; ' : ', ');
     const evidence: Evidence[] = [
       { type: 'count', stat: 'ask_fit_called_tools', unit: 'ratio', value: calledFit, threshold: best === null ? undefined : Math.max(0, best.fit - margin), thresholdSource: thresholdSourceOf(context, 'tool_choice_margin') },
       ...(best !== null ? [{ type: 'count', stat: 'ask_fit_best_uncalled_tool', unit: 'ratio', value: best.fit, threshold: minFit, thresholdSource: thresholdSourceOf(context, 'tool_choice_min_fit') } as Evidence] : []),

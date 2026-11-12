@@ -51,7 +51,7 @@
  * resolves every doubt in.
  */
 import { normalise } from './text/normalise.js';
-import { ownToolName } from './case-history.js';
+import { ownToolName } from './catalogue.js';
 
 /** Longest glob accepted. A policy is written by a person; this is generous. */
 export const MAX_GLOB_LENGTH = 512;
