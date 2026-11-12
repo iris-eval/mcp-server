@@ -66,7 +66,7 @@ const inputSchema = {
     'expected_trajectory',
   ).optional().describe('What the agent was expected to DO: tool_calls with mode and args (tool_sequence); step_budget and tolerance (step_budget)'),
   expected: z.string().optional().describe('Expected output for comparison — consulted only by the completeness bundle\'s expected_coverage rule; NOT used by relevance (the relevance rules compare the output against `input`)'),
-  input: z.string().optional().describe('The ask and any source material given — REQUIRED when eval_type="relevance"; also grounds the hallucination signals'),
+  input: z.string().optional().describe('The ask and any source material given — REQUIRED when eval_type="relevance"; also grounds the hallucination signals. Loaded from trace_id when stored'),
   trace_id: z.string().optional().describe('A stored trace (from log_trace / get_traces). Alone, it scores the trace as stored and the result is the trace\'s verdict. With output, input, tool_calls, tools, cost_usd or token_usage that differ from the record, or one eval_type, the result is kept beside the trace (reference_trace_id) and never replaces its verdict. An unknown id is rejected before anything is evaluated'),
   // .max(10): inline rules skip the deploy-time probe, and the engine runs
   // rules synchronously — without a cap, one request carrying N sandbox-
@@ -79,7 +79,7 @@ const inputSchema = {
     prompt_tokens: z.number().optional(),
     completion_tokens: z.number().optional(),
     total_tokens: z.number().optional(),
-  }).optional().describe('Token usage breakdown — only consulted by the cost bundle (eval_type="cost" or "all"; used for token-budget rules)'),
+  }).optional().describe('Token usage breakdown — only consulted by the cost bundle (eval_type="cost" or "all"; used for token-budget rules). Loaded from trace_id when stored'),
   // Same schema log_trace validates tool_calls with, imported rather than
   // restated: the trajectory rules read `error`, and a second declaration
   // is how that field goes missing on one path and not the other.
@@ -210,8 +210,16 @@ export function registerEvaluateOutputTool(
         output,
         expected: args.expected,
         expectedTrajectory: args.expected_trajectory as ExpectedTrajectory | undefined,
-        // The record's own ask when the call scores the record, as the ingest path reads it (eval/ingest.ts).
-        input: args.input ?? (ofRecord ? trace.input : undefined),
+        /*
+         * The caller's ask wins; with none, the linked trace's, as the tool
+         * calls, the catalogue and the cost fall back. The ask and the token
+         * usage were read from the trace only when the call scored the record,
+         * so naming a bundle dropped them: on a stored trace
+         * `eval_type: "relevance"` judged nothing ("context.input not
+         * provided", basis no_rules), and `eval_type: "cost"` skipped
+         * verbosity_ratio over token counts the trace held (#1023).
+         */
+        input: args.input ?? trace?.input ?? undefined,
         // The caller's cost wins; with none, the linked trace's (reported or
         // estimated at ingest), as tool_calls and tools fall back above.
         ...cost,
@@ -223,7 +231,7 @@ export function registerEvaluateOutputTool(
             : undefined,
         // The earlier runs of the linked trace's case, as the ingest path supplies them.
         caseHistory: trace !== undefined ? await caseHistoryFor(storage, LOCAL_TENANT, trace) : undefined,
-        tokenUsage: args.token_usage ?? (ofRecord ? trace.token_usage : undefined),
+        tokenUsage: args.token_usage ?? trace?.token_usage,
         toolCalls,
         spans,
         tools,

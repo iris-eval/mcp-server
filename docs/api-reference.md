@@ -220,11 +220,11 @@ Evaluate agent output quality using configurable rules. Runs a set of built-in o
 | `eval_type` | `enum` | No | `"all"` | One of: `completeness`, `relevance`, `safety`, `cost`, `custom`, `all` (every bundle in one pass, with a per-category breakdown). Omitted → every bundle runs and the response carries a `note` saying the default ran |
 | `expected` | `string` | No | -- | Expected output for comparison (used by completeness rules) |
 | `expected_trajectory` | `object` | No | -- | What the agent was expected to DO: `tool_calls` `[{ tool_name, input? }]` with `mode` (`strict` \| `unordered` \| `subset` \| `superset` \| `ordered_subset`, default `ordered_subset`) and `args` (`exact` \| `subset`, default `subset`) for `tool_sequence`; `step_budget` and `tolerance` (default 1.5) for `step_budget`. Both rules skip without it |
-| `input` | `string` | No | -- | Original input for context (used by relevance rules) |
+| `input` | `string` | No | -- | Original input for context (used by relevance rules). With `trace_id` and no `input`, the ask stored on the trace is used |
 | `trace_id` | `string` | No | -- | A stored trace. Alone, the call scores the trace as stored and the result is the trace's verdict; with anything that differs from the record, the result is kept beside the trace ([below](#a-trace-has-one-verdict-and-a-caller-cannot-replace-it)) |
 | `custom_rules` | `CustomRule[]` | No | -- | Custom evaluation rules (required when `eval_type` is `custom`) |
-| `cost_usd` | `number` | No | -- | Cost in USD (used by cost rules) |
-| `token_usage` | `TokenUsage` | No | -- | Token usage breakdown (used by cost rules) |
+| `cost_usd` | `number` | No | -- | Cost in USD (used by cost rules). With `trace_id` and no `cost_usd`, the cost stored on the trace is used |
+| `token_usage` | `TokenUsage` | No | -- | Token usage breakdown (used by cost rules). With `trace_id` and no `token_usage`, the usage stored on the trace is used |
 | `tools` | `ToolDescriptor[]` | No | -- | What the agent COULD call: your MCP `tools/list` result as it is, the same catalogue [`log_trace`](#log_trace) stores, held to the same limits. Read by `valid_tool_arguments` and `tool_choice`, and for the hints the loop and case-history rules read. Omit it and those two rules **skip rather than pass**; with `trace_id` it is loaded from the stored trace |
 | `tool_calls` | `ToolCall[]` | No | -- | What the agent DID — the same `{ tool_name, input?, output?, latency_ms?, error? }` entries [`log_trace`](#log_trace) records, validated by the same schema. Read by the trajectory rules (`no_silent_tool_failure`, `no_tool_loop`). Omit it and those rules **skip rather than pass**, so an evaluation with no trajectory reports "not judged", never "clean". When `trace_id` names a stored trace and this is omitted, the tool calls stored on that trace are used instead |
 
@@ -276,6 +276,8 @@ The response echoes the `eval_type` that ran. When `eval_type` is omitted, every
 #### A trace has one verdict, and a caller cannot replace it
 
 The verdict of a trace is the server's own scoring of the trace as stored: at ingest (`log_trace` with `evaluate: true`, `POST /api/v1/traces`, `iris-eval ingest`), by `evaluate_runs`, by `POST /api/v1/evaluations/:id/reevaluate`, or by `evaluate_output` called with the `trace_id` and nothing that differs from the record. Such an evaluation carries `trace_id`, and a later one supersedes an earlier one, which is what re-scoring under changed rules is for. Every reader of a trace's verdict takes the newest of these: a run's results, `compare_runs`, `compare_traces`, the score filter on `get_traces`, the `latest_*` export columns.
+
+What a call with a `trace_id` omits of `output`, `input`, `tool_calls`, `tools`, `cost_usd` and `token_usage` is read from the stored trace, whether the evaluation becomes the trace's verdict or is kept beside it. So `{ "trace_id": "…", "eval_type": "relevance" }` judges the stored output against the stored ask.
 
 Anything else linked to a trace is kept **beside** it: `evaluate_output` with `output`, `input`, `tool_calls`, `tools`, `cost_usd` or `token_usage` that differs from what the trace stored, or with one `eval_type`; a trace that recorded no output; and every `evaluate_with_llm_judge` and `verify_citations` row, which answer their own question. The response then carries `reference_trace_id` instead of `trace_id`, `provenance.beside` names what differed, and `interpretations` says so in a sentence. The evaluation is listed with the trace (`iris://traces/{trace_id}`, `GET /api/v1/traces/:id`, the dashboard) and is erased with it, and it is never the trace's verdict.
 
