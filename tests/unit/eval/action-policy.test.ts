@@ -24,6 +24,7 @@ import {
   valueAsString,
 } from '../../../src/eval/action-policy.js';
 import { createCustomRule } from '../../../src/eval/rules/custom.js';
+import { MAX_STEPS_DERIVED, MAX_STEPS_POLICY } from '../../../src/eval/steps.js';
 import type { EvalContext } from '../../../src/types/eval.js';
 import type { RuleSeverity } from '../../../src/types/custom-rule.js';
 import { cpuMs } from '../../helpers/cpu-time.js';
@@ -423,5 +424,77 @@ describe('action_policy — the policy cannot be switched off by the thing it go
     expect(cpuMs(() => (r = run({ allow: [{ tool: 'read_file', args: { '/path': '/workspace/**' } }], deny: [{ tool: 'bash' }] }, calls)))).toBeLessThan(3_000);
     expect(r.passed).toBe(false);
     expect(r.skipped).toBeFalsy();
+  });
+});
+
+describe('action_policy — a policy reads the run whole (#1011)', () => {
+  const manyReads = (n: number) => Array.from({ length: n }, (_, i) => readCall(`/workspace/f${i}.ts`));
+  const del = { tool_name: 'delete_file', input: { path: '/workspace/build' }, output: 'ok' };
+  const denyDeletes = { deny: [{ tool: 'delete_*' }] };
+
+  it('a denied call is denied wherever in the run it is: at the 500th call, the 501st, and thousands in', () => {
+    // The trajectory rules read the first MAX_STEPS_DERIVED calls. Read to there, the policy passed a run whose 501st call it denies.
+    expect(MAX_STEPS_DERIVED).toBe(500);
+    for (const before of [3, 499, 500, 501, 2_000, MAX_STEPS_POLICY - 1]) {
+      const r = run(denyDeletes, [...manyReads(before), del], 'critical');
+      expect(r.passed, `${before} reads, then delete_file`).toBe(false);
+      expect(r.skipped, `${before} reads, then delete_file`).toBeFalsy();
+      expect(r.message, `${before} reads, then delete_file`).toContain(`1 of ${before + 1} tool calls denied — tool_calls[${before}] (delete_file)`);
+    }
+  });
+
+  it('the same for an allow list and a call it does not name', () => {
+    const allowReads = { allow: [{ tool: 'read_file', args: { '/path': '/workspace/**' } }] };
+    for (const before of [499, 500, 2_000]) {
+      const r = run(allowReads, [...manyReads(before), del], 'critical');
+      expect(r.passed, String(before)).toBe(false);
+      expect(r.message, String(before)).toContain(`tool_calls[${before}] (delete_file) by no allow rule matched it`);
+    }
+    expect(run(allowReads, manyReads(2_000), 'critical')).toMatchObject({ passed: true, message: expect.stringContaining('all 2000 tool calls permitted') });
+  });
+
+  it('reads the calls of a run sent as TOOL spans the same way', () => {
+    const span = (i: number, name: string) => ({
+      span_id: `s${String(i).padStart(6, '0')}`,
+      trace_id: 't',
+      name,
+      kind: 'TOOL',
+      status_code: 'OK',
+      start_time: new Date(Date.UTC(2026, 0, 1, 0, 0, 0) + i * 1000).toISOString(),
+      attributes: { 'tool.name': name },
+    });
+    const spans = [...Array.from({ length: 700 }, (_, i) => span(i, 'read_file')), span(700, 'delete_file')];
+    const r = rule(denyDeletes, 'critical').evaluate({ output: 'done', spans } as unknown as EvalContext);
+    expect(r.passed).toBe(false);
+    expect(r.message).toContain('1 of 701 tool calls denied — tool_calls[700] (delete_file)');
+  });
+
+  it('never says a run it did not read whole was permitted: past its own ceiling it is not judged', () => {
+    const r = run(denyDeletes, [...manyReads(MAX_STEPS_POLICY), del], 'critical');
+    expect(r.skipped).toBe(true);
+    expect(r.evidenceIncomplete).toBe(true);
+    expect(r.passed).toBe(false);
+    expect(r.message).not.toContain('permitted');
+    expect(r.message).toContain(`The first ${MAX_STEPS_POLICY} of ${MAX_STEPS_POLICY + 1} tool calls were read and none was denied; the other 1 was not read`);
+    expect(r.skipReason).toBe(`partial_trajectory: ${MAX_STEPS_POLICY} of ${MAX_STEPS_POLICY + 1} tool calls read`);
+    expect((r.evidence ?? []).some((e) => e.type === 'count' && e.stat === 'tool_calls_not_read' && e.value === 1)).toBe(true);
+    // A denial among the calls it read is still a denial, and the message says how far it read.
+    const denied = run(denyDeletes, [del, ...manyReads(MAX_STEPS_POLICY)], 'critical');
+    expect(denied.skipped).toBeFalsy();
+    expect(denied.passed).toBe(false);
+    expect(denied.message).toContain(`The first ${MAX_STEPS_POLICY} of ${MAX_STEPS_POLICY + 1} tool calls were read`);
+    // Exactly at the ceiling the run was read whole.
+    expect(run(denyDeletes, manyReads(MAX_STEPS_POLICY), 'critical')).toMatchObject({ passed: true, message: expect.stringContaining(`all ${MAX_STEPS_POLICY} tool calls permitted`) });
+  });
+
+  it('reads a run of the ceiling\'s length inside a CPU budget, at a policy of ordinary size', () => {
+    const policy = {
+      allow: [{ tool: 'read_file', args: { '/path': '/workspace/**' } }, { tool: 'list_dir' }, { tool: 'search' }, { tool: 'mcp__docs__*' }, { tool: 'write_file', args: { '/path': '/workspace/out/**' } }],
+      deny: [{ tool: 'delete_*' }, { tool: 'bash' }, { tool: 'http_post' }, { tool: 'run_query', args: { '/database': 'prod' } }, { tool: '*', args: { '/path': '/etc/**' } }],
+    };
+    let r!: ReturnType<typeof run>;
+    // Measured at 12 to 22 µs a call for a policy of this size: about 0.2 s here. The budget is the bound a stalled matcher would break, not the expected time.
+    expect(cpuMs(() => (r = run(policy, manyReads(MAX_STEPS_POLICY), 'critical')))).toBeLessThan(5_000);
+    expect(r.passed).toBe(true);
   });
 });

@@ -1075,7 +1075,9 @@ export function evaluateRuleAsRead(rule: EvalRule, context: EvalContext): EvalRu
  * tripped one rule (a 100,000-digit "number" handed to a runtime-built regex,
  * 2026-09-23 red team) turned every other rule's answer into an error. A skip
  * is the honest shape: a critical rule that could not run leaves the verdict
- * unknown, never passed.
+ * unknown, never passed. `threw` is what makes that so: without it the skip
+ * read as a rule with nothing to judge, and a rule deployed to gate that
+ * threw was passed over (#1012).
  */
 function evaluateGuarded(rule: EvalRule, context: EvalContext): EvalRuleResult {
   try {
@@ -1089,6 +1091,7 @@ function evaluateGuarded(rule: EvalRule, context: EvalContext): EvalRuleResult {
       message: `This rule failed while evaluating the output and gave no answer: ${reason.slice(0, 200)}`,
       skipped: true,
       skipReason: 'the rule threw on this input',
+      threw: true,
     };
   }
 }

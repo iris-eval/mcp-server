@@ -376,11 +376,12 @@ export type Role = 'gate' | 'veto' | 'risk' | 'advisory';
 
 /**
  * Why a rule skipped. `not_applicable`: the evidence it needs was not
- * supplied (never asked — coverage). `defeated`: asked and could not answer,
- * because this output stalled its pattern past the sandbox budget.
- * `config_invalid`: asked and could not answer, because its definition is
- * broken. A gate that fails closed treats the last two as unknown; the first
- * is a coverage fact, not a verdict.
+ * supplied (never asked — coverage). `defeated`: asked and could not answer
+ * on this input: the output stalled its pattern past the sandbox budget, the
+ * evidence it reads was cut, or the rule threw. `config_invalid`: asked and
+ * could not answer, because its definition is broken. A gate that fails
+ * closed treats the last two as unknown; the first is a coverage fact, not a
+ * verdict.
  */
 export type SkipClass = 'not_applicable' | 'defeated' | 'config_invalid';
 
@@ -825,6 +826,15 @@ export interface EvalRuleResult {
    * instead of a clean bill of health.
    */
   evidenceIncomplete?: boolean;
+
+  /**
+   * The rule threw while it judged this output, and the engine caught it:
+   * the rule was asked and gave no answer. Set by the engine where it
+   * catches the throw. It maps to skipClass "defeated", as a breached
+   * budget does, so a rule that vetoes or gates and threw makes the verdict
+   * what eval.onCriticalSkipped says and never a clean pass.
+   */
+  threw?: boolean;
 
   /**
    * The LLM judge this result consulted, when the deployment configured one

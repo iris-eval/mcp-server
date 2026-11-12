@@ -123,6 +123,7 @@ export const evalRuleResultSchema = z.looseObject({
     skipReason: z.string().optional(),
     configInvalid: z.boolean().optional(),
     budgetExceeded: z.boolean().optional(),
+    threw: z.boolean().optional().describe('the rule threw while it judged this output and gave no answer; its skipClass is defeated'),
     kind: claimKindSchema.optional(),
     role: roleSchema.optional(),
     question: questionIdSchema.optional(),
