@@ -24,6 +24,7 @@ import {
   droppedSteps,
   hasNoUsualWay,
   nameWords,
+  ownToolName,
   placementOf,
   toolsOfSteps,
   unusualActions,
@@ -33,7 +34,7 @@ import { EvalEngine } from '../../../src/eval/engine.js';
 import { MAX_STEPS_DERIVED, toSteps } from '../../../src/eval/steps.js';
 import { mulberry32 } from '../../../src/eval/stats.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
-import type { CaseRun, EvalContext } from '../../../src/types/eval.js';
+import type { CaseRun, EvalContext, EvalRuleResult } from '../../../src/types/eval.js';
 import type { ToolCallRecord } from '../../../src/types/trace.js';
 
 const run = (tools: string[] | null): CaseRun => ({ tools });
@@ -58,11 +59,38 @@ describe('a tool that acts, one that reads, and one nothing places', () => {
     }
   });
 
-  it('a verb that acts after a joiner decides, whatever verb came first', () => {
-    for (const name of ['find_and_replace', 'select_all_and_delete', 'show_and_send_email', 'mcp__slack__list_and_post', 'get_or_create_user', 'lookup_then_update']) expect(placementOf(name, undefined), name).toBe('acts');
+  it('a verb that acts directly after a joiner decides, whatever verb came first', () => {
+    for (const name of ['find_and_replace', 'select_all_and_delete', 'show_and_send_email', 'mcp__slack__list_and_post', 'get_or_create_user', 'lookup_then_update', 'findOneAndUpdate', 'search_and_then_delete']) {
+      expect(placementOf(name, undefined), name).toBe('acts');
+    }
     // A verb that reads after a joiner changes nothing either way.
     expect(placementOf('delete_and_list', undefined)).toBe('acts');
     expect(placementOf('get_and_list', undefined)).toBe('reads');
+    // A joiner earlier in the name joins something else: a brand, a department, a step before the look-up.
+    for (const name of ['food_and_beverage_get_order', 'h_and_m_get_order', 'authenticate_then_get_post', 'get_or_tools_schedule']) expect(placementOf(name, undefined), name).toBe('reads');
+  });
+
+  it('a tool reached through MCP is read by its own name, and the server\'s name takes no part', () => {
+    expect(ownToolName('mcp__github__create_issue')).toBe('create_issue');
+    expect(ownToolName('mcp__claude_ai_Gmail__search_threads')).toBe('search_threads');
+    // The first separator after the prefix ends the server's name; a tool's own name may hold another.
+    expect(ownToolName('mcp__db__get__row')).toBe('get__row');
+    // Not that shape: the name is read whole.
+    for (const name of ['send_email', 'mcp_send_email', 'mcp__send_email', 'mcp__server__', 'github__create_issue']) expect(ownToolName(name), name).toBe(name);
+
+    // A server named for something that acts does not make its look-ups act.
+    for (const name of ['mcp__store__get_products', 'mcp__order-management__get_order', 'mcp__call-center__get_transcript', 'mcp__deploy__get_status', 'mcp__cloud-run__list_services']) {
+      expect(placementOf(name, undefined), name).toBe('reads');
+    }
+    // A server named for something that reads does not make its actions read.
+    for (const name of ['mcp__todo-list__add_task', 'mcp__shopping-list__remove_item', 'mcp__web-search__save_result', 'mcp__google-search__submit_feedback']) {
+      expect(placementOf(name, undefined), name).toBe('acts');
+    }
+    // Nor does a server named for a shell place a tool whose own name says nothing.
+    expect(placementOf('mcp__computer-use__screenshot', undefined)).toBe('unplaced');
+    expect(placementOf('mcp__shell__status', undefined)).toBe('unplaced');
+    // The catalogue is matched on the name the agent called, whole.
+    expect(placementOf('mcp__store__get_products', [{ name: 'mcp__store__get_products', annotations: { readOnlyHint: false } }])).toBe('acts');
   });
 
   it('a name with no verb that is a shell\'s or an interpreter\'s acts; with a verb, the verb decides', () => {
@@ -539,6 +567,22 @@ describe('through the engine', () => {
     // A measurement already only reports: no flag, no reason, nothing changed.
     const measurement = await probe('measurement', false);
     expect([measurement.row.role, measurement.row.advisory, measurement.row.advisoryWhy]).toEqual(['advisory', undefined, undefined]);
+  });
+
+  it('a reason that is no reason sets nothing aside: an empty string, blank space, or a value that is not text', async () => {
+    for (const [label, advisoryWhy] of [['empty', ''], ['blank', '   '], ['null', null], ['a number', 7], ['an object', {}]] as const) {
+      const e = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+      e.registerRule('completeness', {
+        name: 'probe_unreasoned',
+        description: 'a detection whose reason is not one',
+        evalType: 'completeness',
+        weight: 1,
+        kind: 'detection',
+        evaluate: () => ({ ruleName: 'probe_unreasoned', passed: false, score: 0, message: 'fired', advisoryWhy }) as unknown as EvalRuleResult,
+      });
+      const fired = (await e.evaluateAll(ctx)).rule_results.find((r) => r.ruleName === 'probe_unreasoned')!;
+      expect([fired.role, fired.advisory, fired.advisoryWhy], label).toEqual(['risk', undefined, undefined]);
+    }
   });
 
   it('a deployment that names it in eval.advisoryRules is the standing reason, at any length of history', async () => {

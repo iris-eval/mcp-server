@@ -49,12 +49,15 @@
  *   acts       the catalogue marks it `readOnlyHint: false` or
  *              `destructiveHint: true`; or, with no word from the
  *              catalogue, the first verb in its name acts (`send_email`,
- *              `slack_post_message`), or a verb after "and" does
+ *              `slack_post_message`), or a verb directly after "and" does
  *              (`find_and_replace`), or the name has no verb and is a
  *              shell's or an interpreter's (`Bash`, `python`).
  *   reads      the catalogue marks it `readOnlyHint: true`, or the first
  *              verb in its name reads (`get_order`, `list_commits`).
  *   unplaced   neither says: `calculator`, `Glob`, `document_parse`.
+ *
+ * The name read is the tool's own: of `mcp__<server>__<tool>`, the part
+ * after the server's (ownToolName).
  *
  * THE FIRST VERB DECIDES because a tool's name leads with what it does and
  * ends with what it does it to, and many of the words that act are also
@@ -192,8 +195,27 @@ export const ACT_TOKENS: ReadonlySet<string> = new Set([
  */
 export const RUN_TOKENS: ReadonlySet<string> = new Set(['bash', 'cmd', 'computer', 'execution', 'interpreter', 'powershell', 'pwsh', 'python', 'repl', 'sh', 'shell', 'terminal', 'zsh']);
 
-/** Words that join two verbs in one name. A verb that acts after one decides, whatever came first: `find_and_replace`, `get_or_create`. */
+/**
+ * Words that join two verbs in one name. A verb that acts directly after
+ * one decides, whatever came first: `find_and_replace`, `get_or_create`.
+ * Directly, because a joiner earlier in the name joins something else:
+ * `food_and_beverage_get_order` is a look-up.
+ */
 const JOINERS: ReadonlySet<string> = new Set(['and', 'or', 'plus', 'then']);
+
+/**
+ * A tool's own name inside the name an agent calls it by. An agent that
+ * reaches its tools through MCP calls them `mcp__<server>__<tool>`, and the
+ * server part is the deployment's label for where the tool lives: it says
+ * nothing of what the tool does. Read with it, every look-up on a server
+ * named `store` would act and every action on one named `todo-list` would
+ * read.
+ */
+export function ownToolName(name: string): string {
+  if (!name.startsWith('mcp__')) return name;
+  const at = name.indexOf('__', 'mcp__'.length);
+  return at === -1 || at + 2 >= name.length ? name : name.slice(at + 2);
+}
 
 /** The words of a tool's name, lowercased: split at anything that is not a letter or a digit, and where camelCase turns (`getUser`, `HTTPFetch`). */
 export function nameWords(name: string): string[] {
@@ -209,20 +231,22 @@ export function nameWords(name: string): string[] {
 export type Placement = 'acts' | 'reads' | 'unplaced';
 
 /**
- * Where a name alone places a tool. The first verb in it decides; a verb
- * that acts after a joiner decides whatever came first; with no verb, a
- * name for something that runs commands acts; and a name with neither is
- * not placed.
+ * Where a name alone places a tool. It is the tool's own name that is read
+ * (ownToolName). The first verb in it decides; a verb that acts directly
+ * after a joiner decides whatever came first; with no verb, a name for
+ * something that runs commands acts; and a name with neither is not placed.
  */
 export function placementByName(name: string): Placement {
-  const words = nameWords(name);
+  const words = nameWords(ownToolName(name));
   let first: Placement | null = null;
-  let joined = false;
+  let afterJoiner = false;
   for (const w of words) {
     if (JOINERS.has(w)) {
-      joined = true;
+      afterJoiner = true;
       continue;
     }
+    const joined = afterJoiner;
+    afterJoiner = false;
     const kind: Placement | null = ACT_TOKENS.has(w) ? 'acts' : READ_TOKENS.includes(w) ? 'reads' : null;
     if (kind === null) continue;
     if (first === null) first = kind;

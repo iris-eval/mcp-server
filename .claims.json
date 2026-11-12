@@ -5304,13 +5304,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "77a8033032ae"
+        "compositeVersion": "59b8e39b13ba"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "1a647b7f1a02",
+        "corpusVersion": "e8138005752c",
         "customCorpusVersion": "506945ab966b"
       }
     },
@@ -5323,8 +5323,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-11-11T23:19:47.800Z",
-  "generatedFromCommit": "3c739db6",
+  "generatedAt": "2026-11-12T00:18:30.222Z",
+  "generatedFromCommit": "8e7ccd29",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5412,78 +5412,78 @@
     ]
   },
   "proof": {
-    "commit": "3c739db6",
+    "commit": "8e7ccd29",
     "composite": {
-      "compositeVersion": "77a8033032ae",
+      "compositeVersion": "59b8e39b13ba",
       "confidence": {
         "changed": {
           "of": 112,
           "toDecisive": 0,
-          "toMarginal": 74
+          "toMarginal": 81
         },
         "intervalOnly": {
           "decisive": {
             "dev": {
               "ci95": [
-                0.5646,
-                0.8048
+                0.604,
+                0.8256
               ],
-              "k": 37,
-              "n": 53,
-              "patterns": 11,
-              "rate": 0.6981
+              "k": 43,
+              "n": 59,
+              "patterns": 13,
+              "rate": 0.7288
             },
             "realTranscriptsTest": {
               "ci95": [
-                0.2077,
-                0.9385
-              ],
-              "k": 2,
-              "n": 3,
-              "patterns": 2,
-              "rate": 0.6667
-            },
-            "test": {
-              "ci95": [
-                0.3655,
-                0.7553
-              ],
-              "k": 12,
-              "n": 21,
-              "patterns": 8,
-              "rate": 0.5714
-            }
-          },
-          "marginal": {
-            "dev": {
-              "ci95": [
-                0.6161,
-                0.9015
-              ],
-              "k": 23,
-              "n": 29,
-              "patterns": 9,
-              "rate": 0.7931
-            },
-            "realTranscriptsTest": {
-              "ci95": [
-                0.3424,
+                0.4385,
                 1
               ],
-              "k": 2,
-              "n": 2,
+              "k": 3,
+              "n": 3,
               "patterns": 2,
               "rate": 1
             },
             "test": {
               "ci95": [
-                0.4526,
-                0.9368
+                0.4295,
+                0.8027
               ],
-              "k": 7,
-              "n": 9,
-              "patterns": 6,
-              "rate": 0.7778
+              "k": 14,
+              "n": 22,
+              "patterns": 9,
+              "rate": 0.6364
+            }
+          },
+          "marginal": {
+            "dev": {
+              "ci95": [
+                0.5353,
+                0.8745
+              ],
+              "k": 17,
+              "n": 23,
+              "patterns": 7,
+              "rate": 0.7391
+            },
+            "realTranscriptsTest": {
+              "ci95": [
+                0.0945,
+                0.9055
+              ],
+              "k": 1,
+              "n": 2,
+              "patterns": 2,
+              "rate": 0.5
+            },
+            "test": {
+              "ci95": [
+                0.3057,
+                0.8632
+              ],
+              "k": 5,
+              "n": 8,
+              "patterns": 5,
+              "rate": 0.625
             }
           }
         },
@@ -5638,14 +5638,14 @@
               "to": 1
             }
           ],
-          "compositeVersion": "77a8033032ae",
+          "compositeVersion": "59b8e39b13ba",
           "prior": 0.5,
           "priorMode": "per-output",
           "split": "dev",
-          "version": "ac2ab7a2890f"
+          "version": "b3168a782c32"
         }
       },
-      "corpusVersion": "1a647b7f1a02",
+      "corpusVersion": "e8138005752c",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -7140,7 +7140,7 @@
       },
       "version": "0.21.0"
     },
-    "corpusVersion": "1a647b7f1a02",
+    "corpusVersion": "e8138005752c",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -7765,7 +7765,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-11-11T23:18:50.953Z",
+    "generatedAt": "2026-11-12T00:17:30.207Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -7784,8 +7784,8 @@
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
       "n": 1349,
-      "p50Ms": 1.307,
-      "p95Ms": 6.997
+      "p50Ms": 0.932,
+      "p95Ms": 6.277
     },
     "method": {
       "ci": "wilson-95",

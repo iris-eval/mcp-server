@@ -12,6 +12,13 @@
  *                             What it scores here is in-sample.
  *   tool-names.heldout.json   names read from published pages after the
  *                             word lists were fixed. Out-of-sample.
+ *   tool-names.review.json    names a reviewer wrote to break the reader,
+ *                             before reading its word lists. Out-of-sample,
+ *                             and chosen against it.
+ *
+ * What no list measures is held by named cases instead: a name whose first
+ * word is the thing and not the verb, and a product's name that splits
+ * into one.
  *
  * Two errors, and they are not alike. An acting tool the reader does not
  * count is a departure the rule will not see (the result names the tool, so
@@ -111,6 +118,55 @@ describe('the name reader on a list it was not fitted on', () => {
   });
 });
 
+describe('the name reader on a list written to break it', () => {
+  const list = load('tool-names.review.json');
+  const s = score(list);
+
+  it('the list is the one the counts were read on', () => {
+    expect([list.names.length, s.acting, s.reading]).toEqual([455, REVIEW.acting, REVIEW.reading]);
+  });
+
+  it('counts four in five of the acting tools, and reads two of them as look-ups', () => {
+    expect(s.counted).toBeGreaterThanOrEqual(REVIEW.counted);
+    expect(s.counted / s.acting).toBeGreaterThanOrEqual(0.8);
+    expect(s.actingReadAsLookups.sort()).toEqual(REVIEW.actingReadAsLookups);
+    expect(s.counted + s.unplacedActing.length + s.actingReadAsLookups.length).toBe(s.acting);
+  });
+
+  it('counts one look-up in thirty-five as an action, each by name', () => {
+    expect(s.falseActions.sort()).toEqual(REVIEW.falseActions);
+    expect(s.falseActions.length / s.reading).toBeLessThanOrEqual(1 / 30);
+  });
+});
+
+describe('what a name cannot say', () => {
+  /*
+   * The first verb decides, and a word list cannot tell a verb from the
+   * thing it names. These are misplaced, and docs/api-reference.md says so:
+   * the catalogue's readOnlyHint is what places them. Held here so a change
+   * to the reader shows what it did to them.
+   */
+  it('a name that leads with the thing is read by that word: a look-up counted, an action missed', () => {
+    for (const name of ['order_status', 'call_history', 'commit_diff', 'refund_status', 'store_locator']) expect(placementByName(name), name).toBe('acts');
+    for (const name of ['search_index_delete', 'view_drop', 'query_cancel', 'todo_list_add_item']) expect(placementByName(name), name).toBe('reads');
+  });
+
+  it('a product whose name splits into a verb lends it to every tool named after it', () => {
+    for (const name of ['SendGrid_get_stats', 'PostHog_query', 'ClickUp_get_tasks']) expect(placementByName(name), name).toBe('acts');
+    for (const name of ['BigQuery_insert_rows', 'OpenSearch_delete_index']) expect(placementByName(name), name).toBe('reads');
+    // Written in one case the same names are one word each, and the tool's own verb is read.
+    for (const name of ['sendgrid_get_stats', 'posthog_query']) expect(placementByName(name), name).toBe('reads');
+    for (const name of ['bigquery_insert_rows', 'opensearch_delete_index']) expect(placementByName(name), name).toBe('acts');
+  });
+
+  it('two things joined by "and" in a look-up, one of them also a verb that acts, are read as a second verb', () => {
+    for (const name of ['get_order_and_refund_status', 'get_buy_and_sell_orders', 'get_likes_and_comment_count']) expect(placementByName(name), name).toBe('acts');
+    // The catalogue settles each of these.
+    expect(placementOf('get_order_and_refund_status', [{ name: 'get_order_and_refund_status', annotations: { readOnlyHint: true } }])).toBe('reads');
+    expect(placementOf('search_index_delete', [{ name: 'search_index_delete', annotations: { destructiveHint: true } }])).toBe('acts');
+  });
+});
+
 describe('the catalogue places what a name cannot', () => {
   it('every acting tool the reader leaves unplaced is counted once its catalogue says it is not read-only, or that it is destructive', () => {
     const list = load('tool-names.fitted.json');
@@ -150,4 +206,16 @@ const HELDOUT = {
   // 4 of the 137 look-ups: three whose names say create or execute and whose pages say they only return something, and one whose first known verb is the "commit" in a status it checks.
   falseActions: 4,
   actingReadAsLookups: 0,
+};
+
+/** What the reader scored on the reviewer's list the first time it was read. Nothing in the reader was changed on its misses. */
+const REVIEW = {
+  acting: 219,
+  reading: 210,
+  // 178 of the 219 acting tools; 39 more are unplaced, and named in a result.
+  counted: 178,
+  // "select" again, and a marketplace's "list": to list a thing for sale is to act.
+  actingReadAsLookups: ['browser_select_option', 'list_nft_for_sale'],
+  // The thing fetched or checked is named by a verb that acts (a charge, an order, write access), an RPC's read-only "call", and a search sent with POST.
+  falseActions: ['API-post-database-query', 'API-post-search', 'check_order_status', 'check_write_access', 'eth_call', 'retrieve_charge'],
 };

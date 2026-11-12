@@ -731,11 +731,13 @@ export class EvalEngine {
        * no rule can talk its own gate or veto away. And it gives way twice:
        * to the deployment's list, which is then the standing reason, and to
        * a deployment that made the rule critical, which has said every fire
-       * of it decides.
+       * of it decides. The reason has to be one: words, not an empty string
+       * or a value that is not text.
        */
       const byConfig = effective.advisory === true;
       const weighed = rule.kind === 'detection' || rule.kind === 'inference';
-      const byRule = !byConfig && ownReason !== undefined && weighed && !critical;
+      const reasoned = typeof ownReason === 'string' && ownReason.trim() !== '';
+      const byRule = !byConfig && reasoned && weighed && !critical;
       const advisory = (byConfig || byRule) && raw.skipped !== true;
       /*
        * The stamp (0.9.0): what kind of claim this is, what the composer
