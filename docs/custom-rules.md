@@ -372,13 +372,21 @@ What the agent may DO, not what it wrote: the tools it is allowed to call, and w
 | `allow` | `object[]` | No | Only these calls are permitted; anything else fails the rule |
 | `deny` | `object[]` | No | These calls fail the rule |
 
-**Each entry is an OBJECT, not a bare glob.** `{ "tool": "<glob>" }` matches by tool name; add `"args"` to match on arguments too:
+**Each entry is an OBJECT, not a bare glob.** `{ "tool": "<glob>" }` matches by tool name; add `"args"` to match on arguments too. Each key of `args` is a JSON Pointer into the call's arguments (`"/path"` for the argument `path`), and its value is a path glob: `*` matches within one `/`-separated segment, and `**` standing as a whole segment matches any number of them.
 
 ```json
-{ "deny": [{ "tool": "shell", "args": { "command": "rm -rf *" } }] }
+{ "deny": [{ "tool": "read_*", "args": { "/path": "/etc/**" } }] }
 ```
 
+This denies a read of `/etc/passwd` and of `/etc/ssh/sshd_config`, and permits `/workspace/notes.md`. A value that is not a path is matched the same way, so a `*` in a pattern for a command line stops at the first `/` in the command.
+
 A bare string (`"deny": ["delete_*"]`) is refused with a 400 that names the shape. At least one of `allow` or `deny` is required.
+
+**A tool called through an MCP server.** A host that reaches its tools through MCP can call them `mcp__<server>__<tool>`. A `deny` rule is tried against the name the call was made by and against the tool's own name, and denies on either: `"deny": [{ "tool": "delete_*" }]` stops `mcp__files__delete_file` as it stops the same tool called by its own name, and the rule's message says which name it read. Where the server's part ends is not written in the name, and a host can write a server's label with `__` in it, so the tool's own name is read from every `__` after the prefix. Two things follow, both toward denial. A deny rule written for a bare name stops every server's tool of that name, in any case: `"deny": [{ "tool": "Write" }]` stops `mcp__notes__write` too, and no pattern holds a deny rule to the called name alone. And a piece of a server's label that follows a `__` can match. Where either is too wide, leave the tool off an `allow` list instead of denying it.
+
+An `allow` rule is held to the name the call was made by, because the tool's own name would admit every server's tool of that name. On such a host write the allow rule as `mcp__shop__get_product`. A `*` matches any run of characters, so `mcp__*__get_product` admits that tool from every server, and with it any tool whose name ends `__get_product`. A call an allow rule misses for this reason names the rule that matches the tool's own name.
+
+Only the `mcp__` form is read this way. Any other prefix a host adds (`files__delete_file`, `functions.delete_file`) is part of the name: write the pattern for the name the agent calls, or a wider one (`*delete_*`). A tool pattern is matched as written against the name as sent: unlike an argument's value, a name is not decoded or folded for look-alike characters, and a `*` does not cross a `/` in it.
 
 Deployed at `severity: high` or `critical` the rule GATES: a denied call makes the verdict `fail` with `basis: policy_gate`. At `medium` or `low` it advises — the deployment's own statement of how much it matters (see [Rule severity](#combining-built-in-and-custom-rules)).
 

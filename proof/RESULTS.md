@@ -1,6 +1,6 @@
 # Iris built-in rules — measured on the proof corpus
 
-Generated 2026-11-12T01:25:44.437Z for v0.21.0 (local generating commit `71af5513` — branch commits are squashed on merge, so cite the version).
+Generated 2026-11-12T04:12:49.639Z for v0.21.0 (local generating commit `7c09adc0` — branch commits are squashed on merge, so cite the version).
 Corpus version `e777f6add399` (sha256 of proof/corpus/*.json). Reproduce with `npm run proof`; CI runs `npm run proof -- --check`.
 
 The positive class is the violation: precision = of the outputs the rule failed, the share that were real violations; recall = of the real violations, the share the rule failed. Intervals: Wilson 95% for precision and recall; a seeded percentile bootstrap for F1; beside each, a Dirichlet credible interval that does not collapse to [1, 1] at zero errors (results.json `credible95`). A skipped result (the rule declined to judge) counts as not failed and is listed under "skip". Read proof/README.md before quoting a number — the corpus is synthetic, rule-aware, and labelled by the same model that wrote it.
@@ -146,7 +146,7 @@ each custom rule type built by createCustomRule under the family's config and ru
 
 | Type | config | n | pos | skip | TP | FP | FN | TN | Precision (95% CI) | Recall (95% CI) |
 |---|---|--:|--:|--:|--:|--:|--:|--:|---|---|
-| `action_policy` | `{"allow":[{"tool":"read_file","args":{"/path":"/workspace/**"}},{"tool":"list_dir","args":{"/path":"/workspace/**"}},{"tool":"web_fetch","args":{"/url":"https://docs.vendor.test/**"}}],"deny":[{"tool":"read_file","args":{"/path":"/workspace/.env*"}},{"tool":"bash"},{"tool":"http_post"}]}` | 30 | 16 | 0 | 16 | 0 | 0 | 14 | 100.0% [80.6, 100.0] | 100.0% [80.6, 100.0] |
+| `action_policy` | `{"allow":[{"tool":"read_file","args":{"/path":"/workspace/**"}},{"tool":"list_dir","args":{"/path":"/workspace/**"}},{"tool":"web_fetch","args":{"/url":"https://docs.vendor.test/**"}},{"tool":"mcp__kb__search"}],"deny":[{"tool":"read_file","args":{"/path":"/workspace/.env*"}},{"tool":"bash"},{"tool":"http_post"}]}` | 34 | 19 | 0 | 19 | 0 | 0 | 15 | 100.0% [83.2, 100.0] | 100.0% [83.2, 100.0] |
 | `contains_keywords` | `{"keywords":["refund","policy","days"],"threshold":1}` | 24 | 14 | 0 | 14 | 0 | 0 | 10 | 100.0% [78.5, 100.0] | 100.0% [78.5, 100.0] |
 | `cost_threshold` | `{"max_cost":0.05}` | 24 | 12 | 2 | 12 | 0 | 0 | 12 | 100.0% [75.8, 100.0] | 100.0% [75.8, 100.0] |
 | `excludes_keywords` | `{"keywords":["guarantee","risk-free"]}` | 24 | 11 | 0 | 11 | 0 | 0 | 13 | 100.0% [74.1, 100.0] | 100.0% [74.1, 100.0] |
@@ -159,7 +159,7 @@ each custom rule type built by createCustomRule under the family's config and ru
 <!-- latency:start -->
 ## How long one evaluation takes
 
-EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1349; p50 1.59 ms, p95 7.989 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
+EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded. n=1349; p50 1.451 ms, p95 8.349 ms on 12th Gen Intel(R) Core(TM) i9-12900HK (win32/x64, node v24.11.0).
 
 Re-measured on every `npm run proof` and excluded from `--check`: it is a property of the machine, so CI cannot hold it byte-for-byte.
 

@@ -17,6 +17,7 @@ import {
   MAX_GLOB_LENGTH,
   MAX_VALUE_LENGTH,
   canonicaliseGlob,
+  compileActionPolicy,
   matchGlob,
   normaliseValue,
   resolvePointer,
@@ -235,6 +236,154 @@ describe('action_policy — addressing an argument', () => {
     // stops applying.
     expect(valueAsString({ a: 1 })).toBeNull();
     expect(valueAsString([1])).toBeNull();
+  });
+});
+
+describe('action_policy — the documentation\'s examples', () => {
+  it('every policy written in the action_policy section of docs/custom-rules.md is one a policy accepts', () => {
+    const page = readFileSync(resolve(__dirname, '../../../docs/custom-rules.md'), 'utf8').replace(/\r\n/g, '\n');
+    const from = page.indexOf('### action_policy');
+    const section = page.slice(from, page.indexOf('\n## ', from));
+    const configs: Array<Record<string, unknown>> = [];
+    // Fenced examples, and the policies quoted in the prose (`"deny": [...]`, `"allow": [...]`).
+    for (const block of section.matchAll(/```json\n([\s\S]*?)\n```/g)) {
+      const parsed = JSON.parse(block[1]) as Record<string, unknown>;
+      configs.push((parsed.config as Record<string, unknown> | undefined) ?? parsed);
+    }
+    for (const quoted of section.matchAll(/`("(?:deny|allow)": \[[^`]*\])`/g)) {
+      const parsed = JSON.parse(`{${quoted[1]}}`) as Record<string, unknown>;
+      // The page also quotes the shape it refuses, a bare string in place of an entry.
+      if ((Object.values(parsed)[0] as unknown[]).every((entry) => typeof entry === 'object')) configs.push(parsed);
+    }
+    expect(configs.length).toBeGreaterThanOrEqual(3);
+    for (const config of configs) expect(compileActionPolicy(config), JSON.stringify(config)).toHaveProperty('policy');
+    // And the example with a binding does what the sentence under it says, word for word.
+    const bound = configs.find((c) => JSON.stringify(c).includes('"args"'))!;
+    const reads = (path: string) => run(bound, [{ tool_name: 'read_file', input: { path }, output: 'x' }]).passed;
+    expect(section).toContain('denies a read of `/etc/passwd` and of `/etc/ssh/sshd_config`, and permits `/workspace/notes.md`');
+    expect([reads('/etc/passwd'), reads('/etc/ssh/sshd_config'), reads('/workspace/notes.md')]).toEqual([false, false, true]);
+  });
+});
+
+describe('action_policy — a tool the host calls mcp__<server>__<tool>', () => {
+  const del = (name: string) => ({ tool_name: name, input: { path: 'build/' }, output: 'deleted' });
+  const product = (name: string) => ({ tool_name: name, input: { id: 'p1' }, output: { id: 'p1', price: 18.5 } });
+
+  it('a deny rule written for the tool stops it however the host spells the call, and says which name it matched', () => {
+    // The documentation's own example.
+    const deny = { deny: [{ tool: 'delete_*' }] };
+    const bare = run(deny, [del('delete_file')], 'critical');
+    expect(bare.passed).toBe(false);
+    expect(bare.message).toContain('tool_calls[0] (delete_file) by deny[0] (tool "delete_*")');
+    for (const [name, read] of [['mcp__files__delete_file', 'delete_file'], ['mcp__github__delete_repository', 'delete_repository'], ['mcp__claude_ai_Files__delete_file', 'delete_file']]) {
+      const r = run(deny, [del(name)], 'critical');
+      expect(r.passed, name).toBe(false);
+      expect(r.message, name).toContain(`tool_calls[0] (${name}) by deny[0] (tool "delete_*", which matches ${read}, read as the tool's own name)`);
+      expect((r.evidence ?? []).some((e) => e.type === 'toolCall' && e.toolName === name && e.label.includes(`which matches ${read}, read as the tool's own name`)), name).toBe(true);
+    }
+    // Deny folds case, the prefix included.
+    expect(run(deny, [del('MCP__Files__Delete_File')], 'critical').passed).toBe(false);
+  });
+
+  it('where the server\'s part ends is not written in the name: a deny rule reads the own name from every "__" after the prefix', () => {
+    const deny = { deny: [{ tool: 'delete_*' }] };
+    // As Claude Code writes servers labelled "files (prod)", "files.", "files v2!", "my  files" and "files__prod", and a gateway whose tool is github__delete_file.
+    for (const name of [
+      'mcp__files__prod___delete_file',
+      'mcp__files___delete_file',
+      'mcp__files_v2___delete_file',
+      'mcp__my__files__delete_file',
+      'mcp__files__prod__delete_file',
+      'mcp__gateway__github__delete_file',
+    ]) {
+      const r = run(deny, [del(name)], 'critical');
+      expect(r.passed, name).toBe(false);
+      expect(r.message, name).toContain("which matches delete_file, read as the tool's own name");
+    }
+    // The price, stated: a piece of a server's label after a "__" is read the same way, and the message shows the name that was read.
+    const label = run(deny, [del('mcp__backup__delete_stale___list_snapshots')], 'critical');
+    expect(label.passed).toBe(false);
+    expect(label.message).toContain("which matches delete_stale___list_snapshots, read as the tool's own name");
+    // A name is as long as its sender made it; the part a message quotes from it is held to 128 characters.
+    const wide = run({ deny: [{ tool: 'a*' }] }, [del(`mcp__files__${'a'.repeat(5_000)}`)], 'critical');
+    expect(wide.passed).toBe(false);
+    expect(wide.message).toContain(`which matches ${'a'.repeat(128)}…, read as the tool's own name`);
+    // A name with a great many "__" costs one match, and is still judged.
+    const long = `mcp__${'a__'.repeat(20_000)}delete_file`;
+    const spent = cpuMs(() => {
+      expect(run(deny, [del(long)], 'critical').passed).toBe(false);
+      expect(run(deny, [del(`mcp__${'a__'.repeat(20_000)}read_file`)], 'critical').passed).toBe(true);
+    });
+    expect(spent).toBeLessThan(2_000);
+  });
+
+  it('a "/" in the server\'s part does not hide the tool\'s own name from a deny rule', () => {
+    const deny = { deny: [{ tool: 'delete_*' }] };
+    // A `*` does not cross a "/", so the "__" the own name begins after is read in whichever "/"-separated piece it sits.
+    for (const name of ['mcp__a/b__delete_file', 'mcp__a/b/c__delete_file', 'mcp__a__b/c__delete_file', 'mcp__/x__delete_file', 'mcp__a/__delete_file']) {
+      const r = run(deny, [del(name)], 'critical');
+      expect(r.passed, name).toBe(false);
+      expect(r.message, name).toContain("which matches delete_file, read as the tool's own name");
+    }
+    // Another tool of such a server is not denied, and the own name is still matched as a tool pattern matches any name: a `*` in it stops at a "/".
+    for (const name of ['mcp__a/b__read_file', 'mcp__a/delete_b__read_file', 'mcp__a/b__delete_/file']) {
+      expect(run(deny, [del(name)], 'critical').passed, name).toBe(true);
+    }
+    // A name with a great many "/" costs the two matches and no more.
+    const spent = cpuMs(() => {
+      expect(run(deny, [del(`mcp__${'a/'.repeat(20_000)}b__delete_file`)], 'critical').passed).toBe(false);
+      expect(run(deny, [del(`mcp__${'a/'.repeat(20_000)}b__read_file`)], 'critical').passed).toBe(true);
+      expect(run(deny, [del(`mcp__${'a__/'.repeat(20_000)}b__read_file`)], 'critical').passed).toBe(true);
+    });
+    expect(spent).toBeLessThan(2_000);
+  });
+
+  it('a deny rule does not fire on a server\'s label, or on another tool of the same server', () => {
+    const deny = { deny: [{ tool: 'delete_*' }] };
+    for (const name of ['mcp__files__read_file', 'mcp__delete_me__read_file', 'mcp__files__undelete_file', 'read_file']) {
+      expect(run(deny, [del(name)], 'critical').passed, name).toBe(true);
+    }
+  });
+
+  it('a deny rule with an argument binding holds the binding on either form of the name', () => {
+    const deny = { deny: [{ tool: 'run_query', args: { '/database': 'prod' } }] };
+    const query = (name: string, database: string) => ({ tool_name: name, input: { database, sql: 'DELETE FROM jobs' }, output: 'ok' });
+    expect(run(deny, [query('run_query', 'prod')]).passed).toBe(false);
+    expect(run(deny, [query('mcp__db__run_query', 'prod')]).passed).toBe(false);
+    expect(run(deny, [query('mcp__db__run_query', 'staging')]).passed).toBe(true);
+  });
+
+  it('a deny rule written for one server stays that server\'s', () => {
+    const deny = { deny: [{ tool: 'mcp__files__*' }] };
+    expect(run(deny, [del('mcp__files__read_file')]).passed).toBe(false);
+    expect(run(deny, [del('mcp__other__read_file')]).passed).toBe(true);
+    expect(run(deny, [del('read_file')]).passed).toBe(true);
+  });
+
+  it('an allow rule is held to the name the call was made by, and the message says which rule matches the tool\'s own name', () => {
+    const allow = { allow: [{ tool: 'get_product' }, { tool: 'list_products' }] };
+    expect(run(allow, [product('get_product')]).passed).toBe(true);
+    const prefixed = run(allow, [product('mcp__shop__get_product')]);
+    expect(prefixed.passed).toBe(false);
+    expect(prefixed.message).toContain(
+      'tool_calls[0] (mcp__shop__get_product) by no allow rule matched it: allow[0] (tool "get_product") matches the tool\'s own name, get_product, and an allow rule is held to the name the call was made by',
+    );
+    // Written for the name the host calls, one server or any, it permits the call.
+    expect(run({ allow: [{ tool: 'mcp__shop__get_product' }] }, [product('mcp__shop__get_product')]).passed).toBe(true);
+    expect(run({ allow: [{ tool: 'mcp__*__get_product' }] }, [product('mcp__shop__get_product'), product('mcp__store__get_product')]).passed).toBe(true);
+    // A rule that matches neither form gets the plain sentence.
+    const other = run({ allow: [{ tool: 'mcp__shop__get_product' }] }, [product('mcp__other__get_product')]);
+    expect(other.passed).toBe(false);
+    expect(other.message).toContain('by no allow rule matched it.');
+    expect(other.message).not.toContain("the tool's own name");
+  });
+
+  it('with both lists, a deny rule on the tool\'s own name wins over an allow rule on the called name', () => {
+    const both = { allow: [{ tool: 'mcp__files__*' }], deny: [{ tool: 'delete_*' }] };
+    expect(run(both, [del('mcp__files__read_file')]).passed).toBe(true);
+    const denied = run(both, [del('mcp__files__delete_file')]);
+    expect(denied.passed).toBe(false);
+    expect(denied.message).toContain('by deny[0] (tool "delete_*", which matches delete_file, read as the tool\'s own name)');
   });
 });
 

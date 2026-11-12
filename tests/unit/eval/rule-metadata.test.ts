@@ -35,7 +35,7 @@ const root = resolve(__dirname, '..', '..', '..');
 const builtIns: EvalRule[] = (['completeness', 'relevance', 'safety', 'cost'] as const).flatMap((t) => rulesByType[t]);
 const KINDS = ['measurement', 'detection', 'inference', 'judgment', 'policy', 'verification'];
 const MECHANISMS = ['formula', 'pattern', 'heuristic', 'model', 'external'];
-const CUSTOM_TYPES: CustomRuleType[] = ['regex_match', 'regex_no_match', 'min_length', 'max_length', 'contains_keywords', 'excludes_keywords', 'json_schema', 'cost_threshold'];
+const CUSTOM_TYPES: CustomRuleType[] = ['regex_match', 'regex_no_match', 'min_length', 'max_length', 'contains_keywords', 'excludes_keywords', 'json_schema', 'cost_threshold', 'action_policy'];
 
 describe('rule metadata — the registry declares everything, in registered vocabulary', () => {
   it('there are built-ins to check (guards the registry read)', () => {
@@ -85,7 +85,8 @@ describe('rule metadata — the registry declares everything, in registered voca
       expect(rule.kind, type).toBe('policy');
       expect(MECHANISMS, type).toContain(rule.mechanism);
       expect(rule.needs!.length, type).toBeGreaterThan(0);
-      expect(rule.version).toBe(1);
+      // The one custom type whose meaning has changed carries the change in its version.
+      expect(rule.version, type).toBe(type === 'action_policy' ? 2 : 1);
     }
     expect(createCustomRule({ name: 'c', type: 'cost_threshold', config: {} }).needs).toEqual(['cost']);
   });

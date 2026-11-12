@@ -6,10 +6,15 @@ import { readNumericConfig, describeKeys } from './config-keys.js';
 import { sandboxedRegexTest, REGEX_MATCH_BUDGET_MS } from './regex-sandbox.js';
 import { MAX_PATTERN_LENGTH } from './regex-budget.js';
 import { checkArguments, compileToolSchema } from '../schema-validator.js';
-import { compileActionPolicy, matchPolicyRule } from '../action-policy.js';
+import { allowRuleForOwnName, compileActionPolicy, matchPolicyRule } from '../action-policy.js';
+import { MAX_TOOL_NAME_CHARS } from '../case-history.js';
 import { stepsOf, stepStatsOf } from '../steps.js';
 import { costBasisNote } from '../cost-basis.js';
 
+/** A part of a tool's name as a policy's message quotes it. A name is whatever the caller sent, with no limit of its own, and the message already carries the name the call was made by; the part read from it is held to a length. */
+function quotedPart(name: string): string {
+  return name.length > MAX_TOOL_NAME_CHARS ? `${name.slice(0, MAX_TOOL_NAME_CHARS)}…` : name;
+}
 
 // A rule whose CONFIG is invalid has not evaluated the output — it could not
 // run at all. Returning `passed:false, score:0` for that case conflates "your
@@ -301,7 +306,8 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
     mechanism: meta?.mechanism ?? 'formula',
     needs: meta?.needs ?? ['output'],
     classes: [],
-    version: 1,
+    // action_policy is at 2: its deny rules read the tool's own name inside mcp__<server>__<tool> (action-policy.ts). Every other custom type means what it meant.
+    version: definition.type === 'action_policy' ? 2 : 1,
     evaluate(context: EvalContext): EvalRuleResult {
       switch (definition.type) {
         case 'regex_match': {
@@ -498,7 +504,10 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
                 if (binding.truncated) truncated += 1;
               }
               if (match.matched) {
-                verdict = { why: `deny[${at}] (tool ${JSON.stringify(rule.tool)})`, match };
+                // Said when the rule caught the tool under a name the host did not call it by, with the name that was read: the reader sees one name in the call and another in the rule, and a piece of a server's label can be what matched.
+                const form =
+                  match.toolMatchedBy !== 'own' ? '' : match.ownNameRead !== undefined ? `, which matches ${quotedPart(match.ownNameRead)}, read as the tool's own name` : ", which matches a part of the name read as the tool's own name";
+                verdict = { why: `deny[${at}] (tool ${JSON.stringify(rule.tool)}${form})`, match };
                 break;
               }
             }
@@ -516,7 +525,20 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
                 }
               }
               if (!allowed) {
-                verdict = { why: 'no allow rule matched it', match: null };
+                /*
+                 * An allow rule is held to the name the call was made by. On
+                 * a host that calls tools mcp__<server>__<tool>, a rule
+                 * written for the tool's own name then matches nothing, and
+                 * the author is told which rule and what the call was named.
+                 */
+                const near = allowRuleForOwnName(policy.allow, step.name, step.input);
+                verdict = {
+                  why:
+                    near === null
+                      ? 'no allow rule matched it'
+                      : `no allow rule matched it: allow[${near.index}] (tool ${JSON.stringify(near.rule.tool)}) matches the tool's own name, ${quotedPart(near.ownName)}, and an allow rule is held to the name the call was made by`,
+                  match: null,
+                };
               }
             }
             if (verdict === null) continue;
