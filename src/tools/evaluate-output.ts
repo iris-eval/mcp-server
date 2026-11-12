@@ -11,7 +11,7 @@ import { caseHistoryFor, costHistoryFor } from '../eval/ingest.js';
 import { DEFAULT_EVAL_TYPE, DEFAULT_EVAL_TYPE_NOTE } from '../eval/engine.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
 import { strictInput, strictNested } from './strict-input.js';
-import { toolCallSchema, toolDescriptorSchema } from './log-trace.js';
+import { toolCallSchema, toolsCatalogueSchema } from './log-trace.js';
 import { getTraceOrThrow, insertLinkedEvalResult } from './trace-link.js';
 import { differsFromRecord } from '../eval/of-record.js';
 import { irisError } from './errors.js';
@@ -83,7 +83,7 @@ const inputSchema = {
   // Same schema log_trace validates tool_calls with, imported rather than
   // restated: the trajectory rules read `error`, and a second declaration
   // is how that field goes missing on one path and not the other.
-  tools: z.array(toolDescriptorSchema).max(200).optional().describe('Your MCP tools/list result, verbatim; lets the rules check call arguments. Loaded from trace_id when stored'),
+  tools: toolsCatalogueSchema.optional().describe('Your MCP tools/list result, verbatim; lets the rules check call arguments. Loaded from trace_id when stored'),
   tool_calls: z.array(toolCallSchema).optional().describe('The tool calls the agent made, in order, as log_trace records them; omitted, the trajectory rules skip. Loaded from trace_id when stored'),
 };
 
