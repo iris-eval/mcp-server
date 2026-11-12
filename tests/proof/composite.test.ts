@@ -132,8 +132,8 @@ describe('composite results', () => {
       expect(row.changed.fired.n + row.changed.quiet.n + row.changed.notRun.n, row.rule).toBe(results.counts.test);
       // Where the labelled rule did not run, no other rule of its class examined the output on this corpus either, so nothing weighed the class and the verdict cannot have moved.
       expect(row.changed.notRun.k, `${row.rule} ${row.labels.right}/${row.labels.wrong}`).toBe(0);
-      // A veto is not weighed: labels on a critical rule's fires change no verdict it fired on.
-      if (row.critical) expect(row.changed.fired.k, row.rule).toBe(0);
+      // A veto is not weighed: labels on a rule whose fire vetoes change no verdict it fired on.
+      if (row.vetoes) expect(row.changed.fired.k, row.rule).toBe(0);
     }
     // Labels that call every fire wrong put the class at the floor; labels that call every fire right put it above.
     for (let i = 0; i < o.rows.length; i += 2) {
@@ -147,6 +147,8 @@ describe('composite results', () => {
     }
     // Every weighed rule is accounted for: a row pair, or a reason there is none.
     expect(new Set(o.rows.map((row) => row.rule)).size + o.notLabelled.length).toBeGreaterThanOrEqual(13);
+    // The two rules that ship critical are the two whose fire the product vetoed on.
+    expect([...new Set(o.rows.filter((row) => row.vetoes).map((row) => row.rule))].sort()).toEqual(['no_injection_patterns', 'no_pii']);
   });
 
   it('the risk composer fails every case the legacy composer vetoed, and the sweep never touches the test split', async () => {

@@ -37,6 +37,11 @@ export function builtInKindOf(ruleName: string): string | undefined {
   return builtInRules().find((r) => r.name === ruleName)?.kind;
 }
 
+/** Whether labels on this rule's fires can move a verdict: a built-in detection or inference, the kinds whose fires enter the risk estimate. */
+export function labelsEnterRisk(ruleName: string): boolean {
+  return RISK_KINDS.has(builtInKindOf(ruleName) ?? '');
+}
+
 /** The failure classes a built-in rule declares; none for a custom rule, or one that declares none. */
 function builtInClassesOf(ruleName: string): readonly string[] {
   return builtInRules().find((r) => r.name === ruleName)?.classes ?? [];
@@ -58,8 +63,7 @@ export async function buildLocalLabelSource(storage: IStorageAdapter, tenantId: 
    */
   const estimates: Array<{ estimate: EstimatedPrior; classes: readonly string[] }> = [];
   for (const p of precision.values()) {
-    const kind = builtInKindOf(p.ruleName);
-    if (kind === undefined || !RISK_KINDS.has(kind)) continue;
+    if (!labelsEnterRisk(p.ruleName)) continue;
     const published = publishedAccuracyFor(p.ruleName);
     const sens = published ? sensitivity(published) : null;
     const e = estimatedPrior(p, fireRates.get(p.ruleName) ?? 0, sens ?? 0);
@@ -73,7 +77,7 @@ export async function buildLocalLabelSource(storage: IStorageAdapter, tenantId: 
    * a number no decision reads.
    */
   const candidates = [...fireRates.entries()]
-    .filter(([ruleName, f]) => f > 0 && RISK_KINDS.has(builtInKindOf(ruleName) ?? ''))
+    .filter(([ruleName, f]) => f > 0 && labelsEnterRisk(ruleName))
     .map(([ruleName, fireRate]) => ({ precision: precision.get(ruleName) ?? localPrecision({ ruleName, right: 0, wrong: 0 }), fireRate }));
 
   return { precision, fireRates, classPriors: classPriorsFrom(estimates), suggestion: samplingSuggestion(candidates), refreshedAt: new Date().toISOString() };

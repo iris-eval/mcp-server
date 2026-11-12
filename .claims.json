@@ -5323,8 +5323,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-11-12T01:33:05.994Z",
-  "generatedFromCommit": "e616303b",
+  "generatedAt": "2026-11-12T01:33:28.491Z",
+  "generatedFromCommit": "13202b36",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -6080,7 +6080,7 @@
       "oneRuleLabelled": {
         "fireRatesFrom": "dev",
         "labels": 20,
-        "method": "for each detection or inference that fired on a dev case: the shipped engine with 20 stated labels on that rule alone, all right and then all wrong, at the rule's fire rate on the dev split, read through buildLocalLabelSource (src/eval/local-labels.ts); the test split judged with those labels in force; a verdict that was not checked counts as a block",
+        "method": "for each rule whose labels enter the risk estimate (a detection or an inference) that fired on a dev case: the shipped engine with 20 stated labels on that rule alone, all right and then all wrong, at the rule's fire rate on the dev split, read through buildLocalLabelSource (src/eval/local-labels.ts); the test split judged with those labels in force; a verdict that was not checked counts as a block",
         "mostDevFires": {
           "fired": 18,
           "rule": "no_pii"
@@ -6120,7 +6120,6 @@
             "classes": [
               "invalid_tool_call"
             ],
-            "critical": false,
             "dev": {
               "fired": 3,
               "ran": 8
@@ -6147,7 +6146,8 @@
               "n": 24,
               "rate": 0.4583
             },
-            "rule": "valid_tool_arguments"
+            "rule": "valid_tool_arguments",
+            "vetoes": false
           },
           {
             "changed": {
@@ -6173,7 +6173,6 @@
             "classes": [
               "invalid_tool_call"
             ],
-            "critical": false,
             "dev": {
               "fired": 3,
               "ran": 8
@@ -6200,7 +6199,8 @@
               "n": 24,
               "rate": 0.4583
             },
-            "rule": "valid_tool_arguments"
+            "rule": "valid_tool_arguments",
+            "vetoes": false
           },
           {
             "changed": {
@@ -6226,7 +6226,6 @@
             "classes": [
               "incomplete_ask"
             ],
-            "critical": false,
             "dev": {
               "fired": 2,
               "ran": 3
@@ -6253,7 +6252,8 @@
               "n": 24,
               "rate": 0.4167
             },
-            "rule": "ask_coverage"
+            "rule": "ask_coverage",
+            "vetoes": false
           },
           {
             "changed": {
@@ -6279,7 +6279,6 @@
             "classes": [
               "incomplete_ask"
             ],
-            "critical": false,
             "dev": {
               "fired": 2,
               "ran": 3
@@ -6306,7 +6305,8 @@
               "n": 24,
               "rate": 0.4583
             },
-            "rule": "ask_coverage"
+            "rule": "ask_coverage",
+            "vetoes": false
           },
           {
             "changed": {
@@ -6332,7 +6332,6 @@
             "classes": [
               "wrong_tool"
             ],
-            "critical": false,
             "dev": {
               "fired": 1,
               "ran": 3
@@ -6359,7 +6358,8 @@
               "n": 24,
               "rate": 0.4583
             },
-            "rule": "tool_choice"
+            "rule": "tool_choice",
+            "vetoes": false
           },
           {
             "changed": {
@@ -6385,7 +6385,6 @@
             "classes": [
               "wrong_tool"
             ],
-            "critical": false,
             "dev": {
               "fired": 1,
               "ran": 3
@@ -6412,7 +6411,8 @@
               "n": 24,
               "rate": 0.4583
             },
-            "rule": "tool_choice"
+            "rule": "tool_choice",
+            "vetoes": false
           },
           {
             "changed": {
@@ -6443,7 +6443,6 @@
               "pii_leak",
               "credential_leak"
             ],
-            "critical": true,
             "dev": {
               "fired": 18,
               "ran": 111
@@ -6470,7 +6469,8 @@
               "n": 24,
               "rate": 0.4583
             },
-            "rule": "no_pii"
+            "rule": "no_pii",
+            "vetoes": true
           },
           {
             "changed": {
@@ -6501,7 +6501,6 @@
               "pii_leak",
               "credential_leak"
             ],
-            "critical": true,
             "dev": {
               "fired": 18,
               "ran": 111
@@ -6528,7 +6527,8 @@
               "n": 24,
               "rate": 0.4583
             },
-            "rule": "no_pii"
+            "rule": "no_pii",
+            "vetoes": true
           },
           {
             "changed": {
@@ -6554,7 +6554,6 @@
             "classes": [
               "injection"
             ],
-            "critical": true,
             "dev": {
               "fired": 10,
               "ran": 111
@@ -6581,7 +6580,8 @@
               "n": 24,
               "rate": 0.4583
             },
-            "rule": "no_injection_patterns"
+            "rule": "no_injection_patterns",
+            "vetoes": true
           },
           {
             "changed": {
@@ -6607,7 +6607,6 @@
             "classes": [
               "injection"
             ],
-            "critical": true,
             "dev": {
               "fired": 10,
               "ran": 111
@@ -6634,7 +6633,8 @@
               "n": 24,
               "rate": 0.4583
             },
-            "rule": "no_injection_patterns"
+            "rule": "no_injection_patterns",
+            "vetoes": true
           },
           {
             "changed": {
@@ -6660,7 +6660,6 @@
             "classes": [
               "stub"
             ],
-            "critical": false,
             "dev": {
               "fired": 4,
               "ran": 111
@@ -6687,7 +6686,8 @@
               "n": 24,
               "rate": 0.375
             },
-            "rule": "no_stub_output"
+            "rule": "no_stub_output",
+            "vetoes": false
           },
           {
             "changed": {
@@ -6713,7 +6713,6 @@
             "classes": [
               "stub"
             ],
-            "critical": false,
             "dev": {
               "fired": 4,
               "ran": 111
@@ -6740,7 +6739,8 @@
               "n": 24,
               "rate": 0.4583
             },
-            "rule": "no_stub_output"
+            "rule": "no_stub_output",
+            "vetoes": false
           },
           {
             "changed": {
@@ -6766,7 +6766,6 @@
             "classes": [
               "fabrication"
             ],
-            "critical": false,
             "dev": {
               "fired": 3,
               "ran": 111
@@ -6793,7 +6792,8 @@
               "n": 24,
               "rate": 0.4583
             },
-            "rule": "no_hallucination_markers"
+            "rule": "no_hallucination_markers",
+            "vetoes": false
           },
           {
             "changed": {
@@ -6819,7 +6819,6 @@
             "classes": [
               "fabrication"
             ],
-            "critical": false,
             "dev": {
               "fired": 3,
               "ran": 111
@@ -6846,7 +6845,8 @@
               "n": 24,
               "rate": 0.5
             },
-            "rule": "no_hallucination_markers"
+            "rule": "no_hallucination_markers",
+            "vetoes": false
           },
           {
             "changed": {
@@ -6872,7 +6872,6 @@
             "classes": [
               "silent_tool_failure"
             ],
-            "critical": false,
             "dev": {
               "fired": 11,
               "ran": 98
@@ -6899,7 +6898,8 @@
               "n": 24,
               "rate": 0.4583
             },
-            "rule": "no_silent_tool_failure"
+            "rule": "no_silent_tool_failure",
+            "vetoes": false
           },
           {
             "changed": {
@@ -6925,7 +6925,6 @@
             "classes": [
               "silent_tool_failure"
             ],
-            "critical": false,
             "dev": {
               "fired": 11,
               "ran": 98
@@ -6952,7 +6951,8 @@
               "n": 24,
               "rate": 0.5417
             },
-            "rule": "no_silent_tool_failure"
+            "rule": "no_silent_tool_failure",
+            "vetoes": false
           },
           {
             "changed": {
@@ -6978,7 +6978,6 @@
             "classes": [
               "ungrounded"
             ],
-            "critical": false,
             "dev": {
               "fired": 8,
               "ran": 45
@@ -7005,7 +7004,8 @@
               "n": 24,
               "rate": 0.4583
             },
-            "rule": "grounded_in_reads"
+            "rule": "grounded_in_reads",
+            "vetoes": false
           },
           {
             "changed": {
@@ -7031,7 +7031,6 @@
             "classes": [
               "ungrounded"
             ],
-            "critical": false,
             "dev": {
               "fired": 8,
               "ran": 45
@@ -7058,7 +7057,8 @@
               "n": 24,
               "rate": 0.5833
             },
-            "rule": "grounded_in_reads"
+            "rule": "grounded_in_reads",
+            "vetoes": false
           },
           {
             "changed": {
@@ -7084,7 +7084,6 @@
             "classes": [
               "injection_compliance"
             ],
-            "critical": false,
             "dev": {
               "fired": 8,
               "ran": 97
@@ -7111,7 +7110,8 @@
               "n": 24,
               "rate": 0.4583
             },
-            "rule": "no_injection_compliance"
+            "rule": "no_injection_compliance",
+            "vetoes": false
           },
           {
             "changed": {
@@ -7137,7 +7137,6 @@
             "classes": [
               "injection_compliance"
             ],
-            "critical": false,
             "dev": {
               "fired": 8,
               "ran": 97
@@ -7164,7 +7163,8 @@
               "n": 24,
               "rate": 0.5
             },
-            "rule": "no_injection_compliance"
+            "rule": "no_injection_compliance",
+            "vetoes": false
           },
           {
             "changed": {
@@ -7190,7 +7190,6 @@
             "classes": [
               "tool_loop"
             ],
-            "critical": false,
             "dev": {
               "fired": 5,
               "ran": 98
@@ -7217,7 +7216,8 @@
               "n": 24,
               "rate": 0.4583
             },
-            "rule": "no_tool_loop"
+            "rule": "no_tool_loop",
+            "vetoes": false
           },
           {
             "changed": {
@@ -7243,7 +7243,6 @@
             "classes": [
               "tool_loop"
             ],
-            "critical": false,
             "dev": {
               "fired": 5,
               "ran": 98
@@ -7270,7 +7269,8 @@
               "n": 24,
               "rate": 0.5417
             },
-            "rule": "no_tool_loop"
+            "rule": "no_tool_loop",
+            "vetoes": false
           }
         ],
         "split": "test",

@@ -22,7 +22,7 @@ import type { EvalEngine } from '../../eval/engine.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import { strictBody, strictQuery } from '../validation.js';
 import { LOCAL_LABEL_MIN, LOCAL_LABEL_WINDOW, localPrecision } from '../../eval/labels.js';
-import { buildLocalLabelSource, builtInKindOf, refreshLocalLabels, type LocalLabelSource } from '../../eval/local-labels.js';
+import { buildLocalLabelSource, builtInKindOf, labelsEnterRisk, refreshLocalLabels, type LocalLabelSource } from '../../eval/local-labels.js';
 import { publishedAccuracyFor } from '../../eval/accuracy.js';
 import { builtInRules } from '../../eval/criticality.js';
 import { caseHistoryFor, costHistoryFor } from '../../eval/ingest.js';
@@ -78,7 +78,7 @@ function statsOf(source: LocalLabelSource): LabelStats {
     return {
       rule,
       kind,
-      entersRisk: kind === 'detection' || kind === 'inference',
+      entersRisk: labelsEnterRisk(rule),
       n: p.n,
       right: p.right,
       wrong: p.wrong,

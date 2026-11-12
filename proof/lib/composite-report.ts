@@ -53,7 +53,7 @@ import { legacyWouldShip } from './legacy-composer.js';
 import { verdictConfidence, testable, MIN_BIN_N, MIN_BIN_PATTERNS, type CalibrationTable, type Confidence } from '../../src/eval/confidence.js';
 import { builtInRules } from '../../src/eval/criticality.js';
 import { LOCAL_LABEL_MIN } from '../../src/eval/labels.js';
-import { buildLocalLabelSource } from '../../src/eval/local-labels.js';
+import { buildLocalLabelSource, labelsEnterRisk } from '../../src/eval/local-labels.js';
 import type { IStorageAdapter } from '../../src/types/query.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
 
@@ -189,8 +189,8 @@ export interface LabelledRuleRow {
   rule: string;
   /** The failure classes the rule looks for: the only ones its labels speak for. */
   classes: FailureClass[];
-  /** Whether a fire of the rule is a veto at the shipped configuration, which labels do not weigh. */
-  critical: boolean;
+  /** Whether the product's verdict on a case this rule fired on, with no labels, was a veto by this rule: a veto is not weighed, so labels do not move it. */
+  vetoes: boolean;
   /** Dev cases the rule ran on and fired on: the fire rate the estimate reads. */
   dev: { ran: number; fired: number };
   labels: { right: number; wrong: number };
@@ -374,6 +374,10 @@ function labelAccuracy(rows: CaseRow[], label: (r: CaseRow) => Confidence | null
  * say: every one right, and every one wrong. Its fire rate is its own on
  * the dev split, which stands for the traffic the labels would come from.
  *
+ * Nothing about a rule is decided here. Whose labels can move a verdict is
+ * the product's answer (labelsEnterRisk), and whether a rule's fire is a
+ * veto is read off the verdicts the product gave.
+ *
  * Kept out of measureComposite: a caller that measures the corpus through
  * its own engine (proof/judge) is not asking this, and the test split is
  * judged again here once for each labelling.
@@ -383,9 +387,12 @@ export async function measureOneRuleLabelled(root: string): Promise<OneRuleLabel
   const newEngine = (): EvalEngine => new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
   const plain = newEngine();
   const cases: Array<{ split: Split; shouldShip: boolean | null; context: ReturnType<typeof compositeContext>; state: Verdict['state']; ran: Set<string>; fired: Set<string> }> = [];
+  /** The rules the product's verdict named as vetoing, on any case. */
+  const vetoed = new Set<string>();
   for (const c of loaded.cases) {
     const context = compositeContext(loaded, c);
     const result = await plain.evaluateAll(context);
+    if (result.verdict!.basis === 'detector_veto') for (const name of result.verdict!.by) vetoed.add(name);
     cases.push({
       split: splitOf(c.id),
       shouldShip: c.expected.shouldShip,
@@ -405,7 +412,7 @@ export async function measureOneRuleLabelled(root: string): Promise<OneRuleLabel
     missedBlock: rate(bad.filter((c) => stateOf(c) === 'pass').length, bad.length),
   });
 
-  const weighed = builtInRules().filter((r) => r.kind === 'detection' || r.kind === 'inference');
+  const weighed = builtInRules().filter((r) => labelsEnterRisk(r.name));
   const rows: LabelledRuleRow[] = [];
   const notLabelled: OneRuleLabelled['notLabelled'] = [];
   let mostDevFires = { rule: '', fired: 0 };
@@ -431,7 +438,7 @@ export async function measureOneRuleLabelled(root: string): Promise<OneRuleLabel
       rows.push({
         rule: rule.name,
         classes: [...(rule.classes ?? [])] as FailureClass[],
-        critical: rule.critical === true,
+        vetoes: vetoed.has(rule.name),
         dev: { ran, fired },
         labels: { right, wrong },
         classPriors: source.classPriors.map((p) => ({ class: p.class, pi: p.pi })),
@@ -448,7 +455,7 @@ export async function measureOneRuleLabelled(root: string): Promise<OneRuleLabel
     split: 'test',
     fireRatesFrom: 'dev',
     labels: LOCAL_LABEL_MIN,
-    method: `for each detection or inference that fired on a dev case: the shipped engine with ${LOCAL_LABEL_MIN} stated labels on that rule alone, all right and then all wrong, at the rule's fire rate on the dev split, read through buildLocalLabelSource (src/eval/local-labels.ts); the test split judged with those labels in force; a verdict that was not checked counts as a block`,
+    method: `for each rule whose labels enter the risk estimate (a detection or an inference) that fired on a dev case: the shipped engine with ${LOCAL_LABEL_MIN} stated labels on that rule alone, all right and then all wrong, at the rule's fire rate on the dev split, read through buildLocalLabelSource (src/eval/local-labels.ts); the test split judged with those labels in force; a verdict that was not checked counts as a block`,
     unlabelled: rates((c) => c.state),
     mostDevFires,
     notLabelled,
@@ -785,7 +792,7 @@ function renderOneRuleLabelled(L: string[], o: OneRuleLabelled): void {
     const priors = [...new Set(row.classPriors.map((p) => p.pi))];
     const prior = row.classPriors.length === 0 ? '—' : priors.length === 1 ? `${priors[0]}${row.classPriors.length > 1 ? ' each' : ''}` : row.classPriors.map((p) => `${p.class} ${p.pi}`).join(', ');
     const elsewhere = { k: row.changed.quiet.k + row.changed.notRun.k, n: row.changed.quiet.n + row.changed.notRun.n };
-    L.push(`| ${first ? `\`${row.rule}\`${row.critical ? ' (critical)' : ''}` : ''} | ${first ? row.classes.map((c) => `\`${c}\``).join(', ') : ''} | ${first ? kOfN({ k: row.dev.fired, n: row.dev.ran }) : ''} | ${first ? 'all right' : 'all wrong'} | ${prior} | ${kOfN(row.falseBlock)} | ${kOfN(row.missedBlock)} | ${kOfN(row.changed.fired)} | ${kOfN(elsewhere)} |`);
+    L.push(`| ${first ? `\`${row.rule}\`${row.vetoes ? ' (its fire is a veto)' : ''}` : ''} | ${first ? row.classes.map((c) => `\`${c}\``).join(', ') : ''} | ${first ? kOfN({ k: row.dev.fired, n: row.dev.ran }) : ''} | ${first ? 'all right' : 'all wrong'} | ${prior} | ${kOfN(row.falseBlock)} | ${kOfN(row.missedBlock)} | ${kOfN(row.changed.fired)} | ${kOfN(elsewhere)} |`);
   }
   L.push('');
   const sum = (pick: (row: LabelledRuleRow) => Changed): Changed => o.rows.reduce((t, row) => ({ k: t.k + pick(row).k, n: t.n + pick(row).n }), { k: 0, n: 0 });
@@ -799,9 +806,9 @@ function renderOneRuleLabelled(L: string[], o: OneRuleLabelled): void {
   } else {
     sentences.push(`Where it did not, the verdict changed in ${kOfN({ k: quiet.k + notRun.k, n: quiet.n + notRun.n })}: ${quiet.k} where the rule examined the output and stayed quiet, so its class is weighed at the prior the labels gave, and ${notRun.k} where it did not run.`);
   }
-  const critical = o.rows.filter((row) => row.critical);
-  if (critical.length > 0) {
-    const moved = critical.reduce((t, row) => t + row.changed.fired.k, 0);
+  const vetoing = o.rows.filter((row) => row.vetoes);
+  if (vetoing.length > 0) {
+    const moved = vetoing.reduce((t, row) => t + row.changed.fired.k, 0);
     sentences.push(moved === 0 ? "A critical rule's fire is a veto, which no label weighs, and labelling one changed no verdict it fired on." : `A critical rule's fire is a veto; ${moved} verdicts changed where a labelled critical rule fired.`);
   }
   sentences.push('How far the estimate reaches is fixed by construction: a class no labelled rule looks for keeps its prior, and a verdict can move only where a rule of the labelled class examined the output.');

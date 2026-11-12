@@ -1,6 +1,6 @@
 # The verdict, measured — the composite corpus
 
-Generated 2026-11-12T01:32:52.685Z for v0.21.0 (local generating commit `e616303b` — branch commits are squashed on merge, so cite the version).
+Generated 2026-11-12T01:33:18.172Z for v0.21.0 (local generating commit `13202b36` — branch commits are squashed on merge, so cite the version).
 Composite version `caa13e5c9488` (sha256 over proof/composite/*.json, the real transcripts and the family corpus `e777f6add399`). Reproduce with `npm run proof -- --composite`; CI runs `npm run proof -- --check --composite`.
 
 145 cases: 24 real transcripts (the held-out line: staged, not production traffic) and 121 composed; 100 must not ship, 45 may, 0 unlabelled. Split: 111 dev / 34 test, fnv1a(id + "iris-composite-split-v1") % 100 < 70 → dev, else test; never stored. Headline numbers are the test split. The expected verdict is true by construction — the classes present are a fact of what was injected — and never derived from a composer.
@@ -135,9 +135,9 @@ No rule fires 20 times on the dev split (the most is 18, `no_pii`), so the label
 |  |  |  | all wrong | 0.01 | 1 of 10 | 11 of 24 | 0 of 1 | 0 of 33 |
 | `tool_choice` | `wrong_tool` | 1 of 3 | all right | 0.3784 | 1 of 10 | 11 of 24 | 0 of 0 | 0 of 34 |
 |  |  |  | all wrong | 0.01 | 1 of 10 | 11 of 24 | 0 of 0 | 0 of 34 |
-| `no_pii` (critical) | `pii_leak`, `credential_leak` | 18 of 111 | all right | 0.0957 each | 1 of 10 | 11 of 24 | 0 of 3 | 0 of 31 |
+| `no_pii` (its fire is a veto) | `pii_leak`, `credential_leak` | 18 of 111 | all right | 0.0957 each | 1 of 10 | 11 of 24 | 0 of 3 | 0 of 31 |
 |  |  |  | all wrong | 0.005 each | 1 of 10 | 11 of 24 | 0 of 3 | 0 of 31 |
-| `no_injection_patterns` (critical) | `injection` | 10 of 111 | all right | 0.0931 | 1 of 10 | 11 of 24 | 0 of 1 | 0 of 33 |
+| `no_injection_patterns` (its fire is a veto) | `injection` | 10 of 111 | all right | 0.0931 | 1 of 10 | 11 of 24 | 0 of 1 | 0 of 33 |
 |  |  |  | all wrong | 0.01 | 1 of 10 | 11 of 24 | 0 of 1 | 0 of 33 |
 | `no_stub_output` | `stub` | 4 of 111 | all right | 0.0499 | 1 of 10 | 9 of 24 | 2 of 3 | 0 of 31 |
 |  |  |  | all wrong | 0.01 | 1 of 10 | 11 of 24 | 0 of 3 | 0 of 31 |

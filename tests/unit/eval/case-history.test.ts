@@ -470,7 +470,7 @@ describe('through the engine', () => {
     const note = unusual.interpretations?.find((i) => i.configKey === 'eval.advisoryRules');
     expect(note?.text).toContain('rests on no_unusual_action');
     expect(note?.text).toContain('label them');
-    expect(note?.text).toContain('the prior every rule is weighed at is estimated from your labels, unless you set eval.prior');
+    expect(note?.text).toContain('the prior of the failure class it looks for is estimated from your labels, unless you set eval.prior. What a fire of a rule for any other class is worth does not move.');
   });
 
   /*
