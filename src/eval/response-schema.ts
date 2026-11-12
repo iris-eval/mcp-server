@@ -19,7 +19,7 @@ import { CAPTURE_FIELDS } from '../types/trace.js';
 
 export const intervalSchema = z.looseObject({ point: z.number(), lo: z.number(), hi: z.number() });
 
-const priorSchema = z.looseObject({ pi: z.number(), source: z.enum(['default', 'config', 'estimated']) });
+const priorSchema = z.looseObject({ pi: z.number(), source: z.enum(['default', 'config', 'estimated', 'family']) });
 const corpusSchema = z.looseObject({
     n: z.number().int(),
     tp: z.number().int(),
@@ -28,7 +28,7 @@ const corpusSchema = z.looseObject({
     tn: z.number().int(),
     version: z.string(),
     release: z.string(),
-    labelling: z.enum(['same-model', 'human-verified']),
+    labelling: z.enum(['same-model', 'human-verified', 'outside']),
   });
 
 export const uncertaintySchema = z.discriminatedUnion('basis', [
@@ -114,6 +114,7 @@ export const evalRuleResultSchema = z.looseObject({
     critical: z.boolean().optional(),
     criticalSource: z.enum(['default', 'config']).optional(),
     advisory: z.boolean().optional(),
+    advisoryWhy: z.string().optional().describe('on a result that is advisory for a reason of the rule\'s own, not eval.advisoryRules: the reason, in words (no_unusual_action with fewer earlier runs of the case than it is weighed from)'),
     state: z.enum(['pass', 'fail', 'not_checked']).optional().describe('read this, not passed: a rule that skipped is not_checked, and carries passed false'),
     passed: z.boolean(),
     score: z.number(),

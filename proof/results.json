@@ -1,6 +1,6 @@
 {
-  "commit": "ba04e92f",
-  "corpusVersion": "4eeb53b7ccfb",
+  "commit": "71af5513",
+  "corpusVersion": "e777f6add399",
   "custom": {
     "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
     "types": [
@@ -625,7 +625,7 @@
       "rule": "no_pii"
     }
   ],
-  "generatedAt": "2026-11-11T07:19:16.463Z",
+  "generatedAt": "2026-11-12T01:25:44.437Z",
   "humanAgreement": {
     "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
     "status": "pending"
@@ -638,9 +638,9 @@
       "platform": "win32"
     },
     "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
-    "n": 1381,
-    "p50Ms": 0.843,
-    "p95Ms": 4.645
+    "n": 1349,
+    "p50Ms": 1.59,
+    "p95Ms": 7.989
   },
   "method": {
     "ci": "wilson-95",
@@ -1055,51 +1055,51 @@
       "category": "completeness",
       "ci95": {
         "f1": [
-          1,
-          1
+          0.4961,
+          0.6875
         ],
         "precision": [
-          0.8157,
-          1
+          0.7333,
+          0.929
         ],
         "recall": [
-          0.8157,
-          1
+          0.3628,
+          0.5634
         ]
       },
       "credible95": {
         "f1": [
-          0.8932,
-          0.9993
+          0.5001,
+          0.6851
         ],
         "precision": [
-          0.8711,
-          1
+          0.7404,
+          0.9338
         ],
         "recall": [
-          0.8569,
-          1
+          0.3629,
+          0.56
         ]
       },
-      "f1": 1,
-      "fn": 0,
-      "fp": 0,
-      "labelBasis": "definition",
-      "n": 32,
+      "f1": 0.6,
+      "fn": 49,
+      "fp": 7,
+      "labelBasis": "outside",
+      "n": 695,
       "name": "no_unusual_action",
-      "negatives": 15,
-      "positives": 17,
+      "negatives": 604,
+      "positives": 91,
       "ppvAt": {
-        "0.01": 1,
-        "0.05": 1,
-        "0.2": 1,
-        "0.5": 1
+        "0.01": 0.2869,
+        "0.05": 0.677,
+        "0.2": 0.9087,
+        "0.5": 0.9755
       },
-      "precision": 1,
-      "recall": 1,
-      "skipped": 4,
-      "tn": 15,
-      "tp": 17
+      "precision": 0.8571,
+      "recall": 0.4615,
+      "skipped": 48,
+      "tn": 597,
+      "tp": 42
     },
     {
       "category": "completeness",

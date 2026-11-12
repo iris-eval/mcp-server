@@ -1,0 +1,1639 @@
+{
+ "what": "Tool names, each labelled by what the tool does: A it acts (writes, sends, deletes, runs something), R it only reads, D debatable.",
+ "provenance": "Each name was read on 2026-11-11 from the page in its `source`, and labelled from what that page says the tool does, by a collector who had not seen the reader's word lists. The list was collected after the word lists were fixed, and they have not been changed on it: what the reader scores here is out-of-sample.",
+ "names": [
+  {
+   "name": "read_files",
+   "group": "Cline",
+   "source": "https://docs.cline.bot/exploring-clines-tools/cline-tools-guide.md",
+   "label": "R"
+  },
+  {
+   "name": "search_codebase",
+   "group": "Cline",
+   "source": "https://docs.cline.bot/exploring-clines-tools/cline-tools-guide.md",
+   "label": "R"
+  },
+  {
+   "name": "run_commands",
+   "group": "Cline",
+   "source": "https://docs.cline.bot/exploring-clines-tools/cline-tools-guide.md",
+   "label": "A"
+  },
+  {
+   "name": "fetch_web_content",
+   "group": "Cline",
+   "source": "https://docs.cline.bot/exploring-clines-tools/cline-tools-guide.md",
+   "label": "R"
+  },
+  {
+   "name": "editor",
+   "group": "Cline",
+   "source": "https://docs.cline.bot/exploring-clines-tools/cline-tools-guide.md",
+   "label": "A"
+  },
+  {
+   "name": "skills",
+   "group": "Cline",
+   "source": "https://docs.cline.bot/exploring-clines-tools/cline-tools-guide.md",
+   "label": "D",
+   "note": "\"Invoke configured skills\": what changes outside depends on the skill invoked"
+  },
+  {
+   "name": "ask_question",
+   "group": "Cline",
+   "source": "https://docs.cline.bot/exploring-clines-tools/cline-tools-guide.md",
+   "label": "R",
+   "note": "asks the user for input and returns the answer; nothing outside the conversation changes"
+  },
+  {
+   "name": "submit_and_exit",
+   "group": "Cline",
+   "source": "https://docs.cline.bot/exploring-clines-tools/cline-tools-guide.md",
+   "label": "D",
+   "note": "\"Submit a final answer and stop\": ends the agent's own run; stops something but changes nothing outside it"
+  },
+  {
+   "name": "stripe_api_search",
+   "group": "Stripe MCP",
+   "source": "https://docs.stripe.com/mcp.md",
+   "label": "R"
+  },
+  {
+   "name": "stripe_api_details",
+   "group": "Stripe MCP",
+   "source": "https://docs.stripe.com/mcp.md",
+   "label": "R"
+  },
+  {
+   "name": "stripe_api_read",
+   "group": "Stripe MCP",
+   "source": "https://docs.stripe.com/mcp.md",
+   "label": "R"
+  },
+  {
+   "name": "stripe_api_write",
+   "group": "Stripe MCP",
+   "source": "https://docs.stripe.com/mcp.md",
+   "label": "A"
+  },
+  {
+   "name": "get_stripe_account_info",
+   "group": "Stripe MCP",
+   "source": "https://docs.stripe.com/mcp.md",
+   "label": "R"
+  },
+  {
+   "name": "atlas_company_formation",
+   "group": "Stripe MCP",
+   "source": "https://docs.stripe.com/mcp.md",
+   "label": "A",
+   "note": "prepares or resumes (creates) a draft Atlas application; the human reviews, pays and submits in the Dashboard"
+  },
+  {
+   "name": "stripe_analytics",
+   "group": "Stripe MCP",
+   "source": "https://docs.stripe.com/mcp.md",
+   "label": "R"
+  },
+  {
+   "name": "get_balance_summary",
+   "group": "Stripe MCP",
+   "source": "https://docs.stripe.com/mcp.md",
+   "label": "R"
+  },
+  {
+   "name": "convert_currency",
+   "group": "Stripe MCP",
+   "source": "https://docs.stripe.com/mcp.md",
+   "label": "A"
+  },
+  {
+   "name": "send_money",
+   "group": "Stripe MCP",
+   "source": "https://docs.stripe.com/mcp.md",
+   "label": "A"
+  },
+  {
+   "name": "setup_recipient",
+   "group": "Stripe MCP",
+   "source": "https://docs.stripe.com/mcp.md",
+   "label": "A"
+  },
+  {
+   "name": "transfer_money",
+   "group": "Stripe MCP",
+   "source": "https://docs.stripe.com/mcp.md",
+   "label": "A"
+  },
+  {
+   "name": "search_stripe_documentation",
+   "group": "Stripe MCP",
+   "source": "https://docs.stripe.com/mcp.md",
+   "label": "R"
+  },
+  {
+   "name": "stripe_implementation_planner",
+   "group": "Stripe MCP",
+   "source": "https://docs.stripe.com/mcp.md",
+   "label": "R",
+   "note": "returns step-by-step guidance; changes nothing"
+  },
+  {
+   "name": "send_stripe_feedback",
+   "group": "Stripe MCP",
+   "source": "https://docs.stripe.com/mcp.md",
+   "label": "A",
+   "note": "sends feedback to Stripe"
+  },
+  {
+   "name": "notion-search",
+   "group": "Notion MCP",
+   "source": "https://developers.notion.com/guides/mcp/tools-search.md",
+   "label": "R"
+  },
+  {
+   "name": "notion-list-favorite-pages",
+   "group": "Notion MCP",
+   "source": "https://developers.notion.com/guides/mcp/tools-search.md",
+   "label": "R"
+  },
+  {
+   "name": "notion-get-teams",
+   "group": "Notion MCP",
+   "source": "https://developers.notion.com/guides/mcp/tools-search.md",
+   "label": "R"
+  },
+  {
+   "name": "notion-view-version",
+   "group": "Notion MCP",
+   "source": "https://developers.notion.com/guides/mcp/tools-comments.md",
+   "label": "R"
+  },
+  {
+   "name": "notion-update-comment",
+   "group": "Notion MCP",
+   "source": "https://developers.notion.com/guides/mcp/tools-comments.md",
+   "label": "A"
+  },
+  {
+   "name": "notion-get-suggested-edit",
+   "group": "Notion MCP",
+   "source": "https://developers.notion.com/guides/mcp/tools-comments.md",
+   "label": "R"
+  },
+  {
+   "name": "notion-duplicate-page",
+   "group": "Notion MCP",
+   "source": "https://developers.notion.com/guides/mcp/tools-pages.md",
+   "label": "A"
+  },
+  {
+   "name": "notion-create-view",
+   "group": "Notion MCP",
+   "source": "https://developers.notion.com/guides/mcp/tools-databases.md",
+   "label": "A"
+  },
+  {
+   "name": "notion-create-file-upload",
+   "group": "Notion MCP",
+   "source": "https://developers.notion.com/guides/mcp/tools-files.md",
+   "label": "A"
+  },
+  {
+   "name": "notion-update-folder",
+   "group": "Notion MCP",
+   "source": "https://developers.notion.com/guides/mcp/tools-files.md",
+   "label": "A"
+  },
+  {
+   "name": "notion-update-enabled-skills",
+   "group": "Notion MCP",
+   "source": "https://developers.notion.com/guides/mcp/tools-skills-agents.md",
+   "label": "A"
+  },
+  {
+   "name": "notion-spawn-session",
+   "group": "Notion MCP",
+   "source": "https://developers.notion.com/guides/mcp/tools-skills-agents.md",
+   "label": "A",
+   "note": "hands a task to a Custom Agent (starts a session)"
+  },
+  {
+   "name": "notion-list-session-events",
+   "group": "Notion MCP",
+   "source": "https://developers.notion.com/guides/mcp/tools-skills-agents.md",
+   "label": "R"
+  },
+  {
+   "name": "notion-calendar-list-calendar-resources",
+   "group": "Notion MCP",
+   "source": "https://developers.notion.com/guides/mcp/tools-calendars.md",
+   "label": "R"
+  },
+  {
+   "name": "kv_namespaces_list",
+   "group": "Cloudflare Workers Bindings MCP",
+   "source": "https://raw.githubusercontent.com/cloudflare/mcp-server-cloudflare/HEAD/apps/workers-bindings/README.md",
+   "label": "R"
+  },
+  {
+   "name": "kv_namespace_delete",
+   "group": "Cloudflare Workers Bindings MCP",
+   "source": "https://raw.githubusercontent.com/cloudflare/mcp-server-cloudflare/HEAD/apps/workers-bindings/README.md",
+   "label": "A"
+  },
+  {
+   "name": "kv_namespace_update",
+   "group": "Cloudflare Workers Bindings MCP",
+   "source": "https://raw.githubusercontent.com/cloudflare/mcp-server-cloudflare/HEAD/apps/workers-bindings/README.md",
+   "label": "A"
+  },
+  {
+   "name": "workers_get_worker",
+   "group": "Cloudflare Workers Bindings MCP",
+   "source": "https://raw.githubusercontent.com/cloudflare/mcp-server-cloudflare/HEAD/apps/workers-bindings/README.md",
+   "label": "R"
+  },
+  {
+   "name": "r2_buckets_list",
+   "group": "Cloudflare Workers Bindings MCP",
+   "source": "https://raw.githubusercontent.com/cloudflare/mcp-server-cloudflare/HEAD/apps/workers-bindings/README.md",
+   "label": "R"
+  },
+  {
+   "name": "r2_bucket_get",
+   "group": "Cloudflare Workers Bindings MCP",
+   "source": "https://raw.githubusercontent.com/cloudflare/mcp-server-cloudflare/HEAD/apps/workers-bindings/README.md",
+   "label": "R"
+  },
+  {
+   "name": "d1_databases_list",
+   "group": "Cloudflare Workers Bindings MCP",
+   "source": "https://raw.githubusercontent.com/cloudflare/mcp-server-cloudflare/HEAD/apps/workers-bindings/README.md",
+   "label": "R"
+  },
+  {
+   "name": "d1_database_delete",
+   "group": "Cloudflare Workers Bindings MCP",
+   "source": "https://raw.githubusercontent.com/cloudflare/mcp-server-cloudflare/HEAD/apps/workers-bindings/README.md",
+   "label": "A"
+  },
+  {
+   "name": "d1_database_query",
+   "group": "Cloudflare Workers Bindings MCP",
+   "source": "https://raw.githubusercontent.com/cloudflare/mcp-server-cloudflare/HEAD/apps/workers-bindings/README.md",
+   "label": "D",
+   "note": "\"Query a D1 database\": runs SQL, which reads or writes depending on the statement"
+  },
+  {
+   "name": "hyperdrive_config_create",
+   "group": "Cloudflare Workers Bindings MCP",
+   "source": "https://raw.githubusercontent.com/cloudflare/mcp-server-cloudflare/HEAD/apps/workers-bindings/README.md",
+   "label": "A"
+  },
+  {
+   "name": "hyperdrive_config_get",
+   "group": "Cloudflare Workers Bindings MCP",
+   "source": "https://raw.githubusercontent.com/cloudflare/mcp-server-cloudflare/HEAD/apps/workers-bindings/README.md",
+   "label": "R"
+  },
+  {
+   "name": "atlassianUserInfo",
+   "group": "Atlassian Rovo MCP Server",
+   "source": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
+   "label": "R"
+  },
+  {
+   "name": "listJiraStatuses",
+   "group": "Atlassian Rovo MCP Server",
+   "source": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
+   "label": "R"
+  },
+  {
+   "name": "manageJiraProjectVersion",
+   "group": "Atlassian Rovo MCP Server",
+   "source": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
+   "label": "A"
+  },
+  {
+   "name": "getConfluenceContent",
+   "group": "Atlassian Rovo MCP Server",
+   "source": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
+   "label": "R"
+  },
+  {
+   "name": "getConfluenceReactions",
+   "group": "Atlassian Rovo MCP Server",
+   "source": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
+   "label": "R"
+  },
+  {
+   "name": "updateConfluenceComment",
+   "group": "Atlassian Rovo MCP Server",
+   "source": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
+   "label": "A"
+  },
+  {
+   "name": "unwatchConfluenceContent",
+   "group": "Atlassian Rovo MCP Server",
+   "source": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
+   "label": "A",
+   "note": "unsubscribes the user from updates on a page"
+  },
+  {
+   "name": "getJsmAgentAvailability",
+   "group": "Atlassian Rovo MCP Server",
+   "source": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
+   "label": "R"
+  },
+  {
+   "name": "getBitbucketRepoPullRequest",
+   "group": "Atlassian Rovo MCP Server",
+   "source": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
+   "label": "R"
+  },
+  {
+   "name": "resolveBitbucketRepoPullRequestComment",
+   "group": "Atlassian Rovo MCP Server",
+   "source": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
+   "label": "A"
+  },
+  {
+   "name": "scanCodeRepo",
+   "group": "Atlassian Rovo MCP Server",
+   "source": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
+   "label": "R",
+   "note": "\"Lists a repository's file paths at a specific commit, without reading any file contents\""
+  },
+  {
+   "name": "getLoomVideoDownloadUrl",
+   "group": "Atlassian Rovo MCP Server",
+   "source": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
+   "label": "R"
+  },
+  {
+   "name": "getProject",
+   "group": "Atlassian Rovo MCP Server",
+   "source": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
+   "label": "R"
+  },
+  {
+   "name": "searchTalentPositions",
+   "group": "Atlassian Rovo MCP Server",
+   "source": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
+   "label": "R"
+  },
+  {
+   "name": "searchInsightsResources",
+   "group": "Atlassian Rovo MCP Server",
+   "source": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
+   "label": "R"
+  },
+  {
+   "name": "configuration_contexts_list",
+   "group": "Kubernetes MCP Server (containers/kubernetes-mcp-server)",
+   "source": "https://raw.githubusercontent.com/containers/kubernetes-mcp-server/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "nodes_log",
+   "group": "Kubernetes MCP Server (containers/kubernetes-mcp-server)",
+   "source": "https://raw.githubusercontent.com/containers/kubernetes-mcp-server/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "pods_delete",
+   "group": "Kubernetes MCP Server (containers/kubernetes-mcp-server)",
+   "source": "https://raw.githubusercontent.com/containers/kubernetes-mcp-server/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "resources_get",
+   "group": "Kubernetes MCP Server (containers/kubernetes-mcp-server)",
+   "source": "https://raw.githubusercontent.com/containers/kubernetes-mcp-server/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "helm_list",
+   "group": "Kubernetes MCP Server (containers/kubernetes-mcp-server)",
+   "source": "https://raw.githubusercontent.com/containers/kubernetes-mcp-server/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "kiali_manage_istio_config_read",
+   "group": "Kubernetes MCP Server (containers/kubernetes-mcp-server)",
+   "source": "https://raw.githubusercontent.com/containers/kubernetes-mcp-server/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "kiali_get_pod_performance",
+   "group": "Kubernetes MCP Server (containers/kubernetes-mcp-server)",
+   "source": "https://raw.githubusercontent.com/containers/kubernetes-mcp-server/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "vm_guest_info",
+   "group": "Kubernetes MCP Server (containers/kubernetes-mcp-server)",
+   "source": "https://raw.githubusercontent.com/containers/kubernetes-mcp-server/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "netobserv_get_flow_metrics",
+   "group": "Kubernetes MCP Server (containers/kubernetes-mcp-server)",
+   "source": "https://raw.githubusercontent.com/containers/kubernetes-mcp-server/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "execute_instant_query",
+   "group": "Kubernetes MCP Server (containers/kubernetes-mcp-server)",
+   "source": "https://raw.githubusercontent.com/containers/kubernetes-mcp-server/HEAD/README.md",
+   "label": "R",
+   "note": "\"Execute a PromQL instant query to get current/point-in-time values\": a read"
+  },
+  {
+   "name": "get_alerts",
+   "group": "Kubernetes MCP Server (containers/kubernetes-mcp-server)",
+   "source": "https://raw.githubusercontent.com/containers/kubernetes-mcp-server/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "tempo_list_instances",
+   "group": "Kubernetes MCP Server (containers/kubernetes-mcp-server)",
+   "source": "https://raw.githubusercontent.com/containers/kubernetes-mcp-server/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "tekton_pipelinerun_lifecycle",
+   "group": "Kubernetes MCP Server (containers/kubernetes-mcp-server)",
+   "source": "https://raw.githubusercontent.com/containers/kubernetes-mcp-server/HEAD/README.md",
+   "label": "A",
+   "note": "restarts or cancels a Tekton PipelineRun"
+  },
+  {
+   "name": "aggregate",
+   "group": "MongoDB MCP Server",
+   "source": "https://raw.githubusercontent.com/mongodb-js/mongodb-mcp-server/HEAD/README.md",
+   "label": "R",
+   "note": "\"Run an aggregation against a MongoDB collection\""
+  },
+  {
+   "name": "collection-storage-size",
+   "group": "MongoDB MCP Server",
+   "source": "https://raw.githubusercontent.com/mongodb-js/mongodb-mcp-server/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "create-index",
+   "group": "MongoDB MCP Server",
+   "source": "https://raw.githubusercontent.com/mongodb-js/mongodb-mcp-server/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "drop-collection",
+   "group": "MongoDB MCP Server",
+   "source": "https://raw.githubusercontent.com/mongodb-js/mongodb-mcp-server/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "export",
+   "group": "MongoDB MCP Server",
+   "source": "https://raw.githubusercontent.com/mongodb-js/mongodb-mcp-server/HEAD/README.md",
+   "label": "D",
+   "note": "reads query or aggregation results but saves them as an export resource on the server host"
+  },
+  {
+   "name": "list-connections",
+   "group": "MongoDB MCP Server",
+   "source": "https://raw.githubusercontent.com/mongodb-js/mongodb-mcp-server/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "update-many",
+   "group": "MongoDB MCP Server",
+   "source": "https://raw.githubusercontent.com/mongodb-js/mongodb-mcp-server/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "atlas-create-db-user",
+   "group": "MongoDB MCP Server",
+   "source": "https://raw.githubusercontent.com/mongodb-js/mongodb-mcp-server/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "atlas-get-regions",
+   "group": "MongoDB MCP Server",
+   "source": "https://raw.githubusercontent.com/mongodb-js/mongodb-mcp-server/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "atlas-list-clusters",
+   "group": "MongoDB MCP Server",
+   "source": "https://raw.githubusercontent.com/mongodb-js/mongodb-mcp-server/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "atlas-load-sample-dataset",
+   "group": "MongoDB MCP Server",
+   "source": "https://raw.githubusercontent.com/mongodb-js/mongodb-mcp-server/HEAD/README.md",
+   "label": "A",
+   "note": "loads a sample dataset into an Atlas cluster (can also check a load's status)"
+  },
+  {
+   "name": "atlas-streams-manage",
+   "group": "MongoDB MCP Server",
+   "source": "https://raw.githubusercontent.com/mongodb-js/mongodb-mcp-server/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "atlas-local-create-deployment",
+   "group": "MongoDB MCP Server",
+   "source": "https://raw.githubusercontent.com/mongodb-js/mongodb-mcp-server/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "search-knowledge",
+   "group": "MongoDB MCP Server",
+   "source": "https://raw.githubusercontent.com/mongodb-js/mongodb-mcp-server/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "adme_health_check",
+   "group": "Azure MCP Server",
+   "source": "https://raw.githubusercontent.com/microsoft/mcp/HEAD/servers/Azure.Mcp.Server/docs/e2eTestPrompts.md",
+   "label": "R"
+  },
+  {
+   "name": "applens_resource_diagnose",
+   "group": "Azure MCP Server",
+   "source": "https://raw.githubusercontent.com/microsoft/mcp/HEAD/servers/Azure.Mcp.Server/docs/e2eTestPrompts.md",
+   "label": "R",
+   "note": "diagnoses issues with an app (reads diagnostics)"
+  },
+  {
+   "name": "azurebackup_recoverypoint_get",
+   "group": "Azure MCP Server",
+   "source": "https://raw.githubusercontent.com/microsoft/mcp/HEAD/servers/Azure.Mcp.Server/docs/e2eTestPrompts.md",
+   "label": "R"
+  },
+  {
+   "name": "compute_disk_get",
+   "group": "Azure MCP Server",
+   "source": "https://raw.githubusercontent.com/microsoft/mcp/HEAD/servers/Azure.Mcp.Server/docs/e2eTestPrompts.md",
+   "label": "R"
+  },
+  {
+   "name": "netappfiles_account_get",
+   "group": "Azure MCP Server",
+   "source": "https://raw.githubusercontent.com/microsoft/mcp/HEAD/servers/Azure.Mcp.Server/docs/e2eTestPrompts.md",
+   "label": "R"
+  },
+  {
+   "name": "fileshares_fileshare_get",
+   "group": "Azure MCP Server",
+   "source": "https://raw.githubusercontent.com/microsoft/mcp/HEAD/servers/Azure.Mcp.Server/docs/e2eTestPrompts.md",
+   "label": "R"
+  },
+  {
+   "name": "keyvault_certificate_import",
+   "group": "Azure MCP Server",
+   "source": "https://raw.githubusercontent.com/microsoft/mcp/HEAD/servers/Azure.Mcp.Server/docs/e2eTestPrompts.md",
+   "label": "A"
+  },
+  {
+   "name": "managedlustre_fs_list",
+   "group": "Azure MCP Server",
+   "source": "https://raw.githubusercontent.com/microsoft/mcp/HEAD/servers/Azure.Mcp.Server/docs/e2eTestPrompts.md",
+   "label": "R"
+  },
+  {
+   "name": "monitor_traces_query_analyze-top-attributes",
+   "group": "Azure MCP Server",
+   "source": "https://raw.githubusercontent.com/microsoft/mcp/HEAD/servers/Azure.Mcp.Server/docs/e2eTestPrompts.md",
+   "label": "R"
+  },
+  {
+   "name": "resiliency_drill_run_mark-complete",
+   "group": "Azure MCP Server",
+   "source": "https://raw.githubusercontent.com/microsoft/mcp/HEAD/servers/Azure.Mcp.Server/docs/e2eTestPrompts.md",
+   "label": "A",
+   "note": "marks a stage of a drill run as complete"
+  },
+  {
+   "name": "resiliency_usageplan_delete",
+   "group": "Azure MCP Server",
+   "source": "https://raw.githubusercontent.com/microsoft/mcp/HEAD/servers/Azure.Mcp.Server/docs/e2eTestPrompts.md",
+   "label": "A"
+  },
+  {
+   "name": "sql_server_create",
+   "group": "Azure MCP Server",
+   "source": "https://raw.githubusercontent.com/microsoft/mcp/HEAD/servers/Azure.Mcp.Server/docs/e2eTestPrompts.md",
+   "label": "A"
+  },
+  {
+   "name": "sreagent_threads_get",
+   "group": "Azure MCP Server",
+   "source": "https://raw.githubusercontent.com/microsoft/mcp/HEAD/servers/Azure.Mcp.Server/docs/e2eTestPrompts.md",
+   "label": "R"
+  },
+  {
+   "name": "sreagent_commonprompts_create",
+   "group": "Azure MCP Server",
+   "source": "https://raw.githubusercontent.com/microsoft/mcp/HEAD/servers/Azure.Mcp.Server/docs/e2eTestPrompts.md",
+   "label": "A"
+  },
+  {
+   "name": "azureterraformbestpractices_get",
+   "group": "Azure MCP Server",
+   "source": "https://raw.githubusercontent.com/microsoft/mcp/HEAD/servers/Azure.Mcp.Server/docs/e2eTestPrompts.md",
+   "label": "R"
+  },
+  {
+   "name": "get_version",
+   "group": "Home Assistant (voska/hass-mcp)",
+   "source": "https://raw.githubusercontent.com/voska/hass-mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "entity_action",
+   "group": "Home Assistant (voska/hass-mcp)",
+   "source": "https://raw.githubusercontent.com/voska/hass-mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "search_entities_tool",
+   "group": "Home Assistant (voska/hass-mcp)",
+   "source": "https://raw.githubusercontent.com/voska/hass-mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "list_automations",
+   "group": "Home Assistant (voska/hass-mcp)",
+   "source": "https://raw.githubusercontent.com/voska/hass-mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "restart_ha",
+   "group": "Home Assistant (voska/hass-mcp)",
+   "source": "https://raw.githubusercontent.com/voska/hass-mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "get_history_range",
+   "group": "Home Assistant (voska/hass-mcp)",
+   "source": "https://raw.githubusercontent.com/voska/hass-mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "get_statistics_range",
+   "group": "Home Assistant (voska/hass-mcp)",
+   "source": "https://raw.githubusercontent.com/voska/hass-mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "get_entities_by_area",
+   "group": "Home Assistant (voska/hass-mcp)",
+   "source": "https://raw.githubusercontent.com/voska/hass-mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "get_dashboard_config",
+   "group": "Home Assistant (voska/hass-mcp)",
+   "source": "https://raw.githubusercontent.com/voska/hass-mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "add_card",
+   "group": "Home Assistant (voska/hass-mcp)",
+   "source": "https://raw.githubusercontent.com/voska/hass-mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "remove_card",
+   "group": "Home Assistant (voska/hass-mcp)",
+   "source": "https://raw.githubusercontent.com/voska/hass-mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "list_view_sections",
+   "group": "Home Assistant (voska/hass-mcp)",
+   "source": "https://raw.githubusercontent.com/voska/hass-mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "remove_view",
+   "group": "Home Assistant (voska/hass-mcp)",
+   "source": "https://raw.githubusercontent.com/voska/hass-mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "list_dashboard_backups",
+   "group": "Home Assistant (voska/hass-mcp)",
+   "source": "https://raw.githubusercontent.com/voska/hass-mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "create_aura_blueprint_draft",
+   "group": "Salesforce DX MCP Server",
+   "source": "https://raw.githubusercontent.com/salesforcecli/mcp/HEAD/README.md",
+   "label": "D",
+   "note": "\"Creates a comprehensive PRD blueprint ... generates specifications\": the README does not say whether it writes a file or only returns text"
+  },
+  {
+   "name": "list_code_analyzer_rules",
+   "group": "Salesforce DX MCP Server",
+   "source": "https://raw.githubusercontent.com/salesforcecli/mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "check_devops_center_commit_status",
+   "group": "Salesforce DX MCP Server",
+   "source": "https://raw.githubusercontent.com/salesforcecli/mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "list_devops_center_work_items",
+   "group": "Salesforce DX MCP Server",
+   "source": "https://raw.githubusercontent.com/salesforcecli/mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "enrich_metadata",
+   "group": "Salesforce DX MCP Server",
+   "source": "https://raw.githubusercontent.com/salesforcecli/mcp/HEAD/README.md",
+   "label": "A",
+   "note": "\"Enrich metadata from your org in your DX project\": modifies metadata components in the local project"
+  },
+  {
+   "name": "guide_design_general",
+   "group": "Salesforce DX MCP Server",
+   "source": "https://raw.githubusercontent.com/salesforcecli/mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "guide_slds_blueprints",
+   "group": "Salesforce DX MCP Server",
+   "source": "https://raw.githubusercontent.com/salesforcecli/mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "explore_lbc_components",
+   "group": "Salesforce DX MCP Server",
+   "source": "https://raw.githubusercontent.com/salesforcecli/mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "guide_lds_development",
+   "group": "Salesforce DX MCP Server",
+   "source": "https://raw.githubusercontent.com/salesforcecli/mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "guide_lo_migration",
+   "group": "Salesforce DX MCP Server",
+   "source": "https://raw.githubusercontent.com/salesforcecli/mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "validate_and_optimize",
+   "group": "Salesforce DX MCP Server",
+   "source": "https://raw.githubusercontent.com/salesforcecli/mcp/HEAD/README.md",
+   "label": "R",
+   "note": "\"Returns a validation runbook that instructs the agent\": it returns instructions, it does not run or change anything itself"
+  },
+  {
+   "name": "create_mobile_lwc_barcode_scanner",
+   "group": "Salesforce DX MCP Server",
+   "source": "https://raw.githubusercontent.com/salesforcecli/mcp/HEAD/README.md",
+   "label": "R",
+   "note": "\"Provides TypeScript API documentation ... offering expert guidance\": returns documentation, creates nothing"
+  },
+  {
+   "name": "create_mobile_lwc_location",
+   "group": "Salesforce DX MCP Server",
+   "source": "https://raw.githubusercontent.com/salesforcecli/mcp/HEAD/README.md",
+   "label": "R",
+   "note": "\"Provides TypeScript API documentation ... offering expert guidance\": returns documentation, creates nothing"
+  },
+  {
+   "name": "delete_org",
+   "group": "Salesforce DX MCP Server",
+   "source": "https://raw.githubusercontent.com/salesforcecli/mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "assign_permission_set",
+   "group": "Salesforce DX MCP Server",
+   "source": "https://raw.githubusercontent.com/salesforcecli/mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "get_server_info",
+   "group": "Discord MCP (SaseQ/discord-mcp)",
+   "source": "https://raw.githubusercontent.com/SaseQ/discord-mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "delete_private_message",
+   "group": "Discord MCP (SaseQ/discord-mcp)",
+   "source": "https://raw.githubusercontent.com/SaseQ/discord-mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "search_messages",
+   "group": "Discord MCP (SaseQ/discord-mcp)",
+   "source": "https://raw.githubusercontent.com/SaseQ/discord-mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "edit_text_channel",
+   "group": "Discord MCP (SaseQ/discord-mcp)",
+   "source": "https://raw.githubusercontent.com/SaseQ/discord-mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "create_category",
+   "group": "Discord MCP (SaseQ/discord-mcp)",
+   "source": "https://raw.githubusercontent.com/SaseQ/discord-mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "delete_webhook",
+   "group": "Discord MCP (SaseQ/discord-mcp)",
+   "source": "https://raw.githubusercontent.com/SaseQ/discord-mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "delete_role",
+   "group": "Discord MCP (SaseQ/discord-mcp)",
+   "source": "https://raw.githubusercontent.com/SaseQ/discord-mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "timeout_member",
+   "group": "Discord MCP (SaseQ/discord-mcp)",
+   "source": "https://raw.githubusercontent.com/SaseQ/discord-mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "edit_voice_channel",
+   "group": "Discord MCP (SaseQ/discord-mcp)",
+   "source": "https://raw.githubusercontent.com/SaseQ/discord-mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "delete_guild_scheduled_event",
+   "group": "Discord MCP (SaseQ/discord-mcp)",
+   "source": "https://raw.githubusercontent.com/SaseQ/discord-mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "delete_channel_permission_overwrite",
+   "group": "Discord MCP (SaseQ/discord-mcp)",
+   "source": "https://raw.githubusercontent.com/SaseQ/discord-mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "list_threads",
+   "group": "Discord MCP (SaseQ/discord-mcp)",
+   "source": "https://raw.githubusercontent.com/SaseQ/discord-mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "list_forum_tags",
+   "group": "Discord MCP (SaseQ/discord-mcp)",
+   "source": "https://raw.githubusercontent.com/SaseQ/discord-mcp/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "create_emoji",
+   "group": "Discord MCP (SaseQ/discord-mcp)",
+   "source": "https://raw.githubusercontent.com/SaseQ/discord-mcp/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "run_shell_command",
+   "group": "Gemini CLI built-in tools",
+   "source": "https://raw.githubusercontent.com/google-gemini/gemini-cli/HEAD/docs/reference/tools.md",
+   "label": "A"
+  },
+  {
+   "name": "grep_search",
+   "group": "Gemini CLI built-in tools",
+   "source": "https://raw.githubusercontent.com/google-gemini/gemini-cli/HEAD/docs/reference/tools.md",
+   "label": "R"
+  },
+  {
+   "name": "replace",
+   "group": "Gemini CLI built-in tools",
+   "source": "https://raw.githubusercontent.com/google-gemini/gemini-cli/HEAD/docs/reference/tools.md",
+   "label": "A",
+   "note": "\"Performs precise text replacement within a file\""
+  },
+  {
+   "name": "write_todos",
+   "group": "Gemini CLI built-in tools",
+   "source": "https://raw.githubusercontent.com/google-gemini/gemini-cli/HEAD/docs/reference/tools.md",
+   "label": "D",
+   "note": "maintains the agent's own internal list of subtasks; nothing outside the session changes"
+  },
+  {
+   "name": "tracker_update_task",
+   "group": "Gemini CLI built-in tools",
+   "source": "https://raw.githubusercontent.com/google-gemini/gemini-cli/HEAD/docs/reference/tools.md",
+   "label": "D",
+   "note": "updates a task in the CLI's internal task tracker; agent-internal state"
+  },
+  {
+   "name": "tracker_list_tasks",
+   "group": "Gemini CLI built-in tools",
+   "source": "https://raw.githubusercontent.com/google-gemini/gemini-cli/HEAD/docs/reference/tools.md",
+   "label": "R"
+  },
+  {
+   "name": "tracker_visualize",
+   "group": "Gemini CLI built-in tools",
+   "source": "https://raw.githubusercontent.com/google-gemini/gemini-cli/HEAD/docs/reference/tools.md",
+   "label": "R"
+  },
+  {
+   "name": "read_mcp_resource",
+   "group": "Gemini CLI built-in tools",
+   "source": "https://raw.githubusercontent.com/google-gemini/gemini-cli/HEAD/docs/reference/tools.md",
+   "label": "R"
+  },
+  {
+   "name": "get_internal_docs",
+   "group": "Gemini CLI built-in tools",
+   "source": "https://raw.githubusercontent.com/google-gemini/gemini-cli/HEAD/docs/reference/tools.md",
+   "label": "R"
+  },
+  {
+   "name": "exit_plan_mode",
+   "group": "Gemini CLI built-in tools",
+   "source": "https://raw.githubusercontent.com/google-gemini/gemini-cli/HEAD/docs/reference/tools.md",
+   "label": "D",
+   "note": "finalizes a plan, presents it for review and requests approval; changes the CLI's own mode, not the world"
+  },
+  {
+   "name": "update_topic",
+   "group": "Gemini CLI built-in tools",
+   "source": "https://raw.githubusercontent.com/google-gemini/gemini-cli/HEAD/docs/reference/tools.md",
+   "label": "D",
+   "note": "updates the topic and status shown to the user; agent-internal display state"
+  },
+  {
+   "name": "get_addon_status",
+   "group": "Blender MCP (ahujasid/blender-mcp)",
+   "source": "https://raw.githubusercontent.com/ahujasid/blender-mcp/HEAD/src/blender_mcp/server.py",
+   "label": "R"
+  },
+  {
+   "name": "disable_telemetry",
+   "group": "Blender MCP (ahujasid/blender-mcp)",
+   "source": "https://raw.githubusercontent.com/ahujasid/blender-mcp/HEAD/src/blender_mcp/server.py",
+   "label": "A",
+   "note": "\"Turn OFF collection of prompts, code, screenshots and scene data\": changes a setting"
+  },
+  {
+   "name": "get_scene_info",
+   "group": "Blender MCP (ahujasid/blender-mcp)",
+   "source": "https://raw.githubusercontent.com/ahujasid/blender-mcp/HEAD/src/blender_mcp/server.py",
+   "label": "R"
+  },
+  {
+   "name": "execute_blender_code",
+   "group": "Blender MCP (ahujasid/blender-mcp)",
+   "source": "https://raw.githubusercontent.com/ahujasid/blender-mcp/HEAD/src/blender_mcp/server.py",
+   "label": "A"
+  },
+  {
+   "name": "record_trajectory_feedback",
+   "group": "Blender MCP (ahujasid/blender-mcp)",
+   "source": "https://raw.githubusercontent.com/ahujasid/blender-mcp/HEAD/src/blender_mcp/server.py",
+   "label": "A",
+   "note": "records evaluation feedback for a captured step (writes a record)"
+  },
+  {
+   "name": "look",
+   "group": "Blender MCP (ahujasid/blender-mcp)",
+   "source": "https://raw.githubusercontent.com/ahujasid/blender-mcp/HEAD/src/blender_mcp/server.py",
+   "label": "R",
+   "note": "\"See the scene as one image\""
+  },
+  {
+   "name": "generate_3d",
+   "group": "Blender MCP (ahujasid/blender-mcp)",
+   "source": "https://raw.githubusercontent.com/ahujasid/blender-mcp/HEAD/src/blender_mcp/server.py",
+   "label": "A",
+   "note": "makes a new 3D model and imports it into the scene"
+  },
+  {
+   "name": "search_assets",
+   "group": "Blender MCP (ahujasid/blender-mcp)",
+   "source": "https://raw.githubusercontent.com/ahujasid/blender-mcp/HEAD/src/blender_mcp/server.py",
+   "label": "R"
+  },
+  {
+   "name": "import_asset",
+   "group": "Blender MCP (ahujasid/blender-mcp)",
+   "source": "https://raw.githubusercontent.com/ahujasid/blender-mcp/HEAD/src/blender_mcp/server.py",
+   "label": "A"
+  },
+  {
+   "name": "list_files",
+   "group": "Roo Code built-in tools",
+   "source": "https://raw.githubusercontent.com/RooCodeInc/Roo-Code-Docs/HEAD/docs/advanced-usage/available-tools/tool-use-overview.md",
+   "label": "R"
+  },
+  {
+   "name": "codebase_search",
+   "group": "Roo Code built-in tools",
+   "source": "https://raw.githubusercontent.com/RooCodeInc/Roo-Code-Docs/HEAD/docs/advanced-usage/available-tools/tool-use-overview.md",
+   "label": "R"
+  },
+  {
+   "name": "edit",
+   "group": "Roo Code built-in tools",
+   "source": "https://raw.githubusercontent.com/RooCodeInc/Roo-Code-Docs/HEAD/docs/advanced-usage/available-tools/tool-use-overview.md",
+   "label": "A",
+   "note": "\"Search-and-replace editing\" of files"
+  },
+  {
+   "name": "write_to_file",
+   "group": "Roo Code built-in tools",
+   "source": "https://raw.githubusercontent.com/RooCodeInc/Roo-Code-Docs/HEAD/docs/advanced-usage/available-tools/tool-use-overview.md",
+   "label": "A"
+  },
+  {
+   "name": "execute_command",
+   "group": "Roo Code built-in tools",
+   "source": "https://raw.githubusercontent.com/RooCodeInc/Roo-Code-Docs/HEAD/docs/advanced-usage/available-tools/tool-use-overview.md",
+   "label": "A"
+  },
+  {
+   "name": "use_mcp_tool",
+   "group": "Roo Code built-in tools",
+   "source": "https://raw.githubusercontent.com/RooCodeInc/Roo-Code-Docs/HEAD/docs/advanced-usage/available-tools/tool-use-overview.md",
+   "label": "D",
+   "note": "\"Uses specialized external tools\": acts or reads depending on the MCP tool it calls"
+  },
+  {
+   "name": "ask_followup_question",
+   "group": "Roo Code built-in tools",
+   "source": "https://raw.githubusercontent.com/RooCodeInc/Roo-Code-Docs/HEAD/docs/advanced-usage/available-tools/tool-use-overview.md",
+   "label": "R",
+   "note": "asks the user and returns the answer; nothing outside the conversation changes"
+  },
+  {
+   "name": "switch_mode",
+   "group": "Roo Code built-in tools",
+   "source": "https://raw.githubusercontent.com/RooCodeInc/Roo-Code-Docs/HEAD/docs/advanced-usage/available-tools/tool-use-overview.md",
+   "label": "D",
+   "note": "changes the agent's own mode; nothing outside the session changes"
+  },
+  {
+   "name": "update_todo_list",
+   "group": "Roo Code built-in tools",
+   "source": "https://raw.githubusercontent.com/RooCodeInc/Roo-Code-Docs/HEAD/docs/advanced-usage/available-tools/tool-use-overview.md",
+   "label": "D",
+   "note": "updates the agent's own task checklist; agent-internal state"
+  },
+  {
+   "name": "write",
+   "group": "Goose developer extension",
+   "source": "https://raw.githubusercontent.com/block/goose/HEAD/documentation/docs/mcp/developer-mcp.md",
+   "label": "A",
+   "note": "\"Create or overwrite files\""
+  },
+  {
+   "name": "tree",
+   "group": "Goose developer extension",
+   "source": "https://raw.githubusercontent.com/block/goose/HEAD/documentation/docs/mcp/developer-mcp.md",
+   "label": "R",
+   "note": "\"List directory trees with line counts\""
+  },
+  {
+   "name": "read_image",
+   "group": "Goose developer extension",
+   "source": "https://raw.githubusercontent.com/block/goose/HEAD/documentation/docs/mcp/developer-mcp.md",
+   "label": "R"
+  },
+  {
+   "name": "manage_eks_stacks",
+   "group": "AWS EKS MCP Server (awslabs)",
+   "source": "https://raw.githubusercontent.com/awslabs/mcp/HEAD/src/eks-mcp-server/README.md",
+   "label": "A",
+   "note": "generates, deploys, describes and deletes EKS CloudFormation stacks"
+  },
+  {
+   "name": "apply_yaml",
+   "group": "AWS EKS MCP Server (awslabs)",
+   "source": "https://raw.githubusercontent.com/awslabs/mcp/HEAD/src/eks-mcp-server/README.md",
+   "label": "A"
+  },
+  {
+   "name": "list_api_versions",
+   "group": "AWS EKS MCP Server (awslabs)",
+   "source": "https://raw.githubusercontent.com/awslabs/mcp/HEAD/src/eks-mcp-server/README.md",
+   "label": "R"
+  },
+  {
+   "name": "get_pod_logs",
+   "group": "AWS EKS MCP Server (awslabs)",
+   "source": "https://raw.githubusercontent.com/awslabs/mcp/HEAD/src/eks-mcp-server/README.md",
+   "label": "R"
+  },
+  {
+   "name": "get_eks_vpc_config",
+   "group": "AWS EKS MCP Server (awslabs)",
+   "source": "https://raw.githubusercontent.com/awslabs/mcp/HEAD/src/eks-mcp-server/README.md",
+   "label": "R"
+  },
+  {
+   "name": "get_cloudwatch_metrics",
+   "group": "AWS EKS MCP Server (awslabs)",
+   "source": "https://raw.githubusercontent.com/awslabs/mcp/HEAD/src/eks-mcp-server/README.md",
+   "label": "R"
+  },
+  {
+   "name": "get_policies_for_role",
+   "group": "AWS EKS MCP Server (awslabs)",
+   "source": "https://raw.githubusercontent.com/awslabs/mcp/HEAD/src/eks-mcp-server/README.md",
+   "label": "R"
+  },
+  {
+   "name": "search_eks_troubleshoot_guide",
+   "group": "AWS EKS MCP Server (awslabs)",
+   "source": "https://raw.githubusercontent.com/awslabs/mcp/HEAD/src/eks-mcp-server/README.md",
+   "label": "R"
+  },
+  {
+   "name": "hubspot-get-user-details",
+   "group": "HubSpot MCP Server (@hubspot/mcp-server)",
+   "source": "https://registry.npmjs.org/@hubspot/mcp-server",
+   "label": "R"
+  },
+  {
+   "name": "hubspot-search-objects",
+   "group": "HubSpot MCP Server (@hubspot/mcp-server)",
+   "source": "https://registry.npmjs.org/@hubspot/mcp-server",
+   "label": "R"
+  },
+  {
+   "name": "hubspot-batch-update-objects",
+   "group": "HubSpot MCP Server (@hubspot/mcp-server)",
+   "source": "https://registry.npmjs.org/@hubspot/mcp-server",
+   "label": "A"
+  },
+  {
+   "name": "hubspot-get-schemas",
+   "group": "HubSpot MCP Server (@hubspot/mcp-server)",
+   "source": "https://registry.npmjs.org/@hubspot/mcp-server",
+   "label": "R"
+  },
+  {
+   "name": "hubspot-get-property",
+   "group": "HubSpot MCP Server (@hubspot/mcp-server)",
+   "source": "https://registry.npmjs.org/@hubspot/mcp-server",
+   "label": "R"
+  },
+  {
+   "name": "hubspot-update-property",
+   "group": "HubSpot MCP Server (@hubspot/mcp-server)",
+   "source": "https://registry.npmjs.org/@hubspot/mcp-server",
+   "label": "A"
+  },
+  {
+   "name": "hubspot-list-associations",
+   "group": "HubSpot MCP Server (@hubspot/mcp-server)",
+   "source": "https://registry.npmjs.org/@hubspot/mcp-server",
+   "label": "R"
+  },
+  {
+   "name": "hubspot-create-engagement",
+   "group": "HubSpot MCP Server (@hubspot/mcp-server)",
+   "source": "https://registry.npmjs.org/@hubspot/mcp-server",
+   "label": "A"
+  },
+  {
+   "name": "hubspot-update-engagement",
+   "group": "HubSpot MCP Server (@hubspot/mcp-server)",
+   "source": "https://registry.npmjs.org/@hubspot/mcp-server",
+   "label": "A"
+  },
+  {
+   "name": "hubspot-get-workflow",
+   "group": "HubSpot MCP Server (@hubspot/mcp-server)",
+   "source": "https://registry.npmjs.org/@hubspot/mcp-server",
+   "label": "R"
+  },
+  {
+   "name": "hubspot-get-link",
+   "group": "HubSpot MCP Server (@hubspot/mcp-server)",
+   "source": "https://registry.npmjs.org/@hubspot/mcp-server",
+   "label": "R",
+   "note": "\"Generates HubSpot UI URLs to directly access records\": computes a link, changes nothing"
+  },
+  {
+   "name": "auth.clear",
+   "group": "Google Workspace extension for Gemini CLI",
+   "source": "https://raw.githubusercontent.com/gemini-cli-extensions/workspace/HEAD/docs/index.md",
+   "label": "A",
+   "note": "clears the stored credentials, forcing a re-login"
+  },
+  {
+   "name": "docs.getComments",
+   "group": "Google Workspace extension for Gemini CLI",
+   "source": "https://raw.githubusercontent.com/gemini-cli-extensions/workspace/HEAD/docs/index.md",
+   "label": "R"
+  },
+  {
+   "name": "docs.formatText",
+   "group": "Google Workspace extension for Gemini CLI",
+   "source": "https://raw.githubusercontent.com/gemini-cli-extensions/workspace/HEAD/docs/index.md",
+   "label": "A"
+  },
+  {
+   "name": "slides.getSlideThumbnail",
+   "group": "Google Workspace extension for Gemini CLI",
+   "source": "https://raw.githubusercontent.com/gemini-cli-extensions/workspace/HEAD/docs/index.md",
+   "label": "D",
+   "note": "downloads a thumbnail \"to a local path\": a read from Slides that writes a local file"
+  },
+  {
+   "name": "drive.search",
+   "group": "Google Workspace extension for Gemini CLI",
+   "source": "https://raw.githubusercontent.com/gemini-cli-extensions/workspace/HEAD/docs/index.md",
+   "label": "R"
+  },
+  {
+   "name": "drive.trashFile",
+   "group": "Google Workspace extension for Gemini CLI",
+   "source": "https://raw.githubusercontent.com/gemini-cli-extensions/workspace/HEAD/docs/index.md",
+   "label": "A"
+  },
+  {
+   "name": "calendar.listEvents",
+   "group": "Google Workspace extension for Gemini CLI",
+   "source": "https://raw.githubusercontent.com/gemini-cli-extensions/workspace/HEAD/docs/index.md",
+   "label": "R"
+  },
+  {
+   "name": "calendar.respondToEvent",
+   "group": "Google Workspace extension for Gemini CLI",
+   "source": "https://raw.githubusercontent.com/gemini-cli-extensions/workspace/HEAD/docs/index.md",
+   "label": "A"
+  },
+  {
+   "name": "chat.sendMessage",
+   "group": "Google Workspace extension for Gemini CLI",
+   "source": "https://raw.githubusercontent.com/gemini-cli-extensions/workspace/HEAD/docs/index.md",
+   "label": "A"
+  },
+  {
+   "name": "chat.listThreads",
+   "group": "Google Workspace extension for Gemini CLI",
+   "source": "https://raw.githubusercontent.com/gemini-cli-extensions/workspace/HEAD/docs/index.md",
+   "label": "R"
+  },
+  {
+   "name": "gmail.downloadAttachment",
+   "group": "Google Workspace extension for Gemini CLI",
+   "source": "https://raw.githubusercontent.com/gemini-cli-extensions/workspace/HEAD/docs/index.md",
+   "label": "D",
+   "note": "downloads an attachment \"to a local file\": a read from Gmail that writes a local file"
+  },
+  {
+   "name": "gmail.send",
+   "group": "Google Workspace extension for Gemini CLI",
+   "source": "https://raw.githubusercontent.com/gemini-cli-extensions/workspace/HEAD/docs/index.md",
+   "label": "A"
+  },
+  {
+   "name": "gmail.createLabel",
+   "group": "Google Workspace extension for Gemini CLI",
+   "source": "https://raw.githubusercontent.com/gemini-cli-extensions/workspace/HEAD/docs/index.md",
+   "label": "A"
+  },
+  {
+   "name": "people.getUserProfile",
+   "group": "Google Workspace extension for Gemini CLI",
+   "source": "https://raw.githubusercontent.com/gemini-cli-extensions/workspace/HEAD/docs/index.md",
+   "label": "R"
+  },
+  {
+   "name": "list_extensions",
+   "group": "Supabase MCP Server",
+   "source": "https://supabase.com/mcp",
+   "label": "R"
+  },
+  {
+   "name": "execute_sql",
+   "group": "Supabase MCP Server",
+   "source": "https://supabase.com/mcp",
+   "label": "D",
+   "note": "\"Execute SQL queries\": reads or writes depending on the statement"
+  },
+  {
+   "name": "get_project_url",
+   "group": "Supabase MCP Server",
+   "source": "https://supabase.com/mcp",
+   "label": "R"
+  },
+  {
+   "name": "list_edge_functions",
+   "group": "Supabase MCP Server",
+   "source": "https://supabase.com/mcp",
+   "label": "R"
+  },
+  {
+   "name": "create_edge_function_secret",
+   "group": "Supabase MCP Server",
+   "source": "https://supabase.com/mcp",
+   "label": "A",
+   "note": "requests entry of a new secret in the Supabase Dashboard"
+  },
+  {
+   "name": "create_project",
+   "group": "Supabase MCP Server",
+   "source": "https://supabase.com/mcp",
+   "label": "A"
+  },
+  {
+   "name": "list_organizations",
+   "group": "Supabase MCP Server",
+   "source": "https://supabase.com/mcp",
+   "label": "R"
+  },
+  {
+   "name": "confirm_cost",
+   "group": "Supabase MCP Server",
+   "source": "https://supabase.com/mcp",
+   "label": "R",
+   "note": "page describes get_cost / confirm_cost together as \"Cost information for tools that use the legacy cost confirmation workflow\""
+  },
+  {
+   "name": "delete_branch",
+   "group": "Supabase MCP Server",
+   "source": "https://supabase.com/mcp",
+   "label": "A"
+  },
+  {
+   "name": "rebase_branch",
+   "group": "Supabase MCP Server",
+   "source": "https://supabase.com/mcp",
+   "label": "A"
+  },
+  {
+   "name": "list_storage_buckets",
+   "group": "Supabase MCP Server",
+   "source": "https://supabase.com/mcp",
+   "label": "R"
+  },
+  {
+   "name": "list_notebooks",
+   "group": "Supabase MCP Server",
+   "source": "https://supabase.com/mcp",
+   "label": "R"
+  },
+  {
+   "name": "run_notebook",
+   "group": "Supabase MCP Server",
+   "source": "https://supabase.com/mcp",
+   "label": "D",
+   "note": "runs query cells in a notebook; the page says cells may modify data or schema"
+  },
+  {
+   "name": "copy_file",
+   "group": "LangChain community tools",
+   "source": "https://raw.githubusercontent.com/langchain-ai/langchain-community/HEAD/libs/community/langchain_community/tools/file_management/copy.py",
+   "label": "A"
+  },
+  {
+   "name": "send_gmail_message",
+   "group": "LangChain community tools",
+   "source": "https://raw.githubusercontent.com/langchain-ai/langchain-community/HEAD/libs/community/langchain_community/tools/gmail/send_message.py",
+   "label": "A"
+  },
+  {
+   "name": "get_gmail_thread",
+   "group": "LangChain community tools",
+   "source": "https://raw.githubusercontent.com/langchain-ai/langchain-community/HEAD/libs/community/langchain_community/tools/gmail/get_thread.py",
+   "label": "R"
+  },
+  {
+   "name": "schedule_message",
+   "group": "LangChain community tools",
+   "source": "https://raw.githubusercontent.com/langchain-ai/langchain-community/HEAD/libs/community/langchain_community/tools/slack/schedule_message.py",
+   "label": "A",
+   "note": "schedules a Slack message to be sent at a set date and time"
+  },
+  {
+   "name": "requests_post",
+   "group": "LangChain community tools",
+   "source": "https://raw.githubusercontent.com/langchain-ai/langchain-community/HEAD/libs/community/langchain_community/tools/requests/tool.py",
+   "label": "A",
+   "note": "\"Use this when you want to POST to a website\""
+  },
+  {
+   "name": "requests_delete",
+   "group": "LangChain community tools",
+   "source": "https://raw.githubusercontent.com/langchain-ai/langchain-community/HEAD/libs/community/langchain_community/tools/requests/tool.py",
+   "label": "A",
+   "note": "makes a DELETE request to a URL"
+  },
+  {
+   "name": "navigate_browser",
+   "group": "LangChain community tools",
+   "source": "https://raw.githubusercontent.com/langchain-ai/langchain-community/HEAD/libs/community/langchain_community/tools/playwright/navigate.py",
+   "label": "D",
+   "note": "\"Navigate a browser to the specified URL\": browser navigation, which loads a page to read it but also moves the browser's state"
+  },
+  {
+   "name": "extract_hyperlinks",
+   "group": "LangChain community tools",
+   "source": "https://raw.githubusercontent.com/langchain-ai/langchain-community/HEAD/libs/community/langchain_community/tools/playwright/extract_hyperlinks.py",
+   "label": "R"
+  },
+  {
+   "name": "sql_db_query",
+   "group": "LangChain community tools",
+   "source": "https://raw.githubusercontent.com/langchain-ai/langchain-community/HEAD/libs/community/langchain_community/tools/sql_database/tool.py",
+   "label": "D",
+   "note": "\"Execute a SQL query against the database and get back the result\": reads or writes depending on the statement"
+  },
+  {
+   "name": "sql_db_query_checker",
+   "group": "LangChain community tools",
+   "source": "https://raw.githubusercontent.com/langchain-ai/langchain-community/HEAD/libs/community/langchain_community/tools/sql_database/tool.py",
+   "label": "R",
+   "note": "double-checks a query's correctness before it is run; executes nothing"
+  },
+  {
+   "name": "send_event",
+   "group": "LangChain community tools",
+   "source": "https://raw.githubusercontent.com/langchain-ai/langchain-community/HEAD/libs/community/langchain_community/tools/office365/send_event.py",
+   "label": "A",
+   "note": "creates and sends a calendar event"
+  },
+  {
+   "name": "json_spec_list_keys",
+   "group": "LangChain community tools",
+   "source": "https://raw.githubusercontent.com/langchain-ai/langchain-community/HEAD/libs/community/langchain_community/tools/json/tool.py",
+   "label": "R"
+  },
+  {
+   "name": "human",
+   "group": "LangChain community tools",
+   "source": "https://raw.githubusercontent.com/langchain-ai/langchain-community/HEAD/libs/community/langchain_community/tools/human/tool.py",
+   "label": "R",
+   "note": "asks a human for guidance and returns the reply; nothing outside the conversation changes"
+  },
+  {
+   "name": "jira_search",
+   "group": "MCP Atlassian (sooperset/mcp-atlassian)",
+   "source": "https://raw.githubusercontent.com/sooperset/mcp-atlassian/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "jira_get_issue",
+   "group": "MCP Atlassian (sooperset/mcp-atlassian)",
+   "source": "https://raw.githubusercontent.com/sooperset/mcp-atlassian/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "jira_create_issue",
+   "group": "MCP Atlassian (sooperset/mcp-atlassian)",
+   "source": "https://raw.githubusercontent.com/sooperset/mcp-atlassian/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "jira_update_issue",
+   "group": "MCP Atlassian (sooperset/mcp-atlassian)",
+   "source": "https://raw.githubusercontent.com/sooperset/mcp-atlassian/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "jira_transition_issue",
+   "group": "MCP Atlassian (sooperset/mcp-atlassian)",
+   "source": "https://raw.githubusercontent.com/sooperset/mcp-atlassian/HEAD/README.md",
+   "label": "A",
+   "note": "\"Change status\" of an issue"
+  },
+  {
+   "name": "confluence_search",
+   "group": "MCP Atlassian (sooperset/mcp-atlassian)",
+   "source": "https://raw.githubusercontent.com/sooperset/mcp-atlassian/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "confluence_get_page",
+   "group": "MCP Atlassian (sooperset/mcp-atlassian)",
+   "source": "https://raw.githubusercontent.com/sooperset/mcp-atlassian/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "confluence_create_page",
+   "group": "MCP Atlassian (sooperset/mcp-atlassian)",
+   "source": "https://raw.githubusercontent.com/sooperset/mcp-atlassian/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "confluence_update_page",
+   "group": "MCP Atlassian (sooperset/mcp-atlassian)",
+   "source": "https://raw.githubusercontent.com/sooperset/mcp-atlassian/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "confluence_add_comment",
+   "group": "MCP Atlassian (sooperset/mcp-atlassian)",
+   "source": "https://raw.githubusercontent.com/sooperset/mcp-atlassian/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "kubectl_get",
+   "group": "Kubernetes MCP (Flux159/mcp-server-kubernetes)",
+   "source": "https://raw.githubusercontent.com/Flux159/mcp-server-kubernetes/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "kubectl_create",
+   "group": "Kubernetes MCP (Flux159/mcp-server-kubernetes)",
+   "source": "https://raw.githubusercontent.com/Flux159/mcp-server-kubernetes/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "kubectl_delete",
+   "group": "Kubernetes MCP (Flux159/mcp-server-kubernetes)",
+   "source": "https://raw.githubusercontent.com/Flux159/mcp-server-kubernetes/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "kubectl_context",
+   "group": "Kubernetes MCP (Flux159/mcp-server-kubernetes)",
+   "source": "https://raw.githubusercontent.com/Flux159/mcp-server-kubernetes/HEAD/README.md",
+   "label": "D",
+   "note": "\"Manage kubectl contexts\": lists, reads or switches the active context depending on arguments"
+  },
+  {
+   "name": "list_api_resources",
+   "group": "Kubernetes MCP (Flux159/mcp-server-kubernetes)",
+   "source": "https://raw.githubusercontent.com/Flux159/mcp-server-kubernetes/HEAD/README.md",
+   "label": "R"
+  },
+  {
+   "name": "kubectl_patch",
+   "group": "Kubernetes MCP (Flux159/mcp-server-kubernetes)",
+   "source": "https://raw.githubusercontent.com/Flux159/mcp-server-kubernetes/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "kubectl_generic",
+   "group": "Kubernetes MCP (Flux159/mcp-server-kubernetes)",
+   "source": "https://raw.githubusercontent.com/Flux159/mcp-server-kubernetes/HEAD/README.md",
+   "label": "A",
+   "note": "\"Execute any kubectl command\"; the README says it may include destructive operations"
+  },
+  {
+   "name": "port_forward",
+   "group": "Kubernetes MCP (Flux159/mcp-server-kubernetes)",
+   "source": "https://raw.githubusercontent.com/Flux159/mcp-server-kubernetes/HEAD/README.md",
+   "label": "A",
+   "note": "starts a port-forward to a pod or service"
+  },
+  {
+   "name": "helm_template_uninstall",
+   "group": "Kubernetes MCP (Flux159/mcp-server-kubernetes)",
+   "source": "https://raw.githubusercontent.com/Flux159/mcp-server-kubernetes/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "node_management",
+   "group": "Kubernetes MCP (Flux159/mcp-server-kubernetes)",
+   "source": "https://raw.githubusercontent.com/Flux159/mcp-server-kubernetes/HEAD/README.md",
+   "label": "A",
+   "note": "cordons, drains and uncordons nodes"
+  },
+  {
+   "name": "upgrade_helm_chart",
+   "group": "Kubernetes MCP (Flux159/mcp-server-kubernetes)",
+   "source": "https://raw.githubusercontent.com/Flux159/mcp-server-kubernetes/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "uninstall_helm_chart",
+   "group": "Kubernetes MCP (Flux159/mcp-server-kubernetes)",
+   "source": "https://raw.githubusercontent.com/Flux159/mcp-server-kubernetes/HEAD/README.md",
+   "label": "A"
+  },
+  {
+   "name": "exec_in_pod",
+   "group": "Kubernetes MCP (Flux159/mcp-server-kubernetes)",
+   "source": "https://raw.githubusercontent.com/Flux159/mcp-server-kubernetes/HEAD/README.md",
+   "label": "A",
+   "note": "arbitrary command execution inside a pod"
+  }
+ ]
+}

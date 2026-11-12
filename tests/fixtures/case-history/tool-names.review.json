@@ -1,0 +1,2281 @@
+{
+ "what": "Tool names, each labelled by what the tool does: A it acts (writes, sends, deletes, runs something), R it only reads, D debatable.",
+ "provenance": "Written on 2026-11-11 from memory of published tool lists, by a reviewer looking for names the reader would misplace who had not read the reader's word lists; not checked against sources. It leans toward hard names, so what the reader scores here says how it does on names chosen against it, not on a typical catalogue. Nothing in the reader was changed on this list's misses.",
+ "names": [
+  {
+   "name": "create_payment_intent",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_refund",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "capture_charge",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "cancel_subscription",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_invoice",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "finalize_invoice",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "void_invoice",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "issue_refund",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "payout_create",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "transfer_funds",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "charge_card",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_payment_link",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "update_subscription",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "pay_invoice",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "wire_transfer",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "refund_customer",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "charge_customer",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "bill_customer",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "credit_account",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "debit_account",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "dispute_charge",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "freeze_card",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "send_email",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "gmail_send_message",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_draft",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "reply_to_email",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "forward_email",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "slack_post_message",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "chat_postMessage",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "send_sms",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "send_dm",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "post_tweet",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "slack_add_reaction",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "archive_thread",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "mark_as_read",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "trash_message",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "sendMessage",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "email_customer",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "text_customer",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "notify_user",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "page_oncall",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "make_call",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "message_user",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "publish_post",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "unsubscribe_user",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "invite_user",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "write_file",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "edit_file",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "delete_file",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "move_file",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_directory",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "str_replace_editor",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "upload_file",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "rename_file",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "append_to_file",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "apply_patch",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "copy_file",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "find_and_replace",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "search_and_replace",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "save_note",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "set_read_only",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "terminate_instances",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "run_instances",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "deploy_service",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "scale_deployment",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "kubectl_apply",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "kubectl_delete",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "restart_service",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "rollback_deployment",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_bucket",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "put_object",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "delete_stack",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "execute_command",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "bash",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "run_terminal_cmd",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "shell_exec",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "docker_run",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "terraform_apply",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "invoke_lambda",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "reboot_server",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "trigger_workflow",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "kill_process",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "flush_cache",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "purge_queue",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "revoke_api_key",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "rotate_secret",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "grant_access",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "reset_password",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "disable_user",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "enable_feature_flag",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "block_ip",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "quarantine_file",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "isolate_host",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "put_bucket_acl",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "merge_pull_request",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_pull_request",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "push_files",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_branch",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "git_commit",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "git_push",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_issue",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "add_issue_comment",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "close_issue",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "fork_repository",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_or_update_file",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "request_copilot_review",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "star_repository",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_pull_request_review",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "update_pull_request_branch",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "git_pull",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "git_reset",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "git_checkout",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "execute_sql",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "write_query",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "insert_rows",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "update_record",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "delete_records",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "drop_table",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "apply_migration",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "upsert_document",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "truncate_table",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "bulk_import",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "load_csv_to_table",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_table",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "append_insight",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "browser_click",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "browser_type",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "browser_navigate",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "browser_fill_form",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "browser_press_key",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "submit_form",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "puppeteer_click",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "browser_select_option",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "browser_file_upload",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "puppeteer_fill",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "browser_drag",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "browser_handle_dialog",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "form_input",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_contact",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "update_deal",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "hubspot_create_company",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "salesforce_update_record",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "merge_contacts",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "assign_owner",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "log_call",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "add_note",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "convert_lead",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "delete_contact",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "find_or_create_contact",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "escalate_ticket",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "resolve_incident",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "acknowledge_alert",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "track_event",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "send_transaction",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "sign_transaction",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "transfer_tokens",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "swap_tokens",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "approve_token_spend",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "bridge_assets",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "stake_tokens",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "withdraw_funds",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "place_order",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "cancel_order",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "mint_nft",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "deploy_contract",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "native_transfer",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "transfer",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "trade",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "wrap_eth",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "morpho_deposit",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "compound_borrow",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "request_faucet_funds",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "eth_sendRawTransaction",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "open_position",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "close_position",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "list_nft_for_sale",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "buy_token",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "sell_token",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_event",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "schedule_meeting",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "book_appointment",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "cancel_booking",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "set_reminder",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "API-post-page",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "API-patch-block-children",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "API-delete-a-block",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "add_to_cart",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "checkout",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "purchase_item",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "submit_order",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "ship_order",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "fulfill_order",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "book_flight",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "reserve_table",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "launch_campaign",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "pause_campaign",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "unlock_door",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "set_thermostat",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "turn_off_lights",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "computer",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_entities",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "delete_observations",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "add_observations",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "create_relations",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "http_post",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "post_webhook",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "print_document",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "get_or_create_customer",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "check_in_guest",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "lock_account",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "send_test_email",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "report_spam",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "claim_task",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "dequeue_message",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "watch_repository",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "follow_user",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "edit_message",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "react",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "reply",
+   "group": "written as acting",
+   "label": "A"
+  },
+  {
+   "name": "get_balance",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_customers",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "retrieve_charge",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "search_invoices",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_payment_intent",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_subscriptions",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "retrieve_balance",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_payment_intents",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_disputes",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_refunds",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_refund_status",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_payment_history",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_payouts",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_charges",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_charge",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_transfers",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "check_payment_status",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "read_file",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_directory",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "search_files",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_file_info",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "read_multiple_files",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "directory_tree",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "grep",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "glob",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_allowed_directories",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "stat_file",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "diff_files",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "read_text_file",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_issue",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_issues",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "search_code",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "search_repositories",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_pull_request",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_commits",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_commit",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_file_contents",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_pull_request_diff",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_branches",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "search_issues",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "git_status",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "git_log",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "git_diff",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "git_show",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_pull_requests",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_pull_request_reviews",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_merge_requests",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_merge_request",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_releases",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_workflow_runs",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_run_status",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_me",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "describe_instances",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_buckets",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_object",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "kubectl_get",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "kubectl_describe",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "kubectl_logs",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_logs",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "tail_logs",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "describe_stack",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_functions",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_metric_statistics",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "query_metrics",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_deployments",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_deployment_status",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "docker_ps",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "docker_logs",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_pods",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "inspect_container",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "ping_host",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "dns_lookup",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "whois_lookup",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_build_logs",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_tables",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "describe_table",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "explain_query",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "read_query",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_schemas",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_schema",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "count_rows",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "sql_select",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "browser_snapshot",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "browser_take_screenshot",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "browser_console_messages",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "browser_network_requests",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_page_text",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "read_page",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "screenshot",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "tabs_context",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "puppeteer_screenshot",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_contact",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "search_contacts",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_deals",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_company",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "lookup_account",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "find_lead",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_pipeline",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_call_logs",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_notes",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_wallet_balance",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_transaction",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_token_price",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_transactions",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "estimate_gas",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_swap_quote",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "simulate_transaction",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_order_book",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_open_orders",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_trade_history",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_wallet_details",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "pyth_fetch_price",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_transaction_receipt",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "eth_call",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "eth_getBalance",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_withdrawals",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_deposit_history",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_staking_rewards",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_open_positions",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_order_status",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "check_order_status",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "track_shipment",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_order",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_orders",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "lookup_order",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_orders_and_refunds",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_shipping_rates",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "check_inventory",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "compare_prices",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_weather",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_forecast",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "web_search",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "brave_web_search",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "fetch_url",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "web_fetch",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "search_docs",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "resolve-library-id",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "query-docs",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_current_time",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "convert_time",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_events",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_event",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "check_availability",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_calendars",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_freebusy",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "find_free_time",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "search_emails",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "read_email",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_labels",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_thread",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_drafts",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_sent_emails",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "slack_list_channels",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "slack_get_channel_history",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "slack_get_users",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_user_profile",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "whoami",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_messages",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "search_messages",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "getUpdates",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_message",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_posts",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_post",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_comments",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "read_graph",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "search_nodes",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "open_nodes",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "recall_memory",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "retrieve_documents",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "vector_search",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "semantic_search",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "verify_address",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "validate_email",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "calculate_shipping",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "calculator",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "translate_text",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "summarize_document",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "analyze_image",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "extract_text",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "parse_pdf",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "detect_language",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "count_tokens",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_stock_quote",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_exchange_rate",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_models",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "API-get-user",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "API-retrieve-a-page",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "API-post-search",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "API-post-database-query",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "getIssue",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "listRepos",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "searchUsers",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "fetchWeather",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_resources",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "read_resource",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "find_references",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "go_to_definition",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "audit_log_search",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "view_trace",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "peek_queue",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_scheduled_posts",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_archived_channels",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_blocked_users",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "check_write_access",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_export_status",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_executions",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_command_output",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_invites",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "list_uploads",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "get_change_log",
+   "group": "written as look-ups",
+   "label": "R"
+  },
+  {
+   "name": "query",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "run_query",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "mysql_query",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "fetch",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "http_request",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "call_api",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "download_file",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "export_data",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "generate_report",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "think",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "sequentialthinking",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "ask_user",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "git_fetch",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "docker_pull",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "open_url",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "open_file",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "review_pull_request",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "receive_message",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "get_new_address",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "get_presigned_upload_url",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "test_webhook",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "run_tests",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "dry_run_migration",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "scan_ports",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "login",
+   "group": "written as debatable",
+   "label": "D"
+  },
+  {
+   "name": "download_attachment",
+   "group": "written as debatable",
+   "label": "D"
+  }
+ ]
+}

@@ -711,11 +711,43 @@ export class EvalEngine {
        */
       const effective = this.criticality(rule);
       const { critical, source } = effective;
-      // A rule the deployment set to report only (eval.advisoryRules). Stamped on the row, like `critical`, so a stored row re-composes as it was decided.
-      const advisory = effective.advisory === true && raw.skipped !== true;
       // ruleId / category sit right after the name so a reader scanning
       // rule_results sees WHICH deployed rule (and which bundle) spoke.
-      const { ruleName, ...rest } = raw;
+      const { ruleName, advisoryWhy: ownReason, ...rest } = raw;
+      /*
+       * What a result found is the rule's to say. Its standing is not:
+       * whether it took part in the verdict, whether it vetoes and who
+       * decided that, what kind of claim it is, what the composer did with
+       * it and what state it is in are stamped here from the rule's
+       * declaration and the deployment's configuration. A field of that kind
+       * that a rule set on its own result is not carried: carried, a result
+       * that said `critical: true` vetoed while its row read advisory, and
+       * one that said `critical: false` lost the veto its rule declares.
+       */
+      for (const standing of ['advisory', 'critical', 'criticalSource', 'kind', 'role', 'state'] as const) delete rest[standing];
+      /*
+       * A result that reports and takes no part in the verdict. Stamped on
+       * the row, like `critical`, so a stored row re-composes as it was
+       * decided. Either the deployment named the rule in eval.advisoryRules,
+       * or the rule itself said this result is below the standing its error
+       * rates were measured at (`advisoryWhy`: no_unusual_action with fewer
+       * earlier runs than it is weighed from).
+       *
+       * A rule's own reason is honoured only where it lowers a weight: on a
+       * detection or an inference that is not critical, the same kinds
+       * eval.advisoryRules takes. A policy or a judgment has no such reason
+       * to give, because a gate is somebody's decision and not a weight, so
+       * no rule can talk its own gate or veto away. And it gives way twice:
+       * to the deployment's list, which is then the standing reason, and to
+       * a deployment that made the rule critical, which has said every fire
+       * of it decides. The reason has to be one: words, not an empty string
+       * or a value that is not text.
+       */
+      const byConfig = effective.advisory === true;
+      const weighed = rule.kind === 'detection' || rule.kind === 'inference';
+      const reasoned = typeof ownReason === 'string' && ownReason.trim() !== '';
+      const byRule = !byConfig && reasoned && weighed && !critical;
+      const advisory = (byConfig || byRule) && raw.skipped !== true;
       /*
        * The stamp (0.9.0): what kind of claim this is, what the composer
        * did with it, which question it answers, what it saw, why it skipped,
@@ -732,6 +764,7 @@ export class EvalEngine {
         critical,
         criticalSource: source,
         ...(advisory ? { advisory: true } : {}),
+        ...(advisory && byRule ? { advisoryWhy: ownReason } : {}),
         state: ruleStateOf(raw),
         ...rest,
         ...stampRuleResult(rule, raw, context, effective, {

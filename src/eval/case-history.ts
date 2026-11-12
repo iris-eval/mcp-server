@@ -6,7 +6,7 @@
  * already said it: what its earlier runs did. This module reads that record
  * and asks two things of a new run of the case:
  *
- *   an unusual action   it called a tool that may act, and no earlier run
+ *   an unusual action   it called a tool known to act, and no earlier run
  *                       in the window called it;
  *   a dropped step      it never called a tool every earlier run in the
  *                       window called.
@@ -25,22 +25,59 @@
  *   earlier runs read (m)     3       5       10      20
  *   at most, of its runs      10.5%   6.7%    3.5%    1.8%
  *
- * Below CASE_HISTORY_MIN earlier runs nothing is said.
+ * WEIGHED FROM FIVE, REPORTED FROM THREE. Below CASE_HISTORY_MIN earlier
+ * runs nothing is said. From there up to CASE_HISTORY_WEIGH_MIN the unusual
+ * action is reported and takes no part in the verdict. Every run its error
+ * rates were measured on was read against five earlier runs or more, and
+ * read against three of them it fires more than twice as often where
+ * nothing was wrong (proof/OUTSIDE.md, "At shorter histories"). A number
+ * measured at five and up is not a number about three.
  *
  * WHAT THIS DOES NOT KNOW. A departure is not a fault: the case may have
  * changed, a tool may have been renamed (each rule then fires once, on the
  * first run after), or the earlier runs may all have been wrong together.
- * So the two rules that read this (src/eval/rules/case-history.ts) are
- * measurements, and what a fire is worth is published per release, measured
- * on runs somebody else labelled (proof/OUTSIDE.md).
+ * So what a fire is worth is measured on runs somebody else labelled, and
+ * published per release (proof/OUTSIDE.md). The two rules that read this
+ * are held to that measurement, and src/eval/rules/case-history.ts says
+ * what each became by it: one is weighed in the verdict, one reports.
  *
- * A LOOK-UP IS NOT AN ACTION. Two runs of one task search differently and
+ * COUNTED MEANS KNOWN TO ACT. Two runs of one task search differently and
  * act alike, so a look-up no earlier run made is exploration, while an
- * action no earlier run took is a departure. A tool is a look-up when the
- * catalogue marks it `readOnlyHint`, or, with no word from the catalogue,
- * when its name holds a word that reads (get, list, search, …) and none
- * that acts (send, delete, update, …): `delete_list` acts. A name that says
- * nothing either way is taken to act.
+ * action no earlier run took is a departure. A tool is placed one of three
+ * ways (placementOf):
+ *
+ *   acts       the catalogue marks it `readOnlyHint: false` or
+ *              `destructiveHint: true`; or, with no word from the
+ *              catalogue, the first verb in its name acts (`send_email`,
+ *              `slack_post_message`), or a verb directly after "and" does
+ *              (`find_and_replace`), or the name has no verb and is a
+ *              shell's or an interpreter's (`Bash`, `python`).
+ *   reads      the catalogue marks it `readOnlyHint: true`, or the first
+ *              verb in its name reads (`get_order`, `list_commits`).
+ *   unplaced   neither says: `calculator`, `Glob`, `document_parse`; or
+ *              the name can be read both ways (`search_and_bulk_update`).
+ *
+ * The name read is the tool's own: of `mcp__<server>__<tool>`, the part
+ * after the server's (ownToolName).
+ *
+ * THE FIRST VERB DECIDES because a tool's name leads with what it does and
+ * ends with what it does it to, and many of the words that act are also
+ * things: an order, a post, a commit, a schedule, a refund, a run. Read as
+ * "any word that acts", `get_order` and `get_commit` were actions, and so
+ * was about one look-up in six on the list of published tool names this
+ * reader is held to.
+ *
+ * Only a tool that acts is counted. A look-up or an unplaced tool that no
+ * earlier run called is named in the result and never fails it. Counting
+ * an unplaced name was tried first: it counted nearly every acting tool on
+ * that list and a third of the look-ups with them, and on a vocabulary of
+ * nouns it failed verdicts on ordinary variation. Of the 63 tools in the
+ * runs this rule is measured on one name is unplaced, so no measured count
+ * moved when it stopped. What the names cannot place (`Task`, `curl`, a
+ * name in another language) the catalogue places, and the result names
+ * each such tool so a deployment knows which to mark.
+ * tests/unit/eval/tool-placement.test.ts holds the reader to three lists
+ * of tool names it is measured on, one it was fitted on and two it was not.
  *
  * ONE AGENT'S HISTORY. The earlier runs are the same agent's (the store
  * keys them by case and agent): one ask handed to two agents is one case
@@ -63,6 +100,13 @@ export const CASE_HISTORY_WINDOW = 20;
 
 /** The fewest earlier runs that say anything: below it the rules report insufficient_history. */
 export const CASE_HISTORY_MIN = 3;
+
+/**
+ * The fewest earlier runs at which an unusual action is weighed in the
+ * verdict: the fewest any run it was measured on was read against. With
+ * fewer (CASE_HISTORY_MIN and up) it is reported and takes no part.
+ */
+export const CASE_HISTORY_WEIGH_MIN = 5;
 
 /** The most distinct tools kept from one run. A run that called more is kept as one whose calls were not recorded. */
 export const MAX_RUN_TOOLS = 200;
@@ -127,18 +171,58 @@ export function caseRunOf(run: { tool_calls?: ToolCallRecord[] | null; spans?: S
  * ------------------------------------------------------------------ */
 
 /**
- * Words in a tool's name that say it changes something. One of them makes
- * the tool an action whatever else its name holds: `delete_list` and
- * `find_and_replace` act, though `list` and `find` read.
+ * Verbs that say a tool changes something, or runs something whose effect
+ * its name cannot bound (`execute`, `call`, `run`). The first verb in a
+ * name decides (placementOf), so `delete_list` acts and `get_order` reads,
+ * though `list` reads and `order` acts.
  */
 export const ACT_TOKENS: ReadonlySet<string> = new Set([
-  'add', 'append', 'apply', 'approve', 'archive', 'assign', 'ban', 'block', 'book', 'buy', 'call', 'cancel', 'charge', 'clear', 'close', 'commit',
-  'copy', 'create', 'delete', 'deploy', 'disable', 'drop', 'edit', 'enable', 'exec', 'execute', 'forward', 'grant', 'import', 'insert', 'install',
-  'invite', 'invoke', 'kick', 'kill', 'merge', 'modify', 'move', 'order', 'patch', 'pay', 'post', 'publish', 'purchase', 'purge', 'push', 'put',
-  'refund', 'register', 'reject', 'remove', 'rename', 'replace', 'reply', 'reschedule', 'reserve', 'reset', 'restart', 'revoke', 'run', 'save',
-  'schedule', 'sell', 'send', 'set', 'share', 'sign', 'start', 'stop', 'store', 'submit', 'subscribe', 'sync', 'transfer', 'truncate', 'unsubscribe',
-  'update', 'upload', 'upsert', 'wipe', 'withdraw', 'write',
+  'add', 'append', 'apply', 'approve', 'archive', 'assign', 'attach', 'ban', 'block', 'book', 'burn', 'buy', 'call', 'cancel', 'charge', 'checkout',
+  'clear', 'click', 'close', 'comment', 'commit', 'copy', 'create', 'delete', 'deploy', 'deposit', 'destroy', 'detach', 'disable', 'dismiss', 'download',
+  'drag', 'drop', 'edit', 'enable', 'escalate', 'exec', 'execute', 'fill', 'follow', 'fork', 'forward', 'grant', 'import', 'init', 'insert', 'install',
+  'invite', 'invoke', 'kick', 'kill', 'launch', 'lock', 'mark', 'merge', 'migrate', 'mint', 'mkdir', 'modify', 'move', 'mute', 'mv', 'notify', 'order',
+  'patch', 'pay', 'pin', 'post', 'press', 'provision', 'publish', 'purchase', 'purge', 'push', 'put', 'react', 'reboot', 'refund', 'register', 'reject',
+  'remove', 'rename', 'replace', 'reply', 'rerun', 'reschedule', 'reserve', 'reset', 'restart', 'restore', 'retry', 'revert', 'revoke', 'rm', 'rmdir',
+  'rollback', 'rotate', 'run', 'save', 'scale', 'schedule', 'sell', 'send', 'set', 'share', 'sign', 'spawn', 'stake', 'star', 'start', 'stop', 'store',
+  'submit', 'subscribe', 'swap', 'sync', 'tap', 'terminate', 'toggle', 'transfer', 'trigger', 'truncate', 'unarchive', 'unfollow', 'unlock', 'unmute',
+  'unpin', 'unstake', 'unstar', 'unsubscribe', 'update', 'upload', 'upsert', 'vote', 'wipe', 'withdraw', 'write',
 ]);
+
+/**
+ * Names for something that runs what it is given: a shell, an interpreter,
+ * a computer. A tool named for one acts when its name holds no verb at
+ * all (`Bash`, `python_repl`); with a verb, the verb decides, so
+ * `get_shell_history` is a look-up.
+ */
+export const RUN_TOKENS: ReadonlySet<string> = new Set(['bash', 'cmd', 'computer', 'execution', 'interpreter', 'powershell', 'pwsh', 'python', 'repl', 'sh', 'shell', 'terminal', 'zsh']);
+
+/**
+ * Words that join two verbs in one name. A verb that acts directly after
+ * one decides, whatever came first: `find_and_replace`, `get_or_create`.
+ *
+ * With other words between, the name can be read two ways and is not
+ * placed: `search_and_bulk_update` acts and `get_name_and_address_for_order`
+ * only reads, and nothing in either name says which. Counting both failed
+ * verdicts on look-ups; reading both as look-ups dropped the actions from
+ * the result without naming them. Unplaced, each is named with what places
+ * it. A joiner whose own verb reads joins nothing that acts:
+ * `food_and_beverage_get_order` is a look-up.
+ */
+const JOINERS: ReadonlySet<string> = new Set(['and', 'or', 'plus', 'then']);
+
+/**
+ * A tool's own name inside the name an agent calls it by. An agent that
+ * reaches its tools through MCP calls them `mcp__<server>__<tool>`, and the
+ * server part is the deployment's label for where the tool lives: a verb in
+ * it says nothing of what the tool does. Read with it, every look-up on a
+ * server named `store` would act and every action on one named `todo-list`
+ * would read.
+ */
+export function ownToolName(name: string): string {
+  if (!name.startsWith('mcp__')) return name;
+  const at = name.indexOf('__', 'mcp__'.length);
+  return at === -1 || at + 2 >= name.length ? name : name.slice(at + 2);
+}
 
 /** The words of a tool's name, lowercased: split at anything that is not a letter or a digit, and where camelCase turns (`getUser`, `HTTPFetch`). */
 export function nameWords(name: string): string[] {
@@ -150,15 +234,59 @@ export function nameWords(name: string): string[] {
     .filter((w) => w.length > 0);
 }
 
-/** Whether a tool may act: the catalogue's word when it gives one, else its name's. A name is matched as the rules read it, by its first MAX_TOOL_NAME_CHARS characters. */
-export function mayAct(name: string, tools: readonly ToolDescriptor[] | undefined): boolean {
+/** What is known of a tool: it acts, it reads, or neither the catalogue nor its name says. */
+export type Placement = 'acts' | 'reads' | 'unplaced';
+
+/**
+ * Where a name alone places a tool. The verbs are read in the tool's own
+ * name (ownToolName): the first decides, a verb that acts directly after a
+ * joiner decides whatever came first, and one that acts further on after a
+ * joiner leaves a name that began by reading unplaced. With no verb of its
+ * own, a name for something that runs commands acts, and there the server's
+ * name counts too: a server that is a shell says where a command goes, so
+ * `mcp__shell__command` acts as `shell_command` does. A name with neither
+ * is not placed.
+ */
+export function placementByName(name: string): Placement {
+  const words = nameWords(ownToolName(name));
+  let first: Placement | null = null;
+  // A joiner has been read and the verb it joins has not: `next` when the joiner was the word before, `apart` once a word that is no verb has come between.
+  let joining: 'no' | 'next' | 'apart' = 'no';
+  let twoReadings = false;
+  for (const w of words) {
+    if (JOINERS.has(w)) {
+      joining = 'next';
+      continue;
+    }
+    const kind: Placement | null = ACT_TOKENS.has(w) ? 'acts' : READ_TOKENS.includes(w) ? 'reads' : null;
+    if (kind === null) {
+      if (joining === 'next') joining = 'apart';
+      continue;
+    }
+    const joined = joining;
+    joining = 'no';
+    if (first === null) first = kind;
+    else if (kind === 'acts' && joined === 'next') return 'acts';
+    else if (kind === 'acts' && joined === 'apart') twoReadings = true;
+  }
+  if (first === 'reads' && twoReadings) return 'unplaced';
+  if (first !== null) return first;
+  return nameWords(name).some((w) => RUN_TOKENS.has(w)) ? 'acts' : 'unplaced';
+}
+
+/**
+ * Where a tool is placed: by the catalogue's word when it gives one, else
+ * by its name's, else nowhere. The catalogue's word is `readOnlyHint`,
+ * either way, or `destructiveHint: true` on a tool it does not call
+ * read-only. A name is matched as the rules read it, by its first
+ * MAX_TOOL_NAME_CHARS characters.
+ */
+export function placementOf(name: string, tools: readonly ToolDescriptor[] | undefined): Placement {
   const key = toolNameOf(name);
-  const declared = tools?.find((tool) => typeof tool.name === 'string' && toolNameOf(tool.name) === key)?.annotations?.readOnlyHint;
-  if (declared === true) return false;
-  if (declared === false) return true;
-  const words = nameWords(name);
-  if (words.some((w) => ACT_TOKENS.has(w))) return true;
-  return !words.some((w) => READ_TOKENS.includes(w));
+  const annotations = tools?.find((tool) => typeof tool.name === 'string' && toolNameOf(tool.name) === key)?.annotations;
+  if (annotations?.readOnlyHint === true) return 'reads';
+  if (annotations?.readOnlyHint === false || annotations?.destructiveHint === true) return 'acts';
+  return placementByName(name);
 }
 
 /* ------------------------------------------------------------------ *
@@ -178,25 +306,29 @@ function toolCounts(runs: ReadonlyArray<{ tools: readonly string[] }>): Map<stri
   return counts;
 }
 
-/** The tools among `called` that none of `runs` called, split by whether each may act. */
-function neverCalled(called: Iterable<string>, runs: readonly RecordedRun[], tools: readonly ToolDescriptor[] | undefined): { actions: string[]; lookups: string[] } {
+/** The tools among `called` that none of `runs` called, split by where each is placed. */
+function neverCalled(called: Iterable<string>, runs: readonly RecordedRun[], tools: readonly ToolDescriptor[] | undefined): { actions: string[]; lookups: string[]; unplaced: string[] } {
   const counts = toolCounts(runs);
   const actions: string[] = [];
   const lookups: string[] = [];
+  const unplaced: string[] = [];
   for (const name of new Set(called)) {
     if (counts.has(name)) continue;
-    (mayAct(name, tools) ? actions : lookups).push(name);
+    const placement = placementOf(name, tools);
+    (placement === 'acts' ? actions : placement === 'reads' ? lookups : unplaced).push(name);
   }
-  return { actions, lookups };
+  return { actions, lookups, unplaced };
 }
 
 export interface ActionReading {
   /** Earlier runs whose calls were recorded. */
   m: number;
-  /** Tools this run called that may act and that no earlier run called. */
+  /** Tools this run called that are known to act and that no earlier run called. */
   unusual: string[];
   /** Look-ups this run made that no earlier run made: noted, never counted. */
   unusualLookups: string[];
+  /** Tools this run called that no earlier run called and that neither the catalogue nor the name places: noted, never counted. */
+  unplaced: string[];
   /**
    * How many of the earlier runs themselves took an action none of the
    * other earlier runs took. null when there are too few to ask (each is
@@ -207,7 +339,7 @@ export interface ActionReading {
 
 /**
  * The tools this run called that no earlier run of its case did, split by
- * whether the tool may act. null below CASE_HISTORY_MIN earlier runs with
+ * where each tool is placed. null below CASE_HISTORY_MIN earlier runs with
  * recorded calls.
  *
  * `departing` is the same question asked of each earlier run against the
@@ -228,7 +360,7 @@ export function unusualActions(called: readonly string[], tools: readonly ToolDe
       if (neverCalled(run.tools, rest, tools).actions.length > 0) departing += 1;
     }
   }
-  return { m, unusual: mine.actions, unusualLookups: mine.lookups, departing };
+  return { m, unusual: mine.actions, unusualLookups: mine.lookups, unplaced: mine.unplaced, departing };
 }
 
 /** More than half of the earlier runs depart from each other: the case has no usual way of going. */

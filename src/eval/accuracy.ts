@@ -24,7 +24,7 @@
  * blind label lands). A surface that drops the labelling tag is a truth
  * defect, not a formatting choice.
  */
-import { PUBLISHED_ACCURACY, PUBLISHED_ACCURACY_CORPUS_VERSION, PUBLISHED_ACCURACY_LABELLING, PUBLISHED_ACCURACY_RELEASE } from './published-accuracy.js';
+import { PUBLISHED_ACCURACY, PUBLISHED_ACCURACY_CORPUS_VERSION, PUBLISHED_ACCURACY_LABELLING, PUBLISHED_ACCURACY_OUTSIDE_LABELLED, PUBLISHED_ACCURACY_RELEASE } from './published-accuracy.js';
 import { beta, fnv1a, missRate, mulberry32, percentile95, ppv, round4, sensitivity, specificity, type Confusion } from './stats.js';
 
 export interface Interval {
@@ -48,20 +48,46 @@ export interface PublishedRuleAccuracy extends Confusion {
 export interface PublishedProvenance {
   corpusVersion: string;
   release: string;
-  labelling: 'same-model' | 'human-verified';
+  /**
+   * Who labelled the cases a number was measured on: the model that wrote
+   * them, a human who checked them, or somebody outside Iris, on runs Iris
+   * did not write (a benchmark's environment checking the world after each
+   * run).
+   */
+  labelling: 'same-model' | 'human-verified' | 'outside';
 }
 
 export const DEFAULT_PREVALENCE = 0.5;
 export const INTERVAL_DRAWS = 2000;
 
-export function publishedProvenance(): PublishedProvenance {
-  return { corpusVersion: PUBLISHED_ACCURACY_CORPUS_VERSION, release: PUBLISHED_ACCURACY_RELEASE, labelling: PUBLISHED_ACCURACY_LABELLING };
+/**
+ * The provenance of the published numbers: the corpus's when no rule is
+ * named, and one rule's when it is. The two differ only in the labelling: a
+ * rule whose family was labelled outside Iris does not carry the corpus's
+ * tag, and a surface that showed it "same-model" would understate it.
+ */
+export function publishedProvenance(ruleName?: string): PublishedProvenance {
+  const labelling = ruleName !== undefined && PUBLISHED_ACCURACY_OUTSIDE_LABELLED.includes(ruleName) ? 'outside' : PUBLISHED_ACCURACY_LABELLING;
+  return { corpusVersion: PUBLISHED_ACCURACY_CORPUS_VERSION, release: PUBLISHED_ACCURACY_RELEASE, labelling };
 }
 
 /** The published numbers for a built-in rule, or null for a rule with no family (a custom rule, a rule added before its proof). */
 export function publishedAccuracyFor(ruleName: string): PublishedRuleAccuracy | null {
   const entry = (PUBLISHED_ACCURACY as unknown as Record<string, PublishedRuleAccuracy | undefined>)[ruleName];
   return entry ?? null;
+}
+
+/**
+ * The share of a rule's proof family that is positive: the mix its numbers
+ * were measured at. Null for a rule with no family, or one whose family
+ * holds a single class.
+ */
+export function familyPrevalence(ruleName: string): number | null {
+  const counts = publishedAccuracyFor(ruleName);
+  if (!counts) return null;
+  const positives = counts.tp + counts.fn;
+  const n = positives + counts.fp + counts.tn;
+  return positives > 0 && positives < n ? positives / n : null;
 }
 
 /** Every rule name with published numbers, in the order the proof emitted them. */

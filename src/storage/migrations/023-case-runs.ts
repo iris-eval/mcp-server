@@ -39,9 +39,12 @@ export const id = '023-case-runs';
  * deletes takes its row with it whichever release deletes it, and nothing
  * it writes can make a row wrong. What it cannot do is write one, so a run
  * it stores is not counted among a case's earlier runs. That is a count
- * that reads low in a home where an older process still writes, on rules
- * that decide no verdict, and the alternative is to lock that process out
- * of the file; so the floor stays where 015 holds it.
+ * that reads low in a home where an older process still writes. A low
+ * count first keeps the rules quiet (below three earlier runs they say
+ * nothing, and below five the unusual action is not weighed); past that,
+ * an action only the older process's runs took can read as new once, and
+ * is then in the history. The alternative is to lock that process out of
+ * the file; so the floor stays where 015 holds it.
  */
 export const compatFloor = '0.20.0';
 

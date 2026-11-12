@@ -32,6 +32,12 @@ export const ROLE_TEXT: Record<NonNullable<EvalRuleResult['role']>, string> = {
   advisory: 'Advisory: reported, never decisive. A fail here does not change the verdict.',
 };
 
+/** A role's sentence for one result: an advisory result that carries the rule's own reason says it. */
+export function roleText(r: Pick<EvalRuleResult, 'role' | 'advisoryWhy'>): string {
+  if (r.role === undefined) return '';
+  return r.role === 'advisory' && r.advisoryWhy ? `${ROLE_TEXT.advisory} Here: ${r.advisoryWhy}.` : ROLE_TEXT[r.role];
+}
+
 export const SKIP_CLASS_TEXT: Record<NonNullable<EvalRuleResult['skipClass']>, string> = {
   not_applicable: 'Not applicable: the rule had nothing to judge on this input.',
   defeated: 'Defeated: the input was there but the rule could not read it — truncated, malformed, or over its time budget.',
@@ -76,8 +82,9 @@ export function describeUncertainty(u: Uncertainty | undefined): UncertaintyText
   if (!u) return null;
   switch (u.basis) {
     case 'published_accuracy': {
-      const corpus = `Measured on ${u.corpus.n} labelled cases (corpus ${u.corpus.version}, release ${u.corpus.release}, ${u.corpus.labelling === 'human-verified' ? 'human-verified labels' : 'same-model labels'}).`;
-      const prior = `at a prior of ${u.prior.pi.toFixed(2)} (${u.prior.source})`;
+      const corpus = `Measured on ${u.corpus.n} labelled cases (corpus ${u.corpus.version}, release ${u.corpus.release}, ${u.corpus.labelling === 'human-verified' ? 'human-verified labels' : u.corpus.labelling === 'outside' ? 'labels computed outside Iris, on runs it did not write' : 'same-model labels'}).`;
+      // A prior of source `family` is the mix of the runs the rule was measured on, so the number beside it is the one that was observed there.
+      const prior = u.prior.source === 'family' ? `at a prior of ${u.prior.pi.toFixed(2)}, the share of those labelled cases that were bad` : `at a prior of ${u.prior.pi.toFixed(2)} (${u.prior.source})`;
       if (u.fired) {
         return {
           label: `PPV ${fmtInterval(u.ppv)}`,

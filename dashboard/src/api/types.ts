@@ -123,6 +123,8 @@ export interface EvalRuleResult {
    */
   kind?: 'measurement' | 'detection' | 'inference' | 'judgment' | 'policy' | 'verification';
   role?: 'gate' | 'veto' | 'risk' | 'advisory';
+  /** On an advisory result, the rule's own reason it took no part in the verdict, when the reason is the rule's and not eval.advisoryRules. */
+  advisoryWhy?: string;
   /** Built-in or deployed by a user. */
   origin?: 'built-in' | 'custom';
   /** What the rule saw: offsets into the caller's text, a pattern count, a tool call, a citation, a measured count. */
@@ -373,21 +375,24 @@ export interface Interval {
  * The error bar a rule result carries (mirrors `src/types/eval.ts`). A fired
  * detection reports its PPV at the prior in force; a quiet one its miss rate;
  * a rule that is right by definition its conformance count; a policy has none.
+ * A prior of source `family` is the share of the rule's own labelled runs that
+ * were bad: a rule measured on runs labelled outside Iris is stated there
+ * until the deployment sets or estimates a prior.
  */
 export type Uncertainty =
   | {
       basis: 'published_accuracy';
       fired: true;
       ppv: Interval;
-      prior: { pi: number; source: 'default' | 'config' | 'estimated' };
-      corpus: { n: number; tp: number; fp: number; fn: number; tn: number; version: string; release: string; labelling: 'same-model' | 'human-verified' };
+      prior: { pi: number; source: 'default' | 'config' | 'estimated' | 'family' };
+      corpus: { n: number; tp: number; fp: number; fn: number; tn: number; version: string; release: string; labelling: 'same-model' | 'human-verified' | 'outside' };
     }
   | {
       basis: 'published_accuracy';
       fired: false;
       missRate: Interval;
-      prior: { pi: number; source: 'default' | 'config' | 'estimated' };
-      corpus: { n: number; tp: number; fp: number; fn: number; tn: number; version: string; release: string; labelling: 'same-model' | 'human-verified' };
+      prior: { pi: number; source: 'default' | 'config' | 'estimated' | 'family' };
+      corpus: { n: number; tp: number; fp: number; fn: number; tn: number; version: string; release: string; labelling: 'same-model' | 'human-verified' | 'outside' };
     }
   | { basis: 'definition'; conformance: { n: number; matched: number } }
   | { basis: 'self_consistency'; samples: number; voteFraction: number; scoreSd: number }
@@ -413,7 +418,7 @@ export interface RuleProofSummary {
   ppvAt: Record<string, number | null>;
   corpusVersion: string;
   release: string;
-  labelling: 'same-model' | 'human-verified';
+  labelling: 'same-model' | 'human-verified' | 'outside';
 }
 
 export interface EvalResult {

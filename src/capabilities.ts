@@ -40,7 +40,7 @@ export interface RuleProof extends PublishedRuleAccuracy {
   ppvAt: Record<string, number | null>;
   corpusVersion: string;
   release: string;
-  labelling: 'same-model' | 'human-verified';
+  labelling: 'same-model' | 'human-verified' | 'outside';
 }
 
 export interface Capabilities {
@@ -90,7 +90,8 @@ export interface CapabilitiesContext {
 export function ruleProof(name: string): RuleProof | null {
   const acc = publishedAccuracyFor(name);
   if (!acc) return null;
-  const prov = publishedProvenance();
+  // This rule's own provenance: a family labelled outside Iris does not carry the corpus's labelling tag.
+  const prov = publishedProvenance(name);
   return {
     ...acc,
     ppvAt: ppvAt(name),

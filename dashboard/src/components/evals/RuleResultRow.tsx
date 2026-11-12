@@ -22,12 +22,12 @@ import {
   KIND_TEXT,
   PRE_STAMP_TEXT,
   READ_TEXT,
-  ROLE_TEXT,
   SKIP_CLASS_TEXT,
   describeEvidence,
   describeUncertainty,
   fmtInterval,
   isPreStamp,
+  roleText,
   ruleState,
   type EvidenceTexts,
 } from './ruleResultText';
@@ -198,7 +198,7 @@ export function RuleResultRow({ result, meta = null, proof = null, callHref, tex
         </code>
         {result.kind && <Chip label={result.kind} tone="neutral" tooltip={KIND_TEXT[result.kind]} attr={{ 'data-kind': result.kind }} />}
         {result.role && (
-          <Chip label={result.role} tone={ROLE_TONE[result.role]} tooltip={ROLE_TEXT[result.role]} attr={{ 'data-role': result.role }} />
+          <Chip label={result.role} tone={ROLE_TONE[result.role]} tooltip={roleText(result)} attr={{ 'data-role': result.role }} />
         )}
         {result.critical && (
           <Chip

@@ -491,6 +491,10 @@
           "advisory": {
             "type": "boolean"
           },
+          "advisoryWhy": {
+            "description": "on a result that is advisory for a reason of the rule's own, not eval.advisoryRules: the reason, in words (no_unusual_action with fewer earlier runs of the case than it is weighed from)",
+            "type": "string"
+          },
           "state": {
             "description": "read this, not passed: a rule that skipped is not_checked, and carries passed false",
             "type": "string",
@@ -676,7 +680,8 @@
                         "enum": [
                           "default",
                           "config",
-                          "estimated"
+                          "estimated",
+                          "family"
                         ]
                       }
                     },
@@ -724,7 +729,8 @@
                         "type": "string",
                         "enum": [
                           "same-model",
-                          "human-verified"
+                          "human-verified",
+                          "outside"
                         ]
                       }
                     },

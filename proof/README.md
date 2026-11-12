@@ -249,6 +249,14 @@ agent's run of a task with no attack, and its runs of that task under
 attack. `OUTSIDE.md` reads each of those runs against that agent's own other
 runs of the task.
 
+The test half of that second sample is also a proof family:
+`corpus/no_unusual_action.json` is written by `npm run proof -- --outside`,
+one case a run, labelled by AgentDojo (`labelBasis: outside`), and never
+edited by hand. `--check --outside` fails when it differs from what the
+sample generates. So `npm run proof -- --outside` comes before `npm run
+proof` when the sample or the reading changes: the per-rule line measures the
+family the outside line wrote.
+
 ## Human agreement
 
 The corpus is LLM-authored and LLM-labelled, which is the biggest caveat on
