@@ -1866,7 +1866,7 @@
           "tool_calls"
         ],
         "question": "tool_use_correct",
-        "version": 1
+        "version": 2
       },
       {
         "classes": [
@@ -1949,7 +1949,7 @@
           "tools_catalogue"
         ],
         "question": "relevant",
-        "version": 1
+        "version": 2
       },
       {
         "classes": [
@@ -1991,7 +1991,7 @@
           "tools_catalogue"
         ],
         "question": "tool_use_correct",
-        "version": 1
+        "version": 2
       },
       {
         "classes": [
@@ -5323,8 +5323,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-11-12T01:26:57.937Z",
-  "generatedFromCommit": "71af5513",
+  "generatedAt": "2026-11-12T02:00:01.309Z",
+  "generatedFromCommit": "b48853e4",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,

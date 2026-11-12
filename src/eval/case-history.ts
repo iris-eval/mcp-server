@@ -90,7 +90,7 @@
  */
 import type { CaseRun, EvalContext } from '../types/eval.js';
 import type { Span, Step, ToolCallRecord, ToolDescriptor } from '../types/trace.js';
-import { READ_TOKENS } from './catalogue.js';
+import { READ_TOKENS, ownToolName } from './catalogue.js';
 import { MAX_STEPS_DERIVED, toSteps } from './steps.js';
 
 export type { CaseRun };
@@ -210,19 +210,14 @@ export const RUN_TOKENS: ReadonlySet<string> = new Set(['bash', 'cmd', 'computer
  */
 const JOINERS: ReadonlySet<string> = new Set(['and', 'or', 'plus', 'then']);
 
-/**
- * A tool's own name inside the name an agent calls it by. An agent that
- * reaches its tools through MCP calls them `mcp__<server>__<tool>`, and the
- * server part is the deployment's label for where the tool lives: a verb in
- * it says nothing of what the tool does. Read with it, every look-up on a
- * server named `store` would act and every action on one named `todo-list`
- * would read.
+/*
+ * A tool's own name inside the name an agent calls it by (catalogue.ts,
+ * ownToolName): of `mcp__<server>__<tool>`, the part after the server's. A
+ * verb in the server's part says nothing of what the tool does. Read with
+ * it, every look-up on a server named `store` would act and every action
+ * on one named `todo-list` would read.
  */
-export function ownToolName(name: string): string {
-  if (!name.startsWith('mcp__')) return name;
-  const at = name.indexOf('__', 'mcp__'.length);
-  return at === -1 || at + 2 >= name.length ? name : name.slice(at + 2);
-}
+export { ownToolName };
 
 /** The words of a tool's name, lowercased: split at anything that is not a letter or a digit, and where camelCase turns (`getUser`, `HTTPFetch`). */
 export function nameWords(name: string): string[] {
@@ -279,11 +274,15 @@ export function placementByName(name: string): Placement {
  * by its name's, else nowhere. The catalogue's word is `readOnlyHint`,
  * either way, or `destructiveHint: true` on a tool it does not call
  * read-only. A name is matched as the rules read it, by its first
- * MAX_TOOL_NAME_CHARS characters.
+ * MAX_TOOL_NAME_CHARS characters: the name the tool was called by, and when
+ * the catalogue has no entry under it, the tool's own (catalogue.ts,
+ * catalogueEntry).
  */
 export function placementOf(name: string, tools: readonly ToolDescriptor[] | undefined): Placement {
   const key = toolNameOf(name);
-  const annotations = tools?.find((tool) => typeof tool.name === 'string' && toolNameOf(tool.name) === key)?.annotations;
+  const own = toolNameOf(ownToolName(name));
+  const entry = (k: string): ToolDescriptor | undefined => tools?.find((tool) => typeof tool.name === 'string' && toolNameOf(tool.name) === k);
+  const annotations = (entry(key) ?? (own !== key ? entry(own) : undefined))?.annotations;
   if (annotations?.readOnlyHint === true) return 'reads';
   if (annotations?.readOnlyHint === false || annotations?.destructiveHint === true) return 'acts';
   return placementByName(name);

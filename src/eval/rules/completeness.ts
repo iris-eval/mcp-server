@@ -4,7 +4,7 @@ import { countSentences } from '../text/sentences.js';
 import { withoutValueBreaks } from '../text/structured.js';
 import { thresholdSourceOf } from '../thresholds.js';
 import { MAX_ASK_CHARS, MIN_MEASURABLE_TERMS, answerIndex, coversPart, hitsPart, measurableParts, requiredHits, splitAsk, type AskPart } from '../text/asks.js';
-import { catalogueIndex } from '../catalogue.js';
+import { catalogueEntry, catalogueIndex } from '../catalogue.js';
 import { checkArguments, compileToolSchema, type ArgumentCheck } from '../schema-validator.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
 import { skipWithoutTrajectory } from './trajectory.js';
@@ -186,7 +186,8 @@ export const validToolArguments: EvalRule = {
   needs: ['tool_calls', 'tools_catalogue'],
   question: 'tool_use_correct',
   classes: ['invalid_tool_call'],
-  version: 1,
+  // 2: a call named mcp__<server>__<tool> is matched to the catalogue by the tool's own name too (catalogue.ts, catalogueEntry).
+  version: 2,
   /*
    * Not critical. Recovery detection is a heuristic over tool NAMES — an
    * agent that "recovers" with different, also-wrong-but-schema-valid
@@ -238,7 +239,7 @@ export const validToolArguments: EvalRule = {
     let refusedSchema = false;
 
     for (const step of steps) {
-      const tool = catalogue.get(step.name);
+      const tool = catalogueEntry(catalogue, step.name);
       if (tool === undefined) {
         checks.push({ state: 'invalid', keyword: 'not_in_catalogue' });
         continue;

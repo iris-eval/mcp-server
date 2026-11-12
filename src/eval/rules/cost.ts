@@ -3,7 +3,7 @@ import { thresholdSourceOf } from '../thresholds.js';
 import { describeInput, longestCycle, looksLikePolling, skipWithoutTrajectory, stepKey, targetKey } from './trajectory.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
 import { stepBudget } from './expected-trajectory.js';
-import { READ_TOKENS, catalogueIndex } from '../catalogue.js';
+import { READ_TOKENS, catalogueEntry, catalogueIndex } from '../catalogue.js';
 import type { Step } from '../../types/trace.js';
 import { costBasisNote, costSourceEvidence } from '../cost-basis.js';
 import { COST_ANOMALY_FLAT_MARGIN, COST_ANOMALY_MIN_HISTORY, COST_ANOMALY_WINDOW, COST_ANOMALY_Z, costAnomaly as anomalyOf, describeCostAnomaly } from '../cost-anomaly.js';
@@ -148,7 +148,7 @@ function targetRereads(
      * So this reads the annotation directly, and the name heuristic only
      * explains what was left out.
      */
-    const declared = index.get(step.name)?.annotations?.readOnlyHint === true;
+    const declared = catalogueEntry(index, step.name)?.annotations?.readOnlyHint === true;
     if (!declared) {
       if (READ_TOKENS.some((t) => step.name.toLowerCase().includes(t))) readShapedByName += 1;
       continue;
@@ -198,7 +198,8 @@ export const noToolLoop: EvalRule = {
   thresholdKeys: ['max_tool_repeats', 'max_target_rereads'],
   question: 'tool_use_correct',
   classes: ['tool_loop'],
-  version: 1,
+  // 2: the catalogue's read-only hint reaches a call named mcp__<server>__<tool> (catalogue.ts, catalogueEntry).
+  version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     const skip = skipWithoutTrajectory('no_tool_loop', context);
     if (skip) return skip;

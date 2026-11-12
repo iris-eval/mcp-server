@@ -7,6 +7,14 @@
  * schema. The catalogue closes it, and it is carried in the MCP `tools/list`
  * shape verbatim so an MCP agent pastes the result it already has.
  *
+ * A pasted `tools/list` names each tool as its server does. The host that
+ * calls it may not: one that reaches its tools through MCP calls them
+ * `mcp__<server>__<tool>`. So a call is looked up under the name it was
+ * made by and then under the tool's own (catalogueEntry), in every rule
+ * that reads the catalogue. Matched by exact name alone, no call on such a
+ * host was in a catalogue pasted as documented, and a correct run failed
+ * for calling tools "not in the catalogue".
+ *
  * Server-only, like the step layer and for the same reason: the website's
  * vendored rule library has no catalogue and never will, so pinning this
  * would ship it into a browser bundle for a path that cannot be taken.
@@ -56,6 +64,32 @@ export function catalogueIndex(context: EvalContext): Map<string, ToolDescriptor
 }
 
 /**
+ * A tool's own name inside the name an agent calls it by. An agent that
+ * reaches its tools through MCP calls them `mcp__<server>__<tool>`, and the
+ * server part is the deployment's label for where the tool lives. The first
+ * `__` after the prefix ends it, as the hosts that write such names read
+ * them; a name of any other shape is its own.
+ */
+export function ownToolName(name: string): string {
+  if (!name.startsWith('mcp__')) return name;
+  const at = name.indexOf('__', 'mcp__'.length);
+  return at === -1 || at + 2 >= name.length ? name : name.slice(at + 2);
+}
+
+/**
+ * The catalogue's entry for a called tool: under the name the call was made
+ * by, and when there is none, under the tool's own name. The exact name
+ * wins, so a catalogue that lists two servers' tools by their full names
+ * gives each call its own entry.
+ */
+export function catalogueEntry(index: ReadonlyMap<string, ToolDescriptor>, calledName: string): ToolDescriptor | undefined {
+  const exact = index.get(calledName);
+  if (exact !== undefined) return exact;
+  const own = ownToolName(calledName);
+  return own === calledName ? undefined : index.get(own);
+}
+
+/**
  * Does this step read, or act?
  *
  * Three-valued on purpose. `unknown` is a real answer — the catalogue is
@@ -64,7 +98,8 @@ export function catalogueIndex(context: EvalContext): Map<string, ToolDescriptor
  * signal) or to stay quiet (correct for anything that fires).
  */
 export function readFamilyOf(step: Step, tools?: readonly ToolDescriptor[]): 'read' | 'not_read' | 'unknown' {
-  const declared = tools?.find((tool) => tool.name === step.name)?.annotations?.readOnlyHint;
+  const own = ownToolName(step.name);
+  const declared = (tools?.find((tool) => tool.name === step.name) ?? tools?.find((tool) => tool.name === own))?.annotations?.readOnlyHint;
   if (declared === true) return 'read';
   if (declared === false) return 'not_read';
   const tokens = step.name.toLowerCase().split(/[-_. ]+/);

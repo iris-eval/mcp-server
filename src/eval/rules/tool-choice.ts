@@ -28,7 +28,7 @@
  */
 import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type EvalRuleResult, type Evidence } from '../../types/eval.js';
 import type { ToolDescriptor } from '../../types/trace.js';
-import { catalogueIndex } from '../catalogue.js';
+import { catalogueEntry, catalogueIndex } from '../catalogue.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
 import { contentTerms } from '../terms.js';
 import { thresholdSourceOf } from '../thresholds.js';
@@ -72,7 +72,8 @@ export const toolChoice: EvalRule = {
   thresholdKeys: ['tool_choice_margin', 'tool_choice_min_fit'],
   question: 'relevant',
   classes: ['wrong_tool'],
-  version: 1,
+  // 2: a call named mcp__<server>__<tool> counts as a call to its tool's entry (catalogue.ts, catalogueEntry).
+  version: 2,
   evaluate(context: EvalContext): EvalRuleResult {
     if (!context.input) {
       return { ruleName: 'tool_choice', passed: false, score: 0, message: 'No input provided', skipped: true, skipReason: 'context.input not provided' };
@@ -100,15 +101,19 @@ export const toolChoice: EvalRule = {
     }
     const steps = stepsOf(context);
     const called = new Set(steps.map((s) => s.name));
+    // The catalogue's entries the calls were made to: a call named mcp__<server>__<tool> is its tool's entry, whichever name the catalogue lists it by.
+    const calledEntries = new Set<string>();
     const calledTerms = new Set<string>();
     for (const name of called) {
-      const tool = catalogue.get(name);
-      if (tool) for (const t of toolTerms(tool)) calledTerms.add(t);
+      const tool = catalogueEntry(catalogue, name);
+      if (!tool) continue;
+      calledEntries.add(tool.name);
+      for (const t of toolTerms(tool)) calledTerms.add(t);
     }
     const calledFit = fitOf(actionable, calledTerms);
     let best: { tool: ToolDescriptor; fit: number } | null = null;
     for (const tool of catalogue.values()) {
-      if (called.has(tool.name)) continue;
+      if (calledEntries.has(tool.name)) continue;
       const fit = fitOf(actionable, toolTerms(tool));
       if (best === null || fit > best.fit || (fit === best.fit && tool.name < best.tool.name)) best = { tool, fit };
     }
