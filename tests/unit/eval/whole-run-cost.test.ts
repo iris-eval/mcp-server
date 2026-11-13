@@ -297,6 +297,12 @@ describe('a run of 10,000 calls, in the shapes that cost the rules the most', ()
     expect(stopped.row).toMatchObject({ skipped: true, evidenceIncomplete: true });
     expect(stopped.row.message).toBe("Not judged: comparing the 500 expected calls with the 501 made (subset, args subset) was not settled inside the rule's limit of work, 20,000,000 values compared");
     expect(stopped.state).toBe('unknown');
+    // A longer run that made as many calls as its unordered expectation holds could be equal to it: the count settles nothing, and the comparison that stopped is not judged. (evaluate_output accepts 500 expected calls; an embedder can hand the engine more.)
+    const asMany = Array.from({ length: 600 }, (_, i) => ({ tool_name: 'x', input: wide(100_000 + i) }));
+    const equal = await judged({ ...RUN, toolCalls: made(600), expectedTrajectory: { tool_calls: asMany, mode: 'unordered', step_budget: 5_000 } });
+    expect(equal.cpuMs).toBeLessThan(BUDGET_MS);
+    expect(row(equal.result, 'tool_sequence')).toMatchObject({ skipped: true, evidenceIncomplete: true });
+    expect(row(equal.result, 'tool_sequence').message).toBe("Not judged: comparing the 600 expected calls with the 600 made (unordered, args subset) was not settled inside the rule's limit of work, 20,000,000 values compared");
   });
 
   it('no_silent_tool_failure: the most a run of 500 calls can ask of the search for a recovery, and one failure nothing recovers behind 205 that were', async () => {
