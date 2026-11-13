@@ -10,6 +10,7 @@ import { contentTerms } from './relevance.js';
 import { ARG_SCAN_CHARS, ACTION_TERM_OVERLAP, ECHO_TERM_OVERLAP, INJECTION_SCAN_CHARS, INJECTION_SCAN_TOTAL_CHARS, INPUT_TERM_SCAN_CHARS, MAX_SCANNED_TOOL_OUTPUTS, findDirectives, foldForDirectives } from '../text/directives.js';
 import { TAIL_PREFIX_MIN, indexGround, insideAny, isGrounded, isUbiquitous, proposalSpans, scanTokens, type Token } from '../text/identifiers.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
+import { listNames } from '../case-history.js';
 
 /*
  * PII pattern library — expanded v0.3.1; credential class + placeholder
@@ -2757,8 +2758,9 @@ export const noSilentToolFailure: EvalRule = {
 
     const acknowledgement = acknowledgesFailure(context.output);
     const said = (kind: 'failed' | 'reported'): string => (kind === 'failed' ? 'failed' : 'reported failure');
+    // The first failures of the run, wherever they stand in it. Until 0.22.0 a failure was kept only when it was among the run's first calls, so one at the 30th call had no evidence.
     const evidence: Evidence[] = failed
-      .filter((f) => f.index < MAX_EVIDENCE_ITEMS)
+      .slice(0, MAX_EVIDENCE_ITEMS)
       .map((f) => ({ type: 'toolCall' as const, index: f.index, toolName: f.step.name, label: `${said(f.kind)}: ${f.reason}${acknowledgement !== null ? ' (acknowledged)' : ' (unacknowledged)'}` }));
     if (acknowledgement !== null) {
       return {
@@ -2767,7 +2769,7 @@ export const noSilentToolFailure: EvalRule = {
         score: 1,
         value,
         evidence,
-        message: `${failed.length} tool call${failed.length === 1 ? '' : 's'} went wrong (${failed.map((f) => f.step.name).join(', ')}) and the output acknowledges it ("${acknowledgement}")${recoveredNote}${scope}`,
+        message: `${failed.length} tool call${failed.length === 1 ? '' : 's'} went wrong (${listNames(failed.map((f) => f.step.name))}) and the output acknowledges it ("${acknowledgement}")${recoveredNote}${scope}`,
       };
     }
 

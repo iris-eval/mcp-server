@@ -346,7 +346,7 @@ function inputValues(input: unknown): Set<string> {
 }
 
 /** Why this step went wrong, or null when it did not. */
-function failureOf(step: Step, index: number): StepFailure | null {
+export function failureOf(step: Step, index: number): StepFailure | null {
   if (isFailedStep(step)) return { index, step, kind: 'failed', reason: stepFailureReason(step) };
   const verdict = failingVerdict(asCallRecord(step));
   return verdict === null ? null : { index, step, kind: 'reported', reason: `reports "${truncate(verdict, 70)}"` };
@@ -371,8 +371,12 @@ function failureOf(step: Step, index: number): StepFailure | null {
  *
  * A later success on something ELSE recovers nothing: `read a.txt` failing
  * and `read b.txt` succeeding leaves the answer owing the first.
+ *
+ * This is the definition, one failure at a time. `failuresIn` gives the
+ * same answers for a whole run without reading each later step once for
+ * every failure, and a test holds the two together.
  */
-function recoveredBy(failure: StepFailure, later: readonly Step[]): boolean {
+export function recoveredBy(failure: StepFailure, later: readonly Step[]): boolean {
   const target = targetKey(failure.step);
   const given = target === null ? inputValues(failure.step.input) : null;
   for (const step of later) {
@@ -394,16 +398,143 @@ function recoveredBy(failure: StepFailure, later: readonly Step[]): boolean {
  * The failures in a trajectory, split into the ones still open at the end
  * and the ones the agent recovered from. no_silent_tool_failure asks the
  * answer to own the open ones.
+ *
+ * Each step is read once. Asked of each failure in turn (recoveredBy over
+ * the steps after it), a run of n calls with f failures read each later
+ * step again for every failure before it: its output for a verdict, its
+ * input for a target, its values. The answers are recoveredBy's;
+ * tests/unit/eval/failures-in.test.ts holds the two together on generated
+ * runs.
  */
 export function failuresIn(steps: readonly Step[]): { open: StepFailure[]; recovered: StepFailure[] } {
-  const open: StepFailure[] = [];
-  const recovered: StepFailure[] = [];
+  const failures: StepFailure[] = [];
+  /** The steps that went right, in order: no failure of their own. */
+  const right: number[] = [];
   for (const [index, step] of steps.entries()) {
     const failure = failureOf(step, index);
-    if (failure === null) continue;
-    (recoveredBy(failure, steps.slice(index + 1)) ? recovered : open).push(failure);
+    if (failure === null) right.push(index);
+    else failures.push(failure);
+  }
+  if (failures.length === 0) return { open: [], recovered: [] };
+
+  /** The last step that went right and reports a passing verdict; read only when a failure is a command's own verdict. */
+  let lastPassing: number | undefined;
+  const lastPassingIndex = (): number => {
+    if (lastPassing === undefined) {
+      lastPassing = -1;
+      for (let at = right.length - 1; at >= 0; at -= 1) {
+        if (passingVerdict(asCallRecord(steps[right[at]])) !== null) {
+          lastPassing = right[at];
+          break;
+        }
+      }
+    }
+    return lastPassing;
+  };
+  /*
+   * By tool: the steps that went right, in order, and the last of them about
+   * each target. The tool and the target are two keys, one inside the
+   * other: joined into one string, a tool "a" failing on "b<NUL>c" would be
+   * read as recovered by a tool "a<NUL>b" going right on "c".
+   */
+  const rightByName = new Map<string, number[]>();
+  const lastRightAbout = new Map<string, Map<string, number>>();
+  for (const index of right) {
+    const step = steps[index];
+    const named = rightByName.get(step.name);
+    if (named === undefined) rightByName.set(step.name, [index]);
+    else named.push(index);
+    const target = targetKey(step);
+    if (target === null) continue;
+    let about = lastRightAbout.get(step.name);
+    if (about === undefined) {
+      about = new Map();
+      lastRightAbout.set(step.name, about);
+    }
+    about.set(target, index);
+  }
+  const valuesOf = new Map<number, Set<string>>();
+  const inputValuesAt = (index: number): Set<string> => {
+    let values = valuesOf.get(index);
+    if (values === undefined) {
+      values = inputValues(steps[index].input);
+      valuesOf.set(index, values);
+    }
+    return values;
+  };
+  /** By tool, built when a failure of that tool named no target: each input value, and the steps of the tool that went right and carry it, in order. */
+  const carriersByName = new Map<string, Map<string, number[]>>();
+  const carriersOf = (name: string): Map<string, number[]> => {
+    let carriers = carriersByName.get(name);
+    if (carriers === undefined) {
+      carriers = new Map();
+      for (const index of rightByName.get(name) ?? []) {
+        for (const value of inputValuesAt(index)) {
+          const at = carriers.get(value);
+          if (at === undefined) carriers.set(value, [index]);
+          else at.push(index);
+        }
+      }
+      carriersByName.set(name, carriers);
+    }
+    return carriers;
+  };
+
+  const open: StepFailure[] = [];
+  const recovered: StepFailure[] = [];
+  for (const failure of failures) {
+    const after = failure.index;
+    let went = failure.kind === 'reported' && lastPassingIndex() > after;
+    if (!went) {
+      const target = targetKey(failure.step);
+      if (target !== null) {
+        went = (lastRightAbout.get(failure.step.name)?.get(target) ?? -1) > after;
+      } else {
+        const given = [...inputValues(failure.step.input)];
+        if (given.length === 0) {
+          // Given nothing, it is recovered by any later call of the tool that went right.
+          const later = rightByName.get(failure.step.name) ?? [];
+          went = firstAfter(later, after) < later.length;
+        } else {
+          /*
+           * A later call that carries every value carries the rarest one,
+           * so only the calls that carry that one are looked at. A value no
+           * call of the tool carries settles it at once.
+           */
+          const carriers = carriersOf(failure.step.name);
+          let rarest: number[] | undefined;
+          for (const value of given) {
+            const at = carriers.get(value);
+            if (at === undefined) {
+              rarest = undefined;
+              break;
+            }
+            if (rarest === undefined || at.length < rarest.length) rarest = at;
+          }
+          if (rarest !== undefined) {
+            for (let at = firstAfter(rarest, after); at < rarest.length && !went; at += 1) {
+              const has = inputValuesAt(rarest[at]);
+              went = given.every((v) => has.has(v));
+            }
+          }
+        }
+      }
+    }
+    (went ? recovered : open).push(failure);
   }
   return { open, recovered };
+}
+
+/** The position in an ascending list of the first entry greater than `value`. */
+function firstAfter(ascending: readonly number[], value: number): number {
+  let lo = 0;
+  let hi = ascending.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (ascending[mid] > value) hi = mid;
+    else lo = mid + 1;
+  }
+  return lo;
 }
 
 /* ------------------------------------------------------------------ *
