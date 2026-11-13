@@ -286,8 +286,14 @@ function walk(
    * than the fail-open it replaces. A deployment that set
    * `onCriticalSkipped: "pass"` still sees the node — it accepted this
    * risk, which is not the same as there being none.
+   *
+   * Asked, by being critical or by somebody having asked (stamp.ts,
+   * askedOf): a policy whose threshold the deployment set, an expectation
+   * the call supplied. Until 0.22.0 only a critical rule was read here, so
+   * an expected trajectory compared with part of a run, or a gate that
+   * threw, was "not judged" and the verdict passed.
    */
-  const unknown = rows.filter((r) => isCritical(r) && r.skipped === true && r.skipClass !== undefined && r.skipClass !== 'not_applicable');
+  const unknown = rows.filter((r) => r.skipped === true && r.skipClass !== undefined && r.skipClass !== 'not_applicable' && (isCritical(r) || r.asked !== undefined));
   path.push({ node: 'unknown', by: unknown.map((r) => r.ruleName), decided: unknown.length > 0 && cfg.onCriticalSkipped !== 'pass' });
   if (stopAtDecision && path.some((n) => n.decided)) return path;
 
@@ -322,13 +328,9 @@ function walk(
    */
   const risk = riskEstimate(result as EvalResult, cfg.prior, cfg.priorMode);
   const t = tau(cfg.falsePassCost);
-  const by =
-    risk === null
-      ? []
-      : Object.entries(risk.perClass)
-          .filter(([, q]) => q !== null && q !== undefined && q > 0.5)
-          .map(([cls]) => cls);
-  path.push({ node: 'risk', by: risk !== null && risk.pBad > t ? by : [], decided: risk !== null && risk.pBad > t, risk });
+  // The classes a weighed rule fired in: what an estimate that no class carries alone can be put down to.
+  const firedIn = new Set(rows.filter((r) => fired(r) && r.advisory !== true && (r.kind === 'detection' || r.kind === 'inference')).flatMap((r) => r.classes ?? []));
+  path.push({ node: 'risk', by: risk !== null && risk.pBad > t ? carriedBy(risk.perClass, firedIn) : [], decided: risk !== null && risk.pBad > t, risk });
   return path;
 }
 
@@ -367,6 +369,24 @@ export function confidenceCall(
   return verdictConfidence(risk, tau(cfg.falsePassCost), { prior: cfg.prior, priorMode: cfg.priorMode, localLabels });
 }
 
+/**
+ * The failure classes that carried a risk estimate: each one that is more
+ * likely than not by itself. When none is, a fire may still have carried
+ * it: a lone fire worth 0.48 beside ten classes that found nothing is a
+ * risk of 0.54, and the verdict failed naming no class at all. The class a
+ * rule fired in that carries the most is named then. An estimate no fire
+ * carried names nobody: under a loss ratio strict enough, the risk of an
+ * output nothing flagged is over the line by itself.
+ */
+export function carriedBy(perClass: Readonly<Record<string, number | null | undefined>>, firedIn: ReadonlySet<string>): string[] {
+  const estimates = Object.entries(perClass).filter((entry): entry is [string, number] => typeof entry[1] === 'number');
+  const overHalf = estimates.filter(([, q]) => q > 0.5).map(([cls]) => cls);
+  if (overHalf.length > 0) return overHalf;
+  const fired = estimates.filter(([cls]) => firedIn.has(cls));
+  const most = fired.reduce((max, [, q]) => Math.max(max, q), 0);
+  return most === 0 ? [] : fired.filter(([, q]) => q === most).map(([cls]) => cls);
+}
+
 const pct = (x: number): string => `${Math.round(x * 100)}%`;
 
 /** One later layer, as a clause. */
@@ -376,7 +396,8 @@ function layerText(l: VerdictLayer): string {
     case 'detector_veto':
       return `a critical rule fired (${by})`;
     case 'critical_unknown':
-      return `a critical check was asked and could not answer (${by})`;
+      // Critical, or asked for by the deployment or the call (stamp.ts, askedOf): the clause is true of both.
+      return `a check that was asked for could not answer (${by})`;
     case 'required_evidence_missing':
       return `evidence that was asked for or promised is not in the record (${by})`;
     default:
@@ -819,13 +840,21 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
   }
   const unanswered = verdict.basis === 'critical_unknown' ? verdict : (verdict.also ?? []).find((l) => l.basis === 'critical_unknown');
   if (unanswered !== undefined) {
+    // A rule that is not critical is here because somebody asked for it (stamp.ts, askedOf), and the sentence says who.
+    const askedFor = unanswered.by.map((name) => {
+      const r = result.rule_results.find((x) => x.ruleName === name && x.skipped === true);
+      return r !== undefined && !isCritical(r) && r.asked !== undefined ? `${name}, which this ${r.asked === 'config' ? 'deployment' : 'call'} asked for` : name;
+    });
+    const allCritical = askedFor.every((entry, i) => entry === unanswered.by[i]);
+    const check = allCritical ? 'A critical check' : 'A check';
+    const names = askedFor.join(allCritical ? ', ' : '; ');
     out.push({
       severity: 'block',
       addressee: 'operator',
       text:
         verdict.basis === 'critical_unknown'
-          ? `A critical check was asked and could not answer (${unanswered.by.join(', ')}), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.`
-          : `A critical check was asked and could not answer (${unanswered.by.join(', ')}). The verdict failed on other grounds; that check is still not answered. Set eval.onCriticalSkipped to "pass" to accept that risk.`,
+          ? `${check} was asked and could not answer (${names}), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.`
+          : `${check} was asked and could not answer (${names}). The verdict failed on other grounds; that check is still not answered. Set eval.onCriticalSkipped to "pass" to accept that risk.`,
       configKey: 'eval.onCriticalSkipped',
     });
   }

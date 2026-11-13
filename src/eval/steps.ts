@@ -30,34 +30,54 @@
  * it). stepsOf() reads the field when the engine filled it and derives
  * otherwise, so one rule sees one trajectory on every path.
  */
-import type { EvalContext } from '../types/eval.js';
+import type { EvalContext, EvalRuleResult } from '../types/eval.js';
 import type { Span, Step, StepSource, ToolCallRecord } from '../types/trace.js';
 
 /**
- * The ceiling on a derived trajectory.
+ * The ceiling on a derived trajectory: how many calls of a run the rules
+ * read.
  *
- * This is a fix as much as a guard. `no_tool_loop`'s cycle detector is
- * quadratic in the number of calls with no cap at all, so a trace carrying
- * twenty thousand TOOL spans would be four hundred million comparisons on a
- * single-threaded server. Five hundred steps bounds that at well under a
- * million, and nothing is dropped silently: `stepScopeNote` says what was
- * examined and out of how many.
+ * It was 500 until 0.22.0, set for `no_tool_loop`, whose search for a
+ * repeated sequence grew faster than the square of the number of calls, and
+ * every other rule that reads the trajectory inherited it. Each of them
+ * then answered for the run on its first 500 calls: a call the schema
+ * rejects passed as the 501st, and a failure recovered 2,000 calls later
+ * failed the run (#1013). A rule's own work now sets what it reads, and
+ * this list is as long as a run a rule can afford to read whole:
+ *
+ *   - each rule's work for a run of this length is bounded by what one
+ *     request can carry, and tests/unit/eval/whole-run-cost.test.ts holds
+ *     the shapes that cost the most inside a CPU budget. Where a rule's
+ *     work is calls times something else the request carries (expected
+ *     calls, a schema, a catalogue entry's text, failures), each of the
+ *     two is read once; where no reading is cheaper than the pairs, the
+ *     rule has a limit of work and says when it stopped at it;
+ *   - a run longer than this list is not answered for. A rule reports what
+ *     the calls it read settle, a finding the rest cannot clear or a pass
+ *     the rest cannot break, and otherwise says it was not judged and how
+ *     far it read (`notJudgedPastCeiling`). A rule somebody asked for (a
+ *     critical rule, a policy whose threshold was set, an expectation the
+ *     call supplied) then makes the verdict what eval.onCriticalSkipped
+ *     says (compose.ts, the unknown layer).
+ *
+ * A request of the default size, 1 MB, holds ten thousand calls of about a
+ * hundred bytes each.
  */
-export const MAX_STEPS_DERIVED = 500;
+export const MAX_STEPS_DERIVED = 10_000;
 
 /**
  * The ceiling on the trajectory an action policy reads.
  *
- * MAX_STEPS_DERIVED is for rules whose work grows faster than the number of
- * calls. A policy does one bounded match for each call and rule, so it reads
- * a run whole: read to the 500th call, `deny: delete_*` deployed to gate
- * passed a run whose 501st call was delete_file, and said all 500 calls
- * were permitted (#1011). This ceiling exists so that the work is bounded
- * whatever arrives: measured, a policy of ten rules costs 12 to 22 µs of
- * CPU a call and the largest a deployment can write (100 allow and 100 deny
- * rules, each with a binding) 47 µs, so ten thousand calls are about 0.2 s
- * and 0.5 s. A run longer than it is never reported as permitted
- * (rules/custom.ts).
+ * A policy does one bounded match for each call and rule, so it reads a run
+ * whole: read to the 500th call, as the shared list then was, `deny:
+ * delete_*` deployed to gate passed a run whose 501st call was delete_file,
+ * and said all 500 calls were permitted (#1011). This ceiling exists so
+ * that the work is bounded whatever arrives: measured, a policy of ten
+ * rules costs 12 to 22 µs of CPU a call and the largest a deployment can
+ * write (100 allow and 100 deny rules, each with a binding) 47 µs, so ten
+ * thousand calls are about 0.2 s and 0.5 s. A run longer than it is never
+ * reported as permitted (rules/custom.ts). It is the shared list's length
+ * today, and is kept as the policy's own so that neither moves the other.
  */
 export const MAX_STEPS_POLICY = 10_000;
 
@@ -367,7 +387,45 @@ export function stepScopeNote(context: EvalContext): string {
     return ` (${spans.length} span(s) supplied, none of kind TOOL — a tool call reaches the trajectory rules as a TOOL span or as a tool_calls entry)`;
   }
   if (stats.kept < stats.available) {
-    return ` (first ${stats.kept} of ${stats.available} steps examined; the trajectory rules cap at ${MAX_STEPS_DERIVED})`;
+    return ` (the first ${stats.kept} of ${stats.available} calls were read; the rules read a run's first ${MAX_STEPS_DERIVED})`;
   }
   return '';
+}
+
+/** Whether the run is longer than the list the rules read. */
+export function runWasCut(context: EvalContext): boolean {
+  const stats = stepStatsOf(context);
+  return stats.kept < stats.available;
+}
+
+/**
+ * What a rule answers for a run longer than the list it read, when the rest
+ * of the run could change its answer: not judged, saying how far it read
+ * and, in the rule's own sentence (`why`), what it found among the calls
+ * read and what the rest could change. Null when the run was read whole.
+ *
+ * A rule calls this before it reports a clean result, and before it reports
+ * a finding that a later call could clear (a retry that worked, the tool
+ * that fit, the read that grounds a citation). A finding the rest of the
+ * run cannot clear is reported as a finding, with `stepScopeNote` beside it.
+ *
+ * The evidence is marked incomplete, which stamps the row `defeated`: the
+ * rule was asked and could not answer. So a rule promoted to critical makes
+ * the verdict what eval.onCriticalSkipped says, and a weighed rule is left
+ * out of the risk estimate, a silence it did not earn as much as a fire.
+ * Until 0.22.0 a rule answered for the run on its first 500 calls, with a
+ * note in its message that no verdict read (#1013).
+ */
+export function notJudgedPastCeiling(ruleName: string, context: EvalContext, why: string): EvalRuleResult | null {
+  const stats = stepStatsOf(context);
+  if (stats.kept >= stats.available) return null;
+  return {
+    ruleName,
+    passed: false,
+    score: 0,
+    skipped: true,
+    evidenceIncomplete: true,
+    skipReason: `partial_trajectory: ${stats.kept} of ${stats.available} calls read`,
+    message: `Not judged: the first ${stats.kept} of this run's ${stats.available} calls were read. ${why}. The rules read a run's first ${MAX_STEPS_DERIVED} calls`,
+  };
 }

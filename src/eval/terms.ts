@@ -87,3 +87,70 @@ export function contentTerms(text: string): string[] {
   }
   return terms;
 }
+
+/**
+ * The content terms of a text with where each stands: the terms contentTerms
+ * gives, in the same order, each with the offset of its word in the text as
+ * it was given.
+ *
+ * For a reader that asks the same text many questions by place (which terms
+ * stand in this stretch, which stood above it): one pass, where taking the
+ * terms of each stretch again costs the stretch every time. Nothing is
+ * copied or rewritten, so an offset is the caller's own.
+ * tests/unit/eval/content-term-places.test.ts holds the two together on
+ * generated texts.
+ *
+ * `fencedCode` is 'skip' for the reading contentTerms gives. A rule for
+ * which fenced code is text like the rest asks for 'read': the words inside
+ * a fence are then terms, and the fence marks are separators.
+ */
+export function contentTermPlaces(text: string, fencedCode: 'skip' | 'read' = 'skip'): Array<[term: string, at: number]> {
+  const places: Array<[string, number]> = [];
+  const fences = fencedCode === 'skip' ? [...text.matchAll(FENCED_CODE)] : [];
+  let fence = 0;
+  let word = '';
+  let wordAt = 0;
+  // Whether the character before this one, as written, is a lower-case letter a to z: an upper-case letter after one starts a new word (camelCase).
+  let afterLower = false;
+  const end = (): void => {
+    if (word.length >= 3 && !STOPWORDS.has(word)) places.push([stemTerm(word), wordAt]);
+    word = '';
+  };
+  const letter = (code: number, at: number): void => {
+    if (word.length === 0) wordAt = at;
+    word += String.fromCharCode(code);
+  };
+  for (let i = 0; i < text.length; i += 1) {
+    if (fence < fences.length && i === fences[fence].index) {
+      // Fenced code is left out, and what stands on either side of it is not one word.
+      end();
+      afterLower = false;
+      i = fences[fence].index + fences[fence][0].length - 1;
+      fence += 1;
+      continue;
+    }
+    const code = text.charCodeAt(i);
+    if (code >= 97 && code <= 122) {
+      letter(code, i);
+      afterLower = true;
+    } else if (code >= 65 && code <= 90) {
+      if (afterLower) end();
+      letter(code + 32, i);
+      afterLower = false;
+    } else if (code < 128) {
+      end();
+      afterLower = false;
+    } else {
+      // A character outside ASCII is a separator, unless its lower case is written with a letter a to z (the Kelvin sign; a dotted capital I, whose lower case is i and a combining dot).
+      const lowered = text[i].toLowerCase();
+      for (let k = 0; k < lowered.length; k += 1) {
+        const unit = lowered.charCodeAt(k);
+        if (unit >= 97 && unit <= 122) letter(unit, i);
+        else end();
+      }
+      afterLower = false;
+    }
+  }
+  end();
+  return places;
+}

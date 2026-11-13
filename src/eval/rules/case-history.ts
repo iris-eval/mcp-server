@@ -41,7 +41,7 @@
  */
 import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type EvalRuleResult, type Evidence } from '../../types/eval.js';
 import { CASE_HISTORY_MIN, CASE_HISTORY_WEIGH_MIN, CASE_HISTORY_WINDOW, caseHistoryOf, droppedSteps, hasNoUsualWay, listNames, readOnlyWordsNotTaken, toolNameOf, toolsOfSteps, unusualActions } from '../case-history.js';
-import { stepScopeNote, stepStatsOf, stepsOf, trajectoryAbsence } from '../steps.js';
+import { notJudgedPastCeiling, stepScopeNote, stepsOf, trajectoryAbsence } from '../steps.js';
 import { skipWithoutTrajectory } from './trajectory.js';
 
 const runs = (n: number): string => `${n} earlier run${n === 1 ? '' : 's'}`;
@@ -84,7 +84,7 @@ function skipUnreadable(ruleName: string): EvalRuleResult {
 export const noUnusualAction: EvalRule = {
   name: 'no_unusual_action',
   description:
-    `A run against the same agent's earlier runs of its own case: fails when the run called a tool known to act and none of the case's ${CASE_HISTORY_WINDOW} most recent earlier runs called it. Known to act: the catalogue marks the tool readOnlyHint false or destructiveHint true, or, with no word from the catalogue, the first verb in its name acts (send, delete, update, execute, …), or a verb directly after "and" does, or the name has no verb and is a shell's or an interpreter's (bash, python); the verbs of a name like mcp__server__tool are read after the server's part. A look-up (readOnlyHint true, or a name whose first verb reads: get, list, search, …) and a tool neither the catalogue nor its name places (calculator, Glob) are named in the message and never counted. An inference: from ${CASE_HISTORY_WEIGH_MIN} earlier runs a fire is weighed in the verdict by what it was worth on agent runs labelled outside Iris, each read against the same agent's other runs of its task (proof/OUTSIDE.md), and from twenty of the deployment's own labels by the deployment's precision; with fewer earlier runs it reports and takes no part in the verdict, and the result says so (advisoryWhy); eval.advisoryRules sets the rule to report only. Skips without tool calls; as insufficient_history below ${CASE_HISTORY_MIN} earlier runs with recorded calls, which is every call with no stored trace behind it; and when more than half of the earlier runs each took an action none of the others took, because that case has no usual way of going`,
+    `A run against the same agent's earlier runs of its own case: fails when the run called a tool known to act and none of the case's ${CASE_HISTORY_WINDOW} most recent earlier runs called it. Known to act: the catalogue marks the tool readOnlyHint false or destructiveHint true, or, with no word from the catalogue, the first verb in its name acts (send, delete, update, execute, …), or a verb directly after "and" does, or the name has no verb and is a shell's or an interpreter's (bash, python); the verbs of a name like mcp__server__tool are read after the server's part. A look-up (readOnlyHint true, or a name whose first verb reads: get, list, search, …) and a tool neither the catalogue nor its name places (calculator, Glob) are named in the message and never counted. An inference: from ${CASE_HISTORY_WEIGH_MIN} earlier runs a fire is weighed in the verdict by what it was worth on agent runs labelled outside Iris, each read against the same agent's other runs of its task (proof/OUTSIDE.md), and from twenty of the deployment's own labels by the deployment's precision; with fewer earlier runs it reports and takes no part in the verdict, and the result says so (advisoryWhy); eval.advisoryRules sets the rule to report only. Skips without tool calls; as insufficient_history below ${CASE_HISTORY_MIN} earlier runs with recorded calls, which is every call with no stored trace behind it; and when more than half of the earlier runs each took an action none of the others took, because that case has no usual way of going. It reads a run of up to 10,000 tool calls whole; of a longer run an action found among the first 10,000 is reported, and otherwise the rule is not judged`,
   evalType: 'completeness',
   weight: 1,
   kind: 'inference',
@@ -151,6 +151,11 @@ export const noUnusualAction: EvalRule = {
       evidence.push({ type: 'toolCall', index: step.index, toolName: name, label: `called in none of the ${runs(m)} of this case` });
     }
     const passed = unusual.length === 0;
+    if (passed) {
+      // An action none of the earlier runs took may be among the calls that were not read; one found among those read stands (steps.ts).
+      const cut = notJudgedPastCeiling('no_unusual_action', context, 'No action new to the case was found among them, and the rest were not read');
+      if (cut !== null) return { ...cut, ...reportsOnly };
+    }
     return {
       ruleName: 'no_unusual_action',
       passed,
@@ -168,7 +173,7 @@ export const noUnusualAction: EvalRule = {
 export const noDroppedStep: EvalRule = {
   name: 'no_dropped_step',
   description:
-    `A run against the same agent's earlier runs of its own case: fails when the run never called a tool that every one of the case's ${CASE_HISTORY_WINDOW} most recent earlier runs called, look-ups included. An explicit empty list of tool calls is judged as no calls made. A measurement: at the shipped configuration it reports and decides no verdict. Skips when no tool calls were sent at all, or more than the trajectory rules read; as insufficient_history below ${CASE_HISTORY_MIN} earlier runs with recorded calls, which is every call with no stored trace behind it; and when no tool was called by every earlier run, because there is nothing to hold this run to`,
+    `A run against the same agent's earlier runs of its own case: fails when the run never called a tool that every one of the case's ${CASE_HISTORY_WINDOW} most recent earlier runs called, look-ups included. An explicit empty list of tool calls is judged as no calls made. A measurement: at the shipped configuration it reports and decides no verdict. Skips when no tool calls were sent at all; as insufficient_history below ${CASE_HISTORY_MIN} earlier runs with recorded calls, which is every call with no stored trace behind it; and when no tool was called by every earlier run, because there is nothing to hold this run to. It reads a run of up to 10,000 tool calls whole; of a longer run a step found among the first 10,000 was taken, and one not found among them is not judged`,
   evalType: 'completeness',
   weight: 1,
   kind: 'measurement',
@@ -181,20 +186,9 @@ export const noDroppedStep: EvalRule = {
     // An explicit empty list is a run that made no call, and against steps the case always takes that is the finding. Calls not sent at all still skip.
     const skip = skipWithoutTrajectory('no_dropped_step', context);
     if (skip && trajectoryAbsence(context) !== 'empty_calls') return skip;
-    const stats = stepStatsOf(context);
-    if (stats.kept < stats.available) {
-      // A step taken only among the calls that were not read would be reported as dropped.
-      return {
-        ruleName: 'no_dropped_step',
-        passed: false,
-        score: 0,
-        message: `Not judged: the first ${stats.kept} of this run's ${stats.available} calls were read, and a step may be among the rest`,
-        skipped: true,
-        skipReason: `partial_trajectory: ${stats.kept} of ${stats.available} calls read`,
-      };
-    }
     const called = toolsOfSteps(stepsOf(context));
     if (called === null) return skipUnreadable('no_dropped_step');
+    // The history is asked first: a run with no earlier runs to be read against is not applicable at any length, as for no_unusual_action.
     const reading = droppedSteps(new Set(called), caseHistoryOf(context) ?? []);
     if (reading === null) return skipForHistory('no_dropped_step', context);
     const { m, dropped, usual } = reading;
@@ -207,6 +201,16 @@ export const noDroppedStep: EvalRule = {
         skipped: true,
         skipReason: `no_usual_step: no tool was called by every one of the ${runs(m)} of this case`,
       };
+    }
+    /*
+     * A run longer than the list the rules read (steps.ts). A step the case
+     * always takes, found among the calls read, was taken, and more calls
+     * do not undo it: a pass stands. One not found among them may be among
+     * the rest, so a finding is not judged.
+     */
+    if (dropped.length > 0) {
+      const cut = notJudgedPastCeiling('no_dropped_step', context, `${listNames(dropped)}, called in every one of the ${runs(m)} of this case, ${dropped.length === 1 ? 'was' : 'were'} not called among them and may be among the rest`);
+      if (cut !== null) return cut;
     }
     const scope = stepScopeNote(context);
     const evidence: Evidence[] = [
