@@ -1176,7 +1176,7 @@
         "question": "Q10",
         "status": "has",
         "subject": "S2",
-        "summary": "The verdict names which layer decided it and which rules did the deciding, coverage says which evaluation questions were judged and which input was missing for the rest, and a critical check that was asked and could not answer makes the verdict unknown rather than clean — a state a gate can fail closed on, and a setting the deployment chooses. Every rule deploy, delete, toggle and update and every trace deletion is recorded in an audit log the agent can read, so a rule changed or evidence removed around a verdict can be found afterwards."
+        "summary": "The verdict names which layer decided it and which rules did the deciding, coverage says which evaluation questions were judged and which input was missing for the rest, and a check that was asked for and could not answer makes the verdict unknown rather than clean — a state a gate can fail closed on, and a setting the deployment chooses. Every rule deploy, delete, toggle and update and every trace deletion is recorded in an audit log the agent can read, so a rule changed or evidence removed around a verdict can be found afterwards."
       },
       {
         "evidence": [
@@ -5323,8 +5323,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-11-13T05:49:47.926Z",
-  "generatedFromCommit": "9a298711",
+  "generatedAt": "2026-11-13T07:34:46.877Z",
+  "generatedFromCommit": "194bb315",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
