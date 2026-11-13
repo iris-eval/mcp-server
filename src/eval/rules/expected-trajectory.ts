@@ -69,6 +69,15 @@ function writtenAsNull(value: unknown): boolean {
  */
 export const SEQUENCE_COMPARISON_BUDGET = 20_000_000;
 
+/**
+ * A run of this many calls or fewer is compared without the limit above.
+ * Until 0.22.0 this was the length of the list every rule read, and a
+ * comparison over it was never stopped. What it can cost is bounded by the
+ * request, as it was then: 500 expected calls, the most evaluate_output
+ * accepts, against 500 steps.
+ */
+export const SEQUENCE_STEPS_COMPARED_WHOLE = 500;
+
 /** One comparison of an expectation with a run: how many more values it may compare (below zero, it has stopped), and what each expected object asks for, listed once. */
 export interface ComparisonWork {
   left: number;
@@ -338,7 +347,7 @@ function skipWithoutExpectation(ruleName: string, what: string): EvalRuleResult 
 export const toolSequence: EvalRule = {
   name: 'tool_sequence',
   description:
-    'The calls the caller expected against the calls the agent made, in a mode: strict (equal, in order), unordered (equal as multisets), subset (every expected call present), superset (no call outside the expected set) or ordered_subset (the expected calls appear in order among the actual ones — the default; two pointers, linear time). A call matches by tool name, and by arguments only when the expectation names an input: exact compares the normalised input, subset (the default) asks that every expected key be present with the same value. Fails naming the first missing, extra or misplaced call. An explicit empty list of tool calls is judged as no calls made, which fails an expectation of calls. Skips when no tool calls were sent at all, or without expected_trajectory.tool_calls. It reads a run of up to 10,000 tool calls whole. Of a longer run it reports what the calls read settle (more calls than a strict or unordered expectation holds, a call out of place or outside a superset, a subset or ordered subset already satisfied), and is otherwise not judged. The modes that ask an expected call of many steps (subset, superset, unordered) compare up to 20,000,000 values between the expectation and the run, and a comparison that needs more is not judged',
+    'The calls the caller expected against the calls the agent made, in a mode: strict (equal, in order), unordered (equal as multisets), subset (every expected call present), superset (no call outside the expected set) or ordered_subset (the expected calls appear in order among the actual ones — the default; two pointers, linear time). A call matches by tool name, and by arguments only when the expectation names an input: exact compares the normalised input, subset (the default) asks that every expected key be present with the same value. Fails naming the first missing, extra or misplaced call. An explicit empty list of tool calls is judged as no calls made, which fails an expectation of calls. Skips when no tool calls were sent at all, or without expected_trajectory.tool_calls. It reads a run of up to 10,000 tool calls whole. Of a longer run it reports what the calls read settle (more calls than a strict or unordered expectation holds, a call out of place or outside a superset, a subset or ordered subset already satisfied), and is otherwise not judged. A run of up to 500 calls is compared whole. On a longer run the modes that ask an expected call of many steps (subset, superset, unordered) compare up to 20,000,000 values between the expectation and the run, and a comparison that needs more is not judged',
   evalType: 'completeness',
   weight: 1,
   kind: 'policy',
@@ -348,7 +357,7 @@ export const toolSequence: EvalRule = {
   question: 'complete',
   classes: ['wrong_trajectory'],
   // 2 (0.20.0): an explicit empty list of tool calls is judged against the expectation instead of skipped.
-  // 3: compares the whole run where it compared the first 500 calls; of a run it read in part it reports what the calls read settle, and is otherwise not judged; a comparison in subset, superset or unordered mode stops at 20,000,000 values compared and is then not judged (#1013).
+  // 3: compares the whole run where it compared the first 500 calls; of a run it read in part it reports what the calls read settle, and is otherwise not judged; on a run of more than 500 calls a comparison in subset, superset or unordered mode stops at 20,000,000 values compared and is then not judged (#1013).
   version: 3,
   evaluate(context: EvalContext): EvalRuleResult {
     const expected = context.expectedTrajectory?.tool_calls;
@@ -364,7 +373,8 @@ export const toolSequence: EvalRule = {
     const steps = stepsOf(context);
     const mode = modeOf(context.expectedTrajectory?.mode);
     const args = argsOf(context.expectedTrajectory?.args);
-    let outcome = compareSequence(expected, steps, mode, args);
+    // A run as long as the list once was is compared whole, as it always was; a longer one inside the limit of work.
+    let outcome = compareSequence(expected, steps, mode, args, steps.length <= SEQUENCE_STEPS_COMPARED_WHOLE ? Infinity : SEQUENCE_COMPARISON_BUDGET);
     /*
      * A strict or an unordered expectation holds as many calls as the run
      * made, or the two differ: the count settles that with no comparison.
@@ -380,7 +390,7 @@ export const toolSequence: EvalRule = {
         missing: outcome.missing,
         why:
           madeInAll > expected.length
-            ? `the run made ${madeInAll} calls and ${expected.length} ${expected.length === 1 ? 'was' : 'were'} expected, so ${madeInAll - expected.length} are beyond the expected ${mode === 'strict' ? 'sequence' : 'set'}`
+            ? `the run made ${madeInAll} calls and ${expected.length} ${expected.length === 1 ? 'was' : 'were'} expected, so ${madeInAll - expected.length} ${madeInAll - expected.length === 1 ? 'is' : 'are'} beyond the expected ${mode === 'strict' ? 'sequence' : 'set'}`
             : `the run made ${madeInAll} call${madeInAll === 1 ? '' : 's'} and ${expected.length} were expected, so ${expected.length - madeInAll} expected call${expected.length - madeInAll === 1 ? '' : 's'} never came`,
       };
     }
@@ -422,7 +432,7 @@ export const toolSequence: EvalRule = {
         settled = misplacedAmongRead || made > expected.length;
         if (settled && !misplacedAmongRead) {
           // The count alone decides, and it is the run's own: what the calls not read are does not matter.
-          outcome = { ...outcome, passed: false, why: `the run made ${made} calls and ${expected.length} ${expected.length === 1 ? 'was' : 'were'} expected, so ${made - expected.length} are beyond the expected ${mode === 'strict' ? 'sequence' : 'set'}` };
+          outcome = { ...outcome, passed: false, why: `the run made ${made} calls and ${expected.length} ${expected.length === 1 ? 'was' : 'were'} expected, so ${made - expected.length} ${made - expected.length === 1 ? 'is' : 'are'} beyond the expected ${mode === 'strict' ? 'sequence' : 'set'}` };
         }
       } else if (mode === 'superset') {
         settled = !outcome.passed;

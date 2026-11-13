@@ -328,8 +328,12 @@ function walk(
    */
   const risk = riskEstimate(result as EvalResult, cfg.prior, cfg.priorMode);
   const t = tau(cfg.falsePassCost);
-  // The classes a weighed rule fired in: what an estimate that no class carries alone can be put down to.
-  const firedIn = new Set(rows.filter((r) => fired(r) && r.advisory !== true && (r.kind === 'detection' || r.kind === 'inference')).flatMap((r) => r.classes ?? []));
+  // The classes a weighed rule fired in: what an estimate that no class carries alone can be put down to. Weighed as the estimate weighs (risk.ts, detectorsOf): a fire with no published accuracy behind it, a plugin's, moved nothing and is named for nothing.
+  const firedIn = new Set<string>(
+    detectorsOf(result as EvalResult)
+      .filter((d) => d.fired)
+      .flatMap((d) => d.classes),
+  );
   path.push({ node: 'risk', by: risk !== null && risk.pBad > t ? carriedBy(risk.perClass, firedIn) : [], decided: risk !== null && risk.pBad > t, risk });
   return path;
 }
@@ -373,10 +377,11 @@ export function confidenceCall(
  * The failure classes that carried a risk estimate: each one that is more
  * likely than not by itself. When none is, a fire may still have carried
  * it: a lone fire worth 0.48 beside ten classes that found nothing is a
- * risk of 0.54, and the verdict failed naming no class at all. The class a
- * rule fired in that carries the most is named then. An estimate no fire
- * carried names nobody: under a loss ratio strict enough, the risk of an
- * output nothing flagged is over the line by itself.
+ * risk of 0.54, and the verdict failed naming no class at all. Named then
+ * is the class with the highest estimate among those a weighed rule fired
+ * in (`firedIn`). With no weighed fire nobody is named: under a loss ratio
+ * strict enough, the risk of an output nothing flagged is over the line by
+ * itself.
  */
 export function carriedBy(perClass: Readonly<Record<string, number | null | undefined>>, firedIn: ReadonlySet<string>): string[] {
   const estimates = Object.entries(perClass).filter((entry): entry is [string, number] => typeof entry[1] === 'number');
@@ -821,7 +826,13 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
    */
   const weighedAtLabelsPrior = result.provenance?.composer?.priorSource === 'estimated';
   if (verdict.basis === 'risk_over_loss') {
-    const weighedFires = result.rule_results.filter((r) => fired(r) && r.advisory !== true && !isCritical(r) && (r.kind === 'detection' || r.kind === 'inference')).map((r) => r.ruleName);
+    // The fires the estimate weighed (risk.ts, detectorsOf): a plugin's detection has no published accuracy, and the estimate does not rest on it.
+    const weighed = new Set(
+      detectorsOf(result)
+        .filter((d) => d.fired)
+        .map((d) => d.name),
+    );
+    const weighedFires = result.rule_results.filter((r) => weighed.has(r.ruleName) && !isCritical(r)).map((r) => r.ruleName);
     if (weighedFires.length > 0) {
       out.push({
         severity: 'note',

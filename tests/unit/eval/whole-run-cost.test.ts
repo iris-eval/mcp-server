@@ -267,25 +267,36 @@ describe('a run of 10,000 calls, in the shapes that cost the rules the most', ()
     expect(said.message).not.toContain('among the rest');
   });
 
-  it('tool_sequence: 500 expected objects of 82 keys against a run of 499, 500 and 600 calls: the count settles the two it can', async () => {
-    // 500 x 500 x 82 is past the limit of work. A run of another length than an unordered expectation differs from it whatever the calls are; a run of the same length could be equal, and is not judged.
+  it('tool_sequence: 500 expected objects of 82 keys: a run of up to 500 calls is compared whole, and of a longer one the count settles what it can', { timeout: 300_000 }, async () => {
+    // 500 x 500 x 82 is past the limit of work a longer run is held to. A run of up to 500 calls was always compared whole, and still is: it gets the answer it got. (Six evaluations of half a second to a second of CPU each, and several times that under coverage on a CI runner: hence the timeout.)
     const wide = (last: number): Record<string, number> => Object.fromEntries(Array.from({ length: 82 }, (_, k) => [`k${String(k).padStart(2, '0')}`, k === 81 ? last : k]));
     const expected = Array.from({ length: 500 }, (_, i) => ({ tool_name: 'x', input: wide(100_000 + i) }));
     // Each call made carries one more key, which sorts first: no_tool_loop keys a call by the first 500 characters of its input, and these inputs differ only at their end.
     const made = (count: number): ToolCallRecord[] => Array.from({ length: count }, (_, i): ToolCallRecord => ({ tool_name: 'x', input: { _n: i, ...wide(i) } }));
-    for (const [count, why] of [
-      [499, 'the run made 499 calls and 500 were expected, so 1 expected call never came'],
-      [600, 'the run made 600 calls and 500 were expected, so 100 are beyond the expected set'],
+    const sequence = async (count: number, mode: 'unordered' | 'subset' | 'superset') => {
+      const { result, cpuMs } = await judged({ ...RUN, toolCalls: made(count), expectedTrajectory: { tool_calls: expected, mode, step_budget: 5_000 } });
+      expect(cpuMs, `${count} ${mode}`).toBeLessThan(BUDGET_MS);
+      return { row: row(result, 'tool_sequence'), state: result.verdict?.state };
+    };
+    // Compared whole: no call satisfies an expected one, and each mode says so in its own words.
+    for (const [count, mode, why] of [
+      [500, 'subset', '500 of 500 expected calls never came'],
+      [500, 'superset', '500 calls outside the expected set'],
+      [500, 'unordered', '500 of 500 expected calls never came'],
+      [499, 'unordered', '500 of 500 expected calls never came'],
     ] as const) {
-      const { result, cpuMs } = await judged({ ...RUN, toolCalls: made(count), expectedTrajectory: { tool_calls: expected, mode: 'unordered', step_budget: 5_000 } });
-      expect(cpuMs, String(count)).toBeLessThan(BUDGET_MS);
-      expect(row(result, 'tool_sequence'), String(count)).toMatchObject({ passed: false, state: 'fail' });
-      expect(row(result, 'tool_sequence').message, String(count)).toBe(`Trajectory differs from the expected (unordered, args subset): ${why}`);
+      const judgedWhole = await sequence(count, mode);
+      expect(judgedWhole.row, `${count} ${mode}`).toMatchObject({ passed: false, state: 'fail' });
+      expect(judgedWhole.row.message, `${count} ${mode}`).toContain(`Trajectory differs from the expected (${mode}, args subset): ${why}`);
     }
-    const same = await judged({ ...RUN, toolCalls: made(500), expectedTrajectory: { tool_calls: expected, mode: 'unordered', step_budget: 5_000 } });
-    expect(same.cpuMs).toBeLessThan(BUDGET_MS);
-    expect(row(same.result, 'tool_sequence')).toMatchObject({ skipped: true, evidenceIncomplete: true });
-    expect(same.result.verdict?.state).toBe('unknown');
+    // One call more, and the comparison is held to its limit. An unordered expectation and a run of another length differ whatever the calls are; a subset could still be met, and is not judged.
+    const counted = await sequence(501, 'unordered');
+    expect(counted.row).toMatchObject({ passed: false, state: 'fail' });
+    expect(counted.row.message).toBe('Trajectory differs from the expected (unordered, args subset): the run made 501 calls and 500 were expected, so 1 is beyond the expected set');
+    const stopped = await sequence(501, 'subset');
+    expect(stopped.row).toMatchObject({ skipped: true, evidenceIncomplete: true });
+    expect(stopped.row.message).toBe("Not judged: comparing the 500 expected calls with the 501 made (subset, args subset) was not settled inside the rule's limit of work, 20,000,000 values compared");
+    expect(stopped.state).toBe('unknown');
   });
 
   it('no_silent_tool_failure: the most a run of 500 calls can ask of the search for a recovery, and one failure nothing recovers behind 205 that were', async () => {

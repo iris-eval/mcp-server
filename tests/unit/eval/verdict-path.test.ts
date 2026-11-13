@@ -14,7 +14,7 @@
  * reader something the product did not decide.
  */
 import { describe, expect, it } from 'vitest';
-import { carriedBy, compose, verdictPath, DEFAULT_COMPOSE, type ComposeConfig } from '../../../src/eval/compose.js';
+import { carriedBy, compose, interpretations, verdictPath, DEFAULT_COMPOSE, type ComposeConfig } from '../../../src/eval/compose.js';
 import type { EvalResult, EvalRuleResult, VerdictNode } from '../../../src/types/eval.js';
 
 const row = (r: Partial<EvalRuleResult> & { ruleName: string }): EvalRuleResult =>
@@ -91,6 +91,25 @@ describe('the path and the verdict are one decision', () => {
     expect(carriedBy({ pii_leak: 0.04, injection_compliance: 0.06 }, none)).toEqual([]);
     expect(carriedBy({}, none)).toEqual([]);
     expect(carriedBy({ a: 0, b: null, c: undefined }, new Set(['a', 'b', 'c']))).toEqual([]);
+  });
+
+  it('a fire the estimate does not weigh is named for nothing, by the verdict or by the note beside it', () => {
+    // A plugin's detection has no published accuracy, so the estimate does not move when it fires (risk.ts, detectorsOf). Under a loss ratio strict enough to fail an output nothing weighed flagged, the verdict fails on the estimate, and it rests on no fire.
+    const quiet = [row({ ruleName: 'no_pii', kind: 'detection', classes: ['pii_leak', 'credential_leak'] }), row({ ruleName: 'no_injection_patterns', kind: 'detection', classes: ['injection'] })];
+    const plugin = row({ ruleName: 'acme_pii_scan', kind: 'detection', classes: ['pii_leak'], passed: false });
+    const strict = cfg({ falsePassCost: 1_000_000 });
+    const unweighed = evaluation([...quiet, plugin]) as EvalResult;
+    expect(verdictPath(unweighed, strict).find((n) => n.node === 'risk')).toMatchObject({ decided: true, by: [] });
+    const failed = compose(unweighed, strict);
+    expect(failed).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: [] });
+    expect(interpretations(unweighed, failed, strict).filter((i) => i.text.includes('rests on'))).toEqual([]);
+    // A rule the estimate weighs fires as well: its class is named, and the note names that rule and not the plugin.
+    const weighed = evaluation([...quiet, plugin, row({ ruleName: 'no_stub_output', kind: 'inference', classes: ['stub'], passed: false })]) as EvalResult;
+    const named = compose(weighed, strict);
+    expect(named).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['stub'] });
+    const notes = interpretations(weighed, named, strict).filter((i) => i.text.includes('rests on'));
+    expect(notes).toHaveLength(1);
+    expect(notes[0].text).toContain('rests on no_stub_output.');
   });
 
   it('the risk node carries the same estimate the verdict carries, decided or not', () => {
