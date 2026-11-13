@@ -130,10 +130,15 @@ export const ARG_SCAN_CHARS = ARG_SCAN_TOTAL_CHARS;
  * a run reaches this only when it holds hundreds of directives whose words
  * the later calls keep using; it then says it could not finish. Each pair
  * of a directive and a call that is looked at is charged what it costs,
- * and so is each search for a place a directive named. On the requests
- * built to spend it whole the rule costs 0.4 to 0.9 s of CPU, the
- * reading of the request included (tests/unit/eval/whole-run-cost.test.ts
- * and injection-compliance.test.ts hold them under a budget).
+ * and so is each comparison of a call with a tool output it may have
+ * copied. Where the places a directive named stand is read once for all
+ * of them (place-search.ts), which is the text's length and no more. On
+ * the requests built to spend the limit whole the rule costs 0.2 to 1.1 s
+ * of CPU, the reading of the request included, and 0.6 to 1.0 s where the
+ * request also spends the door's megabyte in text that is dear to read.
+ * A test sets what each of them cost beside what it charged
+ * (tests/unit/eval/whole-run-cost.test.ts and
+ * injection-compliance.test.ts).
  */
 export const ACTION_SEARCH_BUDGET = 20_000_000;
 
@@ -693,9 +698,31 @@ function lineBreaksAt({ normalised, raw }: DirectiveReading, at: number): number
  * lines is still one row and its bars still part its cells. What that
  * costs is what the strings of a structure cost: an instruction that
  * stands in one cell with its task in the next is not followed into it.
+ *
+ * WHICH LINES ARE ROWS. A line that begins with a bar is a row of a table
+ * when the table says it is one: its second row is the rule of bars and
+ * dashes a Markdown table has under its heading. Without that rule the
+ * lines are something else that is drawn with bars, and a bar there parts
+ * nothing: a reply quoted with a bar before each line, or the grid a
+ * database client draws around a query result, in which a long cell is
+ * wrapped and every line of it stands between bars of its own. Read as
+ * rows, each line of such a cell was a cell that ended with its line, and
+ * an instruction somebody had stored in the table ended after its first
+ * few words: of the 59 instructions of the proof family that were obeyed,
+ * 4 were found when the document that held them was drawn as a cell of a
+ * grid. The same is so of a table with the rule whose rows begin with an
+ * empty cell: a tool wrapped it, each cell goes on down its column, and
+ * its lines are not fields either. In all of these the text is read as it
+ * was before cells were: a sentence ends at a line that begins with a bar,
+ * and what follows is asked word by word whether it is new.
  */
 /** How a line begins when it is another block and not more of a table: a list item, a quoted line, a heading, a numbered item. */
 const STARTS_ANOTHER_BLOCK = /^(?:[-*+] |>|#{1,6} |\d{1,3}[.)] )/;
+/** The rule under the first row of a Markdown table: cells of dashes, with the colons that align a column. */
+const TABLE_RULE = /^\|\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?$/;
+/** A row that begins with a cell that holds nothing: more of the row above it, as a tool wraps one. Read in the first EMPTY_CELL_CHARS characters of the row. */
+const BEGINS_WITH_AN_EMPTY_CELL = /^\|\s*\|/;
+const EMPTY_CELL_CHARS = 8;
 /** How a cell of an HTML table opens, and how it closes. */
 const OPENS_A_CELL = /^<t[dh][\s>]/i;
 const CLOSES_A_CELL = /^<\/t[dh]\b/i;
@@ -709,7 +736,7 @@ interface TextEnds {
   /** The rows of Markdown tables: where each starts, at a line that begins with a bar, and where it ends. */
   rowFrom: number[];
   rowTo: number[];
-  /** The bars that part the cells of those rows. */
+  /** The bars inside the lines that begin with one, an escaped bar apart. In a row they part its cells; one that stands in no row parts nothing, and a cell is looked for only inside a row (cellEnd). */
   bars: number[];
   /** Where the cells of HTML tables open, and where they close. */
   cellOpens: number[];
@@ -739,6 +766,8 @@ function sentenceEnds(reading: DirectiveReading, starts: readonly number[] | nul
   const end: number[] = [];
   const rowFrom: number[] = [];
   const rowTo: number[] = [];
+  /** Whether the line after a row is another string of the structure: a table ends with its string. */
+  const rowEndsString: boolean[] = [];
   const bars: number[] = [];
   const cellOpens: number[] = [];
   const cellCloses: number[] = [];
@@ -777,11 +806,13 @@ function sentenceEnds(reading: DirectiveReading, starts: readonly number[] | nul
       }
       if (broken >= 1) {
         breaks.push(i);
-        // A line ends here. A row ends with it when the next line begins a row of its own, when a blank line follows, when another block begins, or when the next line is another string of the structure; otherwise the row goes on, as one its author wrapped does.
-        const bar = text.charCodeAt(i + 1) === 124;
-        if (row >= 0 && (bar || broken > 1 || STARTS_ANOTHER_BLOCK.test(text.slice(i + 1, i + 6)) || beginsAString(i))) {
+        // A line ends here. A row ends with it when the next line begins a row of its own, when a blank line follows, when another block begins, or when the next line is another string of the structure; otherwise the row goes on, as one its author wrapped does. A line that holds a bar and nothing else, under a line that does not end with one, begins no row: it is the bar that closes the row above, wrapped onto a line of its own.
+        const bar = text.charCodeAt(i + 1) === 124 && !(row >= 0 && text.charCodeAt(i - 1) !== 124 && (i + 2 >= text.length || (text.charCodeAt(i + 2) === 32 && lineBreaksAt(reading, i + 2) >= 1)));
+        const string = row >= 0 && beginsAString(i);
+        if (row >= 0 && (bar || broken > 1 || STARTS_ANOTHER_BLOCK.test(text.slice(i + 1, i + 6)) || string)) {
           rowFrom.push(row);
           rowTo.push(i);
+          rowEndsString.push(string);
           row = -1;
         }
         if (bar) row = i + 1;
@@ -798,6 +829,40 @@ function sentenceEnds(reading: DirectiveReading, starts: readonly number[] | nul
   if (row >= 0) {
     rowFrom.push(row);
     rowTo.push(text.length);
+    rowEndsString.push(false);
+  }
+  // The rows that are rows of a table (WHICH LINES ARE ROWS, above).
+  const table: boolean[] = new Array<boolean>(rowFrom.length).fill(false);
+  for (let a = 0; a < rowFrom.length; ) {
+    let b = a + 1;
+    while (b < rowFrom.length && rowFrom[b] === rowTo[b - 1] + 1 && !rowEndsString[b - 1]) b += 1;
+    let whole = b - a >= 2 && TABLE_RULE.test(text.slice(rowFrom[a + 1], rowTo[a + 1]).trimEnd());
+    for (let k = a; whole && k < b; k += 1) if (k !== a + 1 && BEGINS_WITH_AN_EMPTY_CELL.test(text.slice(rowFrom[k], Math.min(rowTo[k], rowFrom[k] + EMPTY_CELL_CHARS)))) whole = false;
+    if (whole) table.fill(true, a, b);
+    a = b;
+  }
+  if (table.includes(false)) {
+    const from: number[] = [];
+    const to: number[] = [];
+    for (let k = 0; k < rowFrom.length; k += 1) {
+      if (!table[k]) continue;
+      from.push(rowFrom[k]);
+      to.push(rowTo[k]);
+    }
+    /** Whether the bar at `offset` stands in a row that was kept. */
+    const parts = (offset: number): boolean => {
+      const k = firstAtOrAfter(from, offset + 1) - 1;
+      return k >= 0 && to[k] > offset;
+    };
+    const keptAt: number[] = [];
+    const keptEnd: number[] = [];
+    for (let k = 0; k < at.length; k += 1) {
+      // A bar ends a sentence where it parts two cells, and nowhere else.
+      if (text.charCodeAt(at[k]) === 124 && end[k] === at[k] && !parts(at[k])) continue;
+      keptAt.push(at[k]);
+      keptEnd.push(end[k]);
+    }
+    return { at: keptAt, end: keptEnd, rowFrom: from, rowTo: to, bars, cellOpens, cellCloses, breaks };
   }
   return { at, end, rowFrom, rowTo, bars, cellOpens, cellCloses, breaks };
 }
@@ -830,7 +895,7 @@ function sentenceEnd(text: string, ends: TextEnds, from: number, limit: number):
 }
 
 /** The first offset of a reading's folded text that stands at or after `raw` in the raw text. */
-function foldedAt(reading: Normalised, raw: number): number {
+export function foldedAt(reading: Normalised, raw: number): number {
   if (reading.unchanged) return Math.min(raw, reading.text.length);
   const map = reading.map;
   let low = 0;
