@@ -14,7 +14,7 @@
  * reader something the product did not decide.
  */
 import { describe, expect, it } from 'vitest';
-import { compose, verdictPath, DEFAULT_COMPOSE, type ComposeConfig } from '../../../src/eval/compose.js';
+import { carriedBy, compose, verdictPath, DEFAULT_COMPOSE, type ComposeConfig } from '../../../src/eval/compose.js';
 import type { EvalResult, EvalRuleResult, VerdictNode } from '../../../src/types/eval.js';
 
 const row = (r: Partial<EvalRuleResult> & { ruleName: string }): EvalRuleResult =>
@@ -77,6 +77,21 @@ describe('the path and the verdict are one decision', () => {
       }
     });
   }
+
+  it('a risk that failed the verdict names a class: each that is more likely than not, or the one that carries the most', () => {
+    const none = new Set<string>();
+    expect(carriedBy({ injection_compliance: 0.6, tool_loop: 0.55, pii_leak: 0.1 }, none)).toEqual(['injection_compliance', 'tool_loop']);
+    // A lone fire worth less than a half beside classes that found nothing: the estimate is over the threshold, and it is that class's.
+    expect(carriedBy({ pii_leak: 0.02, injection_compliance: 0.4827, tool_loop: 0.03, wrong_trajectory: null }, new Set(['injection_compliance']))).toEqual(['injection_compliance']);
+    // Of two classes with a fire, the one that carries more; of two that carry the same, both.
+    expect(carriedBy({ a: 0.4, b: 0.3, c: 0.45 }, new Set(['a', 'b']))).toEqual(['a']);
+    expect(carriedBy({ a: 0.4, b: 0.4, c: 0.1 }, new Set(['a', 'b']))).toEqual(['a', 'b']);
+    expect(carriedBy({ a: 0.5 }, new Set(['a']))).toEqual(['a']);
+    // An estimate no fire carried names nobody: a strict loss ratio puts the line under the risk of an output nothing flagged.
+    expect(carriedBy({ pii_leak: 0.04, injection_compliance: 0.06 }, none)).toEqual([]);
+    expect(carriedBy({}, none)).toEqual([]);
+    expect(carriedBy({ a: 0, b: null, c: undefined }, new Set(['a', 'b', 'c']))).toEqual([]);
+  });
 
   it('the risk node carries the same estimate the verdict carries, decided or not', () => {
     const rows = [row({ ruleName: 'no_pii', kind: 'detection', passed: false })];

@@ -233,7 +233,25 @@ export function stampRuleResult(
   const skipClass = skipClassOf(raw);
   // What a rule that had nothing to judge was missing, and whether anyone had asked for it.
   const lacked = skipClass === 'not_applicable' ? lackedBy(rule, context, present) : [];
-  const asked = lacked.length > 0 ? askedOf(rule, context, effective, options) : undefined;
+  /*
+   * And who had asked for a rule that could not answer for another reason:
+   * a run it read in part, a budget, a throw, a broken definition. A policy
+   * the call or the deployment asked for is not critical, so until 0.22.0
+   * nothing read such a row: an expected trajectory compared with part of
+   * a run was "not judged" and the verdict passed (compose.ts, the unknown
+   * layer).
+   */
+  const couldNotAnswer = skipClass !== undefined && skipClass !== 'not_applicable';
+  /*
+   * A rule the deployment set to report only (eval.advisoryRules) is asked
+   * for by nobody, whatever threshold stands beside it. Its fire takes no
+   * part in the verdict, so its silence takes none either: read as asked,
+   * a loop check the deployment had told to report made the verdict
+   * unknown on a run it read in part, where a loop it found would have
+   * changed nothing.
+   */
+  const reportsOnly = effective.advisory === true;
+  const asked = !reportsOnly && (lacked.length > 0 || couldNotAnswer) ? askedOf(rule, context, effective, options) : undefined;
   /*
    * A result an LLM judge decided (answers_the_ask with a relevance judge,
    * #649) is a judgment, whatever the rule declares for its lexical

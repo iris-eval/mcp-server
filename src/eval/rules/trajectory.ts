@@ -345,7 +345,7 @@ function inputValues(input: unknown): Set<string> {
 }
 
 /** Why this step went wrong, or null when it did not. */
-function failureOf(step: Step, index: number): StepFailure | null {
+export function failureOf(step: Step, index: number): StepFailure | null {
   if (isFailedStep(step)) return { index, step, kind: 'failed', reason: stepFailureReason(step) };
   const verdict = failingVerdict(asCallRecord(step));
   return verdict === null ? null : { index, step, kind: 'reported', reason: `reports "${truncate(verdict, 70)}"` };
@@ -370,8 +370,13 @@ function failureOf(step: Step, index: number): StepFailure | null {
  *
  * A later success on something ELSE recovers nothing: `read a.txt` failing
  * and `read b.txt` succeeding leaves the answer owing the first.
+ *
+ * This is the definition, one failure at a time. `failuresIn` gives the
+ * same answers for a whole run without reading each later step once per
+ * failure, and says which failures it left undecided when a run is built
+ * to exhaust its limit of work. A test holds the two together.
  */
-function recoveredBy(failure: StepFailure, later: readonly Step[]): boolean {
+export function recoveredBy(failure: StepFailure, later: readonly Step[]): boolean {
   const target = targetKey(failure.step);
   const given = target === null ? inputValues(failure.step.input) : null;
   for (const step of later) {
@@ -390,19 +395,168 @@ function recoveredBy(failure: StepFailure, later: readonly Step[]): boolean {
 }
 
 /**
+ * Input values looked at, across a run, while asking whether a failure that
+ * named no target was recovered by a later call. Such a failure is recovered
+ * by a later call of the tool that carries everything it was given, and
+ * "carries everything" is asked of one later call at a time: a run built of
+ * failures and of later calls that each carry all but one of their values
+ * costs failures × later calls × values. Past this the remaining ones are
+ * returned as `undecided`, and the rule that reads them says so.
+ */
+export const RECOVERY_SEARCH_BUDGET = 2_000_000;
+
+/**
  * The failures in a trajectory, split into the ones still open at the end
  * and the ones the agent recovered from. no_silent_tool_failure asks the
- * answer to own the open ones.
+ * answer to own the open ones. `undecided` holds the failures whose recovery
+ * the search could not settle inside RECOVERY_SEARCH_BUDGET: neither open
+ * nor recovered, and empty for any run not built to exhaust it.
  */
-export function failuresIn(steps: readonly Step[]): { open: StepFailure[]; recovered: StepFailure[] } {
-  const open: StepFailure[] = [];
-  const recovered: StepFailure[] = [];
+export function failuresIn(steps: readonly Step[]): { open: StepFailure[]; recovered: StepFailure[]; undecided: StepFailure[] } {
+  /*
+   * Each step is read once. Asked of each failure in turn (recoveredBy over
+   * the steps after it), a run of n calls with f failures read n × f
+   * outputs: 0.5 s of CPU at 10,000 calls with one call in seventy failing,
+   * and without bound as the share of failures grew. Inside the budget
+   * above the answers are recoveredBy's; tests/unit/eval/failures-in.test.ts
+   * holds the two together on generated runs.
+   */
+  const failures: StepFailure[] = [];
+  /** The steps that went right, in order: no failure of their own. */
+  const right: number[] = [];
   for (const [index, step] of steps.entries()) {
     const failure = failureOf(step, index);
-    if (failure === null) continue;
-    (recoveredBy(failure, steps.slice(index + 1)) ? recovered : open).push(failure);
+    if (failure === null) right.push(index);
+    else failures.push(failure);
   }
-  return { open, recovered };
+  if (failures.length === 0) return { open: [], recovered: [], undecided: [] };
+
+  /** The last step that went right and reports a passing verdict; read only when a failure is a command's own verdict. */
+  let lastPassing: number | undefined;
+  const lastPassingIndex = (): number => {
+    if (lastPassing === undefined) {
+      lastPassing = -1;
+      for (let at = right.length - 1; at >= 0; at -= 1) {
+        if (passingVerdict(asCallRecord(steps[right[at]])) !== null) {
+          lastPassing = right[at];
+          break;
+        }
+      }
+    }
+    return lastPassing;
+  };
+  /*
+   * By tool: the steps that went right, in order, and the last of them about
+   * each target. The tool and the target are two keys, one inside the
+   * other. Joined into one string, a tool "a" failing on "b<NUL>c" was read
+   * as recovered by a tool "a<NUL>b" going right on "c".
+   */
+  const rightByName = new Map<string, number[]>();
+  const lastRightAbout = new Map<string, Map<string, number>>();
+  for (const index of right) {
+    const step = steps[index];
+    const named = rightByName.get(step.name);
+    if (named === undefined) rightByName.set(step.name, [index]);
+    else named.push(index);
+    const target = targetKey(step);
+    if (target === null) continue;
+    let about = lastRightAbout.get(step.name);
+    if (about === undefined) {
+      about = new Map();
+      lastRightAbout.set(step.name, about);
+    }
+    about.set(target, index);
+  }
+  const valuesOf = new Map<number, Set<string>>();
+  const inputValuesAt = (index: number): Set<string> => {
+    let values = valuesOf.get(index);
+    if (values === undefined) {
+      values = inputValues(steps[index].input);
+      valuesOf.set(index, values);
+    }
+    return values;
+  };
+  /** By tool, built when a failure of that tool named no target: each input value, and the steps of the tool that went right and carry it, in order. */
+  const carriersByName = new Map<string, Map<string, number[]>>();
+  const carriersOf = (name: string): Map<string, number[]> => {
+    let carriers = carriersByName.get(name);
+    if (carriers === undefined) {
+      carriers = new Map();
+      for (const index of rightByName.get(name) ?? []) {
+        for (const value of inputValuesAt(index)) {
+          const at = carriers.get(value);
+          if (at === undefined) carriers.set(value, [index]);
+          else at.push(index);
+        }
+      }
+      carriersByName.set(name, carriers);
+    }
+    return carriers;
+  };
+
+  const open: StepFailure[] = [];
+  const recovered: StepFailure[] = [];
+  const undecided: StepFailure[] = [];
+  let budget = RECOVERY_SEARCH_BUDGET;
+  for (const failure of failures) {
+    const after = failure.index;
+    let went = failure.kind === 'reported' && lastPassingIndex() > after;
+    let settled = true;
+    if (!went) {
+      const target = targetKey(failure.step);
+      if (target !== null) {
+        went = (lastRightAbout.get(failure.step.name)?.get(target) ?? -1) > after;
+      } else {
+        const given = [...inputValues(failure.step.input)];
+        if (given.length === 0) {
+          // Given nothing, it is recovered by any later call of the tool that went right.
+          const later = rightByName.get(failure.step.name) ?? [];
+          went = firstAfter(later, after) < later.length;
+        } else {
+          /*
+           * A later call that carries every value carries the rarest one,
+           * so only the calls that carry that one are looked at. A value no
+           * later call carries settles it at once.
+           */
+          const carriers = carriersOf(failure.step.name);
+          let rarest: number[] | undefined;
+          for (const value of given) {
+            const at = carriers.get(value);
+            if (at === undefined) {
+              rarest = undefined;
+              break;
+            }
+            if (rarest === undefined || at.length < rarest.length) rarest = at;
+          }
+          if (rarest !== undefined) {
+            for (let at = firstAfter(rarest, after); at < rarest.length && !went; at += 1) {
+              budget -= given.length;
+              if (budget < 0) {
+                settled = false;
+                break;
+              }
+              const has = inputValuesAt(rarest[at]);
+              went = given.every((v) => has.has(v));
+            }
+          }
+        }
+      }
+    }
+    (went ? recovered : settled ? open : undecided).push(failure);
+  }
+  return { open, recovered, undecided };
+}
+
+/** The position in an ascending list of the first entry greater than `value`. */
+function firstAfter(ascending: readonly number[], value: number): number {
+  let lo = 0;
+  let hi = ascending.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (ascending[mid] > value) hi = mid;
+    else lo = mid + 1;
+  }
+  return lo;
 }
 
 /* ------------------------------------------------------------------ *
@@ -479,8 +633,8 @@ export const ACKNOWLEDGEMENT_FORMS: readonly RegExp[] = [
  * repeats in it.
  *
  * A generalisation of the alternating-pair detector this replaces: a run of
- * period 2 is A,B,A,B, and a run of period 3 is A,B,C,A,B,C. The scan is the
- * same single sweep per start position.
+ * period 2 is A,B,A,B, and a run of period 3 is A,B,C,A,B,C. Of the runs
+ * with the most repetitions, the one that starts first is the one returned.
  *
  * A k-gram whose own period is SMALLER than k is skipped, because a smaller
  * k already explains that run — A,A,A,A is a period-1 run, not a period-2
@@ -492,25 +646,73 @@ export const ACKNOWLEDGEMENT_FORMS: readonly RegExp[] = [
  * counts non-consecutive repeats too, which is strictly more.
  */
 export function longestCycle(keys: readonly string[], k: number): { gram: string[]; start: number; repetitions: number } | null {
-  if (k < 1 || keys.length < k * 2) return null;
-  let best: { gram: string[]; start: number; repetitions: number } | null = null;
-  for (let start = 0; start + k * 2 <= keys.length; start += 1) {
-    const gram = keys.slice(start, start + k);
-    if (hasSmallerPeriod(gram)) continue;
-    let len = k;
-    while (start + len < keys.length && keys[start + len] === keys[start + len - k]) len += 1;
-    const repetitions = Math.floor(len / k);
-    if (repetitions >= 2 && (best === null || repetitions > best.repetitions)) best = { gram, start, repetitions };
+  const found = longestCycleIn(internKeys(keys), k);
+  return found === null ? null : { gram: keys.slice(found.start, found.start + k), ...found };
+}
+
+/** Each distinct key as a small number, in order of first appearance: a scan for a period then compares numbers, whatever a key's length. */
+export function internKeys(keys: readonly string[]): Int32Array {
+  const seen = new Map<string, number>();
+  const ids = new Int32Array(keys.length);
+  for (let i = 0; i < keys.length; i += 1) {
+    let id = seen.get(keys[i]);
+    if (id === undefined) {
+      id = seen.size;
+      seen.set(keys[i], id);
+    }
+    ids[i] = id;
+  }
+  return ids;
+}
+
+/**
+ * longestCycle over interned keys, in one pass.
+ *
+ * Wherever key i equals key i − k, the run of period k that began k calls
+ * earlier goes on. So each unbroken stretch of such places is one run, met
+ * once: its first start carries the most repetitions, and every other start
+ * inside it is a rotation of the same k-gram, with the same answer to
+ * "does it repeat something shorter".
+ *
+ * Until 0.22.0 the scan began again from every start and sliced a k-gram at
+ * each, which is n × k work for one period and grows with the cube of the
+ * run over every period a run can hold: 16 ms of CPU at 500 calls, 0.8 s at
+ * 2,000 and 11.8 s at 5,000. That search is what held every trajectory rule
+ * to a run's first 500 calls (#1013). This pass is n work for a period;
+ * every period of a run of 10,000 calls takes under 0.1 s.
+ * tests/unit/eval/longest-cycle.test.ts holds it to the earlier scan on
+ * generated sequences.
+ *
+ * `accept` leaves a run out of the answer: the longest run it takes is
+ * returned. The loop rule passes over a run that was a poll with it, so
+ * that the longest run of a period being a poll does not end the search of
+ * that period (rules/cost.ts, findCycle).
+ */
+export function longestCycleIn(ids: Int32Array, k: number, accept?: (start: number, repetitions: number) => boolean): { start: number; repetitions: number } | null {
+  const n = ids.length;
+  if (k < 1 || n < k * 2) return null;
+  let best: { start: number; repetitions: number } | null = null;
+  let i = k;
+  while (i < n) {
+    if (ids[i] !== ids[i - k]) {
+      i += 1;
+      continue;
+    }
+    const from = i;
+    while (i < n && ids[i] === ids[i - k]) i += 1;
+    // ids[from − k .. i) has period k.
+    const repetitions = Math.floor((i - from + k) / k);
+    if (repetitions >= 2 && (best === null || repetitions > best.repetitions) && !hasSmallerPeriod(ids, from - k, k) && (accept === undefined || accept(from - k, repetitions))) best = { start: from - k, repetitions };
   }
   return best;
 }
 
-/** Does this k-gram repeat something shorter than itself? */
-function hasSmallerPeriod(gram: readonly string[]): boolean {
-  for (let p = 1; p < gram.length; p += 1) {
-    if (gram.length % p !== 0) continue;
+/** Does the k-gram at `start` repeat something shorter than itself? */
+function hasSmallerPeriod(ids: Int32Array, start: number, k: number): boolean {
+  for (let p = 1; p < k; p += 1) {
+    if (k % p !== 0) continue;
     let uniform = true;
-    for (let i = p; i < gram.length && uniform; i += 1) if (gram[i] !== gram[i - p]) uniform = false;
+    for (let i = start + p; i < start + k && uniform; i += 1) if (ids[i] !== ids[i - p]) uniform = false;
     if (uniform) return true;
   }
   return false;

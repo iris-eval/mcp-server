@@ -160,7 +160,7 @@ describe('the step layer — one derived reading of the trajectory', () => {
     expect(steps).toHaveLength(MAX_STEPS_DERIVED);
     const stats = stepStatsOf({ output: '', toolCalls: many });
     expect(stats).toEqual({ source: 'tool_calls', available: MAX_STEPS_DERIVED + 7, kept: MAX_STEPS_DERIVED });
-    expect(stepScopeNote({ output: '', toolCalls: many })).toContain(`of ${MAX_STEPS_DERIVED + 7} steps`);
+    expect(stepScopeNote({ output: '', toolCalls: many })).toContain(`the first ${MAX_STEPS_DERIVED} of ${MAX_STEPS_DERIVED + 7} calls were read`);
   });
 
   it('a whole trajectory examined says nothing about scope', () => {
@@ -243,10 +243,20 @@ describe('the shipped trajectory rules, reading the derived list', () => {
     expect(reason(noTool)).toContain('kind TOOL');
   });
 
-  it('an over-cap trajectory says what it examined instead of judging a slice in silence', async () => {
+  it('a finding in a run longer than the list stands, and says how far the rule read', async () => {
     const many = Array.from({ length: MAX_STEPS_DERIVED + 3 }, () => ({ tool_name: 'read', input: { path: 'a.ts' } }));
     const result = await engine.evaluateAll({ output: 'x', toolCalls: many });
     const loop = result.rule_results.find((r) => r.ruleName === 'no_tool_loop');
-    expect(loop?.message).toContain(`of ${MAX_STEPS_DERIVED + 3} steps`);
+    expect(loop?.passed).toBe(false);
+    expect(loop?.skipped).toBeFalsy();
+    expect(loop?.message).toContain(`the first ${MAX_STEPS_DERIVED} of ${MAX_STEPS_DERIVED + 3} calls were read`);
+  });
+
+  it('a clean reading of a run longer than the list is not a clean result: the rule is not judged', async () => {
+    const many = Array.from({ length: MAX_STEPS_DERIVED + 3 }, (_, i) => ({ tool_name: 'read', input: { path: `f${i}.ts` } }));
+    const result = await engine.evaluateAll({ output: 'x', toolCalls: many });
+    const loop = result.rule_results.find((r) => r.ruleName === 'no_tool_loop');
+    expect(loop).toMatchObject({ skipped: true, evidenceIncomplete: true, skipClass: 'defeated', state: 'not_checked' });
+    expect(loop?.message).toContain(`Not judged: the first ${MAX_STEPS_DERIVED} of this run's ${MAX_STEPS_DERIVED + 3} calls were read. No loop was found among them, and the rest were not read`);
   });
 });

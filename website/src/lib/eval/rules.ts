@@ -656,6 +656,8 @@ function normalise(raw: string, options: NormaliseOptions = {}): Normalised {
 
   const out: string[] = [];
   const offsets: number[] = [];
+  /** How long the folded text is so far, in the units a string offset counts (UTF-16): the offset of whatever is written next. */
+  let length = 0;
   /** The whitespace run being accumulated: where it started and ended, and whether it broke a line. */
   let run: { at: number; end: number; hadBreak: boolean } | null = null;
   const joins: Array<{ at: number; raw: number }> = [];
@@ -663,12 +665,26 @@ function normalise(raw: string, options: NormaliseOptions = {}): Normalised {
   /** False as soon as one output character does not sit at its own raw offset. */
   let identityMap = true;
 
+  /*
+   * One map entry for each UTF-16 unit written, because that is what an
+   * offset into the folded text counts. Until 0.22.0 this wrote one entry
+   * for each CODE POINT, so a character outside the Basic Multilingual Plane
+   * that the fold keeps (an emoji, a rare ideograph: two units, one code
+   * point) left the map one entry short, and every offset read through it
+   * past that character came back one character further on for each such
+   * character before it: evidence spans, the words reading's restored
+   * breaks, and whatever a rule decided from a raw position. Every unit of
+   * a cluster maps to where the cluster starts in the raw text, as before,
+   * so a span put back on the raw text never ends inside a character.
+   */
   const push = (chars: string, at: number): void => {
-    for (const ch of chars) {
-      if (at !== out.length) identityMap = false;
-      out.push(ch);
+    if (chars.length === 0) return;
+    for (let unit = 0; unit < chars.length; unit += 1) {
+      if (at !== length) identityMap = false;
       offsets.push(at);
+      length += 1;
     }
+    out.push(chars);
   };
 
   /**
@@ -689,7 +705,7 @@ function normalise(raw: string, options: NormaliseOptions = {}): Normalised {
       const inserted = raw.slice(run.at, run.end);
       const prev = out[out.length - 1];
       if (inserted !== ' ' && insideToken(prev, next)) {
-        joins.push({ at: out.length, raw: run.at });
+        joins.push({ at: length, raw: run.at });
         changed = true;
         run = null;
         return;

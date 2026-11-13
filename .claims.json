@@ -1650,7 +1650,7 @@
           "input"
         ],
         "question": "task_completed",
-        "version": 3
+        "version": 4
       },
       {
         "classes": [
@@ -1706,7 +1706,7 @@
           "tool_outputs"
         ],
         "question": "grounded",
-        "version": 2
+        "version": 3
       },
       {
         "classes": [
@@ -1733,7 +1733,7 @@
           "tool_calls"
         ],
         "question": "within_budget",
-        "version": 1
+        "version": 2
       },
       {
         "classes": [
@@ -1840,7 +1840,7 @@
           "output"
         ],
         "question": "tool_use_correct",
-        "version": 2
+        "version": 3
       },
       {
         "classes": [
@@ -1866,7 +1866,7 @@
           "tool_calls"
         ],
         "question": "tool_use_correct",
-        "version": 1
+        "version": 2
       },
       {
         "classes": [
@@ -1934,7 +1934,7 @@
           "expected_trajectory"
         ],
         "question": "within_budget",
-        "version": 2
+        "version": 3
       },
       {
         "classes": [
@@ -1963,7 +1963,7 @@
           "expected_trajectory"
         ],
         "question": "complete",
-        "version": 2
+        "version": 3
       },
       {
         "classes": [
@@ -5304,13 +5304,13 @@
     ],
     "sources": {
       "composite": {
-        "compositeVersion": "caa13e5c9488"
+        "compositeVersion": "eecfa6c37418"
       },
       "judge": {
         "status": "pending"
       },
       "results": {
-        "corpusVersion": "e777f6add399",
+        "corpusVersion": "b5d19919b387",
         "customCorpusVersion": "93e38960b2a0"
       }
     },
@@ -5323,8 +5323,8 @@
     ],
     "version": 1
   },
-  "generatedAt": "2026-11-12T05:10:00.718Z",
-  "generatedFromCommit": "29cf71bf",
+  "generatedAt": "2026-11-13T05:49:47.926Z",
+  "generatedFromCommit": "9a298711",
   "generatorVersion": "1.0.0",
   "llmJudgeTemplates": {
     "count": 7,
@@ -5412,26 +5412,26 @@
     ]
   },
   "proof": {
-    "commit": "7c09adc0",
+    "commit": "9a298711",
     "composite": {
-      "compositeVersion": "caa13e5c9488",
+      "compositeVersion": "eecfa6c37418",
       "confidence": {
         "changed": {
           "of": 112,
           "toDecisive": 0,
-          "toMarginal": 82
+          "toMarginal": 80
         },
         "intervalOnly": {
           "decisive": {
             "dev": {
               "ci95": [
-                0.604,
-                0.8256
+                0.598,
+                0.8225
               ],
-              "k": 43,
-              "n": 59,
-              "patterns": 13,
-              "rate": 0.7288
+              "k": 42,
+              "n": 58,
+              "patterns": 12,
+              "rate": 0.7241
             },
             "realTranscriptsTest": {
               "ci95": [
@@ -5445,25 +5445,25 @@
             },
             "test": {
               "ci95": [
-                0.4079,
-                0.7784
+                0.3873,
+                0.7674
               ],
-              "k": 14,
-              "n": 23,
-              "patterns": 10,
-              "rate": 0.6087
+              "k": 13,
+              "n": 22,
+              "patterns": 9,
+              "rate": 0.5909
             }
           },
           "marginal": {
             "dev": {
               "ci95": [
-                0.5353,
-                0.8745
+                0.551,
+                0.88
               ],
-              "k": 17,
-              "n": 23,
-              "patterns": 7,
-              "rate": 0.7391
+              "k": 18,
+              "n": 24,
+              "patterns": 8,
+              "rate": 0.75
             },
             "realTranscriptsTest": {
               "ci95": [
@@ -5477,13 +5477,13 @@
             },
             "test": {
               "ci95": [
-                0.3589,
-                0.9178
+                0.4093,
+                0.9285
               ],
-              "k": 5,
-              "n": 7,
-              "patterns": 4,
-              "rate": 0.7143
+              "k": 6,
+              "n": 8,
+              "patterns": 5,
+              "rate": 0.75
             }
           }
         },
@@ -5638,14 +5638,14 @@
               "to": 1
             }
           ],
-          "compositeVersion": "caa13e5c9488",
+          "compositeVersion": "eecfa6c37418",
           "prior": 0.5,
           "priorMode": "per-output",
           "split": "dev",
-          "version": "7adb2067442f"
+          "version": "03ff229d2a90"
         }
       },
-      "corpusVersion": "e777f6add399",
+      "corpusVersion": "b5d19919b387",
       "counts": {
         "byClass": {
           "credential_leak": 5,
@@ -8007,7 +8007,7 @@
       },
       "version": "0.21.0"
     },
-    "corpusVersion": "e777f6add399",
+    "corpusVersion": "b5d19919b387",
     "custom": {
       "method": "each custom rule type built by createCustomRule under the family's config and run on cases labelled by its documented definition; a disagreement is a rule defect or a definition error, never an opinion",
       "types": [
@@ -8635,7 +8635,7 @@
         "rule": "no_pii"
       }
     ],
-    "generatedAt": "2026-11-12T04:12:49.639Z",
+    "generatedAt": "2026-11-13T05:42:19.425Z",
     "humanAgreement": {
       "note": "founder blind label of a 140-case stratified sample (twenty per judgment family); until then the labels are same-model dual annotation (see proof/README.md)",
       "status": "pending"
@@ -8654,8 +8654,8 @@
       },
       "method": "EvalEngine.evaluateAll — the call evaluate_output makes — over every case in the proof corpus, 25 warm-up runs discarded, storage excluded",
       "n": 1349,
-      "p50Ms": 1.451,
-      "p95Ms": 8.349
+      "p50Ms": 0.918,
+      "p95Ms": 5.404
     },
     "method": {
       "ci": "wilson-95",

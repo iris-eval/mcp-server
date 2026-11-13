@@ -24,7 +24,7 @@ import {
   valueAsString,
 } from '../../../src/eval/action-policy.js';
 import { createCustomRule } from '../../../src/eval/rules/custom.js';
-import { MAX_STEPS_DERIVED, MAX_STEPS_POLICY } from '../../../src/eval/steps.js';
+import { MAX_STEPS_POLICY } from '../../../src/eval/steps.js';
 import type { EvalContext } from '../../../src/types/eval.js';
 import type { RuleSeverity } from '../../../src/types/custom-rule.js';
 import { cpuMs } from '../../helpers/cpu-time.js';
@@ -433,8 +433,7 @@ describe('action_policy — a policy reads the run whole (#1011)', () => {
   const denyDeletes = { deny: [{ tool: 'delete_*' }] };
 
   it('a denied call is denied wherever in the run it is: at the 500th call, the 501st, and thousands in', () => {
-    // The trajectory rules read the first MAX_STEPS_DERIVED calls. Read to there, the policy passed a run whose 501st call it denies.
-    expect(MAX_STEPS_DERIVED).toBe(500);
+    // Read through the list the trajectory rules shared, which then stopped at the 500th call, the policy passed a run whose 501st call it denies.
     for (const before of [3, 499, 500, 501, 2_000, MAX_STEPS_POLICY - 1]) {
       const r = run(denyDeletes, [...manyReads(before), del], 'critical');
       expect(r.passed, `${before} reads, then delete_file`).toBe(false);
