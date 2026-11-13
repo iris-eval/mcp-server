@@ -858,6 +858,14 @@ jobs:
           allow-ghsas: ${{ steps.triaged.outputs.ids }}
           license-check: false
           comment-summary-in-pr: never
+      # Where a row's decision rests on the installed version, the record names
+      # it, and the inventory below compares those lines with the lockfile. A
+      # pull request that moves such a package updates the line in the same
+      # change: asked here, since on main the answer comes one merge late. It
+      # reads two files and needs no install.
+      - name: The record's installed versions match the lockfile
+        if: github.event_name == 'pull_request'
+        run: node scripts/security/check-exposure-coverage.mjs --claims-only
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         if: github.event_name != 'pull_request'
         with:
