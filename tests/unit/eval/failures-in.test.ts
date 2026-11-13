@@ -224,6 +224,20 @@ describe('failuresIn — the same answers as the definition, read once', () => {
     expect(indices(byDefinition(again.steps))).toEqual(indices(fast));
     expect(Math.min(...again.outputs.slice(40))).toBeGreaterThanOrEqual(40);
     expect(Math.min(...again.inputs.slice(40))).toBeGreaterThanOrEqual(40);
+    // The same for failures that named no target: forty given three values each, then forty-two calls of the tool that went right and each carry two of the three. Every value has calls that carry it and no call carries all three, so each failure looks at later calls one at a time; each later call's values are worked out once and kept.
+    const pairs: Array<Record<string, string>> = [{ ref: 'r1', tag: 't1' }, { tag: 't1', lane: 'l1' }, { ref: 'r1', lane: 'l1' }];
+    const bare: ToolCallRecord[] = [
+      ...Array.from({ length: 40 }, (): ToolCallRecord => ({ tool_name: 'run_step', input: { ref: 'r1', tag: 't1', lane: 'l1' }, error: 'boom' })),
+      ...Array.from({ length: 42 }, (_, i): ToolCallRecord => ({ tool_name: 'run_step', input: { ...pairs[i % 3], n: `n${i}` }, output: 'ok' })),
+    ];
+    const kept = counted(bare);
+    const none = failuresIn(kept.steps);
+    expect([none.open.length, none.recovered.length]).toEqual([40, 0]);
+    expect(Math.max(...kept.inputs.slice(40))).toBe(Math.min(...kept.inputs.slice(40)));
+    expect(Math.max(...kept.inputs.slice(40))).toBeLessThanOrEqual(6);
+    const asked = counted(bare);
+    expect(indices(byDefinition(asked.steps))).toEqual(indices(none));
+    expect(Math.min(...asked.inputs.slice(40))).toBeGreaterThanOrEqual(40);
   });
 });
 
