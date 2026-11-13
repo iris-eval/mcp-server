@@ -42,6 +42,14 @@
 // in SECURITY-EXPOSURE.md allowed. Both remain satisfiable inside the
 // change they block.
 //
+// One part of it does run on every pull request: `--claims-only` compares
+// the installed versions the record names with the lockfile and stops
+// there. That answer depends on nothing but the tree being merged, so a
+// pull request that moves a named package is told on the pull request,
+// where the row can be updated in the same change. On main alone it was
+// told one merge later: a Dependabot update of @hono/node-server left the
+// record naming the version before it, and main's gate failed.
+//
 // Run locally:  node scripts/security/check-exposure-coverage.mjs
 // Run in CI:    same — no secrets needed
 //
@@ -224,6 +232,11 @@ async function checkInstalledVersionClaims() {
 async function main() {
   const documented = await getDocumentedGhsas();
   await checkInstalledVersionClaims();
+  // What a pull request is asked: no install, no network (the header).
+  if (process.argv.includes('--claims-only')) {
+    console.log('[security-gate] OK — every installed version the record names is the lockfile\'s');
+    return;
+  }
   const advisories = getAuditAdvisories();
 
   console.log(`[security-gate] npm audit reports ${advisories.length} advisory(ies) at >=moderate severity`);
