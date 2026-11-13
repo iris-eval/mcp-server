@@ -251,7 +251,7 @@ All four are transitive-only (`brace-expansion` via dev-tooling globs, `fast-uri
 
 #### [GHSA-frvp-7c67-39w9](https://github.com/advisories/GHSA-frvp-7c67-39w9) — @hono/node-server serveStatic path traversal on Windows via encoded backslash (`%5C`)
 
-- **Severity:** moderate — **Package:** `@hono/node-server` (2.1.5 installed — the MCP SDK's 1.30.0 bump carried it to 2.1.0, past the advisory's 2.0.5 fix, and the root `overrides` entry raised it to 2.1.5 on 2026-10-30 for GHSA-rmxm-3fg6-px4f below; `npm audit` no longer reports this advisory for this tree. The row stays as the record of the assessment made while it was open; the installed version above is checked against `package-lock.json` by `scripts/security/check-exposure-coverage.mjs`)
+- **Severity:** moderate — **Package:** `@hono/node-server` (2.1.8 installed — the MCP SDK's 1.30.0 bump carried it to 2.1.0, past the advisory's 2.0.5 fix; the root `overrides` entry raised it to 2.1.5 on 2026-10-30 for GHSA-rmxm-3fg6-px4f below, and to 2.1.8 on 2026-11-12 for the two advisories in that date's batch; `npm audit` no longer reports this advisory for this tree. The row stays as the record of the assessment made while it was open; the installed version above is checked against `package-lock.json` by `scripts/security/check-exposure-coverage.mjs`)
 - **Load-graph reachable:** **Yes on HTTP transport** (see correction above); no on stdio.
 - **Code-path reachable:** **No.** The vulnerability is in `serveStatic`; iris calls only `getRequestListener`. iris serves no static files through this package — dashboard assets go through Express `express.static`.
 - **Decision:** **Resolved 2026-09-05 by the SDK upgrade** (while open: dismiss as `tolerable_risk`) — loaded, but the vulnerable static-file handler is off iris's call graph. Cannot be overridden locally without forcing a major version on the SDK's bridge; tracks the SDK upgrade.
@@ -259,7 +259,7 @@ All four are transitive-only (`brace-expansion` via dev-tooling globs, `fast-uri
 
 #### [GHSA-rmxm-3fg6-px4f](https://github.com/advisories/GHSA-rmxm-3fg6-px4f) — @hono/node-server `serveStatic` decodes the request path a second time (middleware bypass on static paths)
 
-- **Severity:** moderate — **Package:** `@hono/node-server` (2.1.5 installed — vulnerable range >= 1.19.10, < 2.1.3; fixed in 2.1.3; published 2026-10-28). The tree had 2.1.0 through `@modelcontextprotocol/sdk@1.32.1` (`^1.19.9 || ^2.0.5`); the root `overrides` entry is now `^2.1.5` and the lockfile resolves 2.1.5 (regenerated on Linux, node 24; the one lockfile change).
+- **Severity:** moderate — **Package:** `@hono/node-server` (2.1.8 installed — vulnerable range >= 1.19.10, < 2.1.3; fixed in 2.1.3; published 2026-10-28). The tree had 2.1.0 through `@modelcontextprotocol/sdk@1.32.1` (`^1.19.9 || ^2.0.5`); on 2026-10-30 the root `overrides` entry became `^2.1.5` and the lockfile resolved 2.1.5 (regenerated on Linux, node 24; the one lockfile change), and on 2026-11-12 they moved to `^2.1.8` and 2.1.8 (that date's batch below).
 - **Load-graph reachable:** **Yes on HTTP transport**, no on stdio — the same path as GHSA-frvp-7c67-39w9 above (`getRequestListener` only).
 - **Code-path reachable:** **No.** The defect is in `serveStatic`, which has zero call sites in `src/` (re-verified 2026-10-30). iris serves no static files through this package.
 - **Decision:** **Patched 2026-10-30** (override to 2.1.5; while open it was `tolerable_risk` for the reason above). The Advisory inventory failed on main on 2026-10-29 and 2026-10-30 because this row did not yet exist; this row and the bump are the fix.
@@ -268,7 +268,7 @@ All four are transitive-only (`brace-expansion` via dev-tooling globs, `fast-uri
 #### [GHSA-8j4g-w8fx-2239](https://github.com/advisories/GHSA-8j4g-w8fx-2239), [GHSA-hvrm-45r6-mjfj](https://github.com/advisories/GHSA-hvrm-45r6-mjfj), [GHSA-w62v-xxxg-mg59](https://github.com/advisories/GHSA-w62v-xxxg-mg59), [GHSA-xgm2-5f3f-mvvc](https://github.com/advisories/GHSA-xgm2-5f3f-mvvc) — hono core (CORS-middleware ReDoS, hono/jsx cross-request context leak, `cx()` JSX XSS, API-Gateway v1 adapter header de-dup)
 
 - **Severity:** moderate (all four) — **Package:** `hono` (transitive, under `@hono/node-server`)
-- **Load-graph reachable:** hono **core** is imported only by `@hono/node-server`'s `serve-static` and `vercel` adapters, neither of which iris loads; `getRequestListener` does not pull hono core.
+- **Load-graph reachable:** hono **core** is imported only by `@hono/node-server`'s `serve-static` and `vercel` adapters, neither of which iris loads; `getRequestListener` does not pull hono core. That was the load graph when these four were assessed. At 2.1.8 the package loads one `hono` file, described in the batch of 2026-11-12 below, and none of these four is in it.
 - **Code-path reachable:** **No.** Every affected surface is a submodule iris never invokes: CORS middleware (iris uses its own `src/middleware/cors.ts` on Express), `hono/jsx` SSR, the `cx()` utility, and the AWS API-Gateway adapter.
 - **Decision:** **Dismiss as `not_used`** — vulnerable submodules unreachable.
 - **Assessed:** 2026-08-06.
@@ -391,6 +391,27 @@ All four are transitive-only (`brace-expansion` via dev-tooling globs, `fast-uri
 
 **Gate after:** `npm audit` at the root reports 0 vulnerabilities, and `node scripts/security/check-exposure-coverage.mjs` exits 0.
 
+### 2026-11-12 — `@hono/node-server` 2.1.8 and `hono` 4.13.18 by lockfile bump
+
+**Why.** GitHub published six advisories on 2026-11-12: two in `@hono/node-server`, fixed in 2.1.6, and four in `hono`, fixed in 4.13.16.
+
+| Advisory(ies) | Package | Was → Now | Load path | Decision |
+|---|---|---|---|---|
+| [GHSA-jpvv-r467-5p4w](https://github.com/advisories/GHSA-jpvv-r467-5p4w) (medium — a backslash in the request path is read as a path separator, so the application and a reverse proxy in front of it can disagree about the path), [GHSA-qv5m-9pm6-hqp3](https://github.com/advisories/GHSA-qv5m-9pm6-hqp3) (medium — a connection reset while a WebSocket upgrade is being handled ends the process) | `@hono/node-server` | 2.1.5 → 2.1.8 | ← `@modelcontextprotocol/sdk@1.32.2`, whose `StreamableHTTPServerTransport` calls `getRequestListener`. Runtime, on the HTTP transport; not loaded on stdio | **Patch** — the root `overrides` entry is `^2.1.8` (#1029) |
+| [GHSA-4m76-xfj5-7975](https://github.com/advisories/GHSA-4m76-xfj5-7975) (medium — `mount()` and `app.mount()` can forward a path past middleware scoped inside the mount prefix), [GHSA-h7mg-cq63-vhpq](https://github.com/advisories/GHSA-h7mg-cq63-vhpq) (medium — RegExpRouter skips wildcard middleware for some route sets and for a path with an encoded line terminator), [GHSA-46wx-v44x-9hh2](https://github.com/advisories/GHSA-46wx-v44x-9hh2) (medium — `csrf()` does not check a request sent by hyperlink auditing), [GHSA-4h7h-rv7c-7m2v](https://github.com/advisories/GHSA-4h7h-rv7c-7m2v) (medium — `validator('form')` skips a `multipart/form-data` request whose content type carries another parameter) | `hono` | 4.13.13 → 4.13.18 | ← `@hono/node-server` (its peer) and `@modelcontextprotocol/sdk@1.32.2` (`^4.11.4`). Runtime, on the HTTP transport: one file of it, named below | **Patch** — the SDK's range reaches 4.13.18, so no `overrides` entry (#1033) |
+
+**Exposure before the fix.**
+
+- **The backslash (GHSA-jpvv-r467-5p4w)** is in the function iris runs, and no request could bring it a path that holds one. `getRequestListener` builds each request's URL from the path as it was sent; before 2.1.6 a path holding a backslash went to the URL parser, which reads the backslash as `/` and resolves `..`. A request gets that far only after Express has matched `/mcp` on the path as sent, and Express 5.3.0 matches no such path. Sent to the HTTP transport with 2.1.5 installed, `/mcp\`, `/mcp\..\health`, `/x\..\mcp`, `/health\..\mcp` and `/mcp/..\mcp` each got Express's 404 and `\mcp` a 400, while `/mcp` opened a session (probed 2026-11-12). The transport behind the bridge chooses by the request's method, never by its path. From 2.1.6 the package answers 400 to such a path itself.
+- **The WebSocket upgrade (GHSA-qv5m-9pm6-hqp3)** was not reachable. The package attaches its upgrade handler in `createAdaptorServer`, and so in `serve`, when it is handed a WebSocket server. The SDK calls neither: its one import from the package is `getRequestListener`. iris listens with Express's own `app.listen` and registers no `upgrade` listener.
+- **The four in `hono`** were not reachable. They are in `mount()` and `app.mount()`, RegExpRouter, `csrf()` and `validator('form')`. iris builds no Hono application: nothing in `src/`, `dashboard/src/` or `website/src/` imports `hono`, and the SDK imports it only in a file under its `examples/`.
+
+**The load graph at these versions (it supersedes "`getRequestListener` does not pull hono core" in the 2026-08-06 rows).** The package's entry module, the one `getRequestListener` is imported from, imports `defineWebSocketHelper` from `hono/ws`; it did at 2.1.5 as well. So on the HTTP transport one `hono` file is loaded: `dist/helper/websocket/index.js`, 1,306 bytes and the same bytes at 4.13.13 and 4.13.18. It imports nothing, and holds a context class and the helper that wraps an upgrade handler. None of the four is in it.
+
+**Lockfile provenance.** Both changes are Dependabot's. #1029 changed the `@hono/node-server` entry (its version, tarball and integrity) and the `overrides` entry in `package.json`; #1033 changed the `hono` entry (the same three lines). No entry was added or removed.
+
+**Gate after:** `npm audit` at the root reports 0 vulnerabilities, and `node scripts/security/check-exposure-coverage.mjs` exits 0.
+
 ### Untrusted JSON Schema — the tool-argument path (v0.11.0+)
 
 Not an advisory. A standing assessment, recorded here because it is the one place in iris where a
@@ -436,6 +457,7 @@ at 2s, and `eval.validateToolArguments` turns the whole path off without an unin
 
 - **When a new Dependabot alert opens:** add a section here within one PR cycle. The CI gate (`scripts/security/check-exposure-coverage.mjs`) will fail PRs that introduce or surface a new ≥medium alert without a corresponding row.
 - **When an advisory is patched upstream:** update the affected sections to reflect the patched-and-installed state, or remove the section if the alert auto-closes.
+- **When a pull request moves a package whose installed version a row names:** update the row in that pull request. Every pull request runs `node scripts/security/check-exposure-coverage.mjs --claims-only`, which compares each `(X.Y.Z installed` in this file with the root lockfile and fails when they differ.
 - **When iris's call graph changes:** re-verify the reachability claims for any open advisory whose package is on the changed code path. The `Assessed against iris commit X` line records the snapshot.
 - **When upstream releases a fix that removes a dep:** the affected section can be retired.
 
