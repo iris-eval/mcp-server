@@ -397,7 +397,7 @@ function classifySignificance({
       reason:
         evals.length === 0
           ? 'No evaluation was recorded for this trace: nothing here was judged.'
-          : 'An evaluation was recorded but reached no verdict: nothing was judged, a critical check could not answer, or evidence somebody asked for was not sent. Not checked, which is not a pass.',
+          : 'An evaluation was recorded but reached no verdict: nothing was judged, a check that was asked for could not answer, or evidence somebody asked for was not sent. Not checked, which is not a pass.',
     };
   }
 

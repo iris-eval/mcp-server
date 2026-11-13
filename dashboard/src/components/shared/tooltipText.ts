@@ -30,7 +30,7 @@ export const TT = {
   verdictFail:
     'The composer failed every evaluation on this trace: a gate or a veto failed, or the risk crossed the loss threshold. The panel names the basis.',
   verdictPartial: 'The evaluations on this trace disagree: at least one passed and at least one failed.',
-  verdictUnevaluated: 'No verdict: no evaluation was recorded, nothing was judged, a critical check could not answer, or evidence somebody asked for was not sent. Not checked, which is not a pass.',
+  verdictUnevaluated: 'No verdict: no evaluation was recorded, nothing was judged, a check that was asked for could not answer, or evidence somebody asked for was not sent. Not checked, which is not a pass.',
   verdictSafetyFail:
     'A safety rule failed. This is a hard fail: passed=false regardless of the weighted score — the other rules passing does not offset it.',
   verdictVetoed:
@@ -56,7 +56,7 @@ export const TT = {
   sigRuleCollision: 'Failures span multiple eval categories — output failed in more than one dimension.',
   sigNormalFail: 'A rule failed; the failure does not elevate to a higher significance category.',
   sigNormalPass: 'All fired rules passed — operational data, not a moment requiring review.',
-  sigUnevaluated: 'No verdict: nothing was judged. No evaluation was recorded, every rule skipped, or a critical rule could not judge — unknown, not clean.',
+  sigUnevaluated: 'No verdict: nothing was judged. No evaluation was recorded, every rule skipped, or a rule that was asked for could not judge — unknown, not clean.',
   sigFirstFailure: 'First time this rule has failed for this agent recently.',
   sigNovelPattern: 'Failure-rule combination has not been seen for this agent before.',
 

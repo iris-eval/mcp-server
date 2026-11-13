@@ -402,15 +402,30 @@ export function recoveredBy(failure: StepFailure, later: readonly Step[]): boole
  * failures and of later calls that each carry all but one of their values
  * costs failures × later calls × values. Past this the remaining ones are
  * returned as `undecided`, and the rule that reads them says so.
+ *
+ * The limit came with the list of 10,000 calls (steps.ts), and it is for
+ * the runs that list newly reads: it must not take away an answer that was
+ * given while the list was 500 calls long. A run of 500 calls can ask for
+ * 3,125,000 values at most (250 failures, 250 later calls, the
+ * MAX_INPUT_VALUES compared of each), so the limit is above that and such
+ * a run is always searched whole.
+ *
+ * On a longer run the failures are asked cheapest first (the later calls
+ * to ask, times the values each is asked for), so what the limit leaves
+ * unsettled is what costs the most to settle. Asked in the order of the
+ * run, failures that were recovered spent the limit, and one after them
+ * that nothing recovered, and that one look would have settled, was left
+ * unsettled with them.
  */
-export const RECOVERY_SEARCH_BUDGET = 2_000_000;
+export const RECOVERY_SEARCH_BUDGET = 4_000_000;
 
 /**
  * The failures in a trajectory, split into the ones still open at the end
  * and the ones the agent recovered from. no_silent_tool_failure asks the
  * answer to own the open ones. `undecided` holds the failures whose recovery
  * the search could not settle inside RECOVERY_SEARCH_BUDGET: neither open
- * nor recovered, and empty for any run not built to exhaust it.
+ * nor recovered. It is empty for a run of up to 500 calls, and for any
+ * longer run not built to exhaust the limit.
  */
 export function failuresIn(steps: readonly Step[]): { open: StepFailure[]; recovered: StepFailure[]; undecided: StepFailure[] } {
   /*
@@ -494,14 +509,13 @@ export function failuresIn(steps: readonly Step[]): { open: StepFailure[]; recov
     return carriers;
   };
 
-  const open: StepFailure[] = [];
-  const recovered: StepFailure[] = [];
-  const undecided: StepFailure[] = [];
-  let budget = RECOVERY_SEARCH_BUDGET;
-  for (const failure of failures) {
+  /** What each failure came to, by its place in `failures`. The three lists are made from it in the order of the run. */
+  const came: Array<'open' | 'recovered' | 'undecided'> = new Array<'open' | 'recovered' | 'undecided'>(failures.length);
+  /** The failures that named no target and have later calls to ask one at a time: what each was given, the calls that carry the rarest of it, and the first of those after the failure. */
+  const searches: Array<{ which: number; given: string[]; rarest: number[]; from: number }> = [];
+  for (const [which, failure] of failures.entries()) {
     const after = failure.index;
     let went = failure.kind === 'reported' && lastPassingIndex() > after;
-    let settled = true;
     if (!went) {
       const target = targetKey(failure.step);
       if (target !== null) {
@@ -528,22 +542,38 @@ export function failuresIn(steps: readonly Step[]): { open: StepFailure[]; recov
             }
             if (rarest === undefined || at.length < rarest.length) rarest = at;
           }
-          if (rarest !== undefined) {
-            for (let at = firstAfter(rarest, after); at < rarest.length && !went; at += 1) {
-              budget -= given.length;
-              if (budget < 0) {
-                settled = false;
-                break;
-              }
-              const has = inputValuesAt(rarest[at]);
-              went = given.every((v) => has.has(v));
-            }
+          const from = rarest === undefined ? 0 : firstAfter(rarest, after);
+          if (rarest !== undefined && from < rarest.length) {
+            searches.push({ which, given, rarest, from });
+            continue;
           }
         }
       }
     }
-    (went ? recovered : settled ? open : undecided).push(failure);
+    came[which] = went ? 'recovered' : 'open';
   }
+  // Cheapest first, and in the order of the run among equals: what the limit leaves unsettled is what costs the most to settle.
+  const costOf = (search: { given: string[]; rarest: number[]; from: number }): number => (search.rarest.length - search.from) * search.given.length;
+  searches.sort((a, b) => costOf(a) - costOf(b) || a.which - b.which);
+  let budget = RECOVERY_SEARCH_BUDGET;
+  for (const { which, given, rarest, from } of searches) {
+    let went = false;
+    let settled = true;
+    for (let at = from; at < rarest.length && !went; at += 1) {
+      budget -= given.length;
+      if (budget < 0) {
+        settled = false;
+        break;
+      }
+      const has = inputValuesAt(rarest[at]);
+      went = given.every((v) => has.has(v));
+    }
+    came[which] = went ? 'recovered' : settled ? 'open' : 'undecided';
+  }
+  const open: StepFailure[] = [];
+  const recovered: StepFailure[] = [];
+  const undecided: StepFailure[] = [];
+  for (const [which, failure] of failures.entries()) (came[which] === 'recovered' ? recovered : came[which] === 'open' ? open : undecided).push(failure);
   return { open, recovered, undecided };
 }
 

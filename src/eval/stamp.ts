@@ -39,6 +39,13 @@ export interface StampOptions {
   deployed?: boolean;
   /** The deployment installed a relevance judge, which answers answers_the_ask. */
   judgeInForce?: boolean;
+  /**
+   * What the call carried (inputsPresent), when the caller has worked it out
+   * already. It is the same for every rule of one evaluation, and working it
+   * out reads every call of the run: asked again for each rule's row, a run
+   * of 10,000 calls was listed 28 times over, half a second of CPU.
+   */
+  present?: ReadonlySet<Need>;
 }
 
 const DEFAULT_PRIOR_IN_FORCE: PriorInForce = { pi: DEFAULT_PREVALENCE, source: 'default' };
@@ -229,7 +236,7 @@ export function stampRuleResult(
   effective: EffectiveCriticality,
   options: StampOptions = {},
 ): Pick<EvalRuleResult, 'kind' | 'question' | 'classes' | 'ruleVersion' | 'saw' | 'skipClass' | 'lacked' | 'asked' | 'uncertainty' | 'origin'> {
-  const present = inputsPresent(context);
+  const present = options.present ?? inputsPresent(context);
   const skipClass = skipClassOf(raw);
   // What a rule that had nothing to judge was missing, and whether anyone had asked for it.
   const lacked = skipClass === 'not_applicable' ? lackedBy(rule, context, present) : [];

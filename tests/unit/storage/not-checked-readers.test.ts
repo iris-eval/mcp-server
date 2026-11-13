@@ -158,7 +158,7 @@ describe('a Decision Moment', () => {
     const both = deriveMoment(trace as never, [{ ...pass, id: 'a' }, { ...unsent, id: 'b' }]);
     expect(both.verdict).toBe('unevaluated');
     expect(both.significance.kind).toBe('unevaluated');
-    expect(both.significance.reason).toBe('An evaluation was recorded but reached no verdict: nothing was judged, a critical check could not answer, or evidence somebody asked for was not sent. Not checked, which is not a pass.');
+    expect(both.significance.reason).toBe('An evaluation was recorded but reached no verdict: nothing was judged, a check that was asked for could not answer, or evidence somebody asked for was not sent. Not checked, which is not a pass.');
     expect(deriveMoment(trace as never, [{ ...pass, id: 'a' }]).verdict).toBe('pass');
     expect(deriveMoment(trace as never, [{ ...unsent, id: 'b' }]).verdict).toBe('unevaluated');
   });

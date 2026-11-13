@@ -422,7 +422,17 @@ export const validToolArguments: EvalRule = {
       };
     }
 
-    const named = unrecovered
+    /*
+     * On a run read in part, what stands is a call to a tool the catalogue
+     * does not have (above). A call the schema rejects may be retried
+     * successfully among the calls not read, so such calls are counted here
+     * and not named as never recovered from.
+     */
+    const standing = runWasCut(context) ? unrecovered.filter((i) => checks[i].keyword === 'not_in_catalogue') : unrecovered;
+    const mayBeRetried = unrecovered.length - standing.length;
+    const mayBeRetriedNote =
+      mayBeRetried === 0 ? '' : `; ${mayBeRetried} more invalid call${mayBeRetried === 1 ? ' was' : 's were'} not retried successfully among the calls read, and a retry may be among the rest`;
+    const named = standing
       .slice(0, 3)
       .map((i) =>
         checks[i].keyword === 'not_in_catalogue'
@@ -436,7 +446,7 @@ export const validToolArguments: EvalRule = {
       score: Math.max(0, 1 - unrecovered.length / Math.max(1, steps.length)),
       value,
       evidence,
-      message: `Invalid tool call${unrecovered.length === 1 ? '' : 's'} the agent never recovered from: ${named}${uncheckedNote}${sharedNote}${scope}`,
+      message: `Invalid tool call${standing.length === 1 ? '' : 's'} the agent never recovered from: ${named}${mayBeRetriedNote}${uncheckedNote}${sharedNote}${scope}`,
     };
   },
 };

@@ -19,7 +19,7 @@ Each line printed is `{ "trace_id", "evaluation_id", "passed", "verdict": { "sta
 |---|---|
 | `any` | the verdict is anything but a pass: it failed, or it was not checked. **The gate to start with**, and the action's default |
 | `fail` | any failing verdict |
-| `unknown` | any verdict that was not checked: nothing was judged, a critical check could not answer, or evidence somebody asked for was not sent |
+| `unknown` | any verdict that was not checked: nothing was judged, a check that was asked for could not answer, or evidence somebody asked for was not sent |
 | `detector_veto` | a critical detector fired — `no_pii`, `no_injection_patterns`, `no_blocklist_words` by default |
 | `policy_gate` | a policy you configured failed (a threshold your config set, a custom rule at severity high or critical) |
 | `critical_unknown` | a critical check, or one the deployment or the call asked for, could not answer |

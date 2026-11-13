@@ -365,6 +365,25 @@ export const toolSequence: EvalRule = {
     const mode = modeOf(context.expectedTrajectory?.mode);
     const args = argsOf(context.expectedTrajectory?.args);
     let outcome = compareSequence(expected, steps, mode, args);
+    /*
+     * A strict or an unordered expectation holds as many calls as the run
+     * made, or the two differ: the count settles that with no comparison.
+     * Asked only when the comparison stopped at its limit of work, so that a
+     * finding the comparison did reach is worded as it always was.
+     */
+    const madeInAll = stepStatsOf(context).available;
+    if (outcome.undecided === true && (mode === 'strict' || mode === 'unordered') && madeInAll !== expected.length) {
+      outcome = {
+        passed: false,
+        matched: outcome.matched,
+        unexpected: outcome.unexpected,
+        missing: outcome.missing,
+        why:
+          madeInAll > expected.length
+            ? `the run made ${madeInAll} calls and ${expected.length} ${expected.length === 1 ? 'was' : 'were'} expected, so ${madeInAll - expected.length} are beyond the expected ${mode === 'strict' ? 'sequence' : 'set'}`
+            : `the run made ${madeInAll} call${madeInAll === 1 ? '' : 's'} and ${expected.length} were expected, so ${expected.length - madeInAll} expected call${expected.length - madeInAll === 1 ? '' : 's'} never came`,
+      };
+    }
     // A comparison built to cost the expected calls times the steps times the keys they agree in stops at its limit of work: neither a pass nor a finding.
     if (outcome.undecided === true) {
       const compared = `the ${expected.length} expected call${expected.length === 1 ? '' : 's'} with the ${steps.length} ${stepStatsOf(context).kept < stepStatsOf(context).available ? 'read' : 'made'}`;

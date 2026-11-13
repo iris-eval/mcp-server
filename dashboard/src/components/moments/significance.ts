@@ -88,7 +88,7 @@ const VISUALS: Record<MomentSignificanceKind, SignificanceVisual> = {
     bg: 'oklch(28% 0.02 260 / 0.14)',
     glyph: '?',
     name: 'No verdict',
-    description: 'Nothing was judged: no evaluation was recorded, every rule skipped, or a critical rule could not judge. Unknown, not clean.',
+    description: 'Nothing was judged: no evaluation was recorded, every rule skipped, or a rule that was asked for could not judge. Unknown, not clean.',
   },
 };
 

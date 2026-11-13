@@ -379,6 +379,15 @@ describe('past the list, a rule does not answer for the run', () => {
     expect(notListed.skipped).toBeFalsy();
     expect(notListed.message).toContain('drop_database (not in the catalogue)');
     expect(notListed.message).toContain(`the first ${N} of ${N + 1} calls were read`);
+    // Beside it, a call the schema rejects: a retry may be among the calls not read, so it is counted and not named as never recovered from.
+    const rejected: ToolCallRecord = { tool_name: 'send_invoice', input: { customer: 7 }, output: 'error: customer must be a string', error: 'invalid arguments' };
+    const both = row(await engine().evaluateAll({ ...RUN, toolCalls: [unknownTool, rejected, ...longer().slice(1)], tools: TOOLS }), 'valid_tool_arguments');
+    expect(both.passed).toBe(false);
+    expect(both.message).toContain('Invalid tool call the agent never recovered from: drop_database (not in the catalogue); 1 more invalid call was not retried successfully among the calls read, and a retry may be among the rest');
+    expect(both.message).not.toContain('send_invoice (/customer type)');
+    // In a run read whole both are named: nothing is left that could clear the second.
+    const whole = row(await engine().evaluateAll({ ...RUN, toolCalls: [unknownTool, rejected, ...reads(20)], tools: TOOLS }), 'valid_tool_arguments');
+    expect(whole.message).toContain('Invalid tool calls the agent never recovered from: drop_database (not in the catalogue); send_invoice (/customer type)');
 
     const same: ToolCallRecord = { tool_name: 'read_file', input: { path: 'src/same.ts' }, output: 'x' };
     const loop = noToolLoop.evaluate({ output: 'done', toolCalls: [same, same, same, same, ...longer()] } as EvalContext);

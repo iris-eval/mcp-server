@@ -11,10 +11,10 @@
  * holds the two together on generated runs, and holds the cost.
  */
 import { describe, expect, it } from 'vitest';
-import { failureOf, failuresIn, recoveredBy, type StepFailure } from '../../../src/eval/rules/trajectory.js';
+import { RECOVERY_SEARCH_BUDGET, failureOf, failuresIn, recoveredBy, type StepFailure } from '../../../src/eval/rules/trajectory.js';
 import { toSteps } from '../../../src/eval/steps.js';
 import type { Step, ToolCallRecord } from '../../../src/types/trace.js';
-import { cpuMs } from '../../helpers/cpu-time.js';
+import { budgetHere, cpuMs } from '../../helpers/cpu-time.js';
 
 /** The definition applied to a whole run: each failure asked against the steps after it. */
 function byDefinition(steps: readonly Step[]): { open: StepFailure[]; recovered: StepFailure[] } {
@@ -191,5 +191,71 @@ describe('failuresIn — the same answers as the definition, read once', () => {
     expect(result.recovered.length + result.undecided.length).toBe(4_000);
     // What it settled, it settled as the definition does.
     expect(recoveredBy(result.recovered[0], steps.slice(result.recovered[0].index + 1))).toBe(true);
+  });
+});
+
+/*
+ * The limit of work came with the list of 10,000 calls. It must not reach
+ * back into the runs the search answered while the list was 500 long, and
+ * on a longer run it must not leave unsettled what one look would settle.
+ */
+describe('failuresIn — what the limit of work may leave unsettled', () => {
+  const VALUES = Array.from({ length: 50 }, (_, i) => `v${String(i + 1).padStart(2, '0')}`);
+  const KEYS = Array.from({ length: 50 }, (_, i) => `a${String(i + 1).padStart(2, '0')}`);
+  const every = (): Record<string, unknown> => Object.fromEntries(KEYS.map((k, i) => [k, VALUES[i]]));
+  const allBut = (j: number): Record<string, unknown> => Object.fromEntries(KEYS.flatMap((k, i) => (i === j % 50 ? [] : [[k, VALUES[i]]])));
+  /** `failed` calls given fifty values each, then one call of two values that nothing recovers, then `right` calls that each carry forty-nine of the fifty, and at last one that carries them all. */
+  const run = (failed: number, right: number, withOpen: boolean): ToolCallRecord[] => [
+    ...Array.from({ length: failed }, (): ToolCallRecord => ({ tool_name: 'run_step', input: every(), error: 'boom' })),
+    ...(withOpen ? [{ tool_name: 'run_step', input: { a01: VALUES[0], z: 'only-here' }, error: 'the write was refused' } as ToolCallRecord, { tool_name: 'run_step', input: { z: 'only-here' }, output: 'ok' } as ToolCallRecord] : []),
+    ...Array.from({ length: right - 1 }, (_, j): ToolCallRecord => ({ tool_name: 'run_step', input: allBut(j), output: 'ok' })),
+    { tool_name: 'run_step', input: every(), output: 'ok' },
+  ];
+
+  it('a run of up to 500 calls is searched whole: 205 recovered failures do not hide one that nothing recovers', () => {
+    // 205 failures x 204 later calls x 50 values is two million values looked at. That was the limit once, spent in the order of the run: the 206th failure was left unsettled with the rest, and the rule was not judged where it had failed.
+    const steps = toSteps({ toolCalls: run(205, 205, true) });
+    expect(steps.length).toBe(412);
+    const result = failuresIn(steps);
+    expect(result.undecided).toHaveLength(0);
+    expect(result.open.map((f) => f.index)).toEqual([205]);
+    expect(result.recovered).toHaveLength(205);
+    expect(indices(result)).toEqual(indices(byDefinition(steps)));
+    // And with no failure left open, every one of them is recovered: the run passes as it did.
+    const recoveredOnly = failuresIn(toSteps({ toolCalls: run(205, 205, false) }));
+    expect([recoveredOnly.open.length, recoveredOnly.recovered.length, recoveredOnly.undecided.length]).toEqual([0, 205, 0]);
+  });
+
+  it('the most a run of 500 calls can ask is inside the limit: 250 failures of fifty values against 250 calls that each carry all but one', () => {
+    // Fifty values of a call are compared (MAX_INPUT_VALUES), so 250 x 250 x 50 = 3,125,000 values looked at is the search at its largest for 500 calls, and the limit is above it.
+    expect(250 * 250 * 50).toBeLessThan(RECOVERY_SEARCH_BUDGET);
+    const failed = Array.from({ length: 250 }, (): ToolCallRecord => ({ tool_name: 'run_step', input: every(), error: 'boom' }));
+    const nearly = Array.from({ length: 250 }, (_, j): ToolCallRecord => ({ tool_name: 'run_step', input: allBut(j), output: 'ok' }));
+    const steps = toSteps({ toolCalls: [...failed, ...nearly] });
+    let result!: ReturnType<typeof failuresIn>;
+    // A tenth of a second where it was measured; the budget is in the terms of the process that runs this file (tests/helpers/cpu-time.ts).
+    expect(cpuMs(() => (result = failuresIn(steps)))).toBeLessThan(budgetHere(3_000));
+    // No later call carries all fifty, so nothing recovered any of them, and every one is settled as open.
+    expect([result.open.length, result.recovered.length, result.undecided.length]).toEqual([250, 0, 0]);
+    expect(indices(result)).toEqual(indices(byDefinition(steps)));
+  });
+
+  it('past 500 calls the failures are asked cheapest first: one that a single look settles is settled when the limit has stopped the rest', () => {
+    // 700 failures whose recovery takes 700 looks of fifty values each: far past the limit. The failure nothing recovers stands among them, first, last or in the middle, and costs one look.
+    for (const where of ['first', 'middle', 'last'] as const) {
+      const dear = Array.from({ length: 700 }, (): ToolCallRecord => ({ tool_name: 'run_step', input: every(), error: 'boom' }));
+      const cheap: ToolCallRecord = { tool_name: 'run_step', input: { a01: VALUES[0], z: 'only-here' }, error: 'the write was refused' };
+      const at = where === 'first' ? 0 : where === 'middle' ? 350 : 700;
+      const failed = [...dear.slice(0, at), cheap, ...dear.slice(at)];
+      const later: ToolCallRecord[] = [{ tool_name: 'run_step', input: { z: 'only-here' }, output: 'ok' }, ...Array.from({ length: 700 }, (_, j): ToolCallRecord => ({ tool_name: 'run_step', input: allBut(j), output: 'ok' })), { tool_name: 'run_step', input: every(), output: 'ok' }];
+      const steps = toSteps({ toolCalls: [...failed, ...later] });
+      expect(steps.length, where).toBe(1_403);
+      const result = failuresIn(steps);
+      expect(result.open.map((f) => f.index), where).toEqual([at]);
+      expect(result.undecided.length, where).toBeGreaterThan(500);
+      expect(result.open.length + result.recovered.length + result.undecided.length, where).toBe(701);
+      // Each list in the order of the run, whatever order they were asked in.
+      for (const list of [result.recovered, result.undecided]) expect(list.map((f) => f.index), where).toEqual([...list.map((f) => f.index)].sort((a, b) => a - b));
+    }
   });
 });
