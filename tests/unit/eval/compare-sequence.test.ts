@@ -20,10 +20,10 @@
  * the new one reads, asks and writes.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { compareSequence, isSubset, LEVELS_ON_THE_STACK, MAX_LEVELS_COMPARED, SEQUENCE_MODES, writtenAlike, writtenOut, type SequenceOutcome } from '../../../src/eval/rules/expected-trajectory.js';
-import { DESCRIBED_INPUT_CHARS, describeInput, normaliseInput, stableStringify } from '../../../src/eval/rules/trajectory.js';
+import { compareSequence, DESCRIBED_INPUT_CHARS, isSubset, LEVELS_ON_THE_STACK, MAX_LEVELS_COMPARED, SEQUENCE_MODES, toolSequence, writtenAlike, writtenOut, type SequenceOutcome } from '../../../src/eval/rules/expected-trajectory.js';
+import { describeInput, normaliseInput, stableStringify } from '../../../src/eval/rules/trajectory.js';
 import { toSteps } from '../../../src/eval/steps.js';
-import type { ExpectedArgsMode, ExpectedToolCall, ExpectedTrajectoryMode } from '../../../src/types/eval.js';
+import type { EvalContext, EvalRuleResult, ExpectedArgsMode, ExpectedToolCall, ExpectedTrajectoryMode } from '../../../src/types/eval.js';
 import type { Step, ToolCallRecord } from '../../../src/types/trace.js';
 
 /** isSubset as it was: every scalar and array written out and compared as text. */
@@ -275,7 +275,7 @@ describe('compareSequence — the same answers', () => {
       expect(ask({ constructor: null }, {})).toBe(isSubsetAsWritten({ constructor: null }, {}));
       expect(ask({ a: { constructor: null } }, { a: { other: 1 } })).toBe(isSubsetAsWritten({ a: { constructor: null } }, { a: { other: 1 } }));
     }
-    // Through the rule as well, at an expected call's first question of an object, its second and its third: the key it only inherits is asked of none of the three calls.
+    // Through compareSequence as well, at an expected call's first question of an object, its second and its third: the key it only inherits is asked of none of the three calls.
     const held = toSteps({ toolCalls: [0, 1, 2].map((): ToolCallRecord => ({ tool_name: 't', input: { mode: 'r' } })) });
     expect(compareSequence([{ tool_name: 't', input: inherited }], held, 'superset', 'subset').unexpected).toEqual([]);
     expect(compareAsWritten([{ tool_name: 't', input: inherited }], held, 'superset', 'subset').unexpected).toEqual([]);
@@ -487,7 +487,33 @@ describe('compareSequence — an input nested deeper than the stack holds', () =
     expect(isSubset({ list: mixed(1, false) }, { list: mixed(1, true) })).toBe(false);
   });
 
-  it('through the rule: an expected input fifty thousand levels deep is met by the same input, in every mode', () => {
+  it('the rule itself (toolSequence.evaluate), asked an input fifty thousand levels deep under both ways of matching arguments: it passes the same input, fails another with its sentence, and answers an array under a key the call only inherits', () => {
+    const ask = (expectedInput: unknown, callInput: unknown, mode: ExpectedTrajectoryMode, args: ExpectedArgsMode): EvalRuleResult =>
+      toolSequence.evaluate({ output: 'done', toolCalls: [{ tool_name: 'apply', input: callInput }], expectedTrajectory: { tool_calls: [{ tool_name: 'apply', input: expectedInput }], mode, args } } as EvalContext);
+    for (const args of ['subset', 'exact'] as const) {
+      for (const mode of SEQUENCE_MODES) {
+        const met = ask(nest(DEPTH, 1, inObjects), nest(DEPTH, 1, inObjects), mode, args);
+        expect(met.skipped, `${mode}, ${args}`).toBeUndefined();
+        expect(met.passed, `${mode}, ${args}`).toBe(true);
+        expect(met.message, `${mode}, ${args}`).toBe(`1 expected call satisfied by the 1 made (${mode}, args ${args})`);
+        // One level fewer is another input under both: a number where the call holds an object, and a key of another length.
+        const missed = ask(nest(DEPTH - 1, 1, inObjects), nest(DEPTH, 1, inObjects), mode, args);
+        expect(missed.passed, `${mode}, ${args}`).toBe(false);
+        expect(missed.score, `${mode}, ${args}`).toBeLessThan(1);
+        expect(missed.message.startsWith(`Trajectory differs from the expected (${mode}, args ${args}): `), `${mode}, ${args}: ${missed.message.slice(0, 120)}`).toBe(true);
+      }
+    }
+    // The sentence of the default mode names the expected call by the beginning of its input.
+    expect(ask(nest(DEPTH - 1, 1, inObjects), nest(DEPTH, 1, inObjects), 'ordered_subset', 'subset').message).toBe(
+      `Trajectory differs from the expected (ordered_subset, args subset): expected call 1 of 1, apply(${describeInput(nest(100, 1, inObjects))}), never came (0 of 1 in order)`,
+    );
+    // An array under a key the call's object only inherits: the rule answers, where it ran the stack out.
+    const inherited = ask({ toString: nest(DEPTH, 1, inArrays) }, {}, 'ordered_subset', 'subset');
+    expect(inherited.passed).toBe(false);
+    expect(inherited.message.endsWith('never came (0 of 1 in order)')).toBe(true);
+  });
+
+  it('through compareSequence: an expected input fifty thousand levels deep is met by the same input, in every mode', () => {
     const steps = toSteps({ toolCalls: [{ tool_name: 'apply', input: nest(DEPTH, 1, inObjects) }, { tool_name: 'apply', input: nest(DEPTH, 1, inObjects) }] });
     for (const mode of SEQUENCE_MODES) {
       const outcome = compareSequence([{ tool_name: 'apply', input: nest(DEPTH, 1, inObjects) }, { tool_name: 'apply', input: nest(DEPTH, 1, inObjects) }], steps, mode, 'subset');
@@ -562,11 +588,11 @@ describe('compareSequence — an input nested deeper than the stack holds', () =
     const several = toSteps({ toolCalls: [3, 2, 1].map((less): ToolCallRecord => ({ tool_name: 'apply', input: nest(DEPTH - less, 1, inObjects) })) });
     const outcome = compareSequence([6, 5, 1].map((less): ExpectedToolCall => ({ tool_name: 'apply', input: nest(DEPTH - less, 1, inObjects) })), several, 'subset', 'exact');
     expect(outcome.matched).toBe(1);
-    // A value that holds itself has no text to its end. Written out it ran the stack out; written from a list it is refused at the depth the comparison stops at.
+    // A value that holds itself has no text to its end. Written out it ran the stack out; written from a list it is refused when the writing meets it again.
     const selfHeld: Record<string, unknown> = { n: 1 };
     selfHeld.self = selfHeld;
     expect(() => normaliseInput(selfHeld)).toThrow(RangeError);
-    expect(() => writtenOut(selfHeld)).toThrow(`more than ${MAX_LEVELS_COMPARED} levels deep, or holds itself`);
+    expect(() => writtenOut(selfHeld)).toThrow('An input holds itself and is not compared');
     expect(() => compareSequence([{ tool_name: 'apply', input: selfHeld }], toSteps({ toolCalls: [{ tool_name: 'apply', input: selfHeld }] }), 'strict', 'exact')).toThrow(RangeError);
     // The sentence of a failed outcome needs the beginning alone, and has it.
     expect(describeInput(writtenOut(selfHeld, DESCRIBED_INPUT_CHARS + 1)).startsWith('{"n":1,"self":{"n":1,"self":{')).toBe(true);
@@ -600,7 +626,7 @@ describe('compareSequence — an input nested deeper than the stack holds', () =
       if (typeof input !== 'string') expect(describeInput(writtenOut(input, DESCRIBED_INPUT_CHARS + 1)), whole).toBe(describeInput(input));
       if (normaliseInput(input).length > DESCRIBED_INPUT_CHARS) longer += 1;
       else shorter += 1;
-      // And through the rule, wherever the outcome fails naming the expected call.
+      // And through compareSequence, wherever the outcome fails naming the expected call.
       for (const mode of ['subset', 'ordered_subset', 'strict'] as const) {
         const now = compareSequence([{ tool_name: 't', input }], never, mode, 'subset');
         const was = compareAsWritten([{ tool_name: 't', input }], never, mode, 'subset');
@@ -611,6 +637,9 @@ describe('compareSequence — an input nested deeper than the stack holds', () =
     expect(longer).toBeGreaterThan(800);
     expect(shorter).toBeGreaterThan(800);
     expect(failed).toBeGreaterThan(9_000);
+    // The number the list is written to is the number describeInput shows: an input of that many characters is shown whole, and one of more is cut to that many, the last of them the mark that it was cut.
+    expect(describeInput('y'.repeat(DESCRIBED_INPUT_CHARS))).toBe('y'.repeat(DESCRIBED_INPUT_CHARS));
+    expect(describeInput('y'.repeat(DESCRIBED_INPUT_CHARS + 1))).toBe(`${'y'.repeat(DESCRIBED_INPUT_CHARS - 1)}…`);
     // At the very length the sentence shows, and one character past it.
     for (const length of [DESCRIBED_INPUT_CHARS - 3, DESCRIBED_INPUT_CHARS - 2, DESCRIBED_INPUT_CHARS - 1, DESCRIBED_INPUT_CHARS, DESCRIBED_INPUT_CHARS + 1]) {
       // A list of one string: the text is the string, two quotation marks and two brackets.
@@ -699,7 +728,7 @@ describe('compareSequence — an input nested deeper than the stack holds', () =
     expect(compared - subsets).toBeGreaterThan(7 * 400);
   });
 
-  it('a value that holds itself is not compared for ever: the comparison stops and says why', () => {
+  it('a value that holds itself is not compared for ever: the walk stops when it meets it again, however wide the value and however long its loop, and says why', () => {
     const selfHeld = (): Record<string, unknown> => {
       const o: Record<string, unknown> = { n: 1 };
       o.self = o;
@@ -718,22 +747,185 @@ describe('compareSequence — an input nested deeper than the stack holds', () =
     expect(() => stableStringify(a)).toThrow(RangeError);
     const stopped = thrownBy(() => isSubset(a, selfHeld()));
     expect(stopped).toBeInstanceOf(RangeError);
-    expect((stopped as RangeError).message).toContain(`more than ${MAX_LEVELS_COMPARED} levels deep`);
+    expect((stopped as RangeError).message).toBe('An input holds itself and is not compared');
     const loop: unknown[] = [];
     loop.push(loop);
     const other: unknown[] = [];
     other.push(other);
     expect(thrownBy(() => writtenAlike(loop, other))).toBeInstanceOf(RangeError);
     expect(thrownBy(() => writtenAlike([a], [selfHeld()]))).toBeInstanceOf(RangeError);
-    // Against a value that does not hold itself it differs somewhere, and that is found.
+    // However wide. A thousand keys, or a thousand elements, beside the one that holds the value: stopped by depth alone, the walk kept a million levels of a thousand entries first, and the process ran out of memory.
+    const wide = (keys = 1_000): Record<string, unknown> => {
+      const o: Record<string, unknown> = Object.fromEntries(Array.from({ length: keys }, (_, n) => [`k${n}`, n]));
+      o.self = o;
+      return o;
+    };
+    const wideList = (): unknown[] => {
+      const list: unknown[] = Array.from({ length: 1_000 }, (_, n) => n);
+      list.push(list);
+      return list;
+    };
+    // However long its loop, and however far in it begins: three objects (or arrays) that hold one another in turn, under five thousand that hold nothing twice.
+    const looped = (): unknown => {
+      const first: Record<string, unknown> = { n: 1 };
+      const second: Record<string, unknown> = { n: 2, next: first };
+      const third: Record<string, unknown> = { n: 3, next: second };
+      first.next = third;
+      return nest(5_000, third, (inner) => ({ next: inner }));
+    };
+    const loopedList = (): unknown => {
+      const first: unknown[] = [1];
+      const second: unknown[] = [2, first];
+      const third: unknown[] = [3, second];
+      first.push(third);
+      return nest(5_000, third, inArrays);
+    };
+    const WALKS: Array<[what: string, walk: () => unknown]> = [
+      ['a wide object, expected', () => isSubset(wide(), wide())],
+      ['a wide object under more levels than the comparison calls itself for', () => isSubset(nest(LEVELS_ON_THE_STACK + 5, wide(), inObjects), nest(LEVELS_ON_THE_STACK + 5, wide(), inObjects))],
+      ['a wide array', () => writtenAlike(wideList(), wideList())],
+      ['a wide object inside an array', () => writtenAlike([wide()], [wide()])],
+      ['a wide object, written from a list', () => writtenOut(wide())],
+      ['a wide array, written from a list', () => writtenOut(wideList())],
+      ['a loop of three objects under five thousand', () => isSubset(looped(), looped())],
+      ['the same inside an array', () => writtenAlike([looped()], [looped()])],
+      ['a loop of three arrays under five thousand', () => writtenAlike(loopedList(), loopedList())],
+      ['a loop of three objects, written from a list', () => writtenOut(looped())],
+      ['a loop of three arrays, written from a list', () => writtenOut(loopedList())],
+      // Through compareSequence, forty keys: under exact the input is first written out as it always was, which runs the stack out a level at a time, and that alone is slow for a wider one.
+      ['under exact, through compareSequence', () => compareSequence([{ tool_name: 't', input: wide(40) }], toSteps({ toolCalls: [{ tool_name: 't', input: wide(40) }] }), 'strict', 'exact')],
+      ['under subset, through compareSequence', () => compareSequence([{ tool_name: 't', input: wide(40) }], toSteps({ toolCalls: [{ tool_name: 't', input: wide(40) }] }), 'strict', 'subset')],
+    ];
+    for (const [what, walk] of WALKS) {
+      const error = thrownBy(walk);
+      expect(error, what).toBeInstanceOf(RangeError);
+      expect((error as RangeError).message, what).toBe('An input holds itself and is not compared');
+    }
+    // Against a value that does not hold itself it differs somewhere, and that is found: what stops the walk is the pair met again, not one of the two.
     expect(isSubset(a, { n: 1, self: { n: 1, self: { n: 2 } } })).toBe(false);
     expect(writtenAlike(loop, [[[1]]])).toBe(false);
+    expect(writtenAlike([[[1]]], loop)).toBe(false);
+    expect(writtenAlike([a], [{ n: 1, self: { n: 1, self: { n: 1, self: { n: 2 } } } }])).toBe(false);
+    const beneath = (held: unknown): unknown => nest(LEVELS_ON_THE_STACK + 5, held, inObjects);
+    expect(isSubset(beneath(a), beneath({ n: 1, self: { n: 1, self: { n: 1, self: { n: 1, self: { n: 2 } } } } }))).toBe(false);
+    // A value met twice side by side, and once more a level down, is not a value that holds itself: what a walk compares it with is always something the walk is still inside. On each of the three walks, and at the levels on each side of the ones a walk keeps.
+    const once = { a: [1, { b: 2 }] };
+    const twin = { a: [1, { b: 2 }] };
+    expect(writtenAlike([once, once, [once]], [twin, twin, [twin]])).toBe(true);
+    expect(writtenAlike([[once, once], [[once, once]]], [[twin, twin], [[twin, twin]]])).toBe(true);
+    expect(writtenOut([once, once, [once], [[once, once]]])).toBe(stableStringify([once, once, [once], [[once, once]]]));
+    for (let levels = 0; levels <= 18; levels += 1) {
+      const sideBySide = (held: unknown): unknown => nest(levels, [held, held, [held, { again: held }], held], inArrays);
+      expect(writtenAlike(sideBySide(once), sideBySide(twin)), `${levels} levels`).toBe(true);
+      expect(writtenAlike(sideBySide(once), sideBySide({ a: [1, { b: 3 }] })), `${levels} levels`).toBe(false);
+      expect(writtenOut(sideBySide(once)), `${levels} levels`).toBe(stableStringify(sideBySide(once)));
+    }
+    for (let levels = LEVELS_ON_THE_STACK - 1; levels <= LEVELS_ON_THE_STACK + 12; levels += 1) {
+      const expected = nest(levels, { x: once, y: once, z: { w: once, v: once } }, inObjects);
+      expect(isSubset(expected, nest(levels, { x: twin, y: twin, z: { w: twin, v: twin } }, inObjects)), `${levels} levels`).toBe(true);
+    }
     // And the very same value is not walked at all.
     expect(isSubset(a, a)).toBe(true);
     expect(isSubset({ held: a }, { held: a })).toBe(true);
     expect(writtenAlike(loop, loop)).toBe(true);
     expect(writtenAlike([a, loop], [a, loop])).toBe(true);
   }, 60_000);
+
+  it('a value that holds itself and holds a deep value beside its loop is stopped as soon: the deep value is walked a few times and no more, however deep it is', () => {
+    // The deep value ends in an object that counts how often it is listed, which each walk does to read it.
+    const DEEP = 3_000;
+    let listed = 0;
+    const counted = (): unknown =>
+      new Proxy(
+        { k: 1 },
+        {
+          ownKeys: (target) => {
+            listed += 1;
+            return Reflect.ownKeys(target);
+          },
+        },
+      );
+    const deepObjects = (): unknown => nest(DEEP, counted(), (inner) => ({ k: inner }));
+    const deepArrays = (): unknown => nest(DEEP, counted(), inArrays);
+    // Five values that hold themselves, each made afresh for each side: the deep value before the loop or after it in the order a walk takes them, in an object and in an array, and a loop of three with a deep value beside each.
+    const SHAPES: Array<[what: string, make: () => unknown]> = [
+      ['an object: the deep value, then itself', () => {
+        const o: Record<string, unknown> = { deep: deepObjects() };
+        o.self = o;
+        return o;
+      }],
+      ['an object: itself, then the deep value', () => {
+        const o: Record<string, unknown> = {};
+        o.self = o;
+        o.zdeep = deepObjects();
+        return o;
+      }],
+      ['an array: the deep value, then itself', () => {
+        const list: unknown[] = [deepArrays()];
+        list.push(list);
+        return list;
+      }],
+      ['an array: itself, then the deep value', () => {
+        const list: unknown[] = [];
+        list.push(list, deepArrays());
+        return list;
+      }],
+      ['a loop of three objects, a deep value beside each', () => {
+        const first: Record<string, unknown> = { deep: deepObjects() };
+        const second: Record<string, unknown> = { deep: deepObjects(), next: first };
+        const third: Record<string, unknown> = { deep: deepObjects(), next: second };
+        first.next = third;
+        return first;
+      }],
+    ];
+    const beneath = (held: unknown): unknown => nest(LEVELS_ON_THE_STACK + 1, held, inObjects);
+    /*
+     * How often a walk may list the bottom of a deep value before it stops. Compared from a list or written from one,
+     * a few times: it goes into the deep value at most once for each round of the loop, and meets the loop again
+     * before it is three rounds down. Where the comparison calls itself for the first LEVELS_ON_THE_STACK levels it
+     * looks for nothing, so the loop is gone round that many levels first, the deep value walked at each. Were the
+     * deep value to carry the mark away, the walk went into it once for each of its DEEP levels.
+     */
+    const FEW = 12;
+    const WALKS: Array<[what: string, walk: (make: () => unknown) => unknown, most: number]> = [
+      ['writtenAlike', (make) => writtenAlike([make()], [make()]), FEW],
+      ['isSubset, from the top', (make) => isSubset({ x: make() }, { x: make() }), LEVELS_ON_THE_STACK + FEW],
+      ['isSubset, past the levels the comparison calls itself for', (make) => isSubset(beneath(make()), beneath(make())), FEW],
+      ['writtenOut', (make) => writtenOut(make()), FEW],
+      ['compareSequence under subset', (make) => compareSequence([{ tool_name: 't', input: { x: [make()] } }], toSteps({ toolCalls: [{ tool_name: 't', input: { x: [make()] } }] }), 'strict', 'subset'), FEW],
+    ];
+    expect(DEEP).toBeGreaterThan(20 * (LEVELS_ON_THE_STACK + FEW));
+    let walkedIntoTheDeepValue = 0;
+    for (const [walk, run, most] of WALKS) {
+      for (const [shape, make] of SHAPES) {
+        listed = 0;
+        let error: unknown;
+        try {
+          run(make);
+        } catch (thrown) {
+          error = thrown;
+        }
+        expect(error, `${walk}; ${shape}`).toBeInstanceOf(RangeError);
+        expect((error as RangeError).message, `${walk}; ${shape}`).toBe('An input holds itself and is not compared');
+        expect(listed, `${walk}; ${shape}`).toBeLessThanOrEqual(most);
+        if (listed > 0) walkedIntoTheDeepValue += 1;
+      }
+    }
+    // Not vacuous: in most of those the walk did go into a deep value, to its bottom, before it met the loop again.
+    expect(walkedIntoTheDeepValue).toBeGreaterThanOrEqual(12);
+  }, 60_000);
+
+  it('a value nested deeper than the stop, which holds nothing twice, is stopped there and told so', () => {
+    const stop = `An input is nested more than ${MAX_LEVELS_COMPARED} levels deep and is not compared`;
+    // Objects under objects: a hundred levels on the stack, a million on the list, and more below them.
+    const deeper = MAX_LEVELS_COMPARED + LEVELS_ON_THE_STACK + 50;
+    expect(() => isSubset(nest(deeper, 1, inObjects), nest(deeper, 1, inObjects))).toThrow(stop);
+    // Arrays, compared and written from a list.
+    expect(() => writtenAlike(nest(MAX_LEVELS_COMPARED + 50, 1, inArrays), nest(MAX_LEVELS_COMPARED + 50, 1, inArrays))).toThrow(stop);
+    // Objects inside an array.
+    expect(() => writtenAlike([nest(MAX_LEVELS_COMPARED + 50, 1, inObjects)], [nest(MAX_LEVELS_COMPARED + 50, 1, inObjects)])).toThrow(stop);
+    expect(() => writtenOut(nest(MAX_LEVELS_COMPARED + 50, 1, inArrays))).toThrow(stop);
+  }, 120_000);
 
   it('what stops the comparison is depth, never size: a value that holds more values than the stop counts levels is compared to its end', () => {
     // A value met twice inside another is two values to a comparison, as it was to the writing. Twenty-one levels of pairs, each level holding the one below twice, are more than two million values and twenty-one levels deep.
@@ -1068,7 +1260,7 @@ describe('compareSequence — what a comparison reads and writes', () => {
     expect(isSubset(want.input, same.input)).toBe(true);
     expect(readsDuring(() => isSubset(want.input, same.input), want, same)).toEqual([9, 9]);
     expect(readsDuring(() => isSubsetAsWritten(want.input, same.input), want, same)).toEqual([9, 9]);
-    // Asked through the rule three times, the expected input is listed for its first question and once more to be kept, and each call still stops at its first key.
+    // Asked through compareSequence three times, the expected input is listed for its first question and once more to be kept, and each call still stops at its first key.
     const expected = guarded(1);
     const calls = [guarded(2), guarded(3), guarded(4)];
     const steps = toSteps({ toolCalls: calls.map((c): ToolCallRecord => ({ tool_name: 'apply', input: c.input })) });
@@ -1287,6 +1479,99 @@ describe('compareSequence — what a comparison reads and writes', () => {
     expect(whole.writes).toBe(10_000);
     expect(written(() => compareAsWritten([{ tool_name: 't', input: wide }], never, 'subset', 'subset')).writes).toBe(10_000);
     expect(whole.value.why).toBe(compareAsWritten([{ tool_name: 't', input: wide }], never, 'subset', 'subset').why);
+  });
+
+  it('a key the call only inherits, named by an expectation with a value of any depth under it: answered by the kinds of the two, the value neither written out nor read', () => {
+    // `toString`, `constructor` and their like are on every object, so a call that does not name such a key still holds it, as a function; and JSON writes a function that has no toJSON as null. A request can carry no function, and brings one to the comparison this way.
+    const INHERITED = ['toString', 'constructor', 'valueOf', 'hasOwnProperty'];
+    const LEVELS = 50_000;
+    for (const key of INHERITED) {
+      // Where both can be written out: an array, an object, a string, a number and a boolean under the key are unlike a function, and null is written as one is.
+      for (const value of [[1, [2]], [], { a: 1 }, {}, 'x', 'null', 7, true, null]) {
+        const label = `${key}: ${JSON.stringify(value)}`;
+        expect(isSubsetAsWritten({ [key]: value }, {}), label).toBe(value === null);
+        expect(isSubset({ [key]: value }, {}), label).toBe(value === null);
+        expect(secondAnswer({ [key]: value }, {}), `${label}, by the list`).toBe(value === null);
+        expect(isSubset(nest(LEVELS_ON_THE_STACK + 5, { [key]: value }, inObjects), nest(LEVELS_ON_THE_STACK + 5, {}, inObjects)), `${label}, past the hundredth level`).toBe(value === null);
+      }
+      // Fifty thousand levels under the key. Written out, the value ran the stack out and the rule gave no answer.
+      expect(isSubset({ [key]: nest(LEVELS, 1, inArrays) }, {}), key).toBe(false);
+      expect(isSubset({ [key]: nest(LEVELS, 1, inObjects) }, {}), key).toBe(false);
+      expect(() => isSubsetAsWritten({ [key]: nest(LEVELS, 1, inArrays) }, {}), key).toThrow(RangeError);
+    }
+    // Through compareSequence, in every mode, the first question of the expected call and the ones after it.
+    const steps = toSteps({ toolCalls: [{ tool_name: 't', input: {} }, { tool_name: 't', input: { other: 1 } }, { tool_name: 't', input: {} }] });
+    for (const mode of SEQUENCE_MODES) {
+      const outcome = compareSequence([{ tool_name: 't', input: { toString: nest(LEVELS, 1, inArrays) } }], steps, mode, 'subset');
+      expect(outcome.passed, mode).toBe(false);
+      expect(outcome.matched, mode).toBe(mode === 'superset' ? 1 : 0);
+    }
+    // The value under the key is not read, and nothing a request can carry is written: what is written is the function, in one step.
+    const big = countedList(Array.from({ length: 5_000 }, (_, n) => n));
+    const now = written(() => isSubset({ toString: big.list }, {}));
+    expect(now.value).toBe(false);
+    expect(big.reads()).toBe(0);
+    expect(now.writes).toBe(1);
+    // As it was written, the whole of it was read and written out to be compared with the word null.
+    expect(written(() => isSubsetAsWritten({ toString: big.list }, {})).writes).toBeGreaterThan(5_000);
+    expect(big.reads()).toBe(5_000);
+    // Nor is a string, a number or a boolean under such a key written: whether it is written as null is asked of its kind. As it was written, it was written out at every question.
+    for (const value of ['x'.repeat(5_000), 'null', 12_345, NaN, true, null]) {
+      const asked = written(() => isSubset({ toString: value, valueOf: value }, {}));
+      const alike = value === null || (typeof value === 'number' && Number.isNaN(value));
+      expect(asked.value, String(value).slice(0, 12)).toBe(alike);
+      // One function for each key the comparison reaches: it stops at the first that is unlike.
+      expect(asked.writes, String(value).slice(0, 12)).toBe(alike ? 2 : 1);
+      const before = written(() => isSubsetAsWritten({ toString: value, valueOf: value }, {}));
+      expect(before.value, String(value).slice(0, 12)).toBe(alike);
+      expect(before.writes, String(value).slice(0, 12)).toBe(alike ? 4 : 2);
+    }
+    // A function that writes itself as an array is still written alike to that array, and unlike another: the one case in which an array is written out here, from a list.
+    const listed = Object.assign((): number => 1, { toJSON: (): unknown => [1, [2]] });
+    expect(writtenAlike([listed], [[1, [2]]])).toBe(true);
+    expect(writtenAlike([[1, [2]]], [listed])).toBe(true);
+    expect(writtenAlike([listed], [[1, [3]]])).toBe(false);
+    expect(writtenAlike([listed], [{ 0: 1 }])).toBe(false);
+    // Against an array too deep to write out by a function that calls itself, it is unlike, and found so: the array is written from a list.
+    expect(writtenAlike([listed], [nest(LEVELS, 1, inArrays)])).toBe(false);
+    expect(writtenAlike([nest(LEVELS, 1, inArrays)], [listed])).toBe(false);
+    // A function that writes itself as a string, a number or the word null is alike to what is written so, and to nothing else.
+    const worded = Object.assign((): number => 1, { toJSON: (): unknown => 'x' });
+    const counted = Object.assign((): number => 1, { toJSON: (): unknown => 7 });
+    const absent = Object.assign((): number => 1, { toJSON: (): unknown => null });
+    for (const [made, same, others] of [[worded, 'x', ['y', 7, null, ['x'], { x: 1 }]], [counted, 7, ['7', 8, null, [7]]], [absent, null, ['null', 0, false, [], {}]]] as Array<[unknown, unknown, unknown[]]>) {
+      for (const [a, b] of [[made, same], [same, made]]) {
+        expect(writtenAlike([a], [b]), String(same)).toBe(true);
+        expect(isSubsetAsWritten([a], [b]), String(same)).toBe(true);
+      }
+      for (const other of others) {
+        expect(writtenAlike([made], [other]), `${String(same)} against ${JSON.stringify(other)}`).toBe(false);
+        expect(writtenAlike([other], [made]), `${String(same)} against ${JSON.stringify(other)}`).toBe(false);
+        expect(isSubsetAsWritten([made], [other]), `${String(same)} against ${JSON.stringify(other)}`).toBe(false);
+      }
+    }
+    // Two functions that are not the same one: each is written in one step, the first's first, and two with no toJSON are both written as null.
+    const plain = (): number => 1;
+    const another = (): number => 2;
+    const wordedToo = Object.assign((): number => 2, { toJSON: (): unknown => 'x' });
+    for (const [a, b, alike] of [[plain, another, true], [another, plain, true], [plain, absent, true], [absent, plain, true], [worded, wordedToo, true], [plain, worded, false], [worded, plain, false], [worded, counted, false], [listed, plain, false], [plain, listed, false]] as Array<[unknown, unknown, boolean]>) {
+      expect(writtenAlike([a], [b])).toBe(alike);
+      expect(isSubsetAsWritten([a], [b])).toBe(alike);
+      expect(isSubset({ k: [a] }, { k: [b] })).toBe(alike);
+    }
+    // A BigInt has no writing, beside a function as beside anything: the comparison fails on it as it did, whichever of the two comes first.
+    for (const [a, b] of [[plain, BigInt(1)], [BigInt(1), plain], [worded, BigInt(1)], [BigInt(1), BigInt(2)]] as Array<[unknown, unknown]>) {
+      expect(() => writtenAlike([a], [b])).toThrow(TypeError);
+      expect(() => isSubsetAsWritten([a], [b])).toThrow(TypeError);
+    }
+    // And one that writes itself as an object, to that object, whatever order its keys are written in.
+    const shaped = Object.assign((): number => 1, { toJSON: (): unknown => ({ a: 1, b: [2] }) });
+    expect(writtenAlike([shaped], [{ a: 1, b: [2] }])).toBe(true);
+    expect(writtenAlike([{ a: 1, b: [2] }], [shaped])).toBe(true);
+    expect(writtenAlike([shaped], [{ b: [2], a: 1 }])).toBe(true);
+    expect(isSubsetAsWritten([shaped], [{ b: [2], a: 1 }])).toBe(true);
+    expect(writtenAlike([shaped], [{ a: 1, b: [3] }])).toBe(false);
+    expect(writtenAlike([shaped], [[1, [2]]])).toBe(false);
   });
 
   it('the very same value, held by the expectation and by the call, is not read at all', () => {

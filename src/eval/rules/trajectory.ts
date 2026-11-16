@@ -644,13 +644,10 @@ export function callKey(call: ToolCallRecord): string {
   return `${call.tool_name}\u0000${normaliseInput(call.input)}`;
 }
 
-/** How many characters of an input a rule's message shows. */
-export const DESCRIBED_INPUT_CHARS = 120;
-
 /** The human-readable half of a key, for rule messages. */
 export function describeInput(input: unknown): string {
   const key = normaliseInput(input);
-  return key.length === 0 ? '(no input)' : truncate(key, DESCRIBED_INPUT_CHARS);
+  return key.length === 0 ? '(no input)' : truncate(key, 120);
 }
 
 export function truncate(text: string, max: number): string {

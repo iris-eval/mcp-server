@@ -21,7 +21,7 @@
 import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type EvalRuleResult, type Evidence, type ExpectedArgsMode, type ExpectedToolCall, type ExpectedTrajectoryMode } from '../../types/eval.js';
 import type { Step } from '../../types/trace.js';
 import { stepScopeNote, stepsOf, trajectoryAbsence } from '../steps.js';
-import { DESCRIBED_INPUT_CHARS, describeInput, normaliseInput, skipWithoutTrajectory, stableStringify } from './trajectory.js';
+import { describeInput, normaliseInput, skipWithoutTrajectory } from './trajectory.js';
 
 export const DEFAULT_SEQUENCE_MODE: ExpectedTrajectoryMode = 'ordered_subset';
 export const DEFAULT_ARGS_MODE: ExpectedArgsMode = 'subset';
@@ -30,18 +30,60 @@ export const SEQUENCE_MODES: readonly ExpectedTrajectoryMode[] = ['strict', 'uno
 
 /**
  * How many levels deep one comparison of two inputs goes before it stops:
- * ten times deeper than a request can be nested at the shipped limits. What
- * reaches it is a value that holds itself, which a program can build and
- * JSON cannot carry: written out, such a value ran the stack out, and
- * walked it would never end. It is a count of levels and not of values. A
- * value that is merely large, however large, is compared to its end, as it
- * was when it was written out; and no value this deep ever was compared,
- * because the stack holds a few thousand levels.
+ * ten times deeper than a request can be nested at the shipped limits. It
+ * is a count of levels and not of values: a value that is merely large,
+ * however large, is compared to its end, as it was when it was written
+ * out; and no value this deep ever was compared, because the stack holds a
+ * few thousand levels. A value that holds itself does not get this far
+ * (holdsItself).
  */
 export const MAX_LEVELS_COMPARED = 1_000_000;
 
 function tooDeep(): RangeError {
-  return new RangeError(`An input is nested more than ${MAX_LEVELS_COMPARED} levels deep, or holds itself, and is not compared`);
+  return new RangeError(`An input is nested more than ${MAX_LEVELS_COMPARED} levels deep and is not compared`);
+}
+
+/**
+ * A value that holds itself, which a program can build and JSON cannot
+ * carry. Written out, it ran the stack out; walked from a list it would
+ * never end, and each of the walks here keeps something for every level it
+ * is inside, so one stopped by depth alone would have kept a million levels
+ * of it first. So each walk looks, as it goes deeper, for what it is inside
+ * (Brent's way of finding a loop): it keeps the array or object it is
+ * inside at the levels 0, 1, 3, 7, 15 and so on, each about twice as far
+ * down as the one before, and compares what it meets with the nearest of
+ * those above. That is one comparison a level, and one thing kept for each
+ * doubling of the depth. What holds itself is met again before the walk is
+ * three times as deep as the place where its loop closes, and the walk
+ * stops there. What is kept for a level is always what the walk is inside
+ * at that level: so a value met twice side by side is not taken for one
+ * that holds itself, and a deep value beside the loop, which the walk goes
+ * all the way into and comes back out of at every round, does not put the
+ * stop off. Where two values are compared, what is kept is the pair: a
+ * value that holds itself is still compared with one that does not, to the
+ * place where they differ, and the walk stops only when it meets both again
+ * together, which is when it would never end.
+ */
+function holdsItself(): RangeError {
+  return new RangeError('An input holds itself and is not compared');
+}
+
+/**
+ * Whether a walk has met again what it is inside (holdsItself). `a` and `b`
+ * are what it has just gone into, `level` levels down, one or more; `marks`
+ * holds what it is inside at each kept level, two values a level, beginning
+ * with the two the walk began with. They are compared with the nearest kept
+ * level above, and kept in their turn when their own level is a kept one.
+ */
+function metAgain(marks: unknown[], level: number, a: unknown, b: unknown): boolean {
+  // The kept levels are those one short of a power of two. The nearest above `level` is the one of the greatest power of two that is not more than `level`.
+  const k = 31 - Math.clz32(level);
+  if (a === marks[2 * k] && b === marks[2 * k + 1]) return true;
+  if ((level & (level + 1)) === 0) {
+    marks[2 * k + 2] = a;
+    marks[2 * k + 3] = b;
+  }
+  return false;
 }
 
 /** Whether stableStringify writes a value as `null`: null itself, a value that is absent, a number that is not finite, a symbol. */
@@ -49,9 +91,40 @@ function writtenAsNull(value: unknown): boolean {
   return value === null || value === undefined || typeof value === 'symbol' || (typeof value === 'number' && !Number.isFinite(value));
 }
 
-/** A function or a BigInt: JSON writes one by its toJSON when it has one, as null when a function has none, and not at all when a BigInt has none. Neither is in a request. */
+/**
+ * A function or a BigInt: JSON writes one by its toJSON when it has one, as
+ * null when a function has none, and not at all when a BigInt has none. A
+ * request carries neither. It can still bring a function here: a key an
+ * expectation names that the call's object only inherits (`toString`,
+ * `constructor`) is held by that object as a function.
+ */
 function leftToTheWriting(value: unknown): boolean {
   return typeof value === 'function' || typeof value === 'bigint';
+}
+
+/**
+ * Whether two values are written alike when one of them is a function or a
+ * BigInt, by what JSON writes of it, and without writing out anything a
+ * request can carry.
+ *
+ * JSON writes a function or a BigInt in one step. When both values are one,
+ * their two texts are compared, the first's written first, as they always
+ * were. When one is, its text is written, and the other value is not: a
+ * function with no toJSON is written as `null`, which is what every
+ * function a request can bring here is written as, and whether the other
+ * value is written as `null` too is asked of its kind. Only when a toJSON
+ * gave some other text, which no request can bring about, is the other
+ * value written out to be compared with it; and from a list, so that this
+ * road too holds at any depth: the function that wrote both out called
+ * itself once a level.
+ */
+function alikeLeftToTheWriting(x: unknown, y: unknown): boolean {
+  const xLeft = leftToTheWriting(x);
+  if (xLeft && leftToTheWriting(y)) return (JSON.stringify(x) ?? 'null') === (JSON.stringify(y) ?? 'null');
+  const text = JSON.stringify(xLeft ? x : y) ?? 'null';
+  const other = xLeft ? y : x;
+  if (text === 'null') return writtenAsNull(other);
+  return writtenOut(other) === text;
 }
 
 /** What is known of two values before either is walked. */
@@ -70,7 +143,7 @@ type Pair = typeof UNLIKE | typeof ALIKE | typeof TWO_ARRAYS | typeof TWO_OBJECT
  * walk is two arrays or two objects.
  */
 function pairOf(x: unknown, y: unknown): Pair {
-  if (leftToTheWriting(x) || leftToTheWriting(y)) return stableStringify(x) === stableStringify(y) ? ALIKE : UNLIKE;
+  if (leftToTheWriting(x) || leftToTheWriting(y)) return alikeLeftToTheWriting(x, y) ? ALIKE : UNLIKE;
   if (x === null || typeof x !== 'object') return writtenAsNull(x) && writtenAsNull(y) ? ALIKE : UNLIKE;
   if (y === null || typeof y !== 'object') return UNLIKE;
   const array = Array.isArray(x);
@@ -114,6 +187,10 @@ export function writtenAlike(a: unknown, b: unknown): boolean {
   /** The pairs of arrays and of objects still to compare: for each, the two and how many levels down they stand. */
   let waiting: unknown[] | undefined;
   let level = 0;
+  /** The two values the walk began with, and the pairs it is inside at the kept levels below them (metAgain). */
+  const first = a;
+  const firstOther = b;
+  let marks: unknown[] | undefined;
   for (;;) {
     if (pair === TWO_ARRAYS) {
       const xs = a as unknown[];
@@ -185,6 +262,8 @@ export function writtenAlike(a: unknown, b: unknown): boolean {
     b = waiting.pop();
     a = waiting.pop();
     pair = Array.isArray(a) ? TWO_ARRAYS : TWO_OBJECTS;
+    // Every pair taken after one that stands higher than it, and before the next that does not, is inside that one: so the pair last taken at a level is the one the walk is inside at that level.
+    if (metAgain((marks ??= [first, firstOther]), level, a, b)) throw holdsItself();
   }
 }
 
@@ -196,7 +275,7 @@ export function writtenAlike(a: unknown, b: unknown): boolean {
  * Nothing a request can carry is written out to be compared. Every string,
  * number and array used to be, on both sides, at every comparison, and that
  * was most of what a comparison cost: 500 expected calls of 96 keys against
- * 500 calls that agree with each in every key but the last took 6 to 12 s
+ * 500 calls that agree with each in every key but the last took 7 to 14 s
  * of CPU, and take about one.
  *
  * The answers are the ones comparing the writings gave, wherever both
@@ -273,6 +352,8 @@ function isSubsetFromAList(want: Record<string, unknown>, have: Record<string, u
   let entries = Object.entries(want);
   let held = have;
   let next = 0;
+  /** The pairs of objects the comparison is inside at the kept levels (the expected one and the step's), beginning with the two it began with (metAgain). */
+  let marks: unknown[] | undefined;
   for (;;) {
     if (next === entries.length) {
       // Every key of this object is held as asked: back to the object that holds it, or done.
@@ -292,6 +373,8 @@ function isSubsetFromAList(want: Record<string, unknown>, have: Record<string, u
     if (v === x && typeof v !== 'bigint') continue;
     if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
       if (x === null || typeof x !== 'object' || Array.isArray(x)) return false;
+      // The list holds three things for each object the comparison is inside: the object under this key stands one level below them.
+      if (metAgain((marks ??= [want, have]), inside.length / 3 + 1, v, x)) throw holdsItself();
       if (inside.length === 3 * MAX_LEVELS_COMPARED) throw tooDeep();
       inside.push(entries, held, next);
       entries = Object.entries(v as Record<string, unknown>);
@@ -334,16 +417,21 @@ interface Open {
  * returned.
  *
  * Written to its end, a value that holds itself has no end: the writing
- * stops MAX_LEVELS_COMPARED levels down, as the comparison does.
+ * stops when it meets it again (holdsItself), as the comparison does. The
+ * beginning of one can be written, like the beginning of any value.
  */
 export function writtenOut(value: unknown, pieces = Infinity): string {
   const out: string[] = [];
   const inside: Open[] = [];
+  /** Written whole, the value may have no end: the arrays and objects the writing is inside at the kept levels, beginning with the value itself (metAgain). */
+  const whole = pieces === Infinity;
+  let marks: unknown[] | undefined;
   const begin = (v: unknown): void => {
     if (v === null || typeof v !== 'object') {
       out.push(JSON.stringify(v) ?? 'null');
       return;
     }
+    if (whole && inside.length > 0 && metAgain((marks ??= [value, undefined]), inside.length, v, undefined)) throw holdsItself();
     if (inside.length === MAX_LEVELS_COMPARED) throw tooDeep();
     if (Array.isArray(v)) {
       out.push('[');
@@ -398,6 +486,13 @@ function normalisedAtAnyDepth(input: unknown): string {
     return normalisedFromAList(input, error);
   }
 }
+
+/**
+ * How many characters of an input describeInput shows (trajectory.ts). The
+ * number is describeInput's own and stays where it is: this is its name
+ * here, for the one place that needs it, and a test holds the two together.
+ */
+export const DESCRIBED_INPUT_CHARS = 120;
 
 /**
  * An expected call as a finding names it: describeInput's sentence, for an
