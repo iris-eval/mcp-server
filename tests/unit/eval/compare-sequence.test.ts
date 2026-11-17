@@ -831,7 +831,7 @@ describe('compareSequence — an input nested deeper than the stack holds', () =
     expect(writtenAlike([a, loop], [a, loop])).toBe(true);
   }, 60_000);
 
-  it('a value that holds itself and holds a deep value beside its loop is stopped as soon: the deep value is walked a few times and no more, however deep it is', () => {
+  it('a value that holds itself and holds a deep value beside its loop is stopped as soon: the deep value is walked a few times and no more, however deep it is, and once more for each level the comparison calls itself for', () => {
     // The deep value ends in an object that counts how often it is listed, which each walk does to read it.
     const DEEP = 3_000;
     let listed = 0;
@@ -915,7 +915,7 @@ describe('compareSequence — an input nested deeper than the stack holds', () =
     expect(walkedIntoTheDeepValue).toBeGreaterThanOrEqual(12);
   }, 60_000);
 
-  it('a value nested deeper than the stop, which holds nothing twice, is stopped there and told so', () => {
+  it('a value held in memory and nested deeper than the stop, which holds nothing twice, is stopped there and told so', () => {
     const stop = `An input is nested more than ${MAX_LEVELS_COMPARED} levels deep and is not compared`;
     // Objects under objects: a hundred levels on the stack, a million on the list, and more below them.
     const deeper = MAX_LEVELS_COMPARED + LEVELS_ON_THE_STACK + 50;
