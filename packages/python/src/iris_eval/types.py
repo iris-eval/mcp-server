@@ -51,7 +51,9 @@ class RuleResult(TypedDict, total=False):
     #: On a rule that skipped for missing evidence: the inputs it reads that
     #: the call did not carry.
     lacked: list[str]
-    #: On such a rule, when somebody had asked for it: ``config`` (the
+    #: On a rule that skipped for missing evidence, or that could not answer
+    #: (it threw, was stopped at a limit, read a record that was cut, or its
+    #: definition is broken), when somebody had asked for it: ``config`` (the
     #: deployment) or ``call`` (the call itself). The verdict is then
     #: ``unknown``, not ``pass``.
     asked: str

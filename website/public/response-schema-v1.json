@@ -614,7 +614,7 @@
             }
           },
           "asked": {
-            "description": "on such a rule, when somebody had asked for it: the deployment (a threshold it set, a promotion, a deployed gating rule, an installed judge) or the call itself. The verdict is then unknown, not pass",
+            "description": "on a rule that skipped for missing evidence, or that could not answer (it threw, was stopped at a limit, read a record that was cut, or its definition is broken), when somebody had asked for it: the deployment (a threshold it set, a promotion, a deployed gating rule, an installed judge) or the call itself. The verdict is then unknown, not pass",
             "type": "string",
             "enum": [
               "config",

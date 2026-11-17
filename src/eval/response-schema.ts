@@ -133,7 +133,7 @@ export const evalRuleResultSchema = z.looseObject({
     read: z.enum(['values', 'labelled']).optional().describe('when the output was a JSON object or array: which reading of it this rule judged, its values or its values with their field names. Evidence offsets still point into the output as sent'),
     skipClass: skipClassSchema.optional(),
     lacked: z.array(z.string()).optional().describe('on a rule that skipped for missing evidence: the inputs it reads that the call did not carry'),
-    asked: z.enum(['config', 'call']).optional().describe('on such a rule, when somebody had asked for it: the deployment (a threshold it set, a promotion, a deployed gating rule, an installed judge) or the call itself. The verdict is then unknown, not pass'),
+    asked: z.enum(['config', 'call']).optional().describe('on a rule that skipped for missing evidence, or that could not answer (it threw, was stopped at a limit, read a record that was cut, or its definition is broken), when somebody had asked for it: the deployment (a threshold it set, a promotion, a deployed gating rule, an installed judge) or the call itself. The verdict is then unknown, not pass'),
     uncertainty: uncertaintySchema.optional(),
     evidence: z.array(evidenceSchema).optional(),
     value: measuredValueSchema.optional(),

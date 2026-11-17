@@ -140,7 +140,7 @@ export interface EvalRuleResult {
   skipClass?: 'not_applicable' | 'defeated' | 'config_invalid';
   /** On a rule that skipped for missing evidence: the inputs it reads that the call did not carry. */
   lacked?: string[];
-  /** On such a rule, when somebody had asked for it: the deployment's configuration, or the call itself. The verdict is then not checked. */
+  /** On a rule that skipped for missing evidence or that could not answer, when somebody had asked for it: the deployment's configuration, or the call itself. The verdict is then not checked. */
   asked?: 'config' | 'call';
   uncertainty?: Uncertainty;
   evidenceIncomplete?: boolean;

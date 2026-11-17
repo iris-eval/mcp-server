@@ -790,14 +790,17 @@ export interface EvalRuleResult {
   /** On a rule that skipped for missing evidence: the inputs it reads that the call did not carry. */
   lacked?: Need[];
   /**
-   * On a rule that skipped for missing evidence, when somebody had asked
-   * for it. `config`: the deployment set this rule's threshold, promoted it
-   * to critical, deployed it as a gating rule of its own, or installed the
-   * judge that answers it. `call`: the call itself set the threshold,
-   * supplied the gating rule inline, or supplied the expectation the rule
-   * compares against (an expected trajectory) and left out what to
-   * compare. Such a rule was not "not applicable". It was asked and could
-   * not answer, and the verdict is not a pass.
+   * On a rule that skipped for missing evidence, or that could not answer
+   * though there was something to judge (it threw, was stopped at a limit,
+   * read a record that was cut, or its definition is broken), when somebody
+   * had asked for it. `config`: the deployment set this rule's threshold,
+   * promoted it to critical, deployed it as a gating rule of its own, or
+   * installed the judge that answers it. `call`: the call itself set the
+   * threshold, supplied the gating rule inline, or supplied the expectation
+   * the rule compares against (an expected trajectory). Such a rule was not
+   * "not applicable". It was asked and could not answer, and the verdict is
+   * not a pass. A rule the deployment set to report (eval.advisoryRules) is
+   * asked for by nobody and carries none.
    */
   asked?: 'config' | 'call';
   // Set when the rule skipped because its DEFINITION is broken (invalid
@@ -832,7 +835,7 @@ export interface EvalRuleResult {
    * the rule was asked and gave no answer. Set by the engine where it
    * catches the throw. It maps to skipClass "defeated", as a breached
    * budget does. A rule that threw where its finding would have counted
-   * (a critical rule, one somebody asked for, a judgment, a detection or an
+   * (a critical rule, a gate, one somebody asked for, a detection or an
    * inference the estimate weighs) makes the verdict what
    * eval.onCriticalSkipped says and never a clean pass (compose.ts, the
    * third layer).

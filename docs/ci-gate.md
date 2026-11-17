@@ -18,11 +18,11 @@ Each line printed is `{ "trace_id", "evaluation_id", "passed", "verdict": { "sta
 | Value | Trips when |
 |---|---|
 | `any` | the verdict is anything but a pass: it failed, or it was not checked. **The gate to start with**, and the action's default |
-| `fail` | any failing verdict |
-| `unknown` | any verdict that was not checked: nothing was judged, a critical check could not answer, or evidence somebody asked for was not sent |
+| `fail` | any failing verdict. A verdict that was not checked is not a failing one: a job gated on `fail` exits 0 when a check could not answer. Gate on `any`, or set `eval.onCriticalSkipped` to `"fail"` so that such a verdict fails |
+| `unknown` | any verdict that was not checked: nothing was judged, a check that had to answer could not, or evidence somebody asked for was not sent |
 | `detector_veto` | a critical detector fired — `no_pii`, `no_injection_patterns`, `no_blocklist_words` by default |
 | `policy_gate` | a policy you configured failed (a threshold your config set, a custom rule at severity high or critical) |
-| `critical_unknown` | a check that had to answer could not: a critical one, one the deployment or the call asked for, or one that failed as it ran |
+| `critical_unknown` | a check that had to answer could not: a critical rule or a gate, a rule the deployment or the call asked for, or a rule the risk estimate weighs that failed as it ran |
 | `required_evidence_missing` | evidence somebody asked for was not sent: an input `eval.requiredEvidence` names, what a rule you configured (a threshold you set, a rule you promoted or deployed as a gate) could not run without, or a field the trace's capture source declared it records in full |
 | `risk_over_loss` | the risk estimate cleared your loss cut |
 

@@ -10,6 +10,8 @@
  * rules it was judged under (Provenance.composer.rules), and a row with no
  * stamp reads under rules 1.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { EvalEngine } from '../../../src/eval/engine.js';
@@ -101,5 +103,74 @@ describe('the composer rules a row was judged under', () => {
     const quiet = await engine.evaluateAll({ input: context.input, output: 'The parser now accepts ISO week dates; the change is in src/date.ts and its test.' });
     expect(compose(quiet, { ...cfg, rules: 1 })).toEqual(compose(quiet, { ...cfg, rules: 2 }));
     expect(compose(quiet, cfg).state).toBe('unknown');
+  });
+});
+
+/*
+ * Rows an EARLIER version judged and stored, with what that version read
+ * back for each: tests/fixtures/readback/rows-stored-by-main.json, made by
+ * the script beside it from main at the commit the file names, the last
+ * before the composer's rules became 3.
+ *
+ * A row this version judges and then stamps with an earlier number holds
+ * only what this version puts in a row. These hold what the earlier code
+ * put there, so they are what a store written before an upgrade holds.
+ * Each is compared whole: the verdict with its layers and the names in
+ * them, `passed`, every sentence, and the critical rules that skipped.
+ */
+interface StoredByMain {
+  madeFrom: string;
+  rows: Array<{ id: string; what: string; stored: EvalResult; read: { verdict: unknown; passed: boolean; interpretations: unknown[]; critical_skipped: string[] } }>;
+}
+const storedByMain = JSON.parse(readFileSync(resolve(__dirname, '../../fixtures/readback/rows-stored-by-main.json'), 'utf8')) as StoredByMain;
+
+describe('a row an earlier version judged and stored reads back as that version gave it', () => {
+  const readBack = async (stored: EvalResult) => {
+    const s = await store();
+    await s.insertEvalResult(LOCAL_TENANT, stored);
+    const read = (await s.getEvalById(LOCAL_TENANT, stored.id))!;
+    return { verdict: read.verdict, passed: read.passed, interpretations: read.interpretations ?? [], critical_skipped: read.critical_skipped ?? [] };
+  };
+
+  it('the rows are of the earlier rules, and each kind of row this change could have re-meant is among them', () => {
+    expect(storedByMain.madeFrom).toBe('bba11172');
+    expect(storedByMain.rows.map((row) => row.id)).toEqual([
+      'risk-no-class',
+      'risk-no-class-and-evidence',
+      'plugin-fire-beside-a-weighed-one',
+      'threw',
+      'threw-with-its-threshold-set',
+      'critical-threw-beside-a-veto',
+      'report-only-lacking-its-input',
+      'risk-no-class-unstamped',
+    ]);
+    for (const row of storedByMain.rows) expect(row.stored.provenance?.composer?.rules ?? 1, row.id).toBeLessThan(3);
+    // The rows the earlier rules read otherwise than these do: a risk failure that names no class, and a rule that threw and takes no part.
+    const given = (id: string) => storedByMain.rows.find((row) => row.id === id)!.read.verdict;
+    expect(given('risk-no-class')).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: [] });
+    expect(given('threw')).toMatchObject({ state: 'pass', basis: 'clean' });
+    expect(storedByMain.rows.find((row) => row.id === 'threw')!.stored.rule_results.filter((r) => r.threw === true).map((r) => r.ruleName)).toContain('no_tool_loop');
+  });
+
+  for (const row of storedByMain.rows) {
+    it(`${row.id}: ${row.what}`, async () => {
+      expect(await readBack(row.stored)).toEqual(row.read);
+    });
+  }
+
+  it('the same rule results stamped with these rules compose otherwise: what the rules number holds apart', async () => {
+    // The probe can fail: stamped 3, three of the rows read as another verdict than the earlier version gave, and it is by the stamp that they do not.
+    const restamped = async (id: string) => {
+      const stored = structuredClone(storedByMain.rows.find((row) => row.id === id)!.stored);
+      stored.id = `${stored.id}-under-rules-3`;
+      stored.provenance!.composer!.rules = 3;
+      return readBack(stored);
+    };
+    expect((await restamped('risk-no-class')).verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['stub'] });
+    expect((await restamped('threw')).verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown' });
+    const plugin = await restamped('plugin-fire-beside-a-weighed-one');
+    expect(plugin.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['stub'] });
+    expect(JSON.stringify(plugin.interpretations)).toContain('rests on no_stub_output.');
+    expect(JSON.stringify(storedByMain.rows.find((row) => row.id === 'plugin-fire-beside-a-weighed-one')!.read.interpretations)).toContain('rests on no_stub_output, acme_account_scan.');
   });
 });

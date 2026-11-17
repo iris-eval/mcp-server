@@ -42,8 +42,8 @@ export interface StampOptions {
   /**
    * What the call carried (inputsPresent), when the caller has worked it out
    * already. It is the same for every rule of one evaluation, and working it
-   * out reads every call of the run: asked again for each rule's row, a run
-   * of 10,000 calls was listed 28 times over, half a second of CPU.
+   * out lists the run's calls: asked again for each rule's row, a run that
+   * arrived as spans was listed and put in order once for every rule.
    */
   present?: ReadonlySet<Need>;
 }
@@ -241,21 +241,21 @@ export function stampRuleResult(
   // What a rule that had nothing to judge was missing, and whether anyone had asked for it.
   const lacked = skipClass === 'not_applicable' ? lackedBy(rule, context, present) : [];
   /*
-   * And who had asked for a rule that could not answer for another reason:
-   * a run it read in part, a budget, a throw, a broken definition. A policy
-   * the call or the deployment asked for is not critical, so until 0.22.0
-   * nothing read such a row: an expected trajectory compared with part of
-   * a run was "not judged" and the verdict passed (compose.ts, the unknown
-   * layer).
+   * And who had asked for a rule that could not answer though there was
+   * something to judge: it threw, was stopped at a limit, read a record
+   * that was cut, or its definition is broken (skipClassOf). Until 0.22.0
+   * the stamp said who asked only on a rule that lacked an input, and a
+   * policy the deployment or the call asked for that threw was read by
+   * nothing: the verdict passed (compose.ts, the third layer).
    */
   const couldNotAnswer = skipClass !== undefined && skipClass !== 'not_applicable';
   /*
    * A rule the deployment set to report only (eval.advisoryRules) is asked
    * for by nobody, whatever threshold stands beside it. Its fire takes no
-   * part in the verdict, so its silence takes none either: read as asked,
-   * a loop check the deployment had told to report made the verdict
-   * unknown on a run it read in part, where a loop it found would have
-   * changed nothing.
+   * part in the verdict, so its silence takes none either, whether it could
+   * not answer or lacked what it reads: read as asked, a loop check the
+   * deployment had told to report made the verdict unknown on a call that
+   * sent no tool calls, where a loop it found would have changed nothing.
    */
   const reportsOnly = effective.advisory === true;
   const asked = !reportsOnly && (lacked.length > 0 || couldNotAnswer) ? askedOf(rule, context, effective, options) : undefined;
