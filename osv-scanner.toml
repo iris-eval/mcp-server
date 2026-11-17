@@ -1,0 +1,10 @@
+# Advisories against package-lock.json that OSV-Scanner, and OpenSSF
+# Scorecard's Vulnerabilities check, should report as assessed rather than open.
+# Each entry carries its reason; the full assessment is the advisory's row in
+# SECURITY-EXPOSURE.md, and the entry leaves when that row is closed.
+# ignoreUntil makes each one lapse unless it is reviewed again.
+
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2027-02-17
+reason = "picomatch 4.0.7 is loaded only by the test runner (vitest, vite and tinyglobby), never by the published package, and compiles only the glob patterns of this repository's own Vitest configurations, none of which is a repeated extglob. No fixed release exists: 4.0.7 is the newest. It moves by a lockfile bump when one is published."

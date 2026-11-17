@@ -8,3 +8,8 @@
 id = "GHSA-g3hv-75wg-m249"
 ignoreUntil = 2027-02-03
 reason = "minimatch 3.1.5 is loaded only by the website's ESLint 9 lint tooling (eslint, @eslint/eslintrc, @eslint/config-array and the plugins eslint-config-next bundles), never at runtime, and matches only glob patterns committed to this repository. Those plugins call minimatch 3's CommonJS export as a function; the fixed 11.x line has no default export, so it cannot be overridden in. It moves with the website's ESLint 10 upgrade (issue #54). Every other minimatch copy in the repository is 11.0.4."
+
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2027-02-17
+reason = "picomatch 2.3.2 and 4.0.4 are loaded only by the website's lint tooling (fast-glob under @next/eslint-plugin-next, and tinyglobby under eslint-import-resolver-typescript), never at runtime, and compile only the file patterns of the lint configuration committed to this repository. No fixed release exists in any line: 4.0.7 is the newest. They move by a lockfile bump when one is published."

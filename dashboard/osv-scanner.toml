@@ -1,0 +1,10 @@
+# Advisories against dashboard/package-lock.json that OSV-Scanner, and OpenSSF
+# Scorecard's Vulnerabilities check, should report as assessed rather than open.
+# Each entry carries its reason; the full assessment is the advisory's row in
+# SECURITY-EXPOSURE.md, and the entry leaves when that row is closed.
+# ignoreUntil makes each one lapse unless it is reviewed again.
+
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2027-02-17
+reason = "picomatch 4.0.7 is loaded only by the dashboard's build, test and Storybook tooling (vite, vitest, tinyglobby, unplugin, @rollup/pluginutils and the Jest packages its type definitions bring), never by the bundle a browser loads, and compiles only this repository's own patterns: the Vitest include list and Storybook's story list, whose one extglob matches one of three literal endings once. No fixed release exists: 4.0.7 is the newest. It moves by a lockfile bump when one is published."
