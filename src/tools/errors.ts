@@ -16,9 +16,12 @@
  * new throw site cannot ship without a code.
  *
  * Two errors are not this module's: an argument the input schema rejects
- * is refused by the SDK before the handler runs (the text names
- * IRIS_INVALID_ARGUMENT and the valid arguments — see strict-input.ts), and
- * an HTTP rate limit answers 429 at the transport before any tool runs.
+ * is refused by the SDK before the handler runs, as plain text (for an
+ * unknown argument the text names IRIS_INVALID_ARGUMENT and the valid
+ * arguments — see strict-input.ts; for a wrong type or a missing argument
+ * it is the SDK's own sentence, with no code), and an HTTP rate limit
+ * answers 429 at the transport before any tool runs. The same code is also
+ * an envelope's, where a tool refuses an argument its schema let in.
  */
 import { ZodError } from 'zod';
 import { LLMJudgeError } from '../eval/llm-judge/client.js';
@@ -99,8 +102,25 @@ export function irisError(
 
 const CAPABILITIES = CAPABILITIES_RESOURCE_URI;
 
+/**
+ * What a thrown value says for itself. A promise can reject with anything:
+ * with nothing at all (null, undefined), or with an object that cannot be
+ * made a string. Those say nothing, and the internal error's own sentence
+ * stands for them.
+ */
+function messageOf(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err === null || err === undefined) return '';
+  try {
+    return String(err);
+  } catch {
+    return '';
+  }
+}
+
 function isSqliteError(err: unknown): boolean {
-  const code = (err as { code?: unknown }).code;
+  // Reading a field of null here threw inside the catch that was building the envelope, and the caller got that throw's one line.
+  const code = (err as { code?: unknown } | null | undefined)?.code;
   if (typeof code === 'string' && code.startsWith('SQLITE_')) return true;
   const message = err instanceof Error ? err.message : '';
   return /SQLITE|database is locked|disk I\/O error|readonly database/i.test(message);
@@ -117,7 +137,7 @@ export function toIrisError(err: unknown): IrisError {
   if (err instanceof IrisError) return err;
 
   const name = (err as { name?: unknown })?.name;
-  const message = err instanceof Error ? err.message : String(err);
+  const message = messageOf(err);
 
   if (name === 'DuplicateRuleNameError') {
     return irisError('IRIS_DUPLICATE_RULE', message, {

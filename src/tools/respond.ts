@@ -12,8 +12,9 @@
  *
  * `errorResult` is the failure shape: the IrisError envelope as the text,
  * `isError: true`, and a link to iris://capabilities. It carries no
- * structuredContent (see there). `guarded` wraps a handler so nothing
- * thrown inside it reaches the SDK's flattener.
+ * structuredContent (see there). `failureResult` builds it from whatever
+ * was thrown, and `guarded` wraps a handler with it, so nothing thrown
+ * inside a handler reaches the SDK's flattener.
  */
 import { z } from 'zod';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -83,14 +84,16 @@ export type ErrorEnvelope = z.infer<typeof errorEnvelopeSchema>;
  *
  * The envelope is not sent as `structuredContent`. A tool's structured
  * content is what its output schema describes, and that schema describes
- * the tool's answer, not this envelope: a client built on the MCP SDK
- * checks structured content against the schema on every result once it has
- * listed the tools, an error result's too, and threw the whole result away
- * ("Structured content does not match the tool's output schema"). The
- * code, the message and the recovery steps never reached it. Sent as text
- * alone, the envelope reaches every client: the SDK's server does not check
- * an error result against the output schema, and its client checks
- * structured content only where there is some. The text is the same object.
+ * the tool's answer, not this envelope: a client built on the MCP
+ * TypeScript SDK checks structured content against the schema on every
+ * result once it has listed the tools, an error result's too, and threw the
+ * whole result away ("Structured content does not match the tool's output
+ * schema"). The code, the message and the recovery steps never reached it.
+ * Sent as text alone, the envelope passes both of that SDK's checks: its
+ * server does not check an error result against the output schema, and its
+ * client checks structured content only where there is some (measured on
+ * 1.32.2, the version this server builds against). The text is the same
+ * object.
  */
 export function errorResult(err: IrisError): CallToolResult {
   const body = normalise({ error: err.envelope });
@@ -98,6 +101,22 @@ export function errorResult(err: IrisError): CallToolResult {
     content: [{ type: 'text', text: JSON.stringify(body) }, linkItem(CAPABILITIES_LINK)],
     isError: true,
   };
+}
+
+/**
+ * The result for whatever a handler, or the gate in front of it, failed
+ * with. A promise can reject with anything, and a value the mapping itself
+ * cannot read (it reads the value's class and its fields) is answered as
+ * the internal error rather than let past as a flattened line.
+ */
+export function failureResult(err: unknown): CallToolResult {
+  let mapped: IrisError;
+  try {
+    mapped = toIrisError(err);
+  } catch {
+    mapped = toIrisError(undefined);
+  }
+  return errorResult(mapped);
 }
 
 /** Wrap a handler so every failure returns an envelope instead of a flattened line. */
@@ -108,7 +127,7 @@ export function guarded<A extends unknown[]>(
     try {
       return await fn(...args);
     } catch (err) {
-      return errorResult(toIrisError(err));
+      return failureResult(err);
     }
   };
 }

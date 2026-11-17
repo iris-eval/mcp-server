@@ -31,7 +31,8 @@ import { defaultConfig } from '../../../src/config/defaults.js';
 import { createCustomRuleStore } from '../../../src/custom-rule-store.js';
 import { registerEvaluateOutputTool } from '../../../src/tools/evaluate-output.js';
 import { ERROR_CODE_CATALOGUE, toIrisError } from '../../../src/tools/errors.js';
-import { errorEnvelopeSchema } from '../../../src/tools/respond.js';
+import { errorEnvelopeSchema, guarded } from '../../../src/tools/respond.js';
+import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import { LLMJudgeError } from '../../../src/eval/llm-judge/client.js';
 import { __setDnsLookupForTests, __clearCitationCacheForTests } from '../../../src/eval/citation-verify/resolve.js';
 import type { EvalEngine } from '../../../src/eval/engine.js';
@@ -49,6 +50,8 @@ function envelope(r: Result) {
   expect(parsed.success, text(r)).toBe(true);
   return parsed.success ? parsed.data.error : (undefined as never);
 }
+/** What a promise can reject with that has no message: nothing at all, and an object that cannot be made a string. */
+const NOTHING_TO_SAY: readonly unknown[] = [null, undefined, Object.create(null)];
 
 describe('no tool throws a bare Error past its handler', () => {
   it('src/tools has zero `throw new Error(`', () => {
@@ -106,6 +109,15 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
     expect(text(r)).toContain('IRIS_INVALID_ARGUMENT');
     expect(text(r)).toContain('"bogus"');
     provoked.add('IRIS_INVALID_ARGUMENT');
+  });
+
+  it('IRIS_INVALID_ARGUMENT — the same code as an envelope, when the tool itself refuses an argument its schema let in', async () => {
+    const e = envelope((await client.callTool({ name: 'log_trace', arguments: { agent_name: 'codes', input: 'x', evaluate: true } })) as Result);
+    expect(e.code).toBe('IRIS_INVALID_ARGUMENT');
+    expect(e.field).toBe('output');
+    expect(e.recovery.length).toBeGreaterThan(0);
+    // Refused before anything was stored: this test's store began empty.
+    expect((await storage.queryTraces(LOCAL_TENANT, {})).total).toBe(0);
   });
 
   it('IRIS_UNKNOWN_TRACE — nothing scored or written', async () => {
@@ -234,6 +246,19 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
     provoked.add(e.code);
   });
 
+  it('IRIS_INTERNAL_ERROR — a handler that fails with nothing at all, or with a value that has no text, is answered with the envelope too', async () => {
+    for (const thrown of NOTHING_TO_SAY) {
+      const fail = (): never => {
+        throw thrown;
+      };
+      const broken = { evaluateAll: fail, evaluate: fail, relevanceJudgeInForce: () => null } as unknown as EvalEngine;
+      const e = envelope(await callIsolated(storage, broken, { output: 'x' }));
+      expect(e.code).toBe('IRIS_INTERNAL_ERROR');
+      expect(e.message).toBe('Iris hit an unexpected error.');
+      expect(e.recovery.length).toBeGreaterThan(0);
+    }
+  });
+
   it('the provoked set equals the catalogue', () => {
     expect([...provoked].sort()).toEqual([...ERROR_CODE_CATALOGUE].sort());
   });
@@ -298,5 +323,37 @@ describe('toIrisError maps what the runtime throws', () => {
     const e = toIrisError(new Error('boom'));
     expect(e.envelope.code).toBe('IRIS_INTERNAL_ERROR');
     expect(e.envelope.recovery.length).toBeGreaterThan(0);
+  });
+  it('nothing thrown at all, or a value with no text, is internal with the error\'s own sentence', () => {
+    for (const thrown of NOTHING_TO_SAY) {
+      const e = toIrisError(thrown);
+      expect(e.envelope.code).toBe('IRIS_INTERNAL_ERROR');
+      expect(e.envelope.message).toBe('Iris hit an unexpected error.');
+      expect(e.envelope.recovery.length).toBeGreaterThan(0);
+    }
+  });
+  it('a value that says something is quoted as it says it', () => {
+    expect(toIrisError('the disk is full').envelope.message).toBe('the disk is full');
+    expect(toIrisError({ toString: () => 'a bare object with words' }).envelope.message).toBe('a bare object with words');
+  });
+});
+
+describe('the wrapper answers with an envelope whatever a handler fails with', () => {
+  it('a value the mapping itself cannot read (reading its class throws) is the internal error, not a thrown line', async () => {
+    const unreadable: unknown = new Proxy(
+      {},
+      {
+        getPrototypeOf() {
+          throw new Error('this value will not say what it is');
+        },
+      },
+    );
+    expect(() => toIrisError(unreadable)).toThrow('this value will not say what it is');
+    const handler = guarded(async () => {
+      throw unreadable;
+    });
+    const e = envelope((await handler()) as Result);
+    expect(e.code).toBe('IRIS_INTERNAL_ERROR');
+    expect(e.message).toBe('Iris hit an unexpected error.');
   });
 });

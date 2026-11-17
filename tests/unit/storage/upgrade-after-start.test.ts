@@ -210,6 +210,36 @@ describe('the upgrade after the start', () => {
     expect(refusal.error).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: true });
   });
 
+  it('a gate that fails with nothing at all still refuses with the envelope', async () => {
+    const ruleDir = mkdtempSync(join(tmpdir(), 'iris-upgrade-rules-'));
+    dirs.push(ruleDir);
+    const ruleStore = createCustomRuleStore({ pathFor: () => join(ruleDir, 'custom-rules.json'), auditPath: join(ruleDir, 'audit.log') });
+    const s = new SqliteAdapter(':memory:', { driver: CELL_DRIVER });
+    open.push(s);
+    await s.initialize();
+    for (const nothing of [null, undefined]) {
+      // A gate that is shut and whose wait rejects with no reason: the shape a promise rejected by hand takes.
+      const gate = { storage: s, ready: Promise.resolve(), hold: () => undefined, wait: () => Promise.reject(nothing), open: false };
+      const { mcpServer } = createIrisServer(defaultConfig, s, ruleStore, { gate, warn: () => undefined });
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+      await mcpServer.connect(serverTransport);
+      const client = new Client({ name: 'upgrade', version: '0.1.0' });
+      await client.connect(clientTransport);
+      await client.listTools();
+      try {
+        const refused = await client.callTool({ name: 'get_traces', arguments: { limit: 5 } });
+        expect(refused.isError).toBe(true);
+        expect(refused.structuredContent).toBeUndefined();
+        const refusal = JSON.parse((refused.content as Array<{ type: string; text?: string }>).find((c) => c.type === 'text')!.text!) as { error: { code: string; message: string; recovery: string[] } };
+        expect(refusal.error.code).toBe('IRIS_INTERNAL_ERROR');
+        expect(refusal.error.message).toBe('Iris hit an unexpected error.');
+        expect(refusal.error.recovery.length).toBeGreaterThan(0);
+      } finally {
+        await client.close();
+      }
+    }
+  });
+
   it('an HTTP request waits at the same gate, and is answered 503 with Retry-After when it waits too long', async () => {
     const serve = async (waitMs: number) => {
       const { s } = await upgrading();
