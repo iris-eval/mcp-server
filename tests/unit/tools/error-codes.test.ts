@@ -336,6 +336,12 @@ describe('toIrisError maps what the runtime throws', () => {
     expect(toIrisError('the disk is full').envelope.message).toBe('the disk is full');
     expect(toIrisError({ toString: () => 'a bare object with words' }).envelope.message).toBe('a bare object with words');
   });
+  it('the store driver\'s words make a storage error only in an error\'s own message, not in a thrown string', () => {
+    expect(toIrisError(new Error('database is locked')).envelope.code).toBe('IRIS_STORAGE_ERROR');
+    const e = toIrisError('database is locked');
+    expect(e.envelope.code).toBe('IRIS_INTERNAL_ERROR');
+    expect(e.envelope.message).toBe('database is locked');
+  });
 });
 
 describe('the wrapper answers with an envelope whatever a handler fails with', () => {
