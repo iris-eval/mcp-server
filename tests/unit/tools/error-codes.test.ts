@@ -50,8 +50,8 @@ function envelope(r: Result) {
   expect(parsed.success, text(r)).toBe(true);
   return parsed.success ? parsed.data.error : (undefined as never);
 }
-/** What a promise can reject with that has no message: nothing at all, and an object that cannot be made a string. */
-const NOTHING_TO_SAY: readonly unknown[] = [null, undefined, Object.create(null)];
+/** What a promise can reject with that has no message: nothing at all, an object that cannot be made a string (no prototype; a toString that answers no string), an error whose message is not text. */
+const NOTHING_TO_SAY: readonly unknown[] = [null, undefined, Object.create(null), { toString: () => ({}) }, Object.assign(new Error('replaced below'), { message: 5 })];
 
 describe('no tool throws a bare Error past its handler', () => {
   it('src/tools has zero `throw new Error(`', () => {
@@ -351,6 +351,19 @@ describe('the wrapper answers with an envelope whatever a handler fails with', (
     expect(() => toIrisError(unreadable)).toThrow('this value will not say what it is');
     const handler = guarded(async () => {
       throw unreadable;
+    });
+    const e = envelope((await handler()) as Result);
+    expect(e.code).toBe('IRIS_INTERNAL_ERROR');
+    expect(e.message).toBe('Iris hit an unexpected error.');
+  });
+
+  it('a failure mapped to an envelope its own schema refuses (a retry delay that is not a number) is the internal error too', async () => {
+    const odd = new LLMJudgeError('slow down', 'rate_limit', 429, Number.NaN);
+    // The mapping answers; it is the envelope's schema that refuses what it answered.
+    expect(toIrisError(odd).envelope).toMatchObject({ code: 'IRIS_PROVIDER_ERROR', kind: 'rate_limit' });
+    expect(errorEnvelopeSchema.safeParse({ error: toIrisError(odd).envelope }).success).toBe(false);
+    const handler = guarded(async () => {
+      throw odd;
     });
     const e = envelope((await handler()) as Result);
     expect(e.code).toBe('IRIS_INTERNAL_ERROR');

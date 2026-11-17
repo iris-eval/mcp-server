@@ -103,16 +103,16 @@ export function irisError(
 const CAPABILITIES = CAPABILITIES_RESOURCE_URI;
 
 /**
- * What a thrown value says for itself. A promise can reject with anything:
- * with nothing at all (null, undefined), or with an object that cannot be
- * made a string. Those say nothing, and the internal error's own sentence
- * stands for them.
+ * What a thrown value says for itself, always as text. A promise can reject
+ * with anything: with nothing at all (null, undefined), with an object that
+ * cannot be made a string, with an error whose message is not text. Those
+ * say nothing, and the internal error's own sentence stands for them.
  */
 function messageOf(err: unknown): string {
-  if (err instanceof Error) return err.message;
   if (err === null || err === undefined) return '';
   try {
-    return String(err);
+    const said: unknown = err instanceof Error ? err.message : String(err);
+    return typeof said === 'string' ? said : '';
   } catch {
     return '';
   }
@@ -122,8 +122,8 @@ function isSqliteError(err: unknown): boolean {
   // Reading a field of null here threw inside the catch that was building the envelope, and the caller got that throw's one line.
   const code = (err as { code?: unknown } | null | undefined)?.code;
   if (typeof code === 'string' && code.startsWith('SQLITE_')) return true;
-  const message = err instanceof Error ? err.message : '';
-  return /SQLITE|database is locked|disk I\/O error|readonly database/i.test(message);
+  // Only an error's own message is read for the driver's words, as before: a thrown string that happens to hold them is not the store's.
+  return /SQLITE|database is locked|disk I\/O error|readonly database/i.test(err instanceof Error ? messageOf(err) : '');
 }
 
 /**
