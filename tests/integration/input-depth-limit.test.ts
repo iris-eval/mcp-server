@@ -427,6 +427,29 @@ describe('an input no door stood in front of', () => {
     expect(body.failed).toEqual([{ trace_id: 'd'.repeat(32), reason: `the trace nests more than ${MAX_EVALUATED_DEPTH} levels deep, so no rule read it` }]);
   });
 
+  it('the dashboard answers 422, with the limit named, when it is asked to score such a trace again', async () => {
+    const storage = new SqliteAdapter(':memory:');
+    await storage.initialize();
+    const server: Server = createDashboardServer(storage, withDepth(DEFAULT_MAX_INPUT_DEPTH), quiet, { evalEngine: new EvalEngine() }).start();
+    await new Promise((done) => server.once('listening', done));
+    cleanup.push(async () => {
+      server.closeAllConnections?.();
+      await new Promise<void>((done) => server.close(() => done()));
+      await storage.close();
+    });
+    const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+    const now = new Date().toISOString();
+    // A trace and its verdict as an earlier version left them, and beside them an ordinary pair.
+    await storage.insertTrace(LOCAL_TENANT, { trace_id: 'b'.repeat(32), agent_name: 'old', output: 'The patch was applied.', tool_calls: [{ tool_name: 'apply_patch', input: objects(3_000) }], timestamp: now, created_at: now });
+    await storage.insertEvalResult(LOCAL_TENANT, { id: 'before-the-limit', trace_id: 'b'.repeat(32), eval_type: 'all', output_text: 'The patch was applied.', score: 1, passed: true, rule_results: [] });
+    await storage.insertTrace(LOCAL_TENANT, { trace_id: 'a'.repeat(32), agent_name: 'old', output: 'The file was read.', tool_calls: [{ tool_name: 'read_file', input: { path: 'src/a.ts' } }], timestamp: now, created_at: now });
+    await storage.insertEvalResult(LOCAL_TENANT, { id: 'ordinary', trace_id: 'a'.repeat(32), eval_type: 'all', output_text: 'The file was read.', score: 1, passed: true, rule_results: [] });
+    const refused = await fetch(`${base}/api/v1/evaluations/before-the-limit/reevaluate`, { method: 'POST' });
+    expect(refused.status).toBe(422);
+    expect(((await refused.json()) as { error: string }).error).toContain(`nests more than ${MAX_EVALUATED_DEPTH} levels deep`);
+    expect((await fetch(`${base}/api/v1/evaluations/ordinary/reevaluate`, { method: 'POST' })).status).toBe(201);
+  });
+
   it('the refusal carries the limit and a status a web server can answer with', () => {
     const refusal = new InputTooDeepError(MAX_EVALUATED_DEPTH);
     expect(refusal.name).toBe('InputTooDeepError');
