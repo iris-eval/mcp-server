@@ -94,9 +94,15 @@ export type ErrorEnvelope = z.infer<typeof errorEnvelopeSchema>;
  * client checks structured content only where there is some (measured on
  * 1.32.2, the version this server builds against). The text is the same
  * object.
+ *
+ * Like an answer, the envelope is checked against its own schema before it
+ * is sent, as the JSON it will be read as. One that does not match is a
+ * programming error and throws; `failureResult` answers the internal error
+ * in its place.
  */
 export function errorResult(err: IrisError): CallToolResult {
   const body = normalise({ error: err.envelope });
+  if (!errorEnvelopeSchema.safeParse(body).success) throw new Error('error envelope does not match its schema');
   return {
     content: [{ type: 'text', text: JSON.stringify(body) }, linkItem(CAPABILITIES_LINK)],
     isError: true,
@@ -105,18 +111,17 @@ export function errorResult(err: IrisError): CallToolResult {
 
 /**
  * The result for whatever a handler, or the gate in front of it, failed
- * with. A promise can reject with anything, and a value the mapping itself
- * cannot read (it reads the value's class and its fields) is answered as
- * the internal error rather than let past as a flattened line.
+ * with. A promise can reject with anything. A value the mapping cannot read
+ * (it reads the value's class and its fields), and one it maps to an
+ * envelope the envelope's own schema refuses, are answered as the internal
+ * error rather than let past as a flattened line.
  */
 export function failureResult(err: unknown): CallToolResult {
-  let mapped: IrisError;
   try {
-    mapped = toIrisError(err);
+    return errorResult(toIrisError(err));
   } catch {
-    mapped = toIrisError(undefined);
+    return errorResult(toIrisError(undefined));
   }
-  return errorResult(mapped);
 }
 
 /** Wrap a handler so every failure returns an envelope instead of a flattened line. */
