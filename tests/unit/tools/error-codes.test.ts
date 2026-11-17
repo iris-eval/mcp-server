@@ -8,6 +8,14 @@
  * out of the content, and the assertion that the provoked set EQUALS the
  * catalogue, so a code nothing raises cannot linger and a new throw site
  * cannot ship without one.
+ *
+ * Every code is provoked through a client that has listed the tools first,
+ * as a client does. A client built on the MCP SDK then holds each tool's
+ * output schema and checks the structured content of every later result
+ * against it, an error result's too: while the envelope went out as
+ * structured content, such a client threw the result away and never saw
+ * the code. So an error result carries none, and the last block holds the
+ * SDK to the behaviour that rests on.
  */
 import { readdirSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -16,6 +24,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { createIrisServer } from '../../../src/server.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
@@ -30,10 +39,12 @@ import type { IStorageAdapter } from '../../../src/types/query.js';
 
 const root = resolve(__dirname, '..', '..', '..');
 
-type Result = { content?: unknown; isError?: boolean };
+type Result = { content?: unknown; isError?: boolean; structuredContent?: unknown };
 const text = (r: Result) => (r.content as Array<{ type: string; text?: string }>).find((c) => c.type === 'text')!.text!;
 function envelope(r: Result) {
   expect(r.isError).toBe(true);
+  // The envelope is the text. As structured content it would be checked against the tool's output schema, which describes the tool's answer.
+  expect(r.structuredContent).toBeUndefined();
   const parsed = errorEnvelopeSchema.safeParse(JSON.parse(text(r)));
   expect(parsed.success, text(r)).toBe(true);
   return parsed.success ? parsed.data.error : (undefined as never);
@@ -72,6 +83,8 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
     await mcpServer.connect(serverTransport);
     client = new Client({ name: 'codes', version: '0.1.0' });
     await client.connect(clientTransport);
+    // As a client does before it calls anything: from here on the SDK checks every result against the tool's output schema.
+    expect((await client.listTools()).tools.every((tool) => tool.outputSchema !== undefined)).toBe(true);
     delete process.env.IRIS_ANTHROPIC_API_KEY;
   });
 
@@ -233,12 +246,47 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
     await server.connect(s);
     const isolated = new Client({ name: 'isolated', version: '0.1.0' });
     await isolated.connect(c);
+    await isolated.listTools();
     try {
       return (await isolated.callTool({ name: 'evaluate_output', arguments: args })) as Result;
     } finally {
       await isolated.close();
     }
   }
+});
+
+describe('what an error result may carry, for a client that has listed the tools', () => {
+  /** A server with one tool whose answer has a required field, as every Iris tool's has, and which fails with the result given. */
+  async function failingWith(result: { content: Array<{ type: 'text'; text: string }>; isError: true; structuredContent?: Record<string, unknown> }): Promise<{ call: () => Promise<Result>; close: () => Promise<void> }> {
+    const server = new McpServer({ name: 'one-tool', version: '0.0.0' });
+    server.registerTool('answer', { description: 'Answers.', inputSchema: {}, outputSchema: { id: z.string() } }, () => result);
+    const [c, s] = InMemoryTransport.createLinkedPair();
+    await server.connect(s);
+    const client = new Client({ name: 'one-tool', version: '0.1.0' });
+    await client.connect(c);
+    await client.listTools();
+    return { call: async () => (await client.callTool({ name: 'answer', arguments: {} })) as Result, close: () => client.close() };
+  }
+  const body = { error: toIrisError(new Error('boom')).envelope };
+  const asText = { content: [{ type: 'text' as const, text: JSON.stringify(body) }], isError: true as const };
+
+  it('the envelope as text reaches it', async () => {
+    const { call, close } = await failingWith(asText);
+    try {
+      expect(envelope(await call()).code).toBe('IRIS_INTERNAL_ERROR');
+    } finally {
+      await close();
+    }
+  });
+
+  it('the same envelope sent as structured content as well is thrown away by the SDK: the reason an error result carries none', async () => {
+    const { call, close } = await failingWith({ ...asText, structuredContent: body });
+    try {
+      await expect(call()).rejects.toThrow(/Structured content does not match the tool's output schema/);
+    } finally {
+      await close();
+    }
+  });
 });
 
 describe('toIrisError maps what the runtime throws', () => {
