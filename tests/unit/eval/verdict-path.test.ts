@@ -228,7 +228,7 @@ describe('a check that could not answer leaves the verdict unknown when its answ
   });
 
   it('a row stored under the earlier rules reads back as the verdict its caller was given', () => {
-    // A row carries `threw` since 0.20.0. Read under the rules it was stamped with, a rule that threw and nobody asked for takes no part, as it did.
+    // A row stored before this change can carry `threw` (#1012). Read under the rules it was stamped with, a rule that threw and nobody asked for takes no part, as it did.
     const rows = [unanswered({ ruleName: 'no_tool_loop', kind: 'detection', threw: true }), plain];
     for (const rules of [1, 2]) {
       expect(compose(evaluation(rows), cfg({ rules })), `rules ${rules}`).toMatchObject({ state: 'pass', basis: 'clean' });

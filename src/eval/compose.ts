@@ -104,8 +104,9 @@ export interface ComposeConfig {
  *      (primaryOf).
  *   3  from 0.22.0: a rule that threw where its finding would have counted
  *      leaves the verdict unknown, whoever asked for it (walk, the third
- *      layer). A row carries `threw` since 0.20.0, so one stored before
- *      this would otherwise read back as another verdict than it was given.
+ *      layer). No release stored a row that carries `threw`, and a build
+ *      since the engine began to mark a throw (#1012) did: such a row
+ *      would otherwise read back as another verdict than it was given.
  *
  * Moved only when the same stored rule results would compose to a different
  * verdict. A new rule, a new stamp or a new layer input does not move it:

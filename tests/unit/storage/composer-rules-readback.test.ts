@@ -63,7 +63,7 @@ describe('the composer rules a row was judged under', () => {
     const stored = { ...r, id: 'now', rule_results: r.rule_results } as EvalResult;
     await s.insertEvalResult(LOCAL_TENANT, stored);
     expect((await s.getEvalById(LOCAL_TENANT, 'now'))!.verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown' });
-    // As 0.21.0 stored the same results: stamped with rules 2, under which a rule that threw and nobody asked for took no part.
+    // As a build before this change stored the same results: stamped with rules 2, under which a rule that threw and nobody asked for took no part.
     const earlier = structuredClone({ ...stored, id: 'earlier' }) as EvalResult;
     earlier.provenance!.composer!.rules = 2;
     await s.insertEvalResult(LOCAL_TENANT, earlier);
