@@ -210,14 +210,23 @@ describe('the upgrade after the start', () => {
     expect(refusal.error).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: true });
   });
 
-  it('a gate that fails with nothing at all still refuses with the envelope', async () => {
+  it('a gate that fails with nothing at all, or with a value that cannot be read, still refuses with the envelope', async () => {
     const ruleDir = mkdtempSync(join(tmpdir(), 'iris-upgrade-rules-'));
     dirs.push(ruleDir);
     const ruleStore = createCustomRuleStore({ pathFor: () => join(ruleDir, 'custom-rules.json'), auditPath: join(ruleDir, 'audit.log') });
     const s = new SqliteAdapter(':memory:', { driver: CELL_DRIVER });
     open.push(s);
     await s.initialize();
-    for (const nothing of [null, undefined]) {
+    // A value the mapping to an error code cannot read: the gate answers through the same function as a tool's wrapper, which answers for it.
+    const unreadable: unknown = new Proxy(
+      {},
+      {
+        getPrototypeOf() {
+          throw new Error('this value will not say what it is');
+        },
+      },
+    );
+    for (const nothing of [null, undefined, unreadable]) {
       // A gate that is shut and whose wait rejects with no reason: the shape a promise rejected by hand takes.
       const gate = { storage: s, ready: Promise.resolve(), hold: () => undefined, wait: () => Promise.reject(nothing), open: false };
       const { mcpServer } = createIrisServer(defaultConfig, s, ruleStore, { gate, warn: () => undefined });

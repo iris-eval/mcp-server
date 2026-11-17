@@ -42,7 +42,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
       'For a transient log line (use your logger). To score a trace you already stored: evaluate_output with its trace_id and nothing else, which reads the stored output, input, tool_calls, tools and cost. To change a stored trace: delete_trace and log again.',
     errors:
       'IRIS_STORAGE_ERROR when the database cannot be written. IRIS_INVALID_ARGUMENT when evaluate is true without output, or on a server with no eval engine — nothing is stored in either case. ' +
-      'An unknown argument or a malformed span or tool_calls entry is refused before the handler runs, naming the valid keys.',
+      'An unknown argument is refused before the handler runs, naming the valid keys; a malformed span or tool_calls entry is refused saying what is wrong.',
     parameters: {
       tool_calls:
         'Tool calls made during execution, in order, each { tool_name, input?, output?, latency_ms?, error? } — what the trajectory rules judge; evaluate_output reuses them when given this trace_id',
@@ -125,7 +125,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
     whenNot:
       'To score one output (evaluate_output). To find the traces (get_traces). To gate a deploy: this tool reports; whether a difference blocks is your policy.',
     errors:
-      'IRIS_INVALID_ARGUMENT when a run id is empty, no baseline is pinned for an omitted before, equivalence_margin is outside (0, 1], or dataset names none. IRIS_STORAGE_ERROR when the database cannot be read. ' +
+      'IRIS_INVALID_ARGUMENT when no baseline is pinned for an omitted before, or dataset names none. An empty run id, or an equivalence_margin outside (0, 1], is refused by the input schema in plain text. IRIS_STORAGE_ERROR when the database cannot be read. ' +
       'An unknown or empty run is not an error: n is 0 and the summary says which.',
     parameters: {
       force:
@@ -154,7 +154,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
     whenNot:
       'To score a new execution (log_trace then evaluate_output). To compare two runs (compare_runs). To re-score a single trace (evaluate_output with its trace_id).',
     errors:
-      'IRIS_INVALID_ARGUMENT when the run id is empty or the target run already holds verdicts. IRIS_UNKNOWN_TRACE when the source run has no traces. IRIS_STORAGE_ERROR when the database cannot be read. ' +
+      'IRIS_INVALID_ARGUMENT when into names the run being re-evaluated. An empty run id is refused by the input schema in plain text. IRIS_UNKNOWN_TRACE when the source run has no traces. IRIS_STORAGE_ERROR when the database cannot be read. ' +
       'A trace that cannot be scored does NOT fail the call: it is listed in failed with its reason and the rest still run.',
     parameters: {
       into:
