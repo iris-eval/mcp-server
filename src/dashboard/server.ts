@@ -41,8 +41,8 @@ import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
 import type { PreferenceStore } from '../preferences.js';
 import { requestSizeLimitBytes } from '../utils/size-limit.js';
-import { countElements, tooManyElementsBody } from '../utils/element-count.js';
-import { maxInputElementsOf, protobufElementCeiling } from '../config/defaults.js';
+import { countElements, nestingDepth, tooDeepBody, tooManyElementsBody } from '../utils/element-count.js';
+import { maxInputDepthOf, maxInputElementsOf, protobufElementCeiling } from '../config/defaults.js';
 import { compressJsonResponses, findPrecompressed, precompressedFile, servePrecompressed } from './compression.js';
 
 export interface DashboardServer {
@@ -166,11 +166,19 @@ export function createDashboardServer(
    * derived from the byte limit (protobufElementCeiling).
    */
   const maxElements = maxInputElementsOf(config.security);
+  // And how deep it nests (security.maxInputDepth, #1040): measured once the elements are known to be within their limit, so that walk is bounded too.
+  const maxDepth = maxInputDepthOf(config.security);
   app.use((req, res, next) => {
     const body: unknown = req.body;
-    if (body !== null && typeof body === 'object' && countElements(body, maxElements) > maxElements) {
-      res.status(413).json(tooManyElementsBody(maxElements));
-      return;
+    if (body !== null && typeof body === 'object') {
+      if (countElements(body, maxElements) > maxElements) {
+        res.status(413).json(tooManyElementsBody(maxElements));
+        return;
+      }
+      if (nestingDepth(body, maxDepth) > maxDepth) {
+        res.status(413).json(tooDeepBody(maxDepth));
+        return;
+      }
     }
     next();
   });
@@ -258,7 +266,7 @@ export function createDashboardServer(
    */
   const otlp = express.Router();
   otlp.use(createApiRateLimiter(config));
-  registerOtlpRoutes(otlp, storage, { evalEngine: options?.evalEngine, customRuleStore: options?.customRuleStore, evaluateOnIngest: config.otel.evaluateOnIngest, maxProtobufElements: protobufElementCeiling(maxElements, sizeLimit) });
+  registerOtlpRoutes(otlp, storage, { evalEngine: options?.evalEngine, customRuleStore: options?.customRuleStore, evaluateOnIngest: config.otel.evaluateOnIngest, maxProtobufElements: protobufElementCeiling(maxElements, sizeLimit), maxDepth });
   app.use('/v1', otlp);
 
   // Serve static dashboard files if built (rate limited).

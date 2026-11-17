@@ -16,8 +16,9 @@ import { relevanceJudgeFromEnv, relevanceJudgeStartupWarnings, relevanceJudgeSta
 import { judgeBudgetFromEnv } from './eval/llm-judge/budget.js';
 import type { StoreGate } from './storage/ready.js';
 import { errorResult } from './tools/respond.js';
-import { toIrisError } from './tools/errors.js';
-import { maxInputElementsOf } from './config/defaults.js';
+import { irisError, toIrisError } from './tools/errors.js';
+import { maxInputDepthOf, maxInputElementsOf } from './config/defaults.js';
+import { nestingDepth, tooDeepMessage } from './utils/element-count.js';
 
 export interface IrisServer {
   mcpServer: McpServer;
@@ -73,6 +74,37 @@ function gateRequests(server: McpServer, gate: StoreGate): void {
     return registerResource(...args.slice(0, -1), async (...a: unknown[]) => {
       if (!gate.open) await gate.wait();
       return read(...a);
+    });
+  };
+}
+
+/**
+ * The nesting limit on a tool call (security.maxInputDepth, #1040). Every
+ * tool registered on `server` from here on has its arguments measured
+ * before it runs, and arguments nested deeper than the limit are answered
+ * with the error envelope of a refused argument: the tool never sees them,
+ * and no rule reads them. The SDK has counted their elements by then
+ * (maxToolInputElements), so the walk reads no more than that limit allows.
+ */
+function limitNesting(server: McpServer, maxDepth: number): void {
+  type Handler = (...args: unknown[]) => unknown;
+  const registerTool = server.registerTool.bind(server) as unknown as (name: string, config: unknown, handler: Handler) => unknown;
+  (server as unknown as { registerTool: typeof registerTool }).registerTool = (name, config, handler) => {
+    // A tool with an input schema is handed the caller's arguments first; a tool without one is handed nothing of the caller's.
+    const takesArguments = (config as { inputSchema?: unknown } | null | undefined)?.inputSchema !== undefined;
+    if (!takesArguments) return registerTool(name, config, handler);
+    return registerTool(name, config, (...args: unknown[]) => {
+      if (nestingDepth(args[0], maxDepth) > maxDepth) {
+        return errorResult(
+          irisError('IRIS_INVALID_ARGUMENT', tooDeepMessage("This call's arguments nest", maxDepth), {
+            recovery: [
+              'Send the nested value flatter, or as text.',
+              'Or the operator raises security.maxInputDepth (IRIS_MAX_INPUT_DEPTH); past a few thousand levels some rules give no answer.',
+            ],
+          }),
+        );
+      }
+      return handler(...args);
     });
   };
 }
@@ -142,6 +174,8 @@ export function createIrisServer(
    * still gets the default.
    */
   const maxToolInputElements = maxInputElementsOf(config.security);
+  // The nesting limit beside it (limitNesting, above): set for stdio and HTTP alike, and from the default for a config built without the key.
+  const maxInputDepth = maxInputDepthOf(config.security);
 
   const newMcpServer = (): McpServer => {
     const server = new McpServer(
@@ -151,6 +185,8 @@ export function createIrisServer(
       },
       { instructions, maxToolInputElements },
     );
+    // Measured first, so a call nested too deep is refused before it waits at the gate.
+    limitNesting(server, maxInputDepth);
     if (options?.gate) gateRequests(server, options.gate);
     registerAllTools(server, storage, evalEngine, ruleStore);
     registerAllResources(server, storage, capabilities, ruleStore.auditPath);

@@ -72,6 +72,46 @@ export function maxInputElementsOf(security: { maxInputElements?: number; maxToo
 }
 
 /*
+ * How many levels deep one input may nest (security.maxInputDepth): a tool
+ * call's arguments on every transport, a request body on the dashboard
+ * port, as JSON or as protobuf, and a line the command line ingests. An
+ * array or an object is one level more than the deepest thing it holds, and
+ * the input is measured whole, with whatever wraps it
+ * (src/utils/element-count.ts).
+ *
+ * The bytes and the elements were bounded; the levels were not, and 3,000
+ * levels of `{"a":{"a":…}}` are 18 KB and 3,000 elements. Several rules
+ * write an input out with a function that calls itself once for each level,
+ * and when the stack runs out the rule gives no answer and takes no part in
+ * the verdict, so a run nested deep enough was judged by fewer rules than
+ * the caller asked for (#1040): as the first request a process answered, a
+ * run that made one call six times failed the verdict with its input nested
+ * 1,750 levels deep and passed it at 2,000. How deep that begins is not one
+ * number: it moves with the rule, the shape of the input and what the
+ * process has run before.
+ *
+ * Three numbers hold it, and this is the one an operator can set, from 1 to
+ * MAX_EVALUATED_DEPTH (512): the engine refuses an evaluation whose input
+ * nests deeper than that by whatever road it came, and a string that holds
+ * JSON is read as the value it encodes down to MAX_JSON_TEXT_DEPTH (256)
+ * and as text past it (both in src/utils/element-count.ts).
+ *
+ * They stand well clear on both sides. Of the 2,171 JSON files under
+ * tests, proof, src, examples, docs and website/public (the proof corpus,
+ * the OpenTelemetry exports of the agent frameworks, the published
+ * schemas), the deepest nests 13 levels.
+ * And as the first request of a process, where the stack holds least, every
+ * rule answers inputs, an output and an expected input nested 1,750 levels
+ * deep.
+ */
+export const DEFAULT_MAX_INPUT_DEPTH = 256;
+
+/** The nesting limit a config sets, else the default. A config built without the key (an embedder's) still gets the limit. */
+export function maxInputDepthOf(security: { maxInputDepth?: number } | undefined): number {
+  return security?.maxInputDepth ?? DEFAULT_MAX_INPUT_DEPTH;
+}
+
+/*
  * The protobuf door's ceiling: one element per PROTOBUF_BYTES_PER_ELEMENT
  * bytes of requestSizeLimit, or maxInputElements when that is higher.
  *
@@ -224,5 +264,6 @@ export const defaultConfig: IrisConfig = {
     },
     requestSizeLimit: '1mb',
     maxInputElements: DEFAULT_MAX_INPUT_ELEMENTS,
+    maxInputDepth: DEFAULT_MAX_INPUT_DEPTH,
   },
 };

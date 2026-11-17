@@ -130,6 +130,16 @@ export function toIrisError(err: unknown): IrisError {
     });
   }
 
+  // The engine refused an input nested deeper than the limit (a stored trace from before the limit: a call's own arguments are refused at the door).
+  if (name === 'InputTooDeepError') {
+    return irisError('IRIS_INVALID_ARGUMENT', message, {
+      recovery: [
+        'Send the nested value flatter, or as text; a trace stored with a value this deep can be logged again without it.',
+        'Or the operator raises security.maxInputDepth (IRIS_MAX_INPUT_DEPTH); past a few thousand levels some rules give no answer.',
+      ],
+    });
+  }
+
   if (name === 'DailyBudgetError') {
     return irisError('IRIS_BUDGET_EXCEEDED', message, {
       field: DAILY_BUDGET_VAR,

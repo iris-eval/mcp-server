@@ -11,6 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import { fromOtlp, fromAnyValue, attributesToRecord, otlpTraceRequestSchema } from '../../../src/otel/ingest.js';
 import { toSteps } from '../../../src/eval/steps.js';
+import { jsonTextDepth, MAX_JSON_TEXT_DEPTH, nestingDepth } from '../../../src/utils/element-count.js';
 
 const kv = (key: string, value: unknown) => ({ key, value });
 const str = (s: string) => ({ stringValue: s });
@@ -278,6 +279,36 @@ describe('fromOtlp — the conventions beside GenAI', () => {
     expect(lacked.some((l) => l.startsWith('service.name'))).toBe(false);
     expect(trace.session_id).toBe('conv-77');
     expect(trace.tools).toEqual([{ name: 'refund_order', description: 'Refund an order', inputSchema: { type: 'object', properties: { order_id: { type: 'integer' } } } }]);
+  });
+
+  it('a tool catalogue whose text nests deeper than a JSON text is read to is not read, and one at the limit is (#1040)', () => {
+    // A string is no level to the door that measures a body, and parsed it is as deep as its text nests: [{ name, parameters }] is two levels around the schema.
+    const nested = (levels: number): string => `${'{"a":'.repeat(levels)}1${'}'.repeat(levels)}`;
+    const catalogue = (levels: number): string => `[{"name":"refund_order","parameters":${nested(levels)}}]`;
+    const mapped = (tools: string) =>
+      one(request(undefined, [span('0000000000000001', 'invoke_agent billing', [kv('gen_ai.operation.name', str('invoke_agent')), kv('gen_ai.tool.definitions', str(tools)), kv('gen_ai.output.messages', str('ok'))])])).trace;
+    expect(jsonTextDepth(catalogue(MAX_JSON_TEXT_DEPTH - 2), Infinity)).toBe(MAX_JSON_TEXT_DEPTH);
+    const at = mapped(catalogue(MAX_JSON_TEXT_DEPTH - 2));
+    expect(at.tools).toHaveLength(1);
+    expect(nestingDepth(at.tools?.[0]?.inputSchema, Infinity)).toBe(MAX_JSON_TEXT_DEPTH - 2);
+    for (const levels of [MAX_JSON_TEXT_DEPTH - 1, 3_000, 50_000]) expect(mapped(catalogue(levels)).tools, `${levels} levels`).toBeUndefined();
+  });
+
+  it('of the OpenInference schemas of a model call, one nested too deep to read is passed over and the others are kept (#1040)', () => {
+    const nested = (levels: number): string => `${'{"a":'.repeat(levels)}1${'}'.repeat(levels)}`;
+    const schema = (name: string, levels: number): string => `{"name":"${name}","parameters":${nested(levels)}}`;
+    const { trace } = one(request(undefined, [
+      span('0000000000000001', 'chat', [
+        kv('gen_ai.operation.name', str('chat')),
+        kv('llm.tools.0.tool.json_schema', str(schema('search', 3))),
+        kv('llm.tools.1.tool.json_schema', str(schema('deep', 20_000))),
+        // One level under the limit: the list the schemas are joined into is one level more.
+        kv('llm.tools.2.tool.json_schema', str(schema('edge', MAX_JSON_TEXT_DEPTH - 2))),
+        kv('llm.tools.3.tool.json_schema', str(schema('past', MAX_JSON_TEXT_DEPTH - 1))),
+        kv('gen_ai.output.messages', str('ok')),
+      ]),
+    ]));
+    expect(trace.tools?.map((t) => t.name)).toEqual(['search', 'edge']);
   });
 
   it('usage is summed over leaf carriers only: an invoke_agent that carries the totals beside its chat children is counted once', () => {

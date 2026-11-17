@@ -28,6 +28,7 @@ import type { RelevanceJudge } from './llm-judge/relevance-judge.js';
 import type { JudgeBudget } from './llm-judge/budget.js';
 import { PKG_VERSION } from '../config/defaults.js';
 import { generateEvalId } from '../utils/ids.js';
+import { InputTooDeepError, MAX_EVALUATED_DEPTH, nestingDepth } from '../utils/element-count.js';
 
 /**
  * Every bundle eval_type="all" walks, in the order their categories are
@@ -603,6 +604,19 @@ export class EvalEngine {
     categories: EvalType[] | undefined,
     context: EvalContext,
   ): Promise<EvalResult> {
+    /*
+     * No rule reads an input nested deeper than MAX_EVALUATED_DEPTH, by any
+     * road (#1040). Several rules write an input out with a function that
+     * calls itself once for each level; past a few thousand levels such a
+     * rule gives no answer and takes no part in the verdict, so a run nested
+     * deep enough was judged by fewer rules than were asked. The doors hold
+     * every request to security.maxInputDepth, which is never more than
+     * this. This is for what no door stands in front of: a trace stored
+     * before the limit existed, a file the command line reads, an embedder's
+     * own call. The context is measured whole, once, before the first rule,
+     * and one nested deeper is refused, not half-judged.
+     */
+    if (nestingDepth(context, MAX_EVALUATED_DEPTH) > MAX_EVALUATED_DEPTH) throw new InputTooDeepError(MAX_EVALUATED_DEPTH);
     const started = performance.now();
     const result = await this.runRules(evalType, rules, categories, context);
     if (this.observer) {

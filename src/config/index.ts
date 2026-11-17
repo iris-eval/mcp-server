@@ -5,7 +5,7 @@ import { assertWebhookConfig } from '../notify/config.js';
 import { defaultConfig } from './defaults.js';
 import { assertValidCriticality } from '../eval/criticality.js';
 import { irisHome } from '../utils/iris-home.js';
-import { validateConfigFile, SEARCH_BUDGET_RANGE_MS, INPUT_ELEMENTS_RULE } from './schema.js';
+import { validateConfigFile, SEARCH_BUDGET_RANGE_MS, INPUT_ELEMENTS_RULE, INPUT_DEPTH_RANGE, INPUT_DEPTH_RULE } from './schema.js';
 import { setPricingSettings } from '../cost/model-lookup.js';
 
 /*
@@ -116,6 +116,15 @@ function parseInputElementsEnv(value: string, name: string): number {
   return n;
 }
 
+/** IRIS_MAX_INPUT_DEPTH: what config.json's security.maxInputDepth accepts; anything else refuses startup. */
+function parseInputDepthEnv(value: string): number {
+  const n = /^\s*\d+\s*$/.test(value) ? Number(value) : NaN;
+  if (!Number.isSafeInteger(n) || n < INPUT_DEPTH_RANGE[0] || n > INPUT_DEPTH_RANGE[1]) {
+    throw new Error(`IRIS_MAX_INPUT_DEPTH=${JSON.stringify(value)} is not valid (must be ${INPUT_DEPTH_RULE})`);
+  }
+  return n;
+}
+
 /** IRIS_SEARCH_INDEX: `on` or `off`, as config.json's storage.searchIndex; anything else refuses startup. */
 function parseSearchIndexEnv(value: string): 'on' | 'off' {
   const v = value.trim().toLowerCase();
@@ -219,6 +228,12 @@ function loadEnvVars(): Partial<IrisConfig> {
     config.security = {
       ...(config.security as object),
       maxInputElements: parseInputElementsEnv(inputElements.value, inputElements.name),
+    };
+  }
+  if (process.env.IRIS_MAX_INPUT_DEPTH) {
+    config.security = {
+      ...(config.security as object),
+      maxInputDepth: parseInputDepthEnv(process.env.IRIS_MAX_INPUT_DEPTH),
     };
   }
 

@@ -26,7 +26,7 @@ import type { CustomRuleStore } from '../../custom-rule-store.js';
 import type { Trace } from '../../types/trace.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import { fromOtlp, otlpTraceRequestSchema } from '../../otel/ingest.js';
-import { decodeExportTraceServiceRequest, OtlpProtobufError, OtlpTooManyElementsError } from '../../otel/protobuf.js';
+import { decodeExportTraceServiceRequest, OtlpProtobufError, OtlpTooDeepError, OtlpTooManyElementsError } from '../../otel/protobuf.js';
 import { toSteps } from '../../eval/steps.js';
 import { evaluateStoredTrace } from '../../eval/ingest.js';
 import { dormantRulesFrom } from '../../eval/dormant.js';
@@ -35,8 +35,8 @@ import { logTraceInputShape } from '../../tools/log-trace.js';
 import { costFieldsOf } from '../../cost/trace-cost.js';
 import { newJudgeRequest } from '../../eval/llm-judge/budget.js';
 import { issuesText } from '../../utils/validation-errors.js';
-import { countElements, tooManyElementsBody } from '../../utils/element-count.js';
-import { DEFAULT_MAX_INPUT_ELEMENTS, defaultConfig, protobufElementCeiling } from '../../config/defaults.js';
+import { countElements, nestingDepth, tooDeepBody, tooManyElementsBody } from '../../utils/element-count.js';
+import { DEFAULT_MAX_INPUT_DEPTH, DEFAULT_MAX_INPUT_ELEMENTS, defaultConfig, protobufElementCeiling } from '../../config/defaults.js';
 import { requestSizeLimitBytes } from '../../utils/size-limit.js';
 
 /**
@@ -63,6 +63,11 @@ export interface OtlpRouteOptions {
    * src/config/defaults.ts (JSON bodies are counted by the app against security.maxInputElements).
    */
   maxProtobufElements?: number;
+  /**
+   * How deep a protobuf body may nest once decoded (security.maxInputDepth; a JSON body is measured by the
+   * app). The decoder stops at a message nested deeper than this, and the decoded object is measured again.
+   */
+  maxDepth?: number;
 }
 
 export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, options: OtlpRouteOptions): void {
@@ -93,11 +98,17 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
       // Decoded protobuf fails validation element by element as JSON does, and is denser: it is counted
       // while it decodes (one element at least per nested message) and once decoded, before the schema reads it.
       const max = options.maxProtobufElements ?? protobufElementCeiling(DEFAULT_MAX_INPUT_ELEMENTS, requestSizeLimitBytes(defaultConfig.security.requestSizeLimit));
+      // And it nests as JSON does: the decoder stops at a message nested deeper than the limit, and the decoded object is measured as a JSON body is.
+      const maxDepth = options.maxDepth ?? DEFAULT_MAX_INPUT_DEPTH;
       try {
-        payload = decodeExportTraceServiceRequest(body, { maxElements: max });
+        payload = decodeExportTraceServiceRequest(body, { maxElements: max, maxDepth });
       } catch (err) {
         if (err instanceof OtlpTooManyElementsError) {
           res.status(413).json(tooManyElementsBody(max));
+          return;
+        }
+        if (err instanceof OtlpTooDeepError) {
+          res.status(413).json(tooDeepBody(maxDepth));
           return;
         }
         const message = err instanceof OtlpProtobufError ? err.message : err instanceof Error ? err.message : String(err);
@@ -106,6 +117,10 @@ export function registerOtlpRoutes(router: Router, storage: IStorageAdapter, opt
       }
       if (countElements(payload, max) > max) {
         res.status(413).json(tooManyElementsBody(max));
+        return;
+      }
+      if (nestingDepth(payload, maxDepth) > maxDepth) {
+        res.status(413).json(tooDeepBody(maxDepth));
         return;
       }
     } else if (type.includes('application/json')) {

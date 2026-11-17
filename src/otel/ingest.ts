@@ -63,6 +63,7 @@ import { canonicalCapture } from '../eval/evidence.js';
 import { AGGREGATED_INPUT_KEYS, AGGREGATED_OUTPUT_KEYS, CACHE_READ_KEYS, CACHE_WRITE_1H_KEYS, CACHE_WRITE_KEYS, INPUT_TOKEN_KEYS, OUTPUT_TOKEN_KEYS } from './usage-keys.js';
 import { resolveTraceCost } from '../cost/trace-cost.js';
 import { issuesText } from '../utils/validation-errors.js';
+import { jsonTextDepth, MAX_JSON_TEXT_DEPTH } from '../utils/element-count.js';
 
 /* ---- OTLP JSON, loosely typed (unknown fields pass; what we read is checked) ---- */
 
@@ -618,6 +619,8 @@ function openInferenceTools(spans: readonly MappedSpan[]): string | undefined {
     if (entries.length === 0) continue;
     const tools: unknown[] = [];
     for (const [, value] of entries) {
+      // A schema whose text nests deeper than the list of them may (toolDefinitionsOf) is one that cannot be read; the others are kept.
+      if (jsonTextDepth(value, MAX_JSON_TEXT_DEPTH - 1) > MAX_JSON_TEXT_DEPTH - 1) continue;
       try {
         const parsed = JSON.parse(value) as Record<string, unknown>;
         const fn = parsed && typeof parsed === 'object' && parsed.function && typeof parsed.function === 'object' ? parsed.function : parsed;
@@ -631,9 +634,16 @@ function openInferenceTools(spans: readonly MappedSpan[]): string | undefined {
   return undefined;
 }
 
+/**
+ * The tools offered to the model, read from the string that carries them.
+ * A string is no level to the door that measures how deep a body nests, and
+ * parsed it is as deep as its text nests: so a text nested deeper than
+ * MAX_JSON_TEXT_DEPTH is not read, as one that is not JSON is not (#1040).
+ */
 function toolDefinitionsOf(spans: readonly MappedSpan[]): ToolDescriptor[] | undefined {
   const raw = firstString(spans, TOOL_DEFINITION_KEYS) ?? openInferenceTools(spans);
   if (raw === undefined) return undefined;
+  if (jsonTextDepth(raw, MAX_JSON_TEXT_DEPTH) > MAX_JSON_TEXT_DEPTH) return undefined;
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return undefined;

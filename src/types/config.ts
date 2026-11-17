@@ -295,5 +295,17 @@ export interface IrisConfig {
      * is still read from config.json and the environment.
      */
     maxInputElements: number;
+    /**
+     * How many levels deep one input may nest (IRIS_MAX_INPUT_DEPTH): a tool
+     * call's arguments on every transport, a request body on the dashboard
+     * port, as JSON or as protobuf, and a line the command line ingests. An
+     * array or an object is one level more than the deepest thing it holds.
+     * Deeper than this, a tool call gets an isError result and a body a 413,
+     * before any rule reads it. A whole number from 1 to 512, default 256:
+     * see DEFAULT_MAX_INPUT_DEPTH in src/config/defaults.ts for the
+     * measurements behind it. Optional, so that a config object built
+     * before the key existed still type-checks; it gets the default.
+     */
+    maxInputDepth?: number;
   };
 }

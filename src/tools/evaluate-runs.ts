@@ -14,6 +14,7 @@ import { insertLinkedEvalResult } from './trace-link.js';
 import type { RuleChangesSinceStart } from '../custom-rule-store.js';
 import { costContextOf } from '../eval/cost-basis.js';
 import { recordOfTrace } from '../eval/evidence.js';
+import { InputTooDeepError } from '../utils/element-count.js';
 
 /*
  * Score a run again under today's rules.
@@ -159,22 +160,33 @@ export function registerEvaluateRunsTool(
             ? await storage.getSpansByTraceId(LOCAL_TENANT, traceId)
             : undefined;
 
-        const result = await evalEngine.evaluateAll({
-          output: trace.output,
-          input: trace.input,
-          ...costContextOf(trace),
-          costHistory: await costHistoryFor(storage, LOCAL_TENANT, trace),
-          caseHistory: await caseHistoryFor(storage, LOCAL_TENANT, trace),
-          tokenUsage: trace.token_usage,
-          toolCalls: trace.tool_calls,
-          spans,
-          tools: trace.tools,
-          // The same record the trace was stored as: who recorded it, and what its capture source records in full.
-          ...recordOfTrace(trace),
-          ...(trace.metadata ? { metadata: trace.metadata } : {}),
-          tenantId: LOCAL_TENANT,
-          judgeRequest,
-        });
+        const scored = await evalEngine
+          .evaluateAll({
+            output: trace.output,
+            input: trace.input,
+            ...costContextOf(trace),
+            costHistory: await costHistoryFor(storage, LOCAL_TENANT, trace),
+            caseHistory: await caseHistoryFor(storage, LOCAL_TENANT, trace),
+            tokenUsage: trace.token_usage,
+            toolCalls: trace.tool_calls,
+            spans,
+            tools: trace.tools,
+            // The same record the trace was stored as: who recorded it, and what its capture source records in full.
+            ...recordOfTrace(trace),
+            ...(trace.metadata ? { metadata: trace.metadata } : {}),
+            tenantId: LOCAL_TENANT,
+            judgeRequest,
+          })
+          .catch((err: unknown) => {
+            if (err instanceof InputTooDeepError) return err;
+            throw err;
+          });
+        if (scored instanceof InputTooDeepError) {
+          // A trace stored before the nesting limit existed (the doors refuse one now): named like any other that could not be scored, and the rest of the run goes on.
+          failed.push({ trace_id: traceId, reason: `the trace nests more than ${scored.limit} levels deep, so no rule read it` });
+          continue;
+        }
+        const result = scored;
         result.trace_id = traceId;
         result.run_id = target;
         await insertLinkedEvalResult(storage, LOCAL_TENANT, result);
