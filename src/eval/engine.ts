@@ -678,6 +678,8 @@ export class EvalEngine {
      * rule it carries.
      */
     const evalContext: EvalContext = { ...context, regexBudget: { breaches: 0 }, steps: toSteps(context) };
+    // What the call carried, worked out once for the evaluation from the list just made: every rule's row and the coverage read it (stamp.ts).
+    const present = inputsPresent(evalContext);
     /*
      * An output written as JSON, read as the text it carries (0.20.0). The
      * built-in text rules used to read a structured answer in its escaped
@@ -819,6 +821,7 @@ export class EvalEngine {
         state: ruleStateOf(raw),
         ...rest,
         ...stampRuleResult(rule, raw, context, effective, {
+          present,
           prior: this.effectivePrior(),
           local: this.localLabels?.precision.get(rule.name),
           deployed: ruleId !== undefined,
@@ -849,7 +852,7 @@ export class EvalEngine {
       evidence: evidenceOf(context),
       judgedAt: new Date().toISOString(),
     });
-    const coverage = deriveCoverage(ruleResults, inputsPresent(context), provenance.evidence);
+    const coverage = deriveCoverage(ruleResults, present, provenance.evidence);
 
     // Handle "all rules skipped" — insufficient data
     if (overall.rulesEvaluated === 0) {

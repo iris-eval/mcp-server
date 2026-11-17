@@ -22,13 +22,13 @@ Each line printed is `{ "trace_id", "evaluation_id", "passed", "verdict": { "sta
 | `unknown` | any verdict that was not checked: nothing was judged, a critical check could not answer, or evidence somebody asked for was not sent |
 | `detector_veto` | a critical detector fired — `no_pii`, `no_injection_patterns`, `no_blocklist_words` by default |
 | `policy_gate` | a policy you configured failed (a threshold your config set, a custom rule at severity high or critical) |
-| `critical_unknown` | a critical check was asked and could not answer |
+| `critical_unknown` | a check that had to answer could not: a critical one, one the deployment or the call asked for, or one that failed as it ran |
 | `required_evidence_missing` | evidence somebody asked for was not sent: an input `eval.requiredEvidence` names, what a rule you configured (a threshold you set, a rule you promoted or deployed as a gate) could not run without, or a field the trace's capture source declared it records in full |
 | `risk_over_loss` | the risk estimate cleared your loss cut |
 
 **A gate on one basis passes everything else.** `--fail-on detector_veto` exits 0 on an output the evaluation failed for any other reason (a silent tool failure, an invented figure, a broken policy) and on every verdict that was not checked. It is the right gate for "never ship a leak, whatever else", and the wrong one for "ship only what passed". Until 0.20.0 it was the action's default and the first example on this page.
 
-**A basis trips when that layer decided the verdict or would have.** The layers are asked in order (a policy you configured, a critical detector, a critical check that could not answer, required evidence, the risk estimate) and `verdict.basis` names the first layer that fails, or when none fails the first that could not check. They do not exclude each other: an output can break your cost policy and leak a credential. `verdict.also` lists every other layer that would have decided on its own, and `--fail-on` reads both, so that output trips `detector_veto` as well as `policy_gate`:
+**A basis trips when that layer decided the verdict or would have.** The layers are asked in order (a policy you configured, a critical detector, a check that had to answer and could not, required evidence, the risk estimate) and `verdict.basis` names the first layer that fails, or when none fails the first that could not check. They do not exclude each other: an output can break your cost policy and leak a credential. `verdict.also` lists every other layer that would have decided on its own, and `--fail-on` reads both, so that output trips `detector_veto` as well as `policy_gate`:
 
 ```json
 { "verdict": { "state": "fail", "basis": "policy_gate", "by": ["cost_under_threshold"],
@@ -37,7 +37,7 @@ Each line printed is `{ "trace_id", "evaluation_id", "passed", "verdict": { "sta
   "spans": [{ "rule": "no_pii", "label": "SSN", "source": "output", "start": 38, "end": 49 }] }
 ```
 
-`fail` and `unknown` read the state of every layer the same way: a verdict left `unknown` by a critical check that could not answer still trips `fail` when the risk estimate is over your loss cut. The spans printed are those of the layer that tripped.
+`fail` and `unknown` read the state of every layer the same way: a verdict left `unknown` by a check that could not answer still trips `fail` when the risk estimate is over your loss cut. The spans printed are those of the layer that tripped.
 
 ## What exit 0 means
 

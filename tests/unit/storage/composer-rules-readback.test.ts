@@ -42,10 +42,34 @@ const context = {
 describe('the composer rules a row was judged under', () => {
   it('this build stamps its rules, and judges a failure over a layer that could not check', async () => {
     const r = await engine.evaluateAll(context);
-    expect(COMPOSER_RULES).toBe(2);
-    expect(r.provenance!.composer!.rules).toBe(2);
+    expect(COMPOSER_RULES).toBe(3);
+    expect(r.provenance!.composer!.rules).toBe(3);
     expect(r.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss' });
     expect(r.verdict!.also).toContainEqual({ basis: 'required_evidence_missing', state: 'unknown', by: ['cost'] });
+  });
+
+  it('a row whose loop check threw reads back clean when it was judged under rules 2, and unknown when it is judged now', async () => {
+    // An embedder's own run: a BigInt in a call's input, which no request can carry, makes the rules that write an input out throw.
+    const quiet = { input: context.input, output: 'The parser now accepts ISO week dates; the change is in src/date.ts and its test.', toolCalls: [{ tool_name: 'read_file', input: { path: 'src/date.ts', at: 10n } }] };
+    const plain = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, { ...defaultConfig.eval } as never);
+    const r = await plain.evaluateAll(quiet);
+    const threw = r.rule_results.filter((x) => x.threw === true).map((x) => x.ruleName);
+    expect(threw).toContain('no_tool_loop');
+    expect(r.verdict).toMatchObject({ state: 'unknown', passed: false, basis: 'critical_unknown' });
+    expect(r.verdict!.by).toContain('no_tool_loop');
+
+    const s = await store();
+    // BigInt has no JSON: the row is stored as its results, which is all a read composes from.
+    const stored = { ...r, id: 'now', rule_results: r.rule_results } as EvalResult;
+    await s.insertEvalResult(LOCAL_TENANT, stored);
+    expect((await s.getEvalById(LOCAL_TENANT, 'now'))!.verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown' });
+    // As 0.21.0 stored the same results: stamped with rules 2, under which a rule that threw and nobody asked for took no part.
+    const earlier = structuredClone({ ...stored, id: 'earlier' }) as EvalResult;
+    earlier.provenance!.composer!.rules = 2;
+    await s.insertEvalResult(LOCAL_TENANT, earlier);
+    const read = (await s.getEvalById(LOCAL_TENANT, 'earlier'))!;
+    expect(read.verdict!.basis).not.toBe('critical_unknown');
+    expect(read.verdict!.state).toBe(compose(r, { ...DEFAULT_COMPOSE, rules: 2 }).state);
   });
 
   it('a row stored now reads back fail; the same row without the stamp reads back as 0.19.0 gave it', async () => {

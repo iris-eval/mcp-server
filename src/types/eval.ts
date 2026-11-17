@@ -831,8 +831,11 @@ export interface EvalRuleResult {
    * The rule threw while it judged this output, and the engine caught it:
    * the rule was asked and gave no answer. Set by the engine where it
    * catches the throw. It maps to skipClass "defeated", as a breached
-   * budget does, so a rule that vetoes or gates and threw makes the verdict
-   * what eval.onCriticalSkipped says and never a clean pass.
+   * budget does. A rule that threw where its finding would have counted
+   * (a critical rule, one somebody asked for, a judgment, a detection or an
+   * inference the estimate weighs) makes the verdict what
+   * eval.onCriticalSkipped says and never a clean pass (compose.ts, the
+   * third layer).
    */
   threw?: boolean;
 

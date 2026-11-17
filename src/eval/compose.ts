@@ -102,12 +102,16 @@ export interface ComposeConfig {
  *      say, in the order the layers are asked.
  *   2  from 0.20.0: a layer that fails outranks one that could not check
  *      (primaryOf).
+ *   3  from 0.22.0: a rule that threw where its finding would have counted
+ *      leaves the verdict unknown, whoever asked for it (walk, the third
+ *      layer). A row carries `threw` since 0.20.0, so one stored before
+ *      this would otherwise read back as another verdict than it was given.
  *
  * Moved only when the same stored rule results would compose to a different
  * verdict. A new rule, a new stamp or a new layer input does not move it:
  * an old row does not carry them and reads as it did.
  */
-export const COMPOSER_RULES = 2;
+export const COMPOSER_RULES = 3;
 
 export const DEFAULT_COMPOSE: ComposeConfig = {
   composer: 'risk',
@@ -286,8 +290,31 @@ function walk(
    * than the fail-open it replaces. A deployment that set
    * `onCriticalSkipped: "pass"` still sees the node — it accepted this
    * risk, which is not the same as there being none.
+   *
+   * Asked, by being critical or by somebody having asked (stamp.ts,
+   * askedOf): a policy whose threshold the deployment set, an expectation
+   * the call supplied. Until 0.22.0 only a critical rule was read here, so
+   * an expected trajectory compared with part of a run, or a gate that
+   * threw, was "not judged" and the verdict passed.
+   *
+   * And a rule that THREW, whoever asked, when its finding would have
+   * counted (a gate, a veto, a detection or an inference the estimate
+   * weighs): it was asked by being run, and gave no answer. A limit of work
+   * or a record that was cut is something a natural run reaches, and stays
+   * a matter of who asked. A throw is a defect, or an input built to cause
+   * one, and until 0.22.0 it was a way through: a run that repeated one
+   * call six times failed, and the same run with that call's input nested
+   * 2,000 levels deep passed clean, the loop check having thrown (#1040).
+   * A rule that only reports takes no part by its fire, and none by its
+   * throw. A policy that threw is read by who asked for it, as above: the
+   * row of a rule that threw carries no threshold to say whose it was.
    */
-  const unknown = rows.filter((r) => isCritical(r) && r.skipped === true && r.skipClass !== undefined && r.skipClass !== 'not_applicable');
+  const threwWhereItCounts = (r: EvalRuleResult): boolean =>
+    (cfg.rules ?? COMPOSER_RULES) >= 3 &&
+    r.threw === true &&
+    r.advisory !== true &&
+    (r.kind === 'judgment' || ((r.kind === 'detection' || r.kind === 'inference') && publishedAccuracyFor(r.ruleName) !== null));
+  const unknown = rows.filter((r) => r.skipped === true && r.skipClass !== undefined && r.skipClass !== 'not_applicable' && (isCritical(r) || r.asked !== undefined || threwWhereItCounts(r)));
   path.push({ node: 'unknown', by: unknown.map((r) => r.ruleName), decided: unknown.length > 0 && cfg.onCriticalSkipped !== 'pass' });
   if (stopAtDecision && path.some((n) => n.decided)) return path;
 
@@ -322,13 +349,13 @@ function walk(
    */
   const risk = riskEstimate(result as EvalResult, cfg.prior, cfg.priorMode);
   const t = tau(cfg.falsePassCost);
-  const by =
-    risk === null
-      ? []
-      : Object.entries(risk.perClass)
-          .filter(([, q]) => q !== null && q !== undefined && q > 0.5)
-          .map(([cls]) => cls);
-  path.push({ node: 'risk', by: risk !== null && risk.pBad > t ? by : [], decided: risk !== null && risk.pBad > t, risk });
+  // The classes a weighed rule fired in: what an estimate that no class carries alone can be put down to. Weighed as the estimate weighs (risk.ts, detectorsOf): a fire with no published accuracy behind it, a plugin's, moved nothing and is named for nothing.
+  const firedIn = new Set<string>(
+    detectorsOf(result as EvalResult)
+      .filter((d) => d.fired)
+      .flatMap((d) => d.classes),
+  );
+  path.push({ node: 'risk', by: risk !== null && risk.pBad > t ? carriedBy(risk.perClass, firedIn) : [], decided: risk !== null && risk.pBad > t, risk });
   return path;
 }
 
@@ -367,6 +394,25 @@ export function confidenceCall(
   return verdictConfidence(risk, tau(cfg.falsePassCost), { prior: cfg.prior, priorMode: cfg.priorMode, localLabels });
 }
 
+/**
+ * The failure classes that carried a risk estimate: each one that is more
+ * likely than not by itself. When none is, a fire may still have carried
+ * it: a lone fire worth 0.48 beside ten classes that found nothing is a
+ * risk of 0.54, and the verdict failed naming no class at all. Named then
+ * is the class with the highest estimate among those a weighed rule fired
+ * in (`firedIn`). With no weighed fire nobody is named: under a loss ratio
+ * strict enough, the risk of an output nothing flagged is over the line by
+ * itself.
+ */
+export function carriedBy(perClass: Readonly<Record<string, number | null | undefined>>, firedIn: ReadonlySet<string>): string[] {
+  const estimates = Object.entries(perClass).filter((entry): entry is [string, number] => typeof entry[1] === 'number');
+  const overHalf = estimates.filter(([, q]) => q > 0.5).map(([cls]) => cls);
+  if (overHalf.length > 0) return overHalf;
+  const fired = estimates.filter(([cls]) => firedIn.has(cls));
+  const most = fired.reduce((max, [, q]) => Math.max(max, q), 0);
+  return most === 0 ? [] : fired.filter(([, q]) => q === most).map(([cls]) => cls);
+}
+
 const pct = (x: number): string => `${Math.round(x * 100)}%`;
 
 /** One later layer, as a clause. */
@@ -376,7 +422,8 @@ function layerText(l: VerdictLayer): string {
     case 'detector_veto':
       return `a critical rule fired (${by})`;
     case 'critical_unknown':
-      return `a critical check was asked and could not answer (${by})`;
+      // Critical, asked for by the deployment or the call (stamp.ts, askedOf), or run and thrown: the clause is true of each.
+      return `a check that was asked for, or failed as it ran, could not answer (${by})`;
     case 'required_evidence_missing':
       return `evidence that was asked for or promised is not in the record (${by})`;
     default:
@@ -800,7 +847,13 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
    */
   const weighedAtLabelsPrior = result.provenance?.composer?.priorSource === 'estimated';
   if (verdict.basis === 'risk_over_loss') {
-    const weighedFires = result.rule_results.filter((r) => fired(r) && r.advisory !== true && !isCritical(r) && (r.kind === 'detection' || r.kind === 'inference')).map((r) => r.ruleName);
+    // The fires the estimate weighed (risk.ts, detectorsOf): a plugin's detection has no published accuracy, and the estimate does not rest on it.
+    const weighed = new Set(
+      detectorsOf(result)
+        .filter((d) => d.fired)
+        .map((d) => d.name),
+    );
+    const weighedFires = result.rule_results.filter((r) => weighed.has(r.ruleName) && !isCritical(r)).map((r) => r.ruleName);
     if (weighedFires.length > 0) {
       out.push({
         severity: 'note',
@@ -819,13 +872,23 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
   }
   const unanswered = verdict.basis === 'critical_unknown' ? verdict : (verdict.also ?? []).find((l) => l.basis === 'critical_unknown');
   if (unanswered !== undefined) {
+    // A rule that is not critical is here because somebody asked for it (stamp.ts, askedOf) or because it threw where its finding would have counted, and the sentence says which.
+    const askedFor = unanswered.by.map((name) => {
+      const r = result.rule_results.find((x) => x.ruleName === name && x.skipped === true);
+      if (r === undefined || isCritical(r)) return name;
+      if (r.asked !== undefined) return `${name}, which this ${r.asked === 'config' ? 'deployment' : 'call'} asked for`;
+      return r.threw === true ? `${name}, which failed while it judged this run` : name;
+    });
+    const allCritical = askedFor.every((entry, i) => entry === unanswered.by[i]);
+    const check = allCritical ? 'A critical check' : 'A check';
+    const names = askedFor.join(allCritical ? ', ' : '; ');
     out.push({
       severity: 'block',
       addressee: 'operator',
       text:
         verdict.basis === 'critical_unknown'
-          ? `A critical check was asked and could not answer (${unanswered.by.join(', ')}), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.`
-          : `A critical check was asked and could not answer (${unanswered.by.join(', ')}). The verdict failed on other grounds; that check is still not answered. Set eval.onCriticalSkipped to "pass" to accept that risk.`,
+          ? `${check} was asked and could not answer (${names}), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.`
+          : `${check} was asked and could not answer (${names}). The verdict failed on other grounds; that check is still not answered. Set eval.onCriticalSkipped to "pass" to accept that risk.`,
       configKey: 'eval.onCriticalSkipped',
     });
   }
