@@ -7,4 +7,4 @@
 [[IgnoredVulns]]
 id = "GHSA-fc5q-39xc-vjpf"
 ignoreUntil = 2027-02-17
-reason = "picomatch 4.0.7 is loaded only by the test runner (vitest, vite and tinyglobby), never by the published package, and compiles only the glob patterns of this repository's own Vitest configurations, none of which is a repeated extglob. No fixed release exists: 4.0.7 is the newest. It moves by a lockfile bump when one is published."
+reason = "The fault needs a glob pattern of one shape, and nothing outside this repository supplies a pattern. picomatch 4.0.7 is loaded only by the test runner (vitest, vite and tinyglobby), never by the published package, and compiles the patterns of this repository's Vitest configurations and the tools' own defaults. No fixed release exists: 4.0.7 is the newest. It moves by a lockfile bump when one is published."
