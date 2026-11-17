@@ -106,7 +106,9 @@ const CAPABILITIES = CAPABILITIES_RESOURCE_URI;
  * What a thrown value says for itself, always as text. A promise can reject
  * with anything: with nothing at all (null, undefined), with an object that
  * cannot be made a string, with an error whose message is not text. Those
- * say nothing, and the internal error's own sentence stands for them.
+ * say nothing, and the internal error's own sentence stands for them: here
+ * where nothing below knows the value, and at the envelope's own check
+ * where something does (an envelope always carries a message, respond.ts).
  */
 function messageOf(err: unknown): string {
   if (err === null || err === undefined) return '';
@@ -186,11 +188,18 @@ export function toIrisError(err: unknown): IrisError {
       malformed_response: ['The judge answered, and not with the JSON object it was asked for: the message shows what stood in its place, or the start of it. Retry; if it recurs, pick another model.'],
       unknown: ['Retry once; if it recurs, report the message with the provider and model.'],
     };
+    /*
+     * How long the provider asked the caller to wait, when that is a number
+     * JSON can carry. A provider's Retry-After can be any number above
+     * zero, and a thousand times a large enough one is not a number: the
+     * delay is then left out, and the rate limit is still told.
+     */
+    const retryAfterMs = typeof err.retryAfterSeconds === 'number' ? err.retryAfterSeconds * 1000 : Number.NaN;
     return irisError('IRIS_PROVIDER_ERROR', message, {
       kind: err.kind,
       retryable,
       recovery: recovery[err.kind],
-      ...(err.retryAfterSeconds !== undefined ? { retryAfterMs: err.retryAfterSeconds * 1000 } : {}),
+      ...(Number.isFinite(retryAfterMs) ? { retryAfterMs } : {}),
     });
   }
 
@@ -226,7 +235,7 @@ export function toIrisError(err: unknown): IrisError {
 
   if (isSqliteError(err)) {
     const code = (err as { code?: string }).code ?? '';
-    return irisError('IRIS_STORAGE_ERROR', `Iris storage failed: ${message}`, {
+    return irisError('IRIS_STORAGE_ERROR', message === '' ? 'Iris storage failed.' : `Iris storage failed: ${message}`, {
       retryable: code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED',
       recovery: [
         'Retry once. If it recurs, check that the database path is writable and the disk is not full.',

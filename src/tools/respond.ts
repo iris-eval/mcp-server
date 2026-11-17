@@ -63,11 +63,17 @@ export function respond<S extends z.ZodType>(schema: S, payload: object, links: 
   };
 }
 
+/*
+ * What a caller is promised about a failure: a code from the catalogue, a
+ * sentence, and at least one thing to do about it. A message with no words
+ * and a list with no step are refused here, so a throw site written without
+ * one cannot send its envelope (errorResult, below).
+ */
 export const errorEnvelopeSchema = z.looseObject({
   error: z.looseObject({
     code: z.enum(ERROR_CODE_CATALOGUE),
-    message: z.string(),
-    recovery: z.array(z.string()),
+    message: z.string().min(1),
+    recovery: z.array(z.string().min(1)).min(1),
     retryable: z.boolean(),
     field: z.string().optional(),
     valid: z.array(z.string()).optional(),
@@ -96,9 +102,10 @@ export type ErrorEnvelope = z.infer<typeof errorEnvelopeSchema>;
  * object.
  *
  * Like an answer, the envelope is checked against its own schema before it
- * is sent, as the JSON it will be read as. One that does not match is a
- * programming error and throws; `failureResult` answers the internal error
- * in its place.
+ * is sent, as the JSON it will be read as (after the round trip: a field
+ * that only becomes text or a number when it is written is judged as what
+ * the caller reads). One that does not match is a programming error and
+ * throws; `failureResult` answers the internal error in its place.
  */
 export function errorResult(err: IrisError): CallToolResult {
   const body = normalise({ error: err.envelope });

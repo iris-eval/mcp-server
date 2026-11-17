@@ -30,7 +30,7 @@ import { createIrisServer } from '../../../src/server.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
 import { createCustomRuleStore } from '../../../src/custom-rule-store.js';
 import { registerEvaluateOutputTool } from '../../../src/tools/evaluate-output.js';
-import { ERROR_CODE_CATALOGUE, toIrisError } from '../../../src/tools/errors.js';
+import { ERROR_CODE_CATALOGUE, irisError, toIrisError } from '../../../src/tools/errors.js';
 import { errorEnvelopeSchema, guarded } from '../../../src/tools/respond.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import { LLMJudgeError } from '../../../src/eval/llm-judge/client.js';
@@ -65,6 +65,17 @@ describe('no tool throws a bare Error past its handler', () => {
       for (const m of src.matchAll(/throw new Error\(/g)) offenders.push(`${f}:${src.slice(0, m.index).split('\n').length}`);
     }
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('the API reference lists the codes an envelope carries', () => {
+  it('every code of the catalogue stands in its list, and no other', () => {
+    const paragraph = readFileSync(join(root, 'docs', 'api-reference.md'), 'utf8')
+      .split(/\r?\n/)
+      .find((line) => line.startsWith('- **Structured errors.**'));
+    expect(paragraph).toBeDefined();
+    const list = paragraph!.slice(paragraph!.indexOf('Codes:'), paragraph!.indexOf('An argument the input schema rejects'));
+    expect([...list.matchAll(/`(IRIS_[A-Z_]+)`/g)].map((m) => m[1]).sort()).toEqual([...ERROR_CODE_CATALOGUE].sort());
   });
 });
 
@@ -118,6 +129,35 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
     expect(e.recovery.length).toBeGreaterThan(0);
     // Refused before anything was stored: this test's store began empty.
     expect((await storage.queryTraces(LOCAL_TENANT, {})).total).toBe(0);
+  });
+
+  it('what the input schema refuses is plain text: an unknown argument names the code and the valid arguments; a wrong type, a missing argument and a refused value say why and carry no code', async () => {
+    for (const name of ['get_traces', 'list_rules']) {
+      const r = (await client.callTool({ name, arguments: { bogus: 1 } })) as Result;
+      expect(r.isError).toBe(true);
+      expect(text(r)).toContain('IRIS_INVALID_ARGUMENT');
+      expect(text(r)).toContain('"bogus"');
+      expect(text(r)).toContain('Valid arguments');
+    }
+    const refusals: Array<[string, Record<string, unknown>, string]> = [
+      ['evaluate_output', { output: { not: 'the type' } }, 'output'],
+      ['log_trace', { input: 'x' }, 'agent_name'],
+      ['compare_runs', { before: '', after: 'run-b' }, 'before'],
+    ];
+    for (const [name, args, argument] of refusals) {
+      const r = (await client.callTool({ name, arguments: args })) as Result;
+      expect(r.isError).toBe(true);
+      expect(text(r)).toContain(argument);
+      expect(text(r)).not.toContain('IRIS_');
+      // Plain text: nothing here parses as an envelope.
+      expect(() => JSON.parse(text(r)) as unknown).toThrow();
+    }
+  });
+
+  it('the server instructions say of a refused argument what holds of every refusal', () => {
+    const said = client.getInstructions() ?? '';
+    expect(said).toContain('comes back as plain text saying why');
+    expect(said).not.toContain('plain text naming IRIS_INVALID_ARGUMENT');
   });
 
   it('IRIS_UNKNOWN_TRACE — nothing scored or written', async () => {
@@ -196,6 +236,25 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
     provoked.add(e.code);
   });
 
+  it('IRIS_PROVIDER_ERROR — a rate limit keeps its code whatever the provider says to wait: the delay is told when it is a number, and left out when its milliseconds are not', async () => {
+    process.env.IRIS_ANTHROPIC_API_KEY = 'test-key';
+    const cases: Array<[string, number | undefined]> = [
+      ['0.01', 10],
+      // A thousand times this many seconds is not a number, and JSON has no way to write one.
+      ['1e306', undefined],
+    ];
+    for (const [retryAfter, told] of cases) {
+      const provider = vi.fn(async () => new Response('{"error":"slow down"}', { status: 429, headers: { 'content-type': 'application/json', 'retry-after': retryAfter } }));
+      global.fetch = provider as unknown as typeof fetch;
+      const e = envelope((await client.callTool({ name: 'evaluate_with_llm_judge', arguments: { output: 'x', template: 'accuracy', model: 'claude-haiku-4-5' } })) as Result);
+      expect(e.code).toBe('IRIS_PROVIDER_ERROR');
+      expect(e.kind).toBe('rate_limit');
+      expect(e.retryable).toBe(true);
+      expect(e.retryAfterMs).toBe(told);
+      expect(e.recovery.length).toBeGreaterThan(0);
+    }
+  });
+
   it('IRIS_JUDGE_FAILED — citations resolved but the judge failed on every one; nothing stored', async () => {
     process.env.IRIS_ANTHROPIC_API_KEY = 'test-key';
     // The operator turns fetching on; an argument cannot (src/tools/operator-ceilings.ts).
@@ -244,6 +303,24 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
     expect(e.code).toBe('IRIS_INTERNAL_ERROR');
     expect(e.message).toContain('engine exploded');
     provoked.add(e.code);
+  });
+
+  it('IRIS_INTERNAL_ERROR — a store that rejects a write with nothing at all is answered with the internal error and its own sentence', async () => {
+    for (const nothing of [null, undefined]) {
+      const failing = new Proxy(storage, {
+        get(target, prop, receiver) {
+          if (prop === 'insertEvalResult') {
+            return async () => {
+              throw nothing;
+            };
+          }
+          return Reflect.get(target, prop, receiver);
+        },
+      }) as unknown as IStorageAdapter;
+      const e = envelope(await callIsolated(failing, undefined, { output: 'x' }));
+      expect(e.code).toBe('IRIS_INTERNAL_ERROR');
+      expect(e.message).toBe('Iris hit an unexpected error.');
+    }
   });
 
   it('IRIS_INTERNAL_ERROR — a handler that fails with nothing at all, or with a value that has no text, is answered with the envelope too', async () => {
@@ -319,6 +396,29 @@ describe('toIrisError maps what the runtime throws', () => {
     const e = toIrisError(new LLMJudgeError('slow down', 'rate_limit', 429, 7));
     expect(e.envelope).toMatchObject({ code: 'IRIS_PROVIDER_ERROR', kind: 'rate_limit', retryable: true, retryAfterMs: 7000 });
   });
+  it('a retry delay is told in milliseconds when that is a number, and left out when it is not', () => {
+    expect(toIrisError(new LLMJudgeError('slow down', 'rate_limit', 429, 0.5)).envelope.retryAfterMs).toBe(500);
+    for (const odd of [1e306, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const mapped = toIrisError(new LLMJudgeError('slow down', 'rate_limit', 429, odd)).envelope;
+      expect(mapped).toMatchObject({ code: 'IRIS_PROVIDER_ERROR', kind: 'rate_limit', retryable: true });
+      expect('retryAfterMs' in mapped).toBe(false);
+      expect(errorEnvelopeSchema.safeParse(JSON.parse(JSON.stringify({ error: mapped }))).success).toBe(true);
+    }
+  });
+  it('the mapping answers, and does not throw, for an error whose message throws when it is read', () => {
+    const unreadable = Object.defineProperty(new Error('replaced below'), 'message', {
+      get(): string {
+        throw new Error('this message will not be read');
+      },
+    });
+    const e = toIrisError(unreadable);
+    expect(e.envelope.code).toBe('IRIS_INTERNAL_ERROR');
+    expect(e.envelope.message).toBe('Iris hit an unexpected error.');
+  });
+  it('a storage failure with nothing to say has a sentence that ends', () => {
+    expect(toIrisError(Object.assign(new Error(''), { code: 'SQLITE_BUSY' })).envelope).toMatchObject({ code: 'IRIS_STORAGE_ERROR', message: 'Iris storage failed.', retryable: true });
+    expect(toIrisError(Object.assign(new Error('database is locked'), { code: 'SQLITE_BUSY' })).envelope.message).toBe('Iris storage failed: database is locked');
+  });
   it('a plain error is internal, with a recovery', () => {
     const e = toIrisError(new Error('boom'));
     expect(e.envelope.code).toBe('IRIS_INTERNAL_ERROR');
@@ -363,16 +463,32 @@ describe('the wrapper answers with an envelope whatever a handler fails with', (
     expect(e.message).toBe('Iris hit an unexpected error.');
   });
 
-  it('a failure mapped to an envelope its own schema refuses (a retry delay that is not a number) is the internal error too', async () => {
-    const odd = new LLMJudgeError('slow down', 'rate_limit', 429, Number.NaN);
-    // The mapping answers; it is the envelope's schema that refuses what it answered.
-    expect(toIrisError(odd).envelope).toMatchObject({ code: 'IRIS_PROVIDER_ERROR', kind: 'rate_limit' });
-    expect(errorEnvelopeSchema.safeParse({ error: toIrisError(odd).envelope }).success).toBe(false);
+  it('a failure mapped to an envelope its own schema refuses (no step to take; no words) is the internal error too', async () => {
+    const noStep = irisError('IRIS_INVALID_ARGUMENT', 'a refusal written without a step to take');
+    const noWords = Object.assign(new Error(''), { name: 'DuplicateRuleNameError' });
+    for (const odd of [noStep, noWords]) {
+      // The mapping answers; it is the envelope's schema that refuses what it answered.
+      expect(toIrisError(odd).envelope.code).not.toBe('IRIS_INTERNAL_ERROR');
+      expect(errorEnvelopeSchema.safeParse({ error: toIrisError(odd).envelope }).success).toBe(false);
+      const handler = guarded(async () => {
+        throw odd;
+      });
+      const e = envelope((await handler()) as Result);
+      expect(e.code).toBe('IRIS_INTERNAL_ERROR');
+      expect(e.message).toBe('Iris hit an unexpected error.');
+      expect(e.recovery.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('the envelope is judged as the JSON a caller reads: a field that becomes text only when it is written goes out as that text', async () => {
+    const boxed = irisError('IRIS_INVALID_ARGUMENT', 'refused', { field: new String('output') as unknown as string, recovery: ['Pass output.'] });
+    // As an object in memory the schema refuses it; as the JSON that is sent it passes.
+    expect(errorEnvelopeSchema.safeParse({ error: boxed.envelope }).success).toBe(false);
     const handler = guarded(async () => {
-      throw odd;
+      throw boxed;
     });
     const e = envelope((await handler()) as Result);
-    expect(e.code).toBe('IRIS_INTERNAL_ERROR');
-    expect(e.message).toBe('Iris hit an unexpected error.');
+    expect(e.code).toBe('IRIS_INVALID_ARGUMENT');
+    expect(e.field).toBe('output');
   });
 });

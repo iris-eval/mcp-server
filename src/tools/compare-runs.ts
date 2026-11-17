@@ -160,7 +160,7 @@ export function registerCompareRunsTool(server: McpServer, storage: IStorageAdap
           'To score one output (evaluate_output). As a gate: it reports; blocking is your policy.',
         returns: compareRunsOutputSchema,
         errors:
-          'IRIS_INVALID_ARGUMENT (empty run id, no baseline, bad margin or dataset); IRIS_STORAGE_ERROR. ' + ERROR_ENVELOPE_SENTENCE,
+          'IRIS_INVALID_ARGUMENT (no baseline pinned, or no such dataset); IRIS_STORAGE_ERROR. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
           log_trace: 'record into a run',
           get_traces: 'find a run\'s traces',
