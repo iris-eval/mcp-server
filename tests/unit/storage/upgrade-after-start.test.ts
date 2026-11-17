@@ -190,6 +190,8 @@ describe('the upgrade after the start', () => {
       await mcpServer.connect(serverTransport);
       const client = new Client({ name: 'upgrade', version: '0.1.0' });
       await client.connect(clientTransport);
+      // As a client does: with the tools listed, the SDK checks each result against the tool's output schema, the refusal at the gate among them.
+      await client.listTools();
       try {
         return await client.callTool({ name: 'get_traces', arguments: { limit: 5 } });
       } finally {
@@ -202,7 +204,10 @@ describe('the upgrade after the start', () => {
     expect(JSON.stringify(answered.structuredContent)).toContain('walrus tusks');
     const refused = await call(1);
     expect(refused.isError).toBe(true);
-    expect((refused.structuredContent as { error: { code: string; retryable: boolean; message: string } }).error).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: true });
+    // The refusal is the envelope as text, and carries no structured content: get_traces's own would have to match its output schema.
+    expect(refused.structuredContent).toBeUndefined();
+    const refusal = JSON.parse((refused.content as Array<{ type: string; text?: string }>).find((c) => c.type === 'text')!.text!) as { error: { code: string; retryable: boolean; message: string } };
+    expect(refusal.error).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: true });
   });
 
   it('an HTTP request waits at the same gate, and is answered 503 with Retry-After when it waits too long', async () => {
