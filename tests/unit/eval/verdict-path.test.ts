@@ -87,6 +87,9 @@ describe('the path and the verdict are one decision', () => {
     expect(carriedBy({ a: 0.4, b: 0.3, c: 0.45 }, new Set(['a', 'b']))).toEqual(['a']);
     expect(carriedBy({ a: 0.4, b: 0.4, c: 0.1 }, new Set(['a', 'b']))).toEqual(['a', 'b']);
     expect(carriedBy({ a: 0.5 }, new Set(['a']))).toEqual(['a']);
+    // More likely than not is more than a half: exactly a half, with no fire behind it, names nobody.
+    expect(carriedBy({ a: 0.5 }, none)).toEqual([]);
+    expect(carriedBy({ a: 0.5001 }, none)).toEqual(['a']);
     // An estimate no fire carried names nobody: a strict loss ratio puts the line under the risk of an output nothing flagged.
     expect(carriedBy({ pii_leak: 0.04, injection_compliance: 0.06 }, none)).toEqual([]);
     expect(carriedBy({}, none)).toEqual([]);

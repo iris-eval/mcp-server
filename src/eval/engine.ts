@@ -800,7 +800,14 @@ export class EvalEngine {
       const weighed = rule.kind === 'detection' || rule.kind === 'inference';
       const reasoned = typeof ownReason === 'string' && ownReason.trim() !== '';
       const byRule = !byConfig && reasoned && weighed && !critical;
-      const advisory = (byConfig || byRule) && raw.skipped !== true;
+      /*
+       * A rule that skipped took no part and carries no standing, with one
+       * exception: a rule the deployment set to report that THREW. A rule
+       * that threw where its finding would have counted leaves the verdict
+       * unknown (compose.ts, the third layer), and this row is what says
+       * that this one's finding would have changed nothing.
+       */
+      const advisory = (byConfig || byRule) && (raw.skipped !== true || (byConfig && raw.threw === true));
       /*
        * The stamp (0.9.0): what kind of claim this is, what the composer
        * did with it, which question it answers, what it saw, why it skipped,
