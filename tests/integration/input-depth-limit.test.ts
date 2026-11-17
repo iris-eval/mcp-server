@@ -104,6 +104,15 @@ describe('how the levels of an input are counted', () => {
     expect(nestingDepth(Buffer.from('abc'), 100)).toBe(0);
     expect(nestingDepth(new Uint8Array(8), 100)).toBe(0);
     expect(nestingDepth({ body: Buffer.from('abc'), more: [new Float64Array(2)] }, 100)).toBe(2);
+    // Alone under a key, and alone in an array: the object or the array is the one level there is.
+    expect(nestingDepth({ body: Buffer.from('abc') }, 100)).toBe(1);
+    expect(nestingDepth([new Uint8Array(4)], 100)).toBe(1);
+  });
+
+  it('only what an object holds itself is a level of it, as only its own keys are elements of it', () => {
+    const inherits = Object.assign(Object.create({ inherited: [[[1]]] }) as Record<string, unknown>, { own: 1 });
+    expect(nestingDepth(inherits, 100)).toBe(1);
+    expect(nestingDepth({ holds: inherits }, 100)).toBe(2);
   });
 
   it('stops at the first thing it finds past the limit, and says one more than the limit', () => {
