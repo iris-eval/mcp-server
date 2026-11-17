@@ -371,6 +371,19 @@ describe('a string that holds JSON, which is no level to a door', () => {
       expect(body.rule_results.filter((r) => r.threw === true).map((r) => r.ruleName), `${levels} levels`).toEqual([]);
     }
   });
+
+  it('an output a custom schema rule reads as JSON is judged down to the limit, and past it the rule answers that the shape was not judged', async () => {
+    // A schema that refers to itself is checked by a validator that calls itself for each level of the value: on an output nested a few thousand levels deep the rule gave no answer.
+    const engine = new EvalEngine();
+    const shape = { name: 'shape', type: 'json_schema' as const, config: { schema: { type: ['object', 'number'], properties: { a: { $ref: '#' } } } }, severity: 'high' as const };
+    const answerOf = async (output: string) => (await engine.evaluate('custom', { output }, [shape])).rule_results.find((r) => r.ruleName === 'shape');
+    expect(await answerOf(text(MAX_JSON_TEXT_DEPTH))).toMatchObject({ passed: true, message: 'Output matches the configured JSON Schema' });
+    for (const levels of [MAX_JSON_TEXT_DEPTH + 1, 4_400, 20_000]) {
+      const answer = await answerOf(text(levels));
+      expect(answer?.threw, `${levels} levels`).toBeUndefined();
+      expect(answer, `${levels} levels`).toMatchObject({ passed: false, skipped: true, skipReason: `the output could not be checked: it nests more than ${MAX_JSON_TEXT_DEPTH} levels deep` });
+    }
+  });
 });
 
 describe('an input no door stood in front of', () => {

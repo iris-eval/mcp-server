@@ -18,6 +18,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import fc from 'fast-check';
+import type { ValidateFunction } from 'ajv';
 import {
   MAX_TOOL_INPUT_BYTES,
   MAX_TOOL_SCHEMA_BYTES,
@@ -27,6 +28,8 @@ import {
   resetSchemaCache,
 } from '../../../src/eval/schema-validator.js';
 import { createCustomRule } from '../../../src/eval/rules/custom.js';
+import { validToolArguments } from '../../../src/eval/rules/completeness.js';
+import { MAX_JSON_TEXT_DEPTH } from '../../../src/utils/element-count.js';
 import type { EvalContext } from '../../../src/types/eval.js';
 import { cpuMs } from '../../helpers/cpu-time.js';
 
@@ -38,6 +41,33 @@ function nest(depth: number): Record<string, unknown> {
   for (let i = 0; i < depth; i++) node = { type: 'object', properties: { a: node } };
   return node;
 }
+
+/**
+ * A schema that refers to itself through a ring of `calls` definitions: each
+ * hands on to the next, and the last descends into `a` and back to the
+ * first. Its validator makes `calls` calls for each level of a value. One
+ * call a level is a tree's own schema; a schema written with wrappers has a
+ * few.
+ */
+function ring(calls: number): Record<string, unknown> {
+  const defs: Record<string, unknown> = {};
+  for (let i = 0; i < calls - 1; i++) defs[`n${i}`] = { allOf: [{ $ref: `#/$defs/n${i + 1}` }] };
+  defs[`n${calls - 1}`] = { type: ['object', 'number'], properties: { a: { $ref: '#/$defs/n0' } } };
+  return { $defs: defs, $ref: '#/$defs/n0' };
+}
+
+/** `{"a":{"a":…1}}`, `levels` objects deep. */
+function nested(levels: number): unknown {
+  let value: unknown = 1;
+  for (let i = 0; i < levels; i++) value = { a: value };
+  return value;
+}
+
+/** The same as text, built without a function that calls itself. */
+const nestedText = (levels: number, innermost = '1'): string => `${'{"a":'.repeat(levels)}${innermost}${'}'.repeat(levels)}`;
+
+/** A definition that is only itself: its validator never returns, on any value. */
+const ONLY_ITSELF = { $defs: { a: { allOf: [{ $ref: '#/$defs/a' }] } }, $ref: '#/$defs/a' };
 
 describe('the schema guard ladder', () => {
   beforeEach(() => {
@@ -128,6 +158,62 @@ describe('the schema guard ladder', () => {
     const compiled = compileToolSchema({ type: 'object', properties: { blob: { type: 'string' } } });
     const check = checkArguments(compiled, { blob: 'x'.repeat(MAX_TOOL_INPUT_BYTES + 10) });
     expect(check.state).toBe('unchecked');
+  });
+
+  it('a schema that refers to itself decides on a nested value, yes and no', () => {
+    const own = compileToolSchema(ring(1));
+    expect(own.ok).toBe(true);
+    expect(checkArguments(own, nested(64)).state).toBe('valid');
+    const bad = checkArguments(own, { a: { a: 'x' } });
+    expect(bad.state).toBe('invalid');
+    expect(bad.instancePath).toBe('/a/a');
+    // A ring of a hundred definitions makes a hundred calls a level: four levels are four hundred calls.
+    const long = compileToolSchema(ring(100));
+    expect(long.ok).toBe(true);
+    expect(checkArguments(long, nested(4)).state).toBe('valid');
+  });
+
+  it('a check that runs out of stack leaves the call unchecked and says why: it is not thrown out of the rule', () => {
+    /*
+     * Neither the size of the value nor the caps on the schema bound how
+     * deep the validator calls itself. 512 levels under a ring of a hundred
+     * are 51,200 calls, four times what an empty function reaches before
+     * the stack ends.
+     */
+    const long = compileToolSchema(ring(100));
+    const ran = checkArguments(long, nested(512));
+    expect(ran.state).toBe('unchecked');
+    expect(ran.reason).toContain('ran out of stack');
+    expect(ran.instancePath).toBeUndefined();
+
+    // Under a definition that is only itself the validator never returns, on any value.
+    const loop = compileToolSchema(ONLY_ITSELF);
+    expect(loop.ok).toBe(true);
+    expect(checkArguments(loop, { a: 1 })).toEqual({ state: 'unchecked', reason: expect.stringContaining('ran out of stack') });
+
+    // The validator is whole afterwards: the next value is decided.
+    expect(checkArguments(long, nested(4)).state).toBe('valid');
+    expect(checkArguments(long, { a: 'x' }).state).toBe('invalid');
+  });
+
+  it('only the stack running out is answered so: any other failure of a validator is still thrown', () => {
+    const broken = { ok: true as const, validate: (() => { throw new TypeError('not the stack'); }) as unknown as ValidateFunction };
+    expect(() => checkArguments(broken, {})).toThrow(TypeError);
+  });
+
+  it('valid_tool_arguments answers when a check runs out of stack: the call is not judged and the reason is given', () => {
+    const tools = [{ name: 't', inputSchema: ring(100) }];
+    const alone = validToolArguments.evaluate({ output: 'done', toolCalls: [{ tool_name: 't', input: nested(512) }], tools } as EvalContext);
+    expect(alone.passed).toBe(false);
+    expect(alone.skipped).toBe(true);
+    expect(alone.configInvalid).toBeFalsy();
+    expect(alone.skipReason).toContain('t (the check ran out of stack');
+
+    // Beside a call it can check, the rule decides on that one and counts the other as unchecked.
+    const beside = validToolArguments.evaluate({ output: 'done', toolCalls: [{ tool_name: 't', input: nested(512) }, { tool_name: 't', input: nested(2) }], tools } as EvalContext);
+    expect(beside.skipped).toBeFalsy();
+    expect(beside.passed).toBe(true);
+    expect(beside.message).toContain('1 of 2 checked');
   });
 
   it('rejections are cached, which is what makes the regex probe affordable', () => {
@@ -239,5 +325,45 @@ describe('the json_schema custom rule type honours a configured schema', () => {
     const r = rule.evaluate({ output: 'not json' } as EvalContext);
     expect(r.passed).toBe(false);
     expect(r.message).toContain('not valid JSON');
+  });
+
+  it('an output is read as JSON down to the depth a JSON text is read to: at it the shape is judged, past it the rule says it was not', () => {
+    /*
+     * The output is a string, which is no level to the doors that measure
+     * how deep a request nests, and a schema that refers to itself is
+     * checked by a validator that calls itself for each level of the value.
+     */
+    const rule = createCustomRule({ name: 'j', type: 'json_schema', config: { schema: ring(1) } });
+    const at = rule.evaluate({ output: nestedText(MAX_JSON_TEXT_DEPTH) } as EvalContext);
+    expect(at.passed).toBe(true);
+    expect(at.skipped).toBeUndefined();
+    const wrongAt = rule.evaluate({ output: nestedText(MAX_JSON_TEXT_DEPTH, '"x"') } as EvalContext);
+    expect(wrongAt.passed).toBe(false);
+    expect(wrongAt.skipped).toBeUndefined();
+    expect(wrongAt.message).toContain('type');
+
+    for (const levels of [MAX_JSON_TEXT_DEPTH + 1, 4_000, 20_000]) {
+      const past = rule.evaluate({ output: nestedText(levels) } as EvalContext);
+      expect(past.passed).toBe(false);
+      expect(past.skipped).toBe(true);
+      expect(past.skipReason).toBe(`the output could not be checked: it nests more than ${MAX_JSON_TEXT_DEPTH} levels deep`);
+      expect(past.message).toBe('Output shape not judged');
+    }
+  });
+
+  it('with no schema nothing walks the value, so an output nested however deep is valid JSON as it was', () => {
+    const rule = createCustomRule({ name: 'j', type: 'json_schema', config: {} });
+    const r = rule.evaluate({ output: nestedText(20_000) } as EvalContext);
+    expect(r.passed).toBe(true);
+    expect(r.message).toContain('not checked');
+  });
+
+  it('answers when its schema is a definition that is only itself, on any output: the shape is not judged and the reason is given', () => {
+    resetSchemaCache();
+    const rule = createCustomRule({ name: 'j', type: 'json_schema', config: { schema: ONLY_ITSELF } });
+    const r = rule.evaluate({ output: '{"a":1}' } as EvalContext);
+    expect(r.passed).toBe(false);
+    expect(r.skipped).toBe(true);
+    expect(r.skipReason).toContain('the output could not be checked: the check ran out of stack');
   });
 });

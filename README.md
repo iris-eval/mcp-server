@@ -517,7 +517,7 @@ When using HTTP transport, Iris includes:
 - ReDoS-safe regex for custom eval rules
 - One 1MB request size limit on every transport (`security.requestSizeLimit`): HTTP answers `413`, stdio answers a JSON-RPC error and keeps the session open
 - One limit of 100,000 array elements and object keys in an input, counted before it is validated (`security.maxInputElements`): a tool call's arguments on every transport get an error result over it, and a dashboard or OTLP request body a `413`
-- One limit of 256 levels of nesting in an input, measured before anything reads it (`security.maxInputDepth`): a tool call's arguments nested deeper get an error result, and a dashboard or OTLP request body a `413`. A string that holds JSON is read as the value it encodes down to 256 levels and as text past that, and the engine refuses an evaluation whose input nests deeper than 512 by whatever road it came, so no rule is handed an input deep enough to give no answer on
+- One limit of 256 levels of nesting in an input, measured before anything reads it (`security.maxInputDepth`): a tool call's arguments nested deeper get an error result, and a dashboard or OTLP request body a `413`. A string that holds JSON is read as the value it encodes down to 256 levels and as text past that (a custom `json_schema` rule checks an output's shape down to 256 levels and says so past that), and the engine refuses an evaluation whose input nests deeper than 512 by whatever road it came, so no rule is handed an input deep enough to give no answer on
 - Validation errors return at most 20 issues and the total (`issueCount`), so an answer stays small however wrong the request
 
 ```bash

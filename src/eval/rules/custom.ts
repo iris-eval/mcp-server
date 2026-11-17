@@ -5,7 +5,8 @@ import type { RuleSeverity } from '../../types/custom-rule.js';
 import { readNumericConfig, describeKeys } from './config-keys.js';
 import { sandboxedRegexTest, REGEX_MATCH_BUDGET_MS } from './regex-sandbox.js';
 import { MAX_PATTERN_LENGTH } from './regex-budget.js';
-import { checkArguments, compileToolSchema } from '../schema-validator.js';
+import { checkArguments, compileToolSchema, type ArgumentCheck } from '../schema-validator.js';
+import { MAX_JSON_TEXT_DEPTH, nestingDepth } from '../../utils/element-count.js';
 import { allowRuleForOwnName, compileActionPolicy, matchPolicyRule } from '../action-policy.js';
 import { MAX_TOOL_NAME_CHARS } from '../case-history.js';
 import { MAX_STEPS_POLICY, stepsOf, stepStatsOf, stepsUpTo } from '../steps.js';
@@ -390,7 +391,19 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
           if (!compiled.ok) {
             return configError(definition, `json_schema rule config.schema was not compiled: ${compiled.reason}`);
           }
-          const check = checkArguments(compiled, parsed);
+          /*
+           * The output is a string, which is no level to the doors that
+           * measure how deep a request nests, and read as JSON it is as deep
+           * a value as its text nests. A schema that refers to itself is
+           * checked by a validator that calls itself for each level of that
+           * value. So an output nested deeper than MAX_JSON_TEXT_DEPTH is
+           * not checked, as one too large to check is not, and the rule
+           * says which (#1040).
+           */
+          const check: ArgumentCheck =
+            nestingDepth(parsed, MAX_JSON_TEXT_DEPTH) > MAX_JSON_TEXT_DEPTH
+              ? { state: 'unchecked', reason: `it nests more than ${MAX_JSON_TEXT_DEPTH} levels deep` }
+              : checkArguments(compiled, parsed);
           if (check.state === 'unchecked') {
             return { ruleName: definition.name, passed: false, score: 0, skipped: true, skipReason: `the output could not be checked: ${check.reason ?? 'unknown'}`, message: 'Output shape not judged' };
           }

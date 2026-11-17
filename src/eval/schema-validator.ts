@@ -345,7 +345,26 @@ export function checkArguments(compiled: CompiledSchema, input: unknown): Argume
     return { state: 'unchecked', reason: `the call arguments are ${size} bytes; the limit for checking is ${MAX_TOOL_INPUT_BYTES}` };
   }
 
-  const ok = compiled.validate(input ?? {});
+  /*
+   * A local `$ref` may refer to itself, and the validator ajv generates for
+   * it calls itself: once for each level of the value, or as many times a
+   * level as a ring of definitions is long, or without end under a
+   * definition that is only itself. Neither the size of the value nor the
+   * caps on the schema bound that, so the check can run out of stack
+   * (measured: at 4,400 levels under a schema that is its own `items`, at 256
+   * under a ring of 32 definitions, at 64 under a ring of 100, and on
+   * `{"a":1}` under a definition that is only itself). Thrown out of here it
+   * would leave the rule with no answer, and a rule with no answer takes no
+   * part in the verdict (#1040). So it is answered as a value too large to
+   * check is: unchecked, with the reason.
+   */
+  let ok: boolean;
+  try {
+    ok = compiled.validate(input ?? {});
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error;
+    return { state: 'unchecked', reason: 'the check ran out of stack: the schema refers to itself, and its validator calls itself for each level of the value' };
+  }
   if (ok) return { state: 'valid' };
   const first: ErrorObject | undefined = compiled.validate.errors?.[0];
   return {
