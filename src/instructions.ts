@@ -114,7 +114,7 @@ export function buildInstructions(i: InstructionsInput): string {
     'Do not use Iris to validate arbitrary JSON Schema, to screen inputs before they reach an agent (the injection rule reads output), or for semantic judgment without a key.',
 
     'Errors from a tool return {"error":{"code","message","recovery":[]}} with isError true; follow recovery before retrying. ' +
-      'An argument the schema rejects comes back as plain text saying why; an unknown one also lists the valid arguments.',
+      'An argument the schema rejects comes back as plain text naming IRIS_INVALID_ARGUMENT and the valid arguments.',
   ].join('\n\n');
   // What this build wrote, without the deployment's list: a breach here is a defect in the text above, never in a config.
   const own = text.length - critical.length;

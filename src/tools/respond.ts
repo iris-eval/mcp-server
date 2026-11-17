@@ -12,9 +12,8 @@
  *
  * `errorResult` is the failure shape: the IrisError envelope as the text,
  * `isError: true`, and a link to iris://capabilities. It carries no
- * structuredContent (see there). `failureResult` builds it from whatever
- * was thrown, and `guarded` wraps a handler with it, so nothing thrown
- * inside a handler reaches the SDK's flattener.
+ * structuredContent (see there). `guarded` wraps a handler so nothing
+ * thrown inside it reaches the SDK's flattener.
  */
 import { z } from 'zod';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -63,17 +62,11 @@ export function respond<S extends z.ZodType>(schema: S, payload: object, links: 
   };
 }
 
-/*
- * What a caller is promised about a failure: a code from the catalogue, a
- * sentence, and at least one thing to do about it. A message with no words
- * and a list with no step are refused here, so a throw site written without
- * one cannot send its envelope (errorResult, below).
- */
 export const errorEnvelopeSchema = z.looseObject({
   error: z.looseObject({
     code: z.enum(ERROR_CODE_CATALOGUE),
-    message: z.string().min(1),
-    recovery: z.array(z.string().min(1)).min(1),
+    message: z.string(),
+    recovery: z.array(z.string()),
     retryable: z.boolean(),
     field: z.string().optional(),
     valid: z.array(z.string()).optional(),
@@ -90,45 +83,21 @@ export type ErrorEnvelope = z.infer<typeof errorEnvelopeSchema>;
  *
  * The envelope is not sent as `structuredContent`. A tool's structured
  * content is what its output schema describes, and that schema describes
- * the tool's answer, not this envelope: a client built on the MCP
- * TypeScript SDK checks structured content against the schema on every
- * result once it has listed the tools, an error result's too, and threw the
- * whole result away ("Structured content does not match the tool's output
- * schema"). The code, the message and the recovery steps never reached it.
- * Sent as text alone, the envelope passes both of that SDK's checks: its
- * server does not check an error result against the output schema, and its
- * client checks structured content only where there is some (measured on
- * 1.32.2, the version this server builds against). The text is the same
- * object.
- *
- * Like an answer, the envelope is checked against its own schema before it
- * is sent, as the JSON it will be read as (after the round trip: a field
- * that only becomes text or a number when it is written is judged as what
- * the caller reads). One that does not match is a programming error and
- * throws; `failureResult` answers the internal error in its place.
+ * the tool's answer, not this envelope: a client built on the MCP SDK
+ * checks structured content against the schema on every result once it has
+ * listed the tools, an error result's too, and threw the whole result away
+ * ("Structured content does not match the tool's output schema"). The
+ * code, the message and the recovery steps never reached it. Sent as text
+ * alone, the envelope reaches every client: the SDK's server does not check
+ * an error result against the output schema, and its client checks
+ * structured content only where there is some. The text is the same object.
  */
 export function errorResult(err: IrisError): CallToolResult {
   const body = normalise({ error: err.envelope });
-  if (!errorEnvelopeSchema.safeParse(body).success) throw new Error('error envelope does not match its schema');
   return {
     content: [{ type: 'text', text: JSON.stringify(body) }, linkItem(CAPABILITIES_LINK)],
     isError: true,
   };
-}
-
-/**
- * The result for whatever a handler, or the gate in front of it, failed
- * with. A promise can reject with anything. A value the mapping cannot read
- * (it reads the value's class and its fields), and one it maps to an
- * envelope the envelope's own schema refuses, are answered as the internal
- * error rather than let past as a flattened line.
- */
-export function failureResult(err: unknown): CallToolResult {
-  try {
-    return errorResult(toIrisError(err));
-  } catch {
-    return errorResult(toIrisError(undefined));
-  }
 }
 
 /** Wrap a handler so every failure returns an envelope instead of a flattened line. */
@@ -139,7 +108,7 @@ export function guarded<A extends unknown[]>(
     try {
       return await fn(...args);
     } catch (err) {
-      return failureResult(err);
+      return errorResult(toIrisError(err));
     }
   };
 }

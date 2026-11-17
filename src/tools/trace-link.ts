@@ -73,9 +73,8 @@ export async function insertLinkedEvalResult(
   try {
     await storage.insertEvalResult(tenantId, result);
   } catch (err) {
-    // What the store failed with is thrown on as it is. Reading it for the race must not throw in its place: a store can reject with nothing at all.
-    const code = (err as { code?: unknown } | null | undefined)?.code;
-    const message = err instanceof Error ? err.message : typeof err === 'string' ? err : '';
+    const code = (err as { code?: unknown }).code;
+    const message = err instanceof Error ? err.message : String(err);
     if (result.trace_id && (code === 'SQLITE_CONSTRAINT_FOREIGNKEY' || /FOREIGN KEY constraint failed/i.test(message))) {
       throw unknownTraceError(result.trace_id);
     }

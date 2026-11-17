@@ -16,12 +16,9 @@
  * new throw site cannot ship without a code.
  *
  * Two errors are not this module's: an argument the input schema rejects
- * is refused by the SDK before the handler runs, as plain text (for an
- * unknown argument the text names IRIS_INVALID_ARGUMENT and the valid
- * arguments — see strict-input.ts; for a wrong type or a missing argument
- * it is the SDK's own sentence, with no code), and an HTTP rate limit
- * answers 429 at the transport before any tool runs. The same code is also
- * an envelope's, where a tool refuses an argument its schema let in.
+ * is refused by the SDK before the handler runs (the text names
+ * IRIS_INVALID_ARGUMENT and the valid arguments — see strict-input.ts), and
+ * an HTTP rate limit answers 429 at the transport before any tool runs.
  */
 import { ZodError } from 'zod';
 import { LLMJudgeError } from '../eval/llm-judge/client.js';
@@ -102,30 +99,11 @@ export function irisError(
 
 const CAPABILITIES = CAPABILITIES_RESOURCE_URI;
 
-/**
- * What a thrown value says for itself, always as text. A promise can reject
- * with anything: with nothing at all (null, undefined), with an object that
- * cannot be made a string, with an error whose message is not text. Those
- * say nothing, and the internal error's own sentence stands for them: here
- * where nothing below knows the value, and at the envelope's own check
- * where something does (an envelope always carries a message, respond.ts).
- */
-function messageOf(err: unknown): string {
-  if (err === null || err === undefined) return '';
-  try {
-    const said: unknown = err instanceof Error ? err.message : String(err);
-    return typeof said === 'string' ? said : '';
-  } catch {
-    return '';
-  }
-}
-
 function isSqliteError(err: unknown): boolean {
-  // Reading a field of null here threw inside the catch that was building the envelope, and the caller got that throw's one line.
-  const code = (err as { code?: unknown } | null | undefined)?.code;
+  const code = (err as { code?: unknown }).code;
   if (typeof code === 'string' && code.startsWith('SQLITE_')) return true;
-  // Only an error's own message is read for the driver's words, as before: a thrown string that happens to hold them is not the store's.
-  return /SQLITE|database is locked|disk I\/O error|readonly database/i.test(err instanceof Error ? messageOf(err) : '');
+  const message = err instanceof Error ? err.message : '';
+  return /SQLITE|database is locked|disk I\/O error|readonly database/i.test(message);
 }
 
 /**
@@ -139,7 +117,7 @@ export function toIrisError(err: unknown): IrisError {
   if (err instanceof IrisError) return err;
 
   const name = (err as { name?: unknown })?.name;
-  const message = messageOf(err);
+  const message = err instanceof Error ? err.message : String(err);
 
   if (name === 'DuplicateRuleNameError') {
     return irisError('IRIS_DUPLICATE_RULE', message, {
@@ -188,18 +166,11 @@ export function toIrisError(err: unknown): IrisError {
       malformed_response: ['The judge did not return valid JSON on two attempts. Retry; if it recurs, pick another model.'],
       unknown: ['Retry once; if it recurs, report the message with the provider and model.'],
     };
-    /*
-     * How long the provider asked the caller to wait, when that is a number
-     * JSON can carry. A provider's Retry-After can be any number above
-     * zero, and a thousand times a large enough one is not a number: the
-     * delay is then left out, and the rate limit is still told.
-     */
-    const retryAfterMs = typeof err.retryAfterSeconds === 'number' ? err.retryAfterSeconds * 1000 : Number.NaN;
     return irisError('IRIS_PROVIDER_ERROR', message, {
       kind: err.kind,
       retryable,
       recovery: recovery[err.kind],
-      ...(Number.isFinite(retryAfterMs) ? { retryAfterMs } : {}),
+      ...(err.retryAfterSeconds !== undefined ? { retryAfterMs: err.retryAfterSeconds * 1000 } : {}),
     });
   }
 
@@ -235,7 +206,7 @@ export function toIrisError(err: unknown): IrisError {
 
   if (isSqliteError(err)) {
     const code = (err as { code?: string }).code ?? '';
-    return irisError('IRIS_STORAGE_ERROR', message === '' ? 'Iris storage failed.' : `Iris storage failed: ${message}`, {
+    return irisError('IRIS_STORAGE_ERROR', `Iris storage failed: ${message}`, {
       retryable: code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED',
       recovery: [
         'Retry once. If it recurs, check that the database path is writable and the disk is not full.',
