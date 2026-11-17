@@ -249,6 +249,10 @@ describe('a check that could not answer leaves the verdict unknown when its answ
     expect(sentence([unanswered({ ruleName: 'no_pii', kind: 'detection', critical: true }), plain])).toBe(
       'A critical check was asked and could not answer (no_pii), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.',
     );
+    // A critical rule is named as critical, whoever else asked for it and however it stopped: the sentence is the one it always was.
+    expect(sentence([unanswered({ ruleName: 'no_pii', kind: 'detection', critical: true, asked: 'config', threw: true }), plain])).toBe(
+      'A critical check was asked and could not answer (no_pii), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.',
+    );
     expect(sentence([unanswered({ ruleName: 'no_tool_loop', kind: 'detection', threw: true }), unanswered({ ruleName: 'tool_sequence', kind: 'policy', asked: 'call' }), unanswered({ ruleName: 'max_steps', kind: 'policy', asked: 'config' }), plain])).toBe(
       'A check was asked and could not answer (no_tool_loop, which failed while it judged this run; tool_sequence, which this call asked for; max_steps, which this deployment asked for), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.',
     );

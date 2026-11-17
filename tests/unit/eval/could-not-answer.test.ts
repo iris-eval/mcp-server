@@ -71,7 +71,15 @@ describe('a rule that threw leaves the verdict unknown where its finding would h
     const reporting = await engine({ advisoryRules: named }).evaluateAll({ ...RUN, toolCalls: unwritable() });
     expect(threwIn(reporting)).toEqual(threwIn(result));
     for (const name of named) expect(row(reporting, name).asked, name).toBeUndefined();
+    // Its row says it reports: that is what a stored row is read back by.
+    for (const name of named) expect(row(reporting, name), name).toMatchObject({ skipped: true, threw: true, advisory: true });
     expect(reporting.verdict).toMatchObject({ state: 'pass', basis: 'clean' });
+    // A rule set to report that skipped for want of something to judge took no part either way, and its row carries no standing, as before.
+    const idle = await engine({ advisoryRules: named }).evaluateAll({ ...RUN });
+    for (const name of named) {
+      expect(row(idle, name), name).toMatchObject({ skipped: true, skipClass: 'not_applicable' });
+      expect(row(idle, name).advisory, name).toBeUndefined();
+    }
     // One of them told to report: the others still leave it unknown, and that one is not named.
     if (named.length > 1) {
       const one = await engine({ advisoryRules: [named[0]] }).evaluateAll({ ...RUN, toolCalls: unwritable() });
