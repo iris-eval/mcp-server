@@ -15,8 +15,7 @@ import { judgeState } from './judge-enablement.js';
 import { relevanceJudgeFromEnv, relevanceJudgeStartupWarnings, relevanceJudgeState } from './eval/llm-judge/relevance-judge.js';
 import { judgeBudgetFromEnv } from './eval/llm-judge/budget.js';
 import type { StoreGate } from './storage/ready.js';
-import { errorResult } from './tools/respond.js';
-import { toIrisError } from './tools/errors.js';
+import { failureResult } from './tools/respond.js';
 import { maxInputElementsOf } from './config/defaults.js';
 
 export interface IrisServer {
@@ -61,7 +60,7 @@ function gateRequests(server: McpServer, gate: StoreGate): void {
         try {
           await gate.wait();
         } catch (err) {
-          return errorResult(toIrisError(err));
+          return failureResult(err);
         }
       }
       return handler(...args);
