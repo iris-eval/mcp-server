@@ -109,8 +109,9 @@ export type RuntimeGuardState = 'not_needed' | 'applied' | 'started' | 'unguarde
 export const RUNTIME_GUARD_STATES: readonly RuntimeGuardState[] = ['not_needed', 'started', 'applied', 'unguarded'];
 
 /**
- * The arguments of NODE_OPTIONS, split as Node splits them: at white space,
+ * The arguments of NODE_OPTIONS, split as Node splits them: at a space,
  * except inside double quotes, where a backslash escapes the next character.
+ * Any other white space is part of an argument.
  */
 function optionsOf(text: string): string[] {
   const args: string[] = [];
@@ -124,7 +125,7 @@ function optionsOf(text: string): string[] {
     } else if (c === '"') {
       quoted = !quoted;
       open = true;
-    } else if (!quoted && /\s/.test(c)) {
+    } else if (!quoted && c === ' ') {
       if (open) args.push(arg);
       arg = '';
       open = false;

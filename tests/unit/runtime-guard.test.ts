@@ -145,6 +145,9 @@ describe('what stands between a process and the defect', () => {
       [[], '--max-old-space-size=4096   --jitless', 'started'],
       [[], '"--jitless"', 'started'],
       [[], '--title="a --jitless"', 'unguarded'],
+      // Inside quotes a backslash escapes the next character, so an escaped quote leaves the value open; only a space separates.
+      [[], '--title="a \\" --jitless"', 'unguarded'],
+      [[], '--title=a\t--jitless', 'unguarded'],
       // Of two that disagree, the engine keeps the last; Node hands it NODE_OPTIONS first.
       [['--no-maglev', '--maglev'], '', 'unguarded'],
       [['--maglev', '--no-maglev'], '', 'started'],
