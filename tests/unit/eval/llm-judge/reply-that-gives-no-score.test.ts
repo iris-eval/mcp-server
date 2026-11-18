@@ -277,6 +277,12 @@ describe('asked for as structured output, the reply is the object alone, read wh
     await expect(ask()).rejects.toThrow('Judge reply is not the JSON object it was asked for: I cannot evaluate this text.');
     expect(provider.calls()).toBe(2);
   });
+
+  it.each([['null'], ['42'], ['"text"'], ['true'], [`[${GOOD}]`]])('JSON that is not an object, %s, is not the object either', async (text) => {
+    const provider = judgeReplies(text);
+    await expect(ask()).rejects.toThrow(`Judge reply is not the JSON object it was asked for: ${text}`);
+    expect(provider.calls()).toBe(2);
+  });
 });
 
 describe("from a model that offers no structured output, the object is read from the reply's first brace to its last, as before", () => {

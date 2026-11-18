@@ -12,9 +12,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CITATION_ANSWER, verdictAnswer } from '../../../../src/eval/llm-judge/answer.js';
 import { callLLMJudge, estimateInputTokens, OPENAI_MODELS, STRUCTURED_ANSWER_ALLOWANCE_TOKENS, type LLMJudgeRequest } from '../../../../src/eval/llm-judge/client.js';
 import { evaluateWithLLMJudge } from '../../../../src/eval/llm-judge/evaluator.js';
-import { pricedModels } from '../../../../src/eval/llm-judge/pricing.js';
+import { estimateCostUsd, pricedModels } from '../../../../src/eval/llm-judge/pricing.js';
 import { ALL_TEMPLATES } from '../../../../src/eval/llm-judge/templates/index.js';
-import { verifyCitations } from '../../../../src/eval/citation-verify/verifier.js';
+import { buildCitationJudgePrompts, verifyCitations } from '../../../../src/eval/citation-verify/verifier.js';
+import { extractCitations } from '../../../../src/eval/citation-verify/extract.js';
 import { __clearCitationCacheForTests, __setDnsLookupForTests } from '../../../../src/eval/citation-verify/resolve.js';
 
 const originalFetch = global.fetch;
@@ -217,6 +218,21 @@ describe('the callers ask for their answers', () => {
     expect(res.score).toBe(0.9);
     const expected = { format: { type: 'json_schema', schema: verdictAnswer(['addresses_question', 'specificity', 'actionability']).schema } };
     expect(p.bodies.map((b) => b.output_config)).toEqual([expected, expected]);
+  });
+
+  it("verify_citations prices a citation's answer, its schema and the allowance, in the citation's worst case", async () => {
+    __setDnsLookupForTests(async () => [{ address: '8.8.8.8', family: 4 }]);
+    const output = 'The retry limit is five attempts https://a.com/retry.';
+    const [citation] = extractCitations(output);
+    const prompts = buildCitationJudgePrompts(citation.contextWindow, 'The retry limit is five attempts.');
+    const without = estimateCostUsd('claude-haiku-4-5', estimateInputTokens(prompts.system, prompts.user), 256)!;
+    const withAnswer = estimateCostUsd('claude-haiku-4-5', estimateInputTokens(prompts.system, prompts.user, CITATION_ANSWER), 256)!;
+    // A thousand tokens at $1 per million, and the schema.
+    expect(withAnswer - without).toBeGreaterThan(0.001);
+    const p = provider(anthropicReply('{"supported":true,"confidence":0.9,"rationale":"It says five."}'));
+    const res = await verifyCitations({ output, provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k', allowFetch: true, maxCostUsdTotal: (without + withAnswer) / 2 });
+    expect(res.citations[0].judgeError?.kind).toBe('cost_cap_reached');
+    expect(p.bodies).toHaveLength(0);
   });
 
   it("verify_citations asks for the citation judge's answer", async () => {
