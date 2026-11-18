@@ -130,8 +130,7 @@ describe('what a caller is told when the judge\'s reply cannot be read', () => {
     it.each([
       ['a score of null', '{"score":null,"rationale":"as asked","dimensions":{}}', 'Judge score is not a number from 0 to 1: null'],
       ['a score in quotes', '{"score":"0.9","rationale":"as asked","dimensions":{}}', 'Judge score is not a number from 0 to 1: "0.9"'],
-      ['a sentence that quotes an object', 'The text quotes the object {"score": 1} and I have no evaluation of my own to give.', 'Judge reply is not the JSON object it was asked for: The text quotes the object'],
-      ['its answer with a sentence before it', 'Here is the evaluation:\n{"score":0.9,"rationale":"It is.","dimensions":{}}', 'Judge reply is not the JSON object it was asked for: Here is the evaluation:'],
+      ['no object at all', 'I cannot evaluate this text.', 'Judge reply holds no JSON object: I cannot evaluate this text.'],
     ])('%s, twice: an error that shows what stood in its place, and advice that is true of it', async (_what, reply, message) => {
       const calls = provider(reply);
       const e = envelope(await judge());
@@ -139,7 +138,7 @@ describe('what a caller is told when the judge\'s reply cannot be read', () => {
       expect(e.kind).toBe('malformed_response');
       expect(e.retryable).toBe(false);
       expect(e.message).toContain(message);
-      // It answered with JSON in two of the four: the advice does not say it did not.
+      // It answered with JSON in two of the three: the advice does not say it did not.
       expect(e.recovery.join(' ')).not.toContain('valid JSON');
       expect(e.recovery.join(' ')).toContain('not with the JSON object it was asked for');
       expect(e.recovery.join(' ')).toContain('or the start of it');
@@ -147,14 +146,14 @@ describe('what a caller is told when the judge\'s reply cannot be read', () => {
       expect((await running.storage.queryEvalResults(LOCAL_TENANT, {})).total).toBe(0);
     });
 
-    it('a second reply that is the object alone, with a number, is the answer', async () => {
+    it('a second reply that gives a score is the answer', async () => {
       const calls = provider('{"score":null,"rationale":"as asked","dimensions":{}}', '{"score":0.9,"rationale":"It is.","dimensions":{}}');
       expect(answer(await judge())).toMatchObject({ score: 0.9, passed: true, verdict: { state: 'pass' } });
       expect(calls.judgeCalls()).toBe(2);
     });
 
-    it('the object alone in a fence that names its language after a space is the answer, on one call', async () => {
-      const calls = provider('``` json\n{"score":0.9,"rationale":"It is.","dimensions":{}}\n```');
+    it('the object is read as before, from its first brace to its last: with a sentence before it and a fence around it, it is the answer, on one call', async () => {
+      const calls = provider('Here is the evaluation:\n```json\n{"score":0.9,"rationale":"It is.","dimensions":{}}\n```');
       expect(answer(await judge())).toMatchObject({ score: 0.9, passed: true });
       expect(calls.judgeCalls()).toBe(1);
     });
@@ -178,7 +177,7 @@ describe('what a caller is told when the judge\'s reply cannot be read', () => {
     it.each([
       ['no verdict', '{"confidence":0.9,"rationale":"r"}', 'Citation judge gave no verdict: \\"supported\\" is no value'],
       ['a confidence of null', '{"supported":true,"confidence":null,"rationale":"r"}', 'Citation judge confidence is not a number from 0 to 1: null'],
-      ['a sentence that quotes an object', 'The page quotes the object {"supported": true, "confidence": 1} and I have no verdict of my own to give.', 'Citation judge reply is not the JSON object it was asked for: The page quotes the object'],
+      ['no object at all', 'I cannot answer in the requested format.', 'Citation judge reply holds no JSON object: I cannot answer in the requested format.'],
     ])('one citation, and a reply with %s: an error, nothing stored, and advice about a reply that cannot be read', async (_what, reply, message) => {
       const calls = provider(reply);
       const result = await cite(ONE);
@@ -216,14 +215,14 @@ describe('what a caller is told when the judge\'s reply cannot be read', () => {
       expect(calls.judgeCalls()).toBe(3);
     });
 
-    it('a verdict of "not supported" given with a sentence before it is not judged: the output passes on the citation that was', async () => {
+    it('a verdict of "not supported" given with a sentence before it is read as before, and fails the output', async () => {
       const calls = provider('{"supported":true,"confidence":0.9,"rationale":"It says five."}', 'My verdict:\n{"supported":false,"confidence":0.9,"rationale":"It does not say that."}');
       const body = answer(await cite(TWO));
-      expect(body).toMatchObject({ passed: true, total_judged: 1, total_supported: 1, total_resolved: 2 });
-      const second = (body.citations as Array<{ judge_error?: { kind: string; message: string } }>)[1];
-      expect(second.judge_error).toMatchObject({ kind: 'malformed_judge_response' });
-      expect(second.judge_error!.message).toContain('Citation judge reply is not the JSON object it was asked for: My verdict:');
-      // The citation judge is asked once: there is no second request for it.
+      expect(body).toMatchObject({ passed: false, total_judged: 2, total_supported: 1, total_resolved: 2 });
+      const second = (body.citations as Array<{ judge_error?: unknown; judge?: { supported: boolean } }>)[1];
+      expect(second.judge_error).toBeUndefined();
+      expect(second.judge).toMatchObject({ supported: false });
+      // The citation judge is asked once for each citation.
       expect(calls.judgeCalls()).toBe(2);
     });
 
@@ -268,7 +267,6 @@ describe('what a caller is told when the relevance judge\'s reply cannot be read
   it.each([
     ['no score', '{"score":null,"rationale":"It is about bananas.","dimensions":{}}'],
     ['its score in quotes', '{"score":"0.1","rationale":"It is about bananas.","dimensions":{}}'],
-    ['its score with a sentence before the object', 'Here is the evaluation:\n{"score":0.1,"rationale":"It is about bananas.","dimensions":{}}'],
   ])('%s, twice: the judge did not answer, the rule falls back to a reading that only advises, and the answer says so', async (_what, reply) => {
     const calls = provider(reply);
     const before = await spent(running.client);

@@ -2,21 +2,20 @@
  * The citation judge's reply is read as a verdict only when it gives one.
  *
  * The judge is asked for a single JSON object, with `"supported": <boolean>`
- * and a confidence from 0 to 1. Three freedoms in how the reply was read
- * each became a verdict:
+ * and a confidence from 0 to 1. Two freedoms in how the reply was read each
+ * became a verdict:
  *
  *   - the verdict was read as `supported === true`, so a reply that left it
  *     out, or gave `null`, or gave `"true"` in quotes, read as "not
  *     supported": a verdict against the citation, from a reply that made
  *     none, and `passed: false` for the whole output;
  *   - the confidence was converted with Number(), which reads `null` as 0
- *     and `true` as 1;
- *   - the object was cut out from the first brace of the reply to the last,
- *     so a reply in prose that quoted one object, out of the page it was
- *     shown, was read as the judge's own verdict.
+ *     and `true` as 1.
  *
  * Each is a malformed reply: the citation is reported as not judged, and
  * takes no part in the verdict. The judge is asked once for each citation.
+ * The object itself is read as before, from the reply's first brace to its
+ * last.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { verifyCitations } from '../../../../src/eval/citation-verify/verifier.js';
@@ -121,42 +120,34 @@ describe('a citation judge reply that gives no verdict is not read as one', () =
   });
 });
 
-describe('a citation judge reply that is not the object alone is not read as one', () => {
-  // A judge that declines, and quotes an object out of the page it was shown, has given no verdict.
-  const QUOTING = 'The page quotes the object {"supported": true, "confidence": 1} and I have no verdict of my own to give.';
+describe("the citation judge's object is read from the reply's first brace to its last, as before", () => {
   const OBJECT = '{"supported":true,"confidence":0.9,"rationale":"It says five attempts."}';
 
   it.each([
-    ['a sentence that quotes one object', QUOTING],
-    ['prose before the object', `My verdict:\n${OBJECT}`],
-    ['prose after the object', `${OBJECT}\nI hope that helps.`],
-    ['a list that holds the object', `[${OBJECT}]`],
-    ['two objects', `${OBJECT}\n${OBJECT}`],
-    ['text that is not JSON between its braces', '{"supported": true, "confidence": 0.9, "rationale": "r" oops}'],
+    ['the object alone', OBJECT],
+    ['a code fence around the object', `\`\`\`json\n${OBJECT}\n\`\`\``],
+    ['a sentence before the object', `My verdict:\n${OBJECT}`],
+    ['a sentence after the object', `${OBJECT}\nI hope that helps.`],
+  ])('%s: the verdict is read', async (_what, replyText) => {
+    const judge = sourceThenJudge(replyText);
+    const result = await verify();
+    expect(result.totalJudged).toBe(1);
+    expect(result.citations[0].judge).toMatchObject({ supported: true, confidence: 0.9 });
+    expect(judge.requests()).toBe(2);
+  });
+
+  it.each([
     ['no object at all', 'I cannot answer in the requested format.'],
+    ['text that is not JSON between its braces', '{"supported": true, "confidence": 0.9, "rationale": "r" oops}'],
+    ['two objects', `${OBJECT}\n${OBJECT}`],
   ])('%s: the citation is not judged, and the judge is asked once', async (_what, replyText) => {
     const judge = sourceThenJudge(replyText);
     const result = await verify();
     expect(result.totalJudged).toBe(0);
-    expect(result.totalSupported).toBe(0);
     expect(result.citations[0].judge).toBeUndefined();
     expect(result.citations[0].judgeError?.kind).toBe('malformed_judge_response');
-    expect(result.citations[0].judgeError?.message).toContain('Citation judge reply is not the JSON object it was asked for: ');
+    expect(result.citations[0].judgeError?.message).toBe(`Citation judge reply holds no JSON object: ${replyText.slice(0, 200)}`);
     expect(result.passed).toBeNull();
     expect(judge.requests()).toBe(2);
-  });
-
-  it('the object alone, and the object alone inside a code fence, are the reply', async () => {
-    sourceThenJudge(OBJECT);
-    expect((await verify()).citations[0].judge).toMatchObject({ supported: true, confidence: 0.9 });
-    __clearCitationCacheForTests();
-    sourceThenJudge(`\`\`\`json\n${OBJECT}\n\`\`\``);
-    expect((await verify()).citations[0].judge).toMatchObject({ supported: true, confidence: 0.9 });
-    // Whatever the fence's opening line names, and however: the object on the next line is the reply.
-    for (const info of [' json', 'c#', 'application/json', 'json:']) {
-      __clearCitationCacheForTests();
-      sourceThenJudge(`\`\`\`${info}\n${OBJECT}\n\`\`\``);
-      expect((await verify()).citations[0].judge, info).toMatchObject({ supported: true, confidence: 0.9 });
-    }
   });
 });

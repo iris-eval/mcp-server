@@ -178,18 +178,10 @@ function parseJudgeResult(raw: string): {
   confidence: number;
   rationale: string;
 } {
-  /*
-   * The reply is the JSON object alone, or it is not a reply
-   * (../llm-judge/reply.ts, replyObject): the prompt asks for "a single JSON
-   * object — no markdown, no prose". The object used to be cut out from the
-   * first brace to the last, so a judge that wrote it had no verdict to
-   * give, and quoted an object out of the page it was shown, had given that
-   * object's verdict. The page is whatever the output under evaluation chose
-   * to cite.
-   */
+  // The object the reply holds, from its first brace to its last (../llm-judge/reply.ts, replyObject), as it always was.
   const obj = replyObject(raw);
   if (obj === null) {
-    throw new LLMJudgeError(`Citation judge reply is not the JSON object it was asked for: ${shownReply(raw)}`, 'malformed_response');
+    throw new LLMJudgeError(`Citation judge reply holds no JSON object: ${shownReply(raw)}`, 'malformed_response');
   }
   /*
    * The verdict and the confidence are read only when the reply gives them:

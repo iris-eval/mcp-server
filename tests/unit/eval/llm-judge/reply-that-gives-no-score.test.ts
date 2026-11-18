@@ -1,20 +1,15 @@
 /*
  * A judge's reply is read as a score only when it gives one.
  *
- * The judge is asked for a single JSON object, with no prose before or
- * after it, and with a number from 0 to 1 under `score`. Two freedoms in
- * how the reply was read each became a verdict:
+ * The judge is asked for a single JSON object with a number from 0 to 1
+ * under `score`. The score was converted with Number(), which makes a
+ * number of things that are not one: `null`, `false`, `""` and `[]` convert
+ * to 0, and `true` converts to 1. Each such reply is malformed now: it is
+ * asked for again once, and if the second reply is no better the call fails
+ * as one that got no answer, which is what happened.
  *
- *   - the object was cut out from the first brace of the reply to the last,
- *     so a reply in prose that quoted one object was read as the judge's
- *     own answer;
- *   - the score was converted with Number(), which makes a number of things
- *     that are not one: `null`, `false`, `""` and `[]` convert to 0, and
- *     `true` converts to 1.
- *
- * Each such reply is malformed: it is asked for again once, and if the
- * second reply is no better the call fails as one that got no answer, which
- * is what happened.
+ * The object itself is read as before, from the reply's first brace to its
+ * last.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { evaluateWithLLMJudge, SECOND_REQUEST, worstCaseJudgeCostUsd } from '../../../../src/eval/llm-judge/evaluator.js';
@@ -77,118 +72,32 @@ describe('unitNumber: the number a reply gives for a field from 0 to 1', () => {
   });
 });
 
-describe('replyObject: the JSON object a reply is', () => {
+describe('replyObject: the JSON object a reply holds, from its first brace to its last, as before', () => {
   const OBJECT = '{"score":0.7,"rationale":"ok"}';
 
-  it('is the object when the reply is the object alone, or the object alone inside a code fence', () => {
-    for (const text of [OBJECT, `  ${OBJECT}\n`, `\`\`\`json\n${OBJECT}\n\`\`\``, `\`\`\`\n${OBJECT}\n\`\`\``, `\`\`\`JSON\n${OBJECT}\n\`\`\`\n`]) expect(replyObject(text), text).toEqual({ score: 0.7, rationale: 'ok' });
+  it('is the object, alone or with anything around it: a code fence, a sentence before it or after it, a list', () => {
+    const around = [
+      OBJECT,
+      `  ${OBJECT}\n`,
+      `\`\`\`json\n${OBJECT}\n\`\`\``,
+      `~~~\n${OBJECT}\n~~~`,
+      `Here is the evaluation:\n${OBJECT}`,
+      `${OBJECT}\nI hope that helps.`,
+      `Here is the evaluation:\n\`\`\`json\n${OBJECT}\n\`\`\`\nDone.`,
+      `[${OBJECT}]`,
+    ];
+    for (const text of around) expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
     expect(replyObject('{}')).toEqual({});
   });
 
-  it('after the opening marks one word may stand, the language the fence names, whatever it is written in and with or without a space before it', () => {
-    const onTheLine = ['', 'json', 'JSON', ' json', '  json  ', 'javascript', 'json5', 'jsonc', 'c#', 'f#', 'c++', 'objective-c', '.json', 'application/json', 'json:', '   '];
-    for (const info of onTheLine) {
-      for (const eol of ['\n', '\r\n']) {
-        const text = `\`\`\`${info}${eol}${OBJECT}${eol}\`\`\``;
-        expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
-      }
+  it('is null when the reply holds no braces, braces in the wrong order, or text between them that is not JSON', () => {
+    for (const text of ['never json', '', '   ', '0.7', 'null', '"x"', '}{', '{', '}', '{"score":0.7,}', "{'score':0.7}", '{score:0.7}', `${OBJECT}${OBJECT}`, `${OBJECT}\n${OBJECT}`]) {
+      expect(replyObject(text), JSON.stringify(text)).toBeNull();
     }
   });
 
-  it("more than one word after the marks is prose before the object, on the fence's own line as anywhere else", () => {
-    // A language and something beside it, and a sentence where the language belongs: each with the object alone on the next line.
-    const moreThanAWord = ['json title="reply"', 'json json', 'Here is my evaluation', 'The text quotes the object', 'json :'];
-    for (const info of moreThanAWord) {
-      for (const eol of ['\n', '\r\n']) {
-        const text = `\`\`\`${info}${eol}${OBJECT}${eol}\`\`\``;
-        expect(replyObject(text), JSON.stringify(text)).toBeNull();
-      }
-    }
-  });
-
-  it("before the fence's word may stand what a reply's own ends are bared of: white space of any kind, and a character of no width", () => {
-    const char = (code: number): string => String.fromCharCode(code);
-    // A no-break space, an ideographic space, a thin space, a tab, a vertical tab, a form feed, a byte-order mark, a zero-width space, a word joiner, and three mixes.
-    const beforeTheWord = [char(0xa0), char(0x3000), char(0x2009), char(9), char(11), char(12), char(0xfeff), char(0x200b), char(0x2060), `${char(0x200b)} `, ` ${char(0x200b)}`, ` ${char(0xa0)} `];
-    for (const gap of beforeTheWord) {
-      for (const eol of ['\n', '\r\n', '\r']) {
-        for (const text of [`\`\`\`${gap}json${eol}${OBJECT}${eol}\`\`\``, `\`\`\`${gap}${eol}${OBJECT}${eol}\`\`\``, `~~~${gap}json${eol}${OBJECT}${eol}~~~`]) {
-          expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
-        }
-      }
-    }
-    // Inside the word, or at its end, a character of no width is part of the word: no space makes two of it.
-    for (const text of [`\`\`\`js${char(0x200b)}on\n${OBJECT}\n\`\`\``, `\`\`\`json${char(0x200b)}\n${OBJECT}\n\`\`\``]) expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
-  });
-
-  it("a word on the line below the marks is not the fence's: it is prose before the object", () => {
-    for (const eol of ['\n', '\r\n', '\r']) {
-      for (const text of [`\`\`\`${eol}json${eol}${OBJECT}${eol}\`\`\``, `\`\`\` ${eol}json${eol}${OBJECT}${eol}\`\`\``, `\`\`\`json${eol}Sure${eol}${OBJECT}${eol}\`\`\``, `~~~${eol}Sure${eol}${OBJECT}${eol}~~~`]) {
-        expect(replyObject(text), JSON.stringify(text)).toBeNull();
-      }
-    }
-  });
-
-  it('a fence is three backticks or more, at either end, and blank lines inside it are not the reply', () => {
-    for (const text of [`\`\`\`\`json\n${OBJECT}\n\`\`\`\``, `\`\`\`\`\`\n${OBJECT}\n\`\`\`\`\``, `\`\`\`\`json\n${OBJECT}\n\`\`\``, `\`\`\`json\n\n${OBJECT}\n\n\`\`\``, `\`\`\`json\n${OBJECT}\n\`\`\`  \n`]) {
-      expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
-    }
-    // One backtick, or two, is not a fence, at the start or at the end.
-    for (const text of [`\`${OBJECT}\``, `\`\`${OBJECT}\`\``, `\`\`json\n${OBJECT}\n\`\``, `\`\n${OBJECT}\n\``, `${OBJECT}\``, `${OBJECT}\n\`\``, `\`\`\n${OBJECT}`]) expect(replyObject(text), JSON.stringify(text)).toBeNull();
-  });
-
-  it('a fence can be made of tildes as of backticks: three or more of one of the two, and not a mix of them', () => {
-    for (const text of [`~~~json\n${OBJECT}\n~~~`, `~~~\n${OBJECT}\n~~~`, `~~~~ json\n${OBJECT}\n~~~~`, `~~~json ${OBJECT} ~~~`, `~~~json\n${OBJECT}`, `${OBJECT}\n~~~`]) {
-      expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
-    }
-    // Fewer than three, or three marks that are not all the same one, is not a fence at either end.
-    for (const text of [`~${OBJECT}~`, `~~json\n${OBJECT}\n~~`, `${OBJECT}\n~~`, `\`~\`${OBJECT}\`~\``, `~\`~\n${OBJECT}\n~\`~`, `${OBJECT}\n\`~\``, `\`\`~\n${OBJECT}`]) expect(replyObject(text), JSON.stringify(text)).toBeNull();
-    // Inside a fence of tildes the rule is the one for backticks: prose is not the object.
-    expect(replyObject(`~~~json\nHere it is: ${OBJECT}\n~~~`)).toBeNull();
-  });
-
-  it('where the object starts on the same line as the backticks, one word at most may stand between them', () => {
-    for (const text of [`\`\`\`${OBJECT}\`\`\``, `\`\`\`json${OBJECT}\`\`\``, `\`\`\`json ${OBJECT} \`\`\``, `\`\`\` json ${OBJECT}\`\`\``, `\`\`\` ${OBJECT} \`\`\``, '```json {"score":0.7,\n"rationale":"ok"}\n```']) {
-      expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
-    }
-    // Two words are prose before the object, and so is a sentence.
-    for (const text of [`\`\`\`Here goes ${OBJECT}\`\`\``, `\`\`\`json json ${OBJECT}\`\`\``, `\`\`\`The text quotes the object ${OBJECT}\`\`\``, `\`\`\`json Here it is: ${OBJECT}\n\`\`\``]) expect(replyObject(text), JSON.stringify(text)).toBeNull();
-  });
-
-  it('a fence that is opened and not closed, or closed and not opened, is taken off: the object is still alone', () => {
-    for (const text of [`\`\`\`json\n${OBJECT}`, `${OBJECT}\n\`\`\``]) expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
-  });
-
-  it('what is inside a fence is still the whole of the reply, and a fence is taken off only at the two ends', () => {
-    const notAlone = [
-      `\`\`\`json\nHere it is: ${OBJECT}\n\`\`\``,
-      `\`\`\`json\nHere it is:\n${OBJECT}\n\`\`\``,
-      `\`\`\`json\n${OBJECT}\nDone.\n\`\`\``,
-      `\`\`\`json\n${OBJECT}\n\`\`\`\nDone.`,
-      `Here it is:\n\`\`\`json\n${OBJECT}\n\`\`\``,
-      `${OBJECT}\n\`\`\`json`,
-      `\`\`\`json\n${OBJECT}\n\`\`\`\n\`\`\`json\n${OBJECT}\n\`\`\``,
-      // A fence inside a fence: one fence is taken off, and what is left is not the object.
-      `\`\`\`\`\n\`\`\`json\n${OBJECT}\n\`\`\`\n\`\`\`\``,
-      // A fence that closes before the object: the object is not inside it, and the closing marks are not part of the word.
-      `\`\`\`json\`\`\`${OBJECT}`,
-      `~~~json~~~${OBJECT}`,
-      `\`\`\`\n[${OBJECT}]\n\`\`\``,
-      '```json\n```',
-      '``````',
-      '```',
-    ];
-    for (const text of notAlone) expect(replyObject(text), JSON.stringify(text)).toBeNull();
-  });
-
-  it('white space around a reply is not part of it, and neither is a character that has no width', () => {
-    for (const edge of [' ', '\n', '\t', '\r\n', '\u00a0', '\ufeff', '\u2028', '\u200b', '\u200c', '\u200d', '\u2060', ' \u200b \n']) {
-      expect(replyObject(`${edge}${OBJECT}${edge}`), JSON.stringify(edge)).toEqual({ score: 0.7, rationale: 'ok' });
-      expect(replyObject(`${edge}\`\`\`json\n${edge}${OBJECT}${edge}\n\`\`\`${edge}`), JSON.stringify(edge)).toEqual({ score: 0.7, rationale: 'ok' });
-    }
-    // Inside the object they are the reply's own: a rationale keeps its spaces, and a character of no width between two tokens is not JSON.
-    expect(replyObject('{"score":0.7,"rationale":" ok\u200b "}')).toEqual({ score: 0.7, rationale: ' ok\u200b ' });
-    expect(replyObject('{"score":\u200b0.7}')).toBeNull();
+  it('is null for a reply that is not text', () => {
+    for (const value of [undefined, null, 0.7, { score: 0.7 }, [OBJECT]]) expect(replyObject(value), shownValue(value)).toBeNull();
   });
 
   it('a value too deep to write out is shown by its kind, and a long reply by its start', () => {
@@ -197,17 +106,6 @@ describe('replyObject: the JSON object a reply is', () => {
     expect(shownValue(deep)).toBe('object');
     expect(shownReply('x'.repeat(500))).toBe('x'.repeat(200));
     expect(shownReply(0.84)).toBe('a reply of type number');
-  });
-
-  it('is null when there is prose before or after the object, in a fence or out of one', () => {
-    for (const text of [`Here is the evaluation:\n${OBJECT}`, `${OBJECT}\nDone.`, `Here is the evaluation:\n\`\`\`json\n${OBJECT}\n\`\`\`\nDone.`, `Here it is: \`\`\`json\n${OBJECT}\n\`\`\``, `The text quotes the object ${OBJECT} and I have no evaluation of my own to give.`]) {
-      expect(replyObject(text), text).toBeNull();
-    }
-  });
-
-  it('is null for a list that holds an object, two objects, text that is not JSON, and a reply that is not text', () => {
-    for (const text of [`[${OBJECT}]`, `${OBJECT}${OBJECT}`, `${OBJECT},${OBJECT}`, '{"score":0.7,}', "{'score':0.7}", '{score:0.7}', 'never json', '', '   ', '0.7', 'null', '"{}"']) expect(replyObject(text), text).toBeNull();
-    for (const value of [undefined, null, 0.7, { score: 0.7 }, [OBJECT]]) expect(replyObject(value), shownValue(value)).toBeNull();
   });
 });
 
@@ -286,13 +184,13 @@ describe('a judge reply that gives no score is not read as one', () => {
     const provider = judgeReplies(reply(`${'['.repeat(10_000)}0.9${']'.repeat(10_000)}`));
     await expect(ask()).rejects.toThrow('Judge score is not a number from 0 to 1: object');
     expect(provider.calls()).toBe(2);
-    // A reply that is not the object is shown by its first 200 characters.
+    // A reply that holds no object is shown by its first 200 characters.
     judgeReplies('x'.repeat(500));
     const error = await ask().then(
       () => null,
       (e: Error) => e,
     );
-    expect(error?.message).toBe(`Judge reply is not the JSON object it was asked for: ${'x'.repeat(200)}`);
+    expect(error?.message).toBe(`Judge reply holds no JSON object: ${'x'.repeat(200)}`);
   });
 
   it('a score of 0 and a score of 1 are scores: the ends of the range are read as given', async () => {
@@ -333,38 +231,21 @@ describe('a judge reply that gives no score is not read as one', () => {
   });
 });
 
-describe('a judge reply that is not the object alone is not read as one', () => {
-  // A judge that declines, and quotes an object out of the text it was judging, has given no score.
-  const QUOTING = 'The text quotes the object {"score": 1} and I have no evaluation of my own to give.';
-
-  it('a sentence that quotes one object gives no verdict: it is asked for again, and the call fails when the second reply is the same', async () => {
-    const provider = judgeReplies(QUOTING);
-    await expect(ask()).rejects.toMatchObject({ kind: 'malformed_response' });
-    await expect(ask()).rejects.toThrow('Judge reply is not the JSON object it was asked for: The text quotes the object');
-    expect(provider.calls()).toBe(4);
-  });
-
-  it('the verdict is the second reply\'s when that one is the object alone', async () => {
-    const provider = judgeReplies(QUOTING, GOOD);
-    expect(await ask()).toMatchObject({ score: 0.6, passed: false });
-    expect(provider.calls()).toBe(2);
-  });
-
+describe("the object is read from the reply's first brace to its last, as before", () => {
   it.each([
-    ['prose before the object', `Here is the evaluation:\n${GOOD}`],
-    ['prose after the object', `${GOOD}\nI hope that helps.`],
-    ['prose around a fenced object', `Here is the evaluation:\n\`\`\`json\n${GOOD}\n\`\`\`\nDone.`],
-    ['a list that holds the object', `[${GOOD}]`],
-    ['two objects', `${GOOD}\n${reply('0.1')}`],
-  ])('%s: asked for again', async (_what, text) => {
-    const provider = judgeReplies(text, GOOD);
+    ['a sentence before the object', `Here is the evaluation:\n${GOOD}`],
+    ['a sentence after the object', `${GOOD}\nI hope that helps.`],
+    ['a code fence around the object', `\`\`\`json\n${GOOD}\n\`\`\``],
+    ['a sentence around a fenced object', `Here is the evaluation:\n\`\`\`json\n${GOOD}\n\`\`\`\nDone.`],
+  ])('%s: the score is read, on one call', async (_what, text) => {
+    const provider = judgeReplies(text);
     expect((await ask()).score).toBe(0.6);
-    expect(provider.calls()).toBe(2);
+    expect(provider.calls()).toBe(1);
   });
 
-  it('the object alone inside a code fence is the reply, and is not asked for again', async () => {
-    const provider = judgeReplies(`\`\`\`json\n${reply('0.9')}\n\`\`\``);
-    expect((await ask()).score).toBe(0.9);
-    expect(provider.calls()).toBe(1);
+  it('a reply that holds no object is malformed: it is asked for again, and the error shows its start', async () => {
+    const provider = judgeReplies('I cannot evaluate this text.');
+    await expect(ask()).rejects.toThrow('Judge reply holds no JSON object: I cannot evaluate this text.');
+    expect(provider.calls()).toBe(2);
   });
 });

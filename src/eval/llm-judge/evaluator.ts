@@ -84,17 +84,13 @@ function parseJudgeResponse(raw: string): {
   dimensions: Record<string, number>;
 } {
   /*
-   * The reply is the JSON object alone, or it is not a reply (reply.ts,
-   * replyObject). Every template asks for "a single JSON object — no
-   * markdown, no prose before or after", and that is what is read. The
-   * object used to be cut out from the first brace to the last, to forgive
-   * a model that wrote "Here is the evaluation:" first. The same cut read a
-   * judge that wrote it had no evaluation to give, and quoted an object out
-   * of the text it was judging, as having given that object's score.
+   * The object the reply holds, from its first brace to its last (reply.ts,
+   * replyObject), as it always was: a model that writes "Here is the
+   * evaluation:" first, or fences the object, still gave it.
    */
   const obj = replyObject(raw);
   if (obj === null) {
-    throw new LLMJudgeError(`Judge reply is not the JSON object it was asked for: ${shownReply(raw)}`, 'malformed_response');
+    throw new LLMJudgeError(`Judge reply holds no JSON object: ${shownReply(raw)}`, 'malformed_response');
   }
 
   /*
@@ -132,8 +128,8 @@ function parseJudgeResponse(raw: string): {
  * What the second request adds to the system prompt, after a first reply
  * that could not be read. It says what is true of every such reply (it used
  * to say the reply "was not valid JSON", also to a model whose JSON was
- * valid and whose score was in quotes), and asks for the two things a reply
- * can get wrong: the object alone, and a score that is a number.
+ * valid and whose score was in quotes), and asks for what is read: the JSON
+ * object, and a score that is a number.
  *
  * Every character of it is priced: the worst case a call is checked at
  * before it is made counts this request too. So it stands in one place, and

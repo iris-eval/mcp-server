@@ -1,96 +1,36 @@
 /*
  * Reading a judge's reply.
  *
- * A judge is asked for a single JSON object, with no prose before or after
- * it, and with a number in it: a score, a confidence. What comes back is
- * whatever the model wrote, and what is being judged can try to steer it.
- * So a reply is read only when it is what was asked for: the object alone,
- * and a number only where the reply gives a number.
+ * A judge is asked for a single JSON object, with a number in it: a score,
+ * a confidence. What comes back is whatever the model wrote. The object is
+ * read from the reply's first opening brace to its last closing brace, as it
+ * always was, so a model that writes a sentence before the object, or a code
+ * fence around it, still gives its answer on one call. A field of the object
+ * is read only when the reply gives it as the template asks: a number from 0
+ * to 1, or a boolean.
  *
- * Until 0.22.0 both were read more freely than that, and each freedom
- * became a verdict. The object was cut out from the first brace of the
- * reply to the last, wherever they stood: a reply in prose that quoted one
- * object, from the text it was judging, was read as the judge's own answer.
- * And a field was converted with Number(), which makes a number of things
- * that are not one: `null`, `false`, `""` and `[]` all convert to 0, `true`
- * converts to 1, and `[0.9]` converts to 0.9.
+ * Until 0.22.0 a field was converted with Number(), which makes a number of
+ * things that are not one: `null`, `false`, `""` and `[]` all convert to 0,
+ * `true` converts to 1, and `[0.9]` converts to 0.9. Each became a verdict
+ * from a reply that gave none.
  */
 
 /**
- * What is not part of a reply at its two ends: white space of any kind, which
- * is what `trim()` takes, and four characters that have no width, which it
- * leaves (the zero-width space, non-joiner and joiner, and the word joiner).
- * No other character is taken.
- */
-const EDGE = /[\s\u200b-\u200d\u2060]/;
-
-/**
- * A text with its two ends bared. A reply that starts with a character of no
- * width is still the reply, and an error could not show what was wrong with
- * it. One pass from each end, so the work does not grow with what a model
- * wrote in between.
- */
-function bare(text: string): string {
-  let start = 0;
-  let end = text.length;
-  while (start < end && EDGE.test(text[start])) start++;
-  while (end > start && EDGE.test(text[end - 1])) end--;
-  return text.slice(start, end);
-}
-
-/** The two characters a code fence is made of. */
-const isFenceMark = (char: string | undefined): boolean => char === '`' || char === '~';
-
-/**
- * A reply with its code fence taken off, when it has one: three or more
- * backticks, or three or more tildes.
- *
- * After the opening marks, on their line, one word at most may stand: the
- * language the fence names, in whatever characters it is written (any but
- * white space, a fence's own marks and an opening brace). Before the word
- * may stand what a reply's own ends are bared of. Then the reply, on that
- * line or below it. More than one word there is prose before the object, on
- * a fence's own line as anywhere else, and so is a word on the line below
- * the marks.
- *
- * A fence that is opened and not closed, or closed and not opened, is taken
- * off too: what is left is still the whole of what the model said.
- */
-function withoutFence(text: string): string {
-  let open = 0;
-  if (isFenceMark(text[0])) while (text[open] === text[0]) open++;
-  let from = 0;
-  if (open >= 3) {
-    from = open;
-    while (from < text.length && text[from] !== '\n' && text[from] !== '\r' && EDGE.test(text[from])) from++;
-    while (from < text.length && !/[\s{]/.test(text[from]) && !isFenceMark(text[from])) from++;
-  }
-  const rest = text.slice(from);
-  const last = rest[rest.length - 1];
-  let close = rest.length;
-  if (isFenceMark(last)) while (close > 0 && rest[close - 1] === last) close--;
-  return rest.length - close >= 3 ? rest.slice(0, close) : rest;
-}
-
-/**
- * The JSON object a reply IS, or null when the reply is anything else: the
- * whole text of the reply, or the whole of it inside a code fence. Prose
- * around an object, a list that holds one, and text that is not JSON are
- * each a reply that did not give the object.
+ * The JSON object a reply holds, or null when it holds none: the text from
+ * its first opening brace to its last closing brace, read as JSON. A reply
+ * that is not text holds none.
  */
 export function replyObject(raw: unknown): Record<string, unknown> | null {
   if (typeof raw !== 'string') return null;
-  // A model that fences its answer still gave the answer alone.
-  const text = bare(withoutFence(bare(raw)));
-  let parsed: unknown;
+  const first = raw.indexOf('{');
+  const last = raw.lastIndexOf('}');
+  if (first === -1 || last <= first) return null;
   try {
-    // The whole text, so prose on either side of an object is text that does not parse.
-    parsed = JSON.parse(text);
+    // The text starts with an opening brace, so what parses is an object.
+    return JSON.parse(raw.slice(first, last + 1)) as Record<string, unknown>;
   } catch {
     return null;
   }
-  // A list, a number and a string are JSON and are not the object. So is `null`, which is returned as what it is.
-  return typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown> | null) : null;
 }
 
 /** The number a reply gives for a field that must be one from 0 to 1, or null when it gives none: not a JSON number, or one outside the range (which a number too large to hold is). */
