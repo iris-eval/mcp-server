@@ -22,6 +22,7 @@ import * as migration020 from './020-eval-reference-trace.js';
 import * as migration021 from './021-eval-verdict-state.js';
 import * as migration022 from './022-trace-capture.js';
 import * as migration023 from './023-case-runs.js';
+import * as migration024 from './024-label-row-origin.js';
 import { PKG_VERSION } from '../../config/defaults.js';
 import { compareVersions, isVersion, latestVersion } from '../../utils/versions.js';
 
@@ -76,6 +77,7 @@ const migrations: Migration[] = [
   migration021,
   migration022,
   migration023,
+  migration024,
 ];
 
 /** Every migration this build knows, in order. */

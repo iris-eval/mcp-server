@@ -103,24 +103,39 @@ export function publishedRuleNames(): string[] {
  * A prior estimated from a deployment's labels, which 0.14.0 through 0.21.0
  * used, is a continuous number that moved as the deployment labelled, so
  * that was reachable. The map is bounded, least recently used out.
+ *
+ * What it keeps is three numbers (point, lo, hi), never the object a caller
+ * is handed (0.22.0). It kept the object, and handed the same one to every
+ * row of that rule in every evaluation the process made. Two things were
+ * wrong with that. A caller that changed a result changed what every later
+ * result said. And on Node 24 and 26 the engine's compiler can make two
+ * objects built by one piece of code share the storage of their fractional
+ * numbers (runtime-guard.ts): the objects built here were kept for the life
+ * of the process, and one rule's rows then read another rule's interval
+ * until the process ended. A typed array holds numbers as numbers, which
+ * nothing can share, and each caller now gets an object of its own.
  */
 const MEMO_MAX = 4096;
-const memo = new Map<string, Interval | null>();
+type Kept = Float64Array | null;
+const memo = new Map<string, Kept>();
 const key = (ruleName: string, prevalence: number, which: 'ppv' | 'miss'): string => `${which}:${ruleName}:${String(prevalence)}`;
 
-function remember(k: string, value: Interval | null): Interval | null {
+function remember(k: string, value: Kept): Kept {
   memo.set(k, value);
   if (memo.size > MEMO_MAX) memo.delete(memo.keys().next().value!);
   return value;
 }
 
-function recall(k: string): Interval | null | undefined {
+function recall(k: string): Kept | undefined {
   if (!memo.has(k)) return undefined;
   const value = memo.get(k) ?? null;
   memo.delete(k);
   memo.set(k, value);
   return value;
 }
+
+/** A new object for each caller, from the numbers kept. */
+const handOut = (kept: Kept): Interval | null => (kept === null ? null : { point: kept[0], lo: kept[1], hi: kept[2] });
 
 /*
  * The posterior draws of sensitivity and specificity. The seed names the
@@ -150,15 +165,20 @@ function sampleInterval(
   prevalence: number,
   seed: string,
   fn: (sens: number, spec: number, prevalence: number) => number,
-): Interval | null {
+): Kept {
   const sens = sensitivity(counts);
   const spec = specificity(counts);
   if (sens === null || spec === null) return null;
   const drawn = drawsFor(counts, seed);
+  // Made before the loop, and filled after it: nothing is built once the loop has run (see the memo's note).
+  const kept = new Float64Array(3);
   const draws: number[] = [];
   for (let i = 0; i < INTERVAL_DRAWS; i++) draws.push(fn(drawn.sens[i], drawn.spec[i], prevalence));
   const [lo, hi] = percentile95(draws);
-  return { point: round4(fn(sens, spec, prevalence)), lo: round4(lo), hi: round4(hi) };
+  kept[0] = round4(fn(sens, spec, prevalence));
+  kept[1] = round4(lo);
+  kept[2] = round4(hi);
+  return kept;
 }
 
 /**
@@ -169,18 +189,18 @@ function sampleInterval(
 export function ppvInterval(ruleName: string, prevalence: number = DEFAULT_PREVALENCE): Interval | null {
   const k = key(ruleName, prevalence, 'ppv');
   const known = recall(k);
-  if (known !== undefined) return known;
+  if (known !== undefined) return handOut(known);
   const counts = publishedAccuracyFor(ruleName);
-  return remember(k, counts ? sampleInterval(counts, prevalence, `ppv:${ruleName}:${PUBLISHED_ACCURACY_CORPUS_VERSION}`, ppv) : null);
+  return handOut(remember(k, counts ? sampleInterval(counts, prevalence, `ppv:${ruleName}:${PUBLISHED_ACCURACY_CORPUS_VERSION}`, ppv) : null));
 }
 
 /** P(violation | the rule did not fire) at a prevalence with a 95% credible interval, for a rule that did NOT fire. */
 export function missRateInterval(ruleName: string, prevalence: number = DEFAULT_PREVALENCE): Interval | null {
   const k = key(ruleName, prevalence, 'miss');
   const known = recall(k);
-  if (known !== undefined) return known;
+  if (known !== undefined) return handOut(known);
   const counts = publishedAccuracyFor(ruleName);
-  return remember(k, counts ? sampleInterval(counts, prevalence, `miss:${ruleName}:${PUBLISHED_ACCURACY_CORPUS_VERSION}`, missRate) : null);
+  return handOut(remember(k, counts ? sampleInterval(counts, prevalence, `miss:${ruleName}:${PUBLISHED_ACCURACY_CORPUS_VERSION}`, missRate) : null));
 }
 
 /** PPV at several prevalences — the field-prevalence table a reader needs beside a published precision. */

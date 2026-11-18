@@ -72,6 +72,7 @@ import { listBackups } from './storage/backup.js';
 import { currentEnvironment, type Environment } from './cli/install/clients.js';
 import { joinNames, pinsBelow, readClientPins } from './cli/install/pins.js';
 import { upgradeCommand } from './cli/upgrade-notice.js';
+import { runtimeLine } from './runtime-guard.js';
 
 const CHECK = '✓';
 const CROSS = '✗';
@@ -710,6 +711,7 @@ export async function runSelfTest(write: WriteLine = stdoutLine, options: SelfTe
   write(`version   ${PKG_VERSION}`);
   write(`home      ${userHome}`);
   write(`storage   ${userStoragePath}`);
+  write(`runtime   ${runtimeLine()}`);
   write(
     failedSteps.length === 0
       ? SELF_TEST_PASS_VERDICT

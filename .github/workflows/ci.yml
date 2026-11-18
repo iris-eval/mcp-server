@@ -240,7 +240,13 @@ jobs:
       # npm drops this optional native module silently when its download fails; the script says why it checks.
       - if: matrix.driver == 'native'
         run: bash scripts/ci/native-sqlite-installed.sh
-      - run: npx vitest run tests/unit/storage/migration-015.test.ts tests/unit/storage/trace-search.test.ts tests/unit/storage/search-query.test.ts tests/unit/tools/get-traces-search.test.ts tests/unit/storage/stepped-maintenance.test.ts tests/unit/storage/checkpointer.test.ts tests/unit/storage/driver.test.ts tests/unit/storage/erasure.test.ts
+      # On a Windows runner, a test that opens a store (its migrations, its search index, a checkpoint) has run past
+      # the 5 s a test is given in CI: erasure.test.ts's Latin and CJK cases at 5,256 and 5,922 ms (run 44384505820),
+      # driver.test.ts's matrix-cell case at 16,401 ms (run 44344507195), each passing on the Linux runners of the
+      # same commit. On Windows the limit is 30 s, the one a test is given on a busy machine (vitest.config.ts).
+      - run: npx vitest run tests/unit/storage/migration-015.test.ts tests/unit/storage/trace-search.test.ts tests/unit/storage/search-query.test.ts tests/unit/tools/get-traces-search.test.ts tests/unit/storage/stepped-maintenance.test.ts tests/unit/storage/checkpointer.test.ts tests/unit/storage/driver.test.ts tests/unit/storage/erasure.test.ts ${TEST_TIMEOUT:+"$TEST_TIMEOUT"}
+        env:
+          TEST_TIMEOUT: ${{ runner.os == 'Windows' && '--testTimeout=30000' || '' }}
 
   # The retention sweep, the merge it owes, the erasure of a retired search
   # index and the index build run in steps of about 50 ms with the event loop
