@@ -10,10 +10,10 @@
  * limits, so a client can follow them with resources/read instead of
  * guessing a URI.
  *
- * `errorResult` is the failure shape: the IrisError envelope as the text
- * and as structuredContent, `isError: true`, and a link to
- * iris://capabilities. `guarded` wraps a handler so nothing thrown inside
- * it reaches the SDK's flattener.
+ * `errorResult` is the failure shape: the IrisError envelope as the text,
+ * `isError: true`, and a link to iris://capabilities. It carries no
+ * structuredContent (see there). `guarded` wraps a handler so nothing
+ * thrown inside it reaches the SDK's flattener.
  */
 import { z } from 'zod';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -77,11 +77,25 @@ export const errorEnvelopeSchema = z.looseObject({
 });
 export type ErrorEnvelope = z.infer<typeof errorEnvelopeSchema>;
 
+/**
+ * A tool's failure: the envelope as JSON text, `isError: true`, and a link
+ * to iris://capabilities.
+ *
+ * The envelope is not sent as `structuredContent`. A tool's structured
+ * content is what its output schema describes, and that schema describes
+ * the tool's answer, not this envelope: a client built on the MCP SDK
+ * checks structured content against the schema on every result once it has
+ * listed the tools, an error result's too, and threw the whole result away
+ * ("Structured content does not match the tool's output schema"). The
+ * code, the message and the recovery steps never reached it. Sent as text
+ * alone, the envelope reaches every client: the SDK's server does not check
+ * an error result against the output schema, and its client checks
+ * structured content only where there is some. The text is the same object.
+ */
 export function errorResult(err: IrisError): CallToolResult {
   const body = normalise({ error: err.envelope });
   return {
     content: [{ type: 'text', text: JSON.stringify(body) }, linkItem(CAPABILITIES_LINK)],
-    structuredContent: body,
     isError: true,
   };
 }
