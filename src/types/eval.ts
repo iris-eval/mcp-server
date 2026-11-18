@@ -837,8 +837,10 @@ export interface EvalRuleResult {
   asked?: 'config' | 'call';
   /**
    * On a result that could not answer though there was something to judge,
-   * of a rule that compares against a number a deployment can set (the rule
-   * declares `thresholdKeys`): whose number the rule stood at on this call.
+   * of a rule that declares the threshold it compares against
+   * (`thresholdKeys`; six built-in rules do: tool_choice, answers_the_ask,
+   * cost_under_threshold, verbosity_ratio, no_tool_loop and max_steps):
+   * whose number the rule stood at on this call.
    * `default`: the one Iris ships. `config`: the deployment or the call set
    * it, and `asked` says which. An answered result says this on its count
    * evidence (`thresholdSource` there), and the composer reads a policy's

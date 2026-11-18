@@ -142,7 +142,7 @@ export interface EvalRuleResult {
   lacked?: string[];
   /** On a rule that skipped for missing evidence or that could not answer, when somebody had asked for it: the deployment's configuration, or the call itself. The verdict is read from that: not checked as shipped; where the rule could not answer, eval.onCriticalSkipped "fail" makes it a failure and "pass" accepts it; a layer that fails outranks either. */
   asked?: 'config' | 'call';
-  /** On a result that could not answer, of a rule that compares against a number a deployment can set: whose number it stood at on this call, the one Iris ships (default) or one the deployment or the call set (config). Server 0.22.0+. */
+  /** On a result that could not answer, of a rule that declares the threshold it compares against (tool_choice, answers_the_ask, cost_under_threshold, verbosity_ratio, no_tool_loop and max_steps do): whose number it stood at on this call, the one Iris ships (default) or one the deployment or the call set (config). Server 0.22.0+. */
   thresholdSource?: 'default' | 'config';
   uncertainty?: Uncertainty;
   evidenceIncomplete?: boolean;

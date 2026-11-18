@@ -96,7 +96,7 @@ describe('the path and the verdict are one decision', () => {
     expect(carriedBy({ a: 0, b: null, c: undefined }, new Set(['a', 'b', 'c']))).toEqual([]);
   });
 
-  it('a fire the estimate does not weigh is named for nothing, by the verdict or by the note beside it', () => {
+  it("a plugin's fire, which the estimate does not weigh, is named for nothing, by the verdict or by the note beside it", () => {
     // A plugin's detection has no published accuracy, so the estimate does not move when it fires (risk.ts, detectorsOf). Under a loss ratio strict enough to fail an output nothing weighed flagged, the verdict fails on the estimate, and it rests on no fire.
     const quiet = [row({ ruleName: 'no_pii', kind: 'detection', classes: ['pii_leak', 'credential_leak'] }), row({ ruleName: 'no_injection_patterns', kind: 'detection', classes: ['injection'] })];
     const plugin = row({ ruleName: 'acme_pii_scan', kind: 'detection', classes: ['pii_leak'], passed: false });
@@ -113,6 +113,30 @@ describe('the path and the verdict are one decision', () => {
     const notes = interpretations(weighed, named, strict).filter((i) => i.text.includes('rests on'));
     expect(notes).toHaveLength(1);
     expect(notes[0].text).toContain('rests on no_stub_output.');
+  });
+
+  it('the note names the rows the estimate weighed, not every row that carries a weighed rule\'s name', () => {
+    // A custom rule may carry a built-in's name, and a request can send one inline. It is a policy: the estimate does not read it, whether it passes or fires.
+    const quiet = [row({ ruleName: 'no_pii', kind: 'detection', classes: ['pii_leak', 'credential_leak'] })];
+    const builtIn = row({ ruleName: 'no_stub_output', kind: 'inference', classes: ['stub'], passed: false });
+    const strict = cfg({ falsePassCost: 1_000_000 });
+    const rests = (rows: EvalRuleResult[], config: ComposeConfig = strict): string => {
+      const result = evaluation(rows) as EvalResult;
+      return interpretations(result, compose(result, config), config).find((i) => i.text.includes('rests on'))?.text ?? '';
+    };
+    const ONE = 'rests on no_stub_output. If its fires are not failures on your traffic';
+    expect(rests([...quiet, builtIn])).toContain(ONE);
+    // The custom rule of that name passed.
+    expect(rests([...quiet, builtIn, row({ ruleName: 'no_stub_output', kind: 'policy', origin: 'custom' })])).toContain(ONE);
+    // It fired: a policy that advises, and still nothing the estimate weighed.
+    expect(rests([...quiet, builtIn, row({ ruleName: 'no_stub_output', kind: 'policy', origin: 'custom', passed: false })])).toContain(ONE);
+    // A detection of that name that did not fire is weighed, and is not a fire the estimate rests on.
+    expect(rests([...quiet, builtIn, row({ ruleName: 'no_stub_output', kind: 'inference', classes: ['stub'] })])).toContain(ONE);
+    // One that had nothing to judge, or that only reports, is not weighed at all.
+    expect(rests([...quiet, builtIn, row({ ruleName: 'no_stub_output', kind: 'inference', classes: ['stub'], skipped: true, skipClass: 'not_applicable', passed: false })])).toContain(ONE);
+    expect(rests([...quiet, builtIn, row({ ruleName: 'no_stub_output', kind: 'inference', classes: ['stub'], passed: false, advisory: true })])).toContain(ONE);
+    // Under the earlier rules the note read each row too, by another test: every detection or inference that fired. A row stored then reads back with the note it was given.
+    for (const rules of [1, 2]) expect(rests([...quiet, builtIn, row({ ruleName: 'no_stub_output', kind: 'policy', origin: 'custom', passed: false })], cfg({ falsePassCost: 1_000_000, rules })), `rules ${rules}`).toContain(ONE);
   });
 
   it('the risk node carries the same estimate the verdict carries, decided or not', () => {

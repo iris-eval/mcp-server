@@ -41,7 +41,7 @@
  * shows a default says it is a recommendation.
  */
 import type { EvalResult, EvalRuleResult, EvidenceRecord, Interpretation, Need, Role, Verdict, VerdictLayer, VerdictNode } from '../types/eval.js';
-import { riskEstimate, detectorsOf, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
+import { riskEstimate, detectorsOf, weighedByTheEstimate, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
 import { publishedAccuracyFor } from './accuracy.js';
 import { verdictConfidence, MIN_BIN_N, MIN_BIN_PATTERNS, type ConfidenceCall } from './confidence.js';
 import { PUBLISHED_CALIBRATION } from './published-calibration.js';
@@ -446,8 +446,9 @@ export function confidenceCall(
 /**
  * The failure classes that carried a risk estimate: each one that is more
  * likely than not by itself. When none is, a fire may still have carried
- * it: a lone fire worth 0.48 beside ten classes that found nothing is a
- * risk of 0.54, and the verdict failed naming no class at all. Named then
+ * it: a lone fire worth 0.49 beside four classes that found nothing is a
+ * risk of 0.53 (an unfilled template, at the shipped settings), and the
+ * verdict failed naming no class at all. Named then
  * is the class with the highest estimate among those a weighed rule fired
  * in (`firedIn`). With no weighed fire nobody is named: under a loss ratio
  * strict enough, the risk of an output nothing flagged is over the line by
@@ -905,15 +906,20 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
    */
   const weighedAtLabelsPrior = result.provenance?.composer?.priorSource === 'estimated';
   if (verdict.basis === 'risk_over_loss') {
-    // The fires the estimate weighed (risk.ts, detectorsOf): a plugin's detection has no published accuracy, and the estimate does not rest on it.
-    const weighed = new Set(
-      detectorsOf(result)
-        .filter((d) => d.fired)
-        .map((d) => d.name),
-    );
-    // From rules 3. A verdict given under the earlier rules was told every detection and inference that fired, weighed or not, and is told the same on a later read.
+    /*
+     * The rows the estimate weighed and that fired, asked of each ROW by the
+     * estimate's own predicate (risk.ts, weighedByTheEstimate): a plugin's
+     * detection has no published accuracy, and the estimate does not rest on
+     * it. Asked by NAME, a custom rule that carries a weighed rule's name
+     * would be named beside it, though it is a policy the estimate does not
+     * read, and though it may have passed.
+     *
+     * From rules 3. A verdict given under the earlier rules was told every
+     * detection and inference that fired, weighed or not, and is told the
+     * same on a later read.
+     */
     const named = (r: EvalRuleResult): boolean =>
-      (cfg.rules ?? COMPOSER_RULES) >= 3 ? weighed.has(r.ruleName) : fired(r) && r.advisory !== true && (r.kind === 'detection' || r.kind === 'inference');
+      (cfg.rules ?? COMPOSER_RULES) >= 3 ? fired(r) && weighedByTheEstimate(r) : fired(r) && r.advisory !== true && (r.kind === 'detection' || r.kind === 'inference');
     const weighedFires = result.rule_results.filter((r) => named(r) && !isCritical(r)).map((r) => r.ruleName);
     if (weighedFires.length > 0) {
       out.push({

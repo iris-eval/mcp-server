@@ -59,8 +59,10 @@ class RuleResult(TypedDict, total=False):
     #: server's ``eval.onCriticalSkipped`` set to ``fail`` makes it a failure
     #: and ``pass`` accepts it; a layer that fails outranks either.
     asked: str
-    #: On a result that could not answer, of a rule that compares against a
-    #: number a deployment can set: whose number it stood at on this call,
+    #: On a result that could not answer, of a rule that declares the threshold
+    #: it compares against (``tool_choice``, ``answers_the_ask``,
+    #: ``cost_under_threshold``, ``verbosity_ratio``, ``no_tool_loop`` and
+    #: ``max_steps`` do): whose number it stood at on this call,
     #: ``default`` (the one Iris ships) or ``config`` (the deployment's or
     #: the call's; ``asked`` says which). Server 0.22.0+.
     thresholdSource: str

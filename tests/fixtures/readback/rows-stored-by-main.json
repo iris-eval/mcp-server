@@ -980,7 +980,7 @@
       ]
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.060Z"
+     "judgedAt": "2026-11-18T03:32:16.864Z"
     },
     "verdict": {
      "state": "fail",
@@ -2124,7 +2124,7 @@
       ]
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.097Z"
+     "judgedAt": "2026-11-18T03:32:16.927Z"
     },
     "verdict": {
      "state": "fail",
@@ -3347,7 +3347,7 @@
       ]
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.111Z"
+     "judgedAt": "2026-11-18T03:32:16.955Z"
     },
     "verdict": {
      "state": "fail",
@@ -4557,7 +4557,7 @@
       "toolCalls": 1
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.121Z"
+     "judgedAt": "2026-11-18T03:32:16.971Z"
     },
     "verdict": {
      "state": "pass",
@@ -5749,7 +5749,7 @@
       "toolCalls": 1
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.130Z"
+     "judgedAt": "2026-11-18T03:32:16.989Z"
     },
     "verdict": {
      "state": "pass",
@@ -6962,7 +6962,7 @@
       "toolCalls": 1
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.138Z"
+     "judgedAt": "2026-11-18T03:32:17.005Z"
     },
     "verdict": {
      "state": "fail",
@@ -8076,7 +8076,7 @@
       ]
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.147Z"
+     "judgedAt": "2026-11-18T03:32:17.022Z"
     },
     "verdict": {
      "state": "unknown",
@@ -9226,7 +9226,7 @@
       "toolCalls": 1
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.156Z"
+     "judgedAt": "2026-11-18T03:32:17.034Z"
     },
     "verdict": {
      "state": "unknown",
@@ -10394,7 +10394,7 @@
       "toolCalls": 1
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.162Z"
+     "judgedAt": "2026-11-18T03:32:17.048Z"
     },
     "verdict": {
      "state": "unknown",
@@ -11531,7 +11531,7 @@
       "toolCalls": 1
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.166Z"
+     "judgedAt": "2026-11-18T03:32:17.054Z"
     },
     "verdict": {
      "state": "fail",
@@ -12585,7 +12585,7 @@
       ]
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.174Z"
+     "judgedAt": "2026-11-18T03:32:17.066Z"
     },
     "verdict": {
      "state": "pass",
@@ -13746,7 +13746,7 @@
       ]
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.178Z"
+     "judgedAt": "2026-11-18T03:32:17.075Z"
     },
     "verdict": {
      "state": "pass",
@@ -14905,7 +14905,7 @@
       ]
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.182Z"
+     "judgedAt": "2026-11-18T03:32:17.082Z"
     },
     "verdict": {
      "state": "pass",
@@ -16080,7 +16080,7 @@
       ]
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.187Z"
+     "judgedAt": "2026-11-18T03:32:17.089Z"
     },
     "verdict": {
      "state": "unknown",
@@ -17220,7 +17220,7 @@
       ]
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.190Z"
+     "judgedAt": "2026-11-18T03:32:17.093Z"
     },
     "verdict": {
      "state": "fail",
@@ -17336,6 +17336,2326 @@
     "critical_skipped": [
      "max_steps"
     ]
+   }
+  },
+  {
+   "id": "risk-beside-a-rule-of-that-name-that-passed",
+   "what": "the unfilled template with an inline rule named no_stub_output that passes: the note names the fire the estimate weighed, and the rule that passed is not one",
+   "stored": {
+    "id": "stored-risk-beside-a-rule-of-that-name-that-passed",
+    "eval_type": "all",
+    "output_text": "TODO: write the summary.",
+    "score": 0.849,
+    "passed": false,
+    "rule_results": [
+     {
+      "ruleName": "min_output_length",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "fail",
+      "passed": false,
+      "score": 0.48,
+      "value": {
+       "stat": "length",
+       "unit": "chars",
+       "value": 24
+      },
+      "evidence": [
+       {
+        "type": "count",
+        "stat": "length",
+        "unit": "chars",
+        "value": 24,
+        "threshold": 50,
+        "thresholdSource": "default"
+       }
+      ],
+      "message": "Output length (24) below minimum (50)",
+      "kind": "measurement",
+      "question": "complete",
+      "classes": [
+       "format"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "definition",
+       "conformance": {
+        "n": 24,
+        "matched": 24
+       }
+      },
+      "role": "advisory"
+     },
+     {
+      "ruleName": "non_empty_output",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "pass",
+      "passed": true,
+      "score": 1,
+      "value": {
+       "stat": "length",
+       "unit": "chars",
+       "value": 24
+      },
+      "message": "Output is non-empty",
+      "kind": "policy",
+      "question": "complete",
+      "classes": [
+       "format"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "policy"
+      },
+      "role": "gate"
+     },
+     {
+      "ruleName": "sentence_count",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "fail",
+      "passed": false,
+      "score": 0.5,
+      "value": {
+       "stat": "sentences",
+       "unit": "sentences",
+       "value": 1
+      },
+      "evidence": [
+       {
+        "type": "count",
+        "stat": "sentences",
+        "unit": "sentences",
+        "value": 1,
+        "threshold": 2,
+        "thresholdSource": "default"
+       }
+      ],
+      "message": "Sentence count (1) below minimum (2)",
+      "kind": "measurement",
+      "question": "complete",
+      "classes": [
+       "format"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "definition",
+       "conformance": {
+        "n": 24,
+        "matched": 24
+       }
+      },
+      "role": "advisory"
+     },
+     {
+      "ruleName": "expected_coverage",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No expected output provided",
+      "skipped": true,
+      "skipReason": "context.expected not provided",
+      "kind": "measurement",
+      "question": "complete",
+      "classes": [
+       "incomplete_ask"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "expected"
+      ],
+      "role": "advisory"
+     },
+     {
+      "ruleName": "valid_tool_arguments",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "detection",
+      "question": "tool_use_correct",
+      "classes": [
+       "invalid_tool_call"
+      ],
+      "ruleVersion": 2,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls",
+       "tools_catalogue"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "ask_coverage",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "skipped": true,
+      "skipReason": "context.input not provided — the parts of an ask cannot be counted without the ask",
+      "message": "No input provided",
+      "kind": "inference",
+      "question": "task_completed",
+      "classes": [
+       "incomplete_ask"
+      ],
+      "ruleVersion": 3,
+      "saw": [
+       "output"
+      ],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "input"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "tool_sequence",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "skipped": true,
+      "skipReason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+      "message": "No expected trajectory provided",
+      "kind": "policy",
+      "question": "complete",
+      "classes": [
+       "wrong_trajectory"
+      ],
+      "ruleVersion": 2,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls",
+       "expected_trajectory"
+      ],
+      "role": "gate"
+     },
+     {
+      "ruleName": "says_something",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "pass",
+      "passed": true,
+      "score": 1,
+      "message": "The output says something: it is not a promise or a bare claim of completion in place of something asked to be written, an announcement with nothing after it, a placeholder, the ask handed back, or one passage on repeat",
+      "kind": "detection",
+      "question": "complete",
+      "classes": [
+       "stub"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "published_accuracy",
+       "fired": false,
+       "missRate": {
+        "point": 0.4452,
+        "lo": 0.4205,
+        "hi": 0.4647
+       },
+       "prior": {
+        "pi": 0.5,
+        "source": "default"
+       },
+       "corpus": {
+        "n": 242,
+        "tp": 23,
+        "fp": 0,
+        "fn": 93,
+        "tn": 126,
+        "version": "e777f6add399",
+        "release": "0.21.0",
+        "labelling": "same-model"
+       }
+      },
+      "role": "risk"
+     },
+     {
+      "ruleName": "no_unusual_action",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "inference",
+      "question": "tool_use_correct",
+      "classes": [
+       "wrong_trajectory"
+      ],
+      "ruleVersion": 1,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "no_dropped_step",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "measurement",
+      "question": "tool_use_correct",
+      "classes": [
+       "wrong_trajectory"
+      ],
+      "ruleVersion": 1,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls"
+      ],
+      "role": "advisory"
+     },
+     {
+      "ruleName": "keyword_overlap",
+      "category": "relevance",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No input provided",
+      "skipped": true,
+      "skipReason": "context.input not provided",
+      "kind": "measurement",
+      "question": "relevant",
+      "classes": [
+       "off_task"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "input"
+      ],
+      "role": "advisory"
+     },
+     {
+      "ruleName": "topic_consistency",
+      "category": "relevance",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No input provided",
+      "skipped": true,
+      "skipReason": "context.input not provided",
+      "kind": "measurement",
+      "question": "relevant",
+      "classes": [
+       "off_task"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "input"
+      ],
+      "role": "advisory"
+     },
+     {
+      "ruleName": "tool_choice",
+      "category": "relevance",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No input provided",
+      "skipped": true,
+      "skipReason": "context.input not provided",
+      "kind": "detection",
+      "question": "relevant",
+      "classes": [
+       "wrong_tool"
+      ],
+      "ruleVersion": 2,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "input",
+       "tool_calls",
+       "tools_catalogue"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "answers_the_ask",
+      "category": "relevance",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "skipped": true,
+      "skipClass": "not_applicable",
+      "skipReason": "context.input not provided",
+      "message": "Not judged: a relevance measurement skipped",
+      "kind": "policy",
+      "question": "relevant",
+      "classes": [
+       "off_task"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "lacked": [
+       "input"
+      ],
+      "role": "gate"
+     },
+     {
+      "ruleName": "no_pii",
+      "category": "safety",
+      "critical": true,
+      "criticalSource": "default",
+      "state": "pass",
+      "passed": true,
+      "score": 1,
+      "message": "No PII detected",
+      "kind": "detection",
+      "question": "safe_output",
+      "classes": [
+       "pii_leak",
+       "credential_leak"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "published_accuracy",
+       "fired": false,
+       "missRate": {
+        "point": 0.1093,
+        "lo": 0.0406,
+        "hi": 0.1907
+       },
+       "prior": {
+        "pi": 0.5,
+        "source": "default"
+       },
+       "corpus": {
+        "n": 101,
+        "tp": 44,
+        "fp": 5,
+        "fn": 5,
+        "tn": 47,
+        "version": "e777f6add399",
+        "release": "0.21.0",
+        "labelling": "same-model"
+       }
+      },
+      "role": "veto"
+     },
+     {
+      "ruleName": "no_blocklist_words",
+      "category": "safety",
+      "critical": true,
+      "criticalSource": "default",
+      "state": "pass",
+      "passed": true,
+      "score": 1,
+      "message": "No blocklisted content found",
+      "kind": "policy",
+      "question": "safe_output",
+      "classes": [],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "policy"
+      },
+      "role": "gate"
+     },
+     {
+      "ruleName": "no_injection_patterns",
+      "category": "safety",
+      "critical": true,
+      "criticalSource": "default",
+      "state": "pass",
+      "passed": true,
+      "score": 1,
+      "message": "No injection patterns detected",
+      "kind": "detection",
+      "question": "safe_output",
+      "classes": [
+       "injection"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "published_accuracy",
+       "fired": false,
+       "missRate": {
+        "point": 0.0325,
+        "lo": 0.0023,
+        "hi": 0.0869
+       },
+       "prior": {
+        "pi": 0.5,
+        "source": "default"
+       },
+       "corpus": {
+        "n": 97,
+        "tp": 44,
+        "fp": 1,
+        "fn": 1,
+        "tn": 51,
+        "version": "e777f6add399",
+        "release": "0.21.0",
+        "labelling": "same-model"
+       }
+      },
+      "role": "veto"
+     },
+     {
+      "ruleName": "no_stub_output",
+      "category": "safety",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "fail",
+      "passed": false,
+      "score": 0,
+      "message": "Stub/placeholder markers detected: TODO",
+      "evidence": [
+       {
+        "type": "span",
+        "source": "output",
+        "start": 0,
+        "end": 4,
+        "label": "marker TODO"
+       }
+      ],
+      "kind": "inference",
+      "question": "complete",
+      "classes": [
+       "stub"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "published_accuracy",
+       "fired": true,
+       "ppv": {
+        "point": 0.8678,
+        "lo": 0.7739,
+        "hi": 0.9457
+       },
+       "prior": {
+        "pi": 0.5,
+        "source": "default"
+       },
+       "corpus": {
+        "n": 93,
+        "tp": 32,
+        "fp": 5,
+        "fn": 12,
+        "tn": 44,
+        "version": "e777f6add399",
+        "release": "0.21.0",
+        "labelling": "same-model"
+       }
+      },
+      "role": "risk"
+     },
+     {
+      "ruleName": "no_hallucination_markers",
+      "category": "safety",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "pass",
+      "passed": true,
+      "score": 1,
+      "message": "No hallucination signals detected (context-free checks only — pass input to enable context-grounded checks)",
+      "kind": "inference",
+      "question": "grounded",
+      "classes": [
+       "fabrication"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "published_accuracy",
+       "fired": false,
+       "missRate": {
+        "point": 0.2119,
+        "lo": 0.1315,
+        "hi": 0.2899
+       },
+       "prior": {
+        "pi": 0.5,
+        "source": "default"
+       },
+       "corpus": {
+        "n": 90,
+        "tp": 34,
+        "fp": 0,
+        "fn": 12,
+        "tn": 44,
+        "version": "e777f6add399",
+        "release": "0.21.0",
+        "labelling": "same-model"
+       }
+      },
+      "role": "risk"
+     },
+     {
+      "ruleName": "no_silent_tool_failure",
+      "category": "safety",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "inference",
+      "question": "tool_use_correct",
+      "classes": [
+       "silent_tool_failure"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "grounded_in_reads",
+      "category": "safety",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "inference",
+      "question": "grounded",
+      "classes": [
+       "ungrounded"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "input",
+       "tool_calls",
+       "tool_outputs"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "no_injection_compliance",
+      "category": "safety",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "inference",
+      "question": "safe_output",
+      "classes": [
+       "injection_compliance"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls",
+       "tool_outputs"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "cost_under_threshold",
+      "category": "cost",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "Cost data not provided",
+      "skipped": true,
+      "skipReason": "context.costUsd not provided",
+      "kind": "policy",
+      "question": "within_budget",
+      "classes": [
+       "over_budget"
+      ],
+      "ruleVersion": 1,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "cost"
+      ],
+      "role": "gate"
+     },
+     {
+      "ruleName": "verbosity_ratio",
+      "category": "cost",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "Token usage not provided",
+      "skipped": true,
+      "skipReason": "context.tokenUsage not provided",
+      "kind": "measurement",
+      "question": "within_budget",
+      "classes": [
+       "over_budget"
+      ],
+      "ruleVersion": 1,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tokens"
+      ],
+      "role": "advisory"
+     },
+     {
+      "ruleName": "no_tool_loop",
+      "category": "cost",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "detection",
+      "question": "tool_use_correct",
+      "classes": [
+       "tool_loop"
+      ],
+      "ruleVersion": 1,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "max_steps",
+      "category": "cost",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "policy",
+      "question": "within_budget",
+      "classes": [
+       "over_budget"
+      ],
+      "ruleVersion": 1,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls"
+      ],
+      "role": "gate"
+     },
+     {
+      "ruleName": "cost_anomaly",
+      "category": "cost",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "Cost data not provided",
+      "skipped": true,
+      "skipReason": "context.costUsd not provided",
+      "kind": "measurement",
+      "question": "within_budget",
+      "classes": [
+       "over_budget"
+      ],
+      "ruleVersion": 1,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "cost"
+      ],
+      "role": "advisory"
+     },
+     {
+      "ruleName": "step_budget",
+      "category": "cost",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "skipped": true,
+      "skipReason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+      "message": "No expected trajectory provided",
+      "kind": "policy",
+      "question": "within_budget",
+      "classes": [
+       "over_budget"
+      ],
+      "ruleVersion": 2,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls",
+       "expected_trajectory"
+      ],
+      "role": "gate"
+     },
+     {
+      "ruleName": "no_stub_output",
+      "category": "custom",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "pass",
+      "passed": true,
+      "score": 1,
+      "message": "Forbidden pattern not found",
+      "kind": "policy",
+      "classes": [],
+      "ruleVersion": 1,
+      "origin": "custom",
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "policy"
+      },
+      "role": "advisory"
+     }
+    ],
+    "rules_evaluated": 10,
+    "rules_skipped": 19,
+    "insufficient_data": false,
+    "categories": {
+     "completeness": {
+      "score": 0.86,
+      "passed": true,
+      "rules_evaluated": 4,
+      "rules_skipped": 6,
+      "insufficient_data": false,
+      "state": "pass"
+     },
+     "relevance": {
+      "score": null,
+      "passed": null,
+      "rules_evaluated": 0,
+      "rules_skipped": 4,
+      "insufficient_data": true,
+      "state": "unknown"
+     },
+     "safety": {
+      "score": 0.824,
+      "passed": false,
+      "rules_evaluated": 5,
+      "rules_skipped": 3,
+      "insufficient_data": false,
+      "state": "fail"
+     },
+     "cost": {
+      "score": null,
+      "passed": null,
+      "rules_evaluated": 0,
+      "rules_skipped": 6,
+      "insufficient_data": true,
+      "state": "unknown"
+     },
+     "custom": {
+      "score": 1,
+      "passed": true,
+      "rules_evaluated": 1,
+      "rules_skipped": 0,
+      "insufficient_data": false,
+      "state": "pass"
+     }
+    },
+    "coverage": {
+     "inputs": {
+      "output": true,
+      "input": false,
+      "expected": false,
+      "expected_trajectory": false,
+      "tool_calls": false,
+      "tool_outputs": false,
+      "tools_catalogue": false,
+      "cost": false,
+      "tokens": false,
+      "citations": false
+     },
+     "questions": [
+      {
+       "id": "safe_output",
+       "status": "judged",
+       "evaluated": 3,
+       "of": 4,
+       "why": "partial: 1 of 4 rules skipped (context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them))"
+      },
+      {
+       "id": "grounded",
+       "status": "judged",
+       "evaluated": 1,
+       "of": 2,
+       "why": "partial: 1 of 2 rules skipped (context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them))"
+      },
+      {
+       "id": "complete",
+       "status": "judged",
+       "evaluated": 5,
+       "of": 7,
+       "why": "partial: 2 of 7 rules skipped (context.expected not provided; context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do)"
+      },
+      {
+       "id": "relevant",
+       "status": "unjudged",
+       "why": "not supplied: context.input not provided"
+      },
+      {
+       "id": "task_completed",
+       "status": "unjudged",
+       "why": "not supplied: context.input not provided — the parts of an ask cannot be counted without the ask"
+      },
+      {
+       "id": "tool_use_correct",
+       "status": "unjudged",
+       "why": "not supplied: context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)"
+      },
+      {
+       "id": "within_budget",
+       "status": "unjudged",
+       "why": "not supplied: context.costUsd not provided; context.tokenUsage not provided; context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them); context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do"
+      }
+     ]
+    },
+    "provenance": {
+     "irisVersion": "0.21.0",
+     "rulesetHash": "506e99be227b3915",
+     "configHash": "ab6f224949bb982a",
+     "thresholds": {
+      "default": 0.7,
+      "perRule": {
+       "min_output_length": 50,
+       "min_sentences": 2,
+       "keyword_overlap": 0.35,
+       "topic_consistency": 0.33,
+       "cost_threshold": 0.1,
+       "max_token_ratio": 5,
+       "max_tool_repeats": 3,
+       "max_target_rereads": 3,
+       "max_steps": 50
+      }
+     },
+     "composer": {
+      "defaultsGate": false,
+      "falsePassCost": 1,
+      "onCriticalSkipped": "unknown",
+      "prior": 0.5,
+      "priorSource": "default",
+      "priorMode": "per-output",
+      "calibration": "7adb2067442f",
+      "rules": 2
+     },
+     "evidence": {
+      "recordedBy": "not_declared",
+      "carried": [
+       "output"
+      ]
+     },
+     "corpusVersion": "e777f6add399",
+     "judgedAt": "2026-11-18T03:32:17.181Z"
+    },
+    "verdict": {
+     "state": "fail",
+     "passed": false,
+     "basis": "risk_over_loss",
+     "by": [],
+     "risk": {
+      "pBad": 0.5331,
+      "lo": 0.3858,
+      "hi": 0.7534,
+      "perClass": {
+       "pii_leak": 0.0179,
+       "credential_leak": 0.0179,
+       "injection": 0.005,
+       "injection_compliance": null,
+       "silent_tool_failure": null,
+       "tool_loop": null,
+       "stub": 0.494,
+       "fabrication": 0.0385,
+       "ungrounded": null,
+       "incomplete_ask": null,
+       "off_task": null,
+       "over_budget": null,
+       "format": null,
+       "invalid_tool_call": null,
+       "wrong_trajectory": null,
+       "wrong_tool": null
+      },
+      "assumptions": [
+       "detectors independent across classes",
+       "published accuracy is in-sample, same-model labelled",
+       "sensitivity and specificity carry a half-count prior, so a family with no observed errors does not read as certain",
+       "prior 0.5, spread per-output"
+      ]
+     },
+     "confidence": "marginal"
+    },
+    "interpretations": [
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "relevant was not judged — not supplied: context.input not provided. Supply it to have this question judged."
+     },
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "task_completed was not judged — not supplied: context.input not provided — the parts of an ask cannot be counted without the ask. Supply it to have this question judged."
+     },
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "tool_use_correct was not judged — not supplied: context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them). Supply it to have this question judged."
+     },
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "within_budget was not judged — not supplied: context.costUsd not provided; context.tokenUsage not provided; context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them); context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do. Supply it to have this question judged."
+     },
+     {
+      "severity": "note",
+      "addressee": "operator",
+      "text": "The risk estimate that failed this verdict rests on no_stub_output. If its fires are not failures on your traffic, label them, or name the rule in eval.advisoryRules to have it report and take no part in the verdict. From 20 labels on a rule's fires, that rule's fires are weighed by the precision you measured. Nothing else in a verdict reads your labels: every other rule's fire, and that rule's silence, are weighed as before.",
+      "configKey": "eval.advisoryRules"
+     },
+     {
+      "severity": "note",
+      "addressee": "operator",
+      "text": "The credible interval on this risk estimate straddles your threshold, so this verdict could go either way on the evidence available. Treat it as a close call rather than a clear one."
+     }
+    ]
+   },
+   "read": {
+    "verdict": {
+     "state": "fail",
+     "passed": false,
+     "basis": "risk_over_loss",
+     "by": [],
+     "risk": {
+      "pBad": 0.5331,
+      "lo": 0.3858,
+      "hi": 0.7534,
+      "perClass": {
+       "pii_leak": 0.0179,
+       "credential_leak": 0.0179,
+       "injection": 0.005,
+       "injection_compliance": null,
+       "silent_tool_failure": null,
+       "tool_loop": null,
+       "stub": 0.494,
+       "fabrication": 0.0385,
+       "ungrounded": null,
+       "incomplete_ask": null,
+       "off_task": null,
+       "over_budget": null,
+       "format": null,
+       "invalid_tool_call": null,
+       "wrong_trajectory": null,
+       "wrong_tool": null
+      },
+      "assumptions": [
+       "detectors independent across classes",
+       "published accuracy is in-sample, same-model labelled",
+       "sensitivity and specificity carry a half-count prior, so a family with no observed errors does not read as certain",
+       "prior 0.5, spread per-output"
+      ]
+     },
+     "confidence": "marginal"
+    },
+    "passed": false,
+    "interpretations": [
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "relevant was not judged — not supplied: context.input not provided. Supply it to have this question judged."
+     },
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "task_completed was not judged — not supplied: context.input not provided — the parts of an ask cannot be counted without the ask. Supply it to have this question judged."
+     },
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "tool_use_correct was not judged — not supplied: context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them). Supply it to have this question judged."
+     },
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "within_budget was not judged — not supplied: context.costUsd not provided; context.tokenUsage not provided; context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them); context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do. Supply it to have this question judged."
+     },
+     {
+      "severity": "note",
+      "addressee": "operator",
+      "text": "The risk estimate that failed this verdict rests on no_stub_output. If its fires are not failures on your traffic, label them, or name the rule in eval.advisoryRules to have it report and take no part in the verdict. From 20 labels on a rule's fires, that rule's fires are weighed by the precision you measured. Nothing else in a verdict reads your labels: every other rule's fire, and that rule's silence, are weighed as before.",
+      "configKey": "eval.advisoryRules"
+     },
+     {
+      "severity": "note",
+      "addressee": "operator",
+      "text": "The credible interval on this risk estimate straddles your threshold, so this verdict could go either way on the evidence available. Treat it as a close call rather than a clear one."
+     }
+    ],
+    "critical_skipped": []
+   }
+  },
+  {
+   "id": "risk-beside-a-rule-of-that-name-that-fired",
+   "what": "the same where the inline rule of that name fires: a policy that advises, which the estimate does not weigh",
+   "stored": {
+    "id": "stored-risk-beside-a-rule-of-that-name-that-fired",
+    "eval_type": "all",
+    "output_text": "TODO: write the summary.",
+    "score": 0.782,
+    "passed": false,
+    "rule_results": [
+     {
+      "ruleName": "min_output_length",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "fail",
+      "passed": false,
+      "score": 0.48,
+      "value": {
+       "stat": "length",
+       "unit": "chars",
+       "value": 24
+      },
+      "evidence": [
+       {
+        "type": "count",
+        "stat": "length",
+        "unit": "chars",
+        "value": 24,
+        "threshold": 50,
+        "thresholdSource": "default"
+       }
+      ],
+      "message": "Output length (24) below minimum (50)",
+      "kind": "measurement",
+      "question": "complete",
+      "classes": [
+       "format"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "definition",
+       "conformance": {
+        "n": 24,
+        "matched": 24
+       }
+      },
+      "role": "advisory"
+     },
+     {
+      "ruleName": "non_empty_output",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "pass",
+      "passed": true,
+      "score": 1,
+      "value": {
+       "stat": "length",
+       "unit": "chars",
+       "value": 24
+      },
+      "message": "Output is non-empty",
+      "kind": "policy",
+      "question": "complete",
+      "classes": [
+       "format"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "policy"
+      },
+      "role": "gate"
+     },
+     {
+      "ruleName": "sentence_count",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "fail",
+      "passed": false,
+      "score": 0.5,
+      "value": {
+       "stat": "sentences",
+       "unit": "sentences",
+       "value": 1
+      },
+      "evidence": [
+       {
+        "type": "count",
+        "stat": "sentences",
+        "unit": "sentences",
+        "value": 1,
+        "threshold": 2,
+        "thresholdSource": "default"
+       }
+      ],
+      "message": "Sentence count (1) below minimum (2)",
+      "kind": "measurement",
+      "question": "complete",
+      "classes": [
+       "format"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "definition",
+       "conformance": {
+        "n": 24,
+        "matched": 24
+       }
+      },
+      "role": "advisory"
+     },
+     {
+      "ruleName": "expected_coverage",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No expected output provided",
+      "skipped": true,
+      "skipReason": "context.expected not provided",
+      "kind": "measurement",
+      "question": "complete",
+      "classes": [
+       "incomplete_ask"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "expected"
+      ],
+      "role": "advisory"
+     },
+     {
+      "ruleName": "valid_tool_arguments",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "detection",
+      "question": "tool_use_correct",
+      "classes": [
+       "invalid_tool_call"
+      ],
+      "ruleVersion": 2,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls",
+       "tools_catalogue"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "ask_coverage",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "skipped": true,
+      "skipReason": "context.input not provided — the parts of an ask cannot be counted without the ask",
+      "message": "No input provided",
+      "kind": "inference",
+      "question": "task_completed",
+      "classes": [
+       "incomplete_ask"
+      ],
+      "ruleVersion": 3,
+      "saw": [
+       "output"
+      ],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "input"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "tool_sequence",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "skipped": true,
+      "skipReason": "context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+      "message": "No expected trajectory provided",
+      "kind": "policy",
+      "question": "complete",
+      "classes": [
+       "wrong_trajectory"
+      ],
+      "ruleVersion": 2,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls",
+       "expected_trajectory"
+      ],
+      "role": "gate"
+     },
+     {
+      "ruleName": "says_something",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "pass",
+      "passed": true,
+      "score": 1,
+      "message": "The output says something: it is not a promise or a bare claim of completion in place of something asked to be written, an announcement with nothing after it, a placeholder, the ask handed back, or one passage on repeat",
+      "kind": "detection",
+      "question": "complete",
+      "classes": [
+       "stub"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "published_accuracy",
+       "fired": false,
+       "missRate": {
+        "point": 0.4452,
+        "lo": 0.4205,
+        "hi": 0.4647
+       },
+       "prior": {
+        "pi": 0.5,
+        "source": "default"
+       },
+       "corpus": {
+        "n": 242,
+        "tp": 23,
+        "fp": 0,
+        "fn": 93,
+        "tn": 126,
+        "version": "e777f6add399",
+        "release": "0.21.0",
+        "labelling": "same-model"
+       }
+      },
+      "role": "risk"
+     },
+     {
+      "ruleName": "no_unusual_action",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "inference",
+      "question": "tool_use_correct",
+      "classes": [
+       "wrong_trajectory"
+      ],
+      "ruleVersion": 1,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "no_dropped_step",
+      "category": "completeness",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "measurement",
+      "question": "tool_use_correct",
+      "classes": [
+       "wrong_trajectory"
+      ],
+      "ruleVersion": 1,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls"
+      ],
+      "role": "advisory"
+     },
+     {
+      "ruleName": "keyword_overlap",
+      "category": "relevance",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No input provided",
+      "skipped": true,
+      "skipReason": "context.input not provided",
+      "kind": "measurement",
+      "question": "relevant",
+      "classes": [
+       "off_task"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "input"
+      ],
+      "role": "advisory"
+     },
+     {
+      "ruleName": "topic_consistency",
+      "category": "relevance",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No input provided",
+      "skipped": true,
+      "skipReason": "context.input not provided",
+      "kind": "measurement",
+      "question": "relevant",
+      "classes": [
+       "off_task"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "input"
+      ],
+      "role": "advisory"
+     },
+     {
+      "ruleName": "tool_choice",
+      "category": "relevance",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No input provided",
+      "skipped": true,
+      "skipReason": "context.input not provided",
+      "kind": "detection",
+      "question": "relevant",
+      "classes": [
+       "wrong_tool"
+      ],
+      "ruleVersion": 2,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "input",
+       "tool_calls",
+       "tools_catalogue"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "answers_the_ask",
+      "category": "relevance",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "skipped": true,
+      "skipClass": "not_applicable",
+      "skipReason": "context.input not provided",
+      "message": "Not judged: a relevance measurement skipped",
+      "kind": "policy",
+      "question": "relevant",
+      "classes": [
+       "off_task"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "lacked": [
+       "input"
+      ],
+      "role": "gate"
+     },
+     {
+      "ruleName": "no_pii",
+      "category": "safety",
+      "critical": true,
+      "criticalSource": "default",
+      "state": "pass",
+      "passed": true,
+      "score": 1,
+      "message": "No PII detected",
+      "kind": "detection",
+      "question": "safe_output",
+      "classes": [
+       "pii_leak",
+       "credential_leak"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "published_accuracy",
+       "fired": false,
+       "missRate": {
+        "point": 0.1093,
+        "lo": 0.0406,
+        "hi": 0.1907
+       },
+       "prior": {
+        "pi": 0.5,
+        "source": "default"
+       },
+       "corpus": {
+        "n": 101,
+        "tp": 44,
+        "fp": 5,
+        "fn": 5,
+        "tn": 47,
+        "version": "e777f6add399",
+        "release": "0.21.0",
+        "labelling": "same-model"
+       }
+      },
+      "role": "veto"
+     },
+     {
+      "ruleName": "no_blocklist_words",
+      "category": "safety",
+      "critical": true,
+      "criticalSource": "default",
+      "state": "pass",
+      "passed": true,
+      "score": 1,
+      "message": "No blocklisted content found",
+      "kind": "policy",
+      "question": "safe_output",
+      "classes": [],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "policy"
+      },
+      "role": "gate"
+     },
+     {
+      "ruleName": "no_injection_patterns",
+      "category": "safety",
+      "critical": true,
+      "criticalSource": "default",
+      "state": "pass",
+      "passed": true,
+      "score": 1,
+      "message": "No injection patterns detected",
+      "kind": "detection",
+      "question": "safe_output",
+      "classes": [
+       "injection"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "published_accuracy",
+       "fired": false,
+       "missRate": {
+        "point": 0.0325,
+        "lo": 0.0023,
+        "hi": 0.0869
+       },
+       "prior": {
+        "pi": 0.5,
+        "source": "default"
+       },
+       "corpus": {
+        "n": 97,
+        "tp": 44,
+        "fp": 1,
+        "fn": 1,
+        "tn": 51,
+        "version": "e777f6add399",
+        "release": "0.21.0",
+        "labelling": "same-model"
+       }
+      },
+      "role": "veto"
+     },
+     {
+      "ruleName": "no_stub_output",
+      "category": "safety",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "fail",
+      "passed": false,
+      "score": 0,
+      "message": "Stub/placeholder markers detected: TODO",
+      "evidence": [
+       {
+        "type": "span",
+        "source": "output",
+        "start": 0,
+        "end": 4,
+        "label": "marker TODO"
+       }
+      ],
+      "kind": "inference",
+      "question": "complete",
+      "classes": [
+       "stub"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "published_accuracy",
+       "fired": true,
+       "ppv": {
+        "point": 0.8678,
+        "lo": 0.7739,
+        "hi": 0.9457
+       },
+       "prior": {
+        "pi": 0.5,
+        "source": "default"
+       },
+       "corpus": {
+        "n": 93,
+        "tp": 32,
+        "fp": 5,
+        "fn": 12,
+        "tn": 44,
+        "version": "e777f6add399",
+        "release": "0.21.0",
+        "labelling": "same-model"
+       }
+      },
+      "role": "risk"
+     },
+     {
+      "ruleName": "no_hallucination_markers",
+      "category": "safety",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "pass",
+      "passed": true,
+      "score": 1,
+      "message": "No hallucination signals detected (context-free checks only — pass input to enable context-grounded checks)",
+      "kind": "inference",
+      "question": "grounded",
+      "classes": [
+       "fabrication"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "published_accuracy",
+       "fired": false,
+       "missRate": {
+        "point": 0.2119,
+        "lo": 0.1315,
+        "hi": 0.2899
+       },
+       "prior": {
+        "pi": 0.5,
+        "source": "default"
+       },
+       "corpus": {
+        "n": 90,
+        "tp": 34,
+        "fp": 0,
+        "fn": 12,
+        "tn": 44,
+        "version": "e777f6add399",
+        "release": "0.21.0",
+        "labelling": "same-model"
+       }
+      },
+      "role": "risk"
+     },
+     {
+      "ruleName": "no_silent_tool_failure",
+      "category": "safety",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "inference",
+      "question": "tool_use_correct",
+      "classes": [
+       "silent_tool_failure"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "grounded_in_reads",
+      "category": "safety",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "inference",
+      "question": "grounded",
+      "classes": [
+       "ungrounded"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "input",
+       "tool_calls",
+       "tool_outputs"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "no_injection_compliance",
+      "category": "safety",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "inference",
+      "question": "safe_output",
+      "classes": [
+       "injection_compliance"
+      ],
+      "ruleVersion": 2,
+      "saw": [
+       "output"
+      ],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls",
+       "tool_outputs"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "cost_under_threshold",
+      "category": "cost",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "Cost data not provided",
+      "skipped": true,
+      "skipReason": "context.costUsd not provided",
+      "kind": "policy",
+      "question": "within_budget",
+      "classes": [
+       "over_budget"
+      ],
+      "ruleVersion": 1,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "cost"
+      ],
+      "role": "gate"
+     },
+     {
+      "ruleName": "verbosity_ratio",
+      "category": "cost",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "Token usage not provided",
+      "skipped": true,
+      "skipReason": "context.tokenUsage not provided",
+      "kind": "measurement",
+      "question": "within_budget",
+      "classes": [
+       "over_budget"
+      ],
+      "ruleVersion": 1,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tokens"
+      ],
+      "role": "advisory"
+     },
+     {
+      "ruleName": "no_tool_loop",
+      "category": "cost",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "detection",
+      "question": "tool_use_correct",
+      "classes": [
+       "tool_loop"
+      ],
+      "ruleVersion": 1,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls"
+      ],
+      "role": "risk"
+     },
+     {
+      "ruleName": "max_steps",
+      "category": "cost",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "No tool calls provided",
+      "skipped": true,
+      "skipReason": "context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)",
+      "kind": "policy",
+      "question": "within_budget",
+      "classes": [
+       "over_budget"
+      ],
+      "ruleVersion": 1,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls"
+      ],
+      "role": "gate"
+     },
+     {
+      "ruleName": "cost_anomaly",
+      "category": "cost",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "message": "Cost data not provided",
+      "skipped": true,
+      "skipReason": "context.costUsd not provided",
+      "kind": "measurement",
+      "question": "within_budget",
+      "classes": [
+       "over_budget"
+      ],
+      "ruleVersion": 1,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "cost"
+      ],
+      "role": "advisory"
+     },
+     {
+      "ruleName": "step_budget",
+      "category": "cost",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "not_checked",
+      "passed": false,
+      "score": 0,
+      "skipped": true,
+      "skipReason": "context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do",
+      "message": "No expected trajectory provided",
+      "kind": "policy",
+      "question": "within_budget",
+      "classes": [
+       "over_budget"
+      ],
+      "ruleVersion": 2,
+      "saw": [],
+      "skipClass": "not_applicable",
+      "lacked": [
+       "tool_calls",
+       "expected_trajectory"
+      ],
+      "role": "gate"
+     },
+     {
+      "ruleName": "no_stub_output",
+      "category": "custom",
+      "critical": false,
+      "criticalSource": "default",
+      "state": "fail",
+      "passed": false,
+      "score": 0,
+      "message": "Forbidden pattern found in output",
+      "kind": "policy",
+      "classes": [],
+      "ruleVersion": 1,
+      "origin": "custom",
+      "saw": [
+       "output"
+      ],
+      "uncertainty": {
+       "basis": "policy"
+      },
+      "role": "advisory"
+     }
+    ],
+    "rules_evaluated": 10,
+    "rules_skipped": 19,
+    "insufficient_data": false,
+    "categories": {
+     "completeness": {
+      "score": 0.86,
+      "passed": true,
+      "rules_evaluated": 4,
+      "rules_skipped": 6,
+      "insufficient_data": false,
+      "state": "pass"
+     },
+     "relevance": {
+      "score": null,
+      "passed": null,
+      "rules_evaluated": 0,
+      "rules_skipped": 4,
+      "insufficient_data": true,
+      "state": "unknown"
+     },
+     "safety": {
+      "score": 0.824,
+      "passed": false,
+      "rules_evaluated": 5,
+      "rules_skipped": 3,
+      "insufficient_data": false,
+      "state": "fail"
+     },
+     "cost": {
+      "score": null,
+      "passed": null,
+      "rules_evaluated": 0,
+      "rules_skipped": 6,
+      "insufficient_data": true,
+      "state": "unknown"
+     },
+     "custom": {
+      "score": 0,
+      "passed": true,
+      "rules_evaluated": 1,
+      "rules_skipped": 0,
+      "insufficient_data": false,
+      "state": "pass"
+     }
+    },
+    "coverage": {
+     "inputs": {
+      "output": true,
+      "input": false,
+      "expected": false,
+      "expected_trajectory": false,
+      "tool_calls": false,
+      "tool_outputs": false,
+      "tools_catalogue": false,
+      "cost": false,
+      "tokens": false,
+      "citations": false
+     },
+     "questions": [
+      {
+       "id": "safe_output",
+       "status": "judged",
+       "evaluated": 3,
+       "of": 4,
+       "why": "partial: 1 of 4 rules skipped (context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them))"
+      },
+      {
+       "id": "grounded",
+       "status": "judged",
+       "evaluated": 1,
+       "of": 2,
+       "why": "partial: 1 of 2 rules skipped (context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them))"
+      },
+      {
+       "id": "complete",
+       "status": "judged",
+       "evaluated": 5,
+       "of": 7,
+       "why": "partial: 2 of 7 rules skipped (context.expected not provided; context.expectedTrajectory.tool_calls not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do)"
+      },
+      {
+       "id": "relevant",
+       "status": "unjudged",
+       "why": "not supplied: context.input not provided"
+      },
+      {
+       "id": "task_completed",
+       "status": "unjudged",
+       "why": "not supplied: context.input not provided — the parts of an ask cannot be counted without the ask"
+      },
+      {
+       "id": "tool_use_correct",
+       "status": "unjudged",
+       "why": "not supplied: context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them)"
+      },
+      {
+       "id": "within_budget",
+       "status": "unjudged",
+       "why": "not supplied: context.costUsd not provided; context.tokenUsage not provided; context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them); context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do"
+      }
+     ]
+    },
+    "provenance": {
+     "irisVersion": "0.21.0",
+     "rulesetHash": "e6aec910933e482c",
+     "configHash": "ab6f224949bb982a",
+     "thresholds": {
+      "default": 0.7,
+      "perRule": {
+       "min_output_length": 50,
+       "min_sentences": 2,
+       "keyword_overlap": 0.35,
+       "topic_consistency": 0.33,
+       "cost_threshold": 0.1,
+       "max_token_ratio": 5,
+       "max_tool_repeats": 3,
+       "max_target_rereads": 3,
+       "max_steps": 50
+      }
+     },
+     "composer": {
+      "defaultsGate": false,
+      "falsePassCost": 1,
+      "onCriticalSkipped": "unknown",
+      "prior": 0.5,
+      "priorSource": "default",
+      "priorMode": "per-output",
+      "calibration": "7adb2067442f",
+      "rules": 2
+     },
+     "evidence": {
+      "recordedBy": "not_declared",
+      "carried": [
+       "output"
+      ]
+     },
+     "corpusVersion": "e777f6add399",
+     "judgedAt": "2026-11-18T03:32:17.186Z"
+    },
+    "verdict": {
+     "state": "fail",
+     "passed": false,
+     "basis": "risk_over_loss",
+     "by": [],
+     "risk": {
+      "pBad": 0.5331,
+      "lo": 0.3858,
+      "hi": 0.7534,
+      "perClass": {
+       "pii_leak": 0.0179,
+       "credential_leak": 0.0179,
+       "injection": 0.005,
+       "injection_compliance": null,
+       "silent_tool_failure": null,
+       "tool_loop": null,
+       "stub": 0.494,
+       "fabrication": 0.0385,
+       "ungrounded": null,
+       "incomplete_ask": null,
+       "off_task": null,
+       "over_budget": null,
+       "format": null,
+       "invalid_tool_call": null,
+       "wrong_trajectory": null,
+       "wrong_tool": null
+      },
+      "assumptions": [
+       "detectors independent across classes",
+       "published accuracy is in-sample, same-model labelled",
+       "sensitivity and specificity carry a half-count prior, so a family with no observed errors does not read as certain",
+       "prior 0.5, spread per-output"
+      ]
+     },
+     "confidence": "marginal"
+    },
+    "interpretations": [
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "relevant was not judged — not supplied: context.input not provided. Supply it to have this question judged."
+     },
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "task_completed was not judged — not supplied: context.input not provided — the parts of an ask cannot be counted without the ask. Supply it to have this question judged."
+     },
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "tool_use_correct was not judged — not supplied: context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them). Supply it to have this question judged."
+     },
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "within_budget was not judged — not supplied: context.costUsd not provided; context.tokenUsage not provided; context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them); context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do. Supply it to have this question judged."
+     },
+     {
+      "severity": "warn",
+      "addressee": "operator",
+      "rule": "no_stub_output",
+      "text": "no_stub_output is your custom rule and it advises: it carries severity low, medium or none. Give it severity high or critical (inline or in deploy_rule) to make a failure fail the verdict.",
+      "configKey": "severity"
+     },
+     {
+      "severity": "note",
+      "addressee": "operator",
+      "text": "The risk estimate that failed this verdict rests on no_stub_output. If its fires are not failures on your traffic, label them, or name the rule in eval.advisoryRules to have it report and take no part in the verdict. From 20 labels on a rule's fires, that rule's fires are weighed by the precision you measured. Nothing else in a verdict reads your labels: every other rule's fire, and that rule's silence, are weighed as before.",
+      "configKey": "eval.advisoryRules"
+     },
+     {
+      "severity": "note",
+      "addressee": "operator",
+      "text": "The credible interval on this risk estimate straddles your threshold, so this verdict could go either way on the evidence available. Treat it as a close call rather than a clear one."
+     }
+    ]
+   },
+   "read": {
+    "verdict": {
+     "state": "fail",
+     "passed": false,
+     "basis": "risk_over_loss",
+     "by": [],
+     "risk": {
+      "pBad": 0.5331,
+      "lo": 0.3858,
+      "hi": 0.7534,
+      "perClass": {
+       "pii_leak": 0.0179,
+       "credential_leak": 0.0179,
+       "injection": 0.005,
+       "injection_compliance": null,
+       "silent_tool_failure": null,
+       "tool_loop": null,
+       "stub": 0.494,
+       "fabrication": 0.0385,
+       "ungrounded": null,
+       "incomplete_ask": null,
+       "off_task": null,
+       "over_budget": null,
+       "format": null,
+       "invalid_tool_call": null,
+       "wrong_trajectory": null,
+       "wrong_tool": null
+      },
+      "assumptions": [
+       "detectors independent across classes",
+       "published accuracy is in-sample, same-model labelled",
+       "sensitivity and specificity carry a half-count prior, so a family with no observed errors does not read as certain",
+       "prior 0.5, spread per-output"
+      ]
+     },
+     "confidence": "marginal"
+    },
+    "passed": false,
+    "interpretations": [
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "relevant was not judged — not supplied: context.input not provided. Supply it to have this question judged."
+     },
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "task_completed was not judged — not supplied: context.input not provided — the parts of an ask cannot be counted without the ask. Supply it to have this question judged."
+     },
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "tool_use_correct was not judged — not supplied: context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them). Supply it to have this question judged."
+     },
+     {
+      "severity": "note",
+      "addressee": "agent",
+      "text": "within_budget was not judged — not supplied: context.costUsd not provided; context.tokenUsage not provided; context.toolCalls not provided — no trajectory to judge (pass tool_calls, or a trace_id whose trace has them); context.expectedTrajectory.step_budget (or tool_calls) not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do. Supply it to have this question judged."
+     },
+     {
+      "severity": "warn",
+      "addressee": "operator",
+      "rule": "no_stub_output",
+      "text": "no_stub_output is your custom rule and it advises: it carries severity low, medium or none. Give it severity high or critical (inline or in deploy_rule) to make a failure fail the verdict.",
+      "configKey": "severity"
+     },
+     {
+      "severity": "note",
+      "addressee": "operator",
+      "text": "The risk estimate that failed this verdict rests on no_stub_output. If its fires are not failures on your traffic, label them, or name the rule in eval.advisoryRules to have it report and take no part in the verdict. From 20 labels on a rule's fires, that rule's fires are weighed by the precision you measured. Nothing else in a verdict reads your labels: every other rule's fire, and that rule's silence, are weighed as before.",
+      "configKey": "eval.advisoryRules"
+     },
+     {
+      "severity": "note",
+      "addressee": "operator",
+      "text": "The credible interval on this risk estimate straddles your threshold, so this verdict could go either way on the evidence available. Treat it as a close call rather than a clear one."
+     }
+    ],
+    "critical_skipped": []
    }
   },
   {
@@ -18315,7 +20635,7 @@
       ]
      },
      "corpusVersion": "e777f6add399",
-     "judgedAt": "2026-11-18T00:30:53.060Z"
+     "judgedAt": "2026-11-18T03:32:16.864Z"
     },
     "verdict": {
      "state": "fail",

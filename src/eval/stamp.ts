@@ -37,7 +37,12 @@ export interface StampOptions {
   local?: LocalPrecision;
   /** The rule was deployed on this server (it has a rule id), as against built in or supplied inline by the call. */
   deployed?: boolean;
-  /** The deployment installed a relevance judge, which answers answers_the_ask. */
+  /**
+   * The deployment installed a relevance judge, and THIS rule is the one it
+   * answers for. The engine says so with the rule in hand (engine.ts): it is
+   * a fact about which rule this is, and a name does not settle it, because
+   * a rule a request sends may be called `answers_the_ask`.
+   */
   judgeInForce?: boolean;
   /**
    * What the call carried (inputsPresent), when the caller has worked it out
@@ -126,8 +131,16 @@ export function askedOf(rule: EvalRule, context: EvalContext, effective: Effecti
   const setBy = (rule.thresholdKeys ?? []).map((key) => thresholdSetBy(context, key));
   if (setBy.includes('config')) return 'config';
   if (setBy.includes('call')) return 'call';
-  // The deployment installed a judge for this question.
-  if (rule.name === 'answers_the_ask' && options.judgeInForce === true) return 'config';
+  /*
+   * The deployment installed a judge for this rule. Until 0.22.0 this asked
+   * for a rule by its NAME, so a custom rule called `answers_the_ask` that
+   * lacked an input was read as asked for by the deployment. Asked by name
+   * of every rule that could not answer, an inline rule of that name with
+   * no gating severity and a pattern that does not compile would be a
+   * check "this deployment asked for", and its silence would leave the
+   * verdict unknown where its fire takes no part.
+   */
+  if (options.judgeInForce === true) return 'config';
   // The call said what it expected and did not send what to compare it with.
   if (rule.expects?.(context) === true) return 'call';
   return undefined;

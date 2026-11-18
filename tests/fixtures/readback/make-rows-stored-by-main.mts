@@ -138,6 +138,17 @@ const ROWS: Array<{ id: string; what: string; make: () => Promise<any> }> = [
         { name: 'max_steps', type: 'regex_no_match', severity: 'critical', config: { pattern: '(too many steps', flags: 'i' } },
       ]),
   },
+  // Two rules of one name beside a failure of the risk estimate: the note that says what the estimate rests on named the rule it weighed, once.
+  {
+    id: 'risk-beside-a-rule-of-that-name-that-passed',
+    what: 'the unfilled template with an inline rule named no_stub_output that passes: the note names the fire the estimate weighed, and the rule that passed is not one',
+    make: () => engine().evaluateAll({ output: 'TODO: write the summary.' }, [{ name: 'no_stub_output', type: 'regex_no_match', config: { pattern: 'internal draft', flags: 'i' } }]),
+  },
+  {
+    id: 'risk-beside-a-rule-of-that-name-that-fired',
+    what: 'the same where the inline rule of that name fires: a policy that advises, which the estimate does not weigh',
+    make: () => engine().evaluateAll({ output: 'TODO: write the summary.' }, [{ name: 'no_stub_output', type: 'regex_no_match', config: { pattern: 'write the summary', flags: 'i' } }]),
+  },
 ];
 
 const dir = mkdtempSync(join(tmpdir(), 'iris-readback-fixture-'));

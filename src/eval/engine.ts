@@ -771,14 +771,16 @@ export class EvalEngine {
        * What a result found is the rule's to say. Its standing is not:
        * whether it took part in the verdict, whether it vetoes and who
        * decided that, what kind of claim it is, what the composer did with
-       * it, what state it is in and whose number it stood at when it could
-       * not answer are stamped here from the rule's declaration and the
-       * deployment's configuration. A field of that kind that a rule set on
-       * its own result is not carried: carried, a result that said
-       * `critical: true` vetoed while its row read advisory, and one that
-       * said `critical: false` lost the veto its rule declares.
+       * it, what state it is in, whose number it stood at when it could not
+       * answer, who asked for it and what it lacked are stamped here from
+       * the rule's declaration and the deployment's configuration. A field
+       * of that kind that a rule set on its own result is not carried:
+       * carried, a result that said `critical: true` vetoed while its row
+       * read advisory, one that said `critical: false` lost the veto its
+       * rule declares, and one that said `asked: "config"` would make its
+       * own silence count as a check the deployment had asked for.
        */
-      for (const standing of ['advisory', 'critical', 'criticalSource', 'kind', 'role', 'state', 'thresholdSource'] as const) delete rest[standing];
+      for (const standing of ['advisory', 'critical', 'criticalSource', 'kind', 'role', 'state', 'thresholdSource', 'asked', 'lacked'] as const) delete rest[standing];
       /*
        * The stamp (0.9.0): what kind of claim this is, which question it
        * answers, what it saw, why it skipped, and how wrong it tends to be —
@@ -793,7 +795,8 @@ export class EvalEngine {
         prior: this.effectivePrior(),
         local: this.localLabels?.precision.get(rule.name),
         deployed: ruleId !== undefined,
-        judgeInForce: this.relevanceJudge !== null,
+        // The judge is installed for one rule, and that is asked of the rule in hand: a rule a request sends may carry the name.
+        judgeInForce: this.relevanceJudge !== null && rule === answersTheAsk,
       });
       // There was something to judge and the rule gave no answer: it threw, was stopped at a limit, read a record that was cut, or its definition is broken.
       const couldNotAnswer = stamp.skipClass !== undefined && stamp.skipClass !== 'not_applicable';
@@ -874,8 +877,8 @@ export class EvalEngine {
       threshold: this.threshold,
       ruleThresholds: this.ruleThresholds,
       composer: this.composerFacts(),
-      // What the call carried and who recorded it: the composer reads it, now and on every read of the stored row.
-      evidence: evidenceOf(context),
+      // What the call carried and who recorded it: the composer reads it, now and on every read of the stored row. Read from the context the rules were handed, as the stamp's own reading is (`present`, above), so the record and the rows cannot say two things of one call.
+      evidence: evidenceOf(evalContext),
       judgedAt: new Date().toISOString(),
     });
     const coverage = deriveCoverage(ruleResults, present, provenance.evidence);

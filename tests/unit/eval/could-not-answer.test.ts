@@ -18,9 +18,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EvalEngine } from '../../../src/eval/engine.js';
+import type { RelevanceJudge } from '../../../src/eval/llm-judge/relevance-judge.js';
 import { loadPlugins } from '../../../src/eval/plugins.js';
 import { noUnusualAction } from '../../../src/eval/rules/case-history.js';
 import { noToolLoop } from '../../../src/eval/rules/cost.js';
+import { rulesByType } from '../../../src/eval/rules/index.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
 import type { CaseRun, EvalContext, EvalResult, EvalRule, EvalRuleResult } from '../../../src/types/eval.js';
 import type { ToolCallRecord, ToolDescriptor } from '../../../src/types/trace.js';
@@ -471,6 +473,15 @@ describe('whose number a rule stood at is written on a row that could not answer
     expect(byCall.verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['cost_under_threshold'] });
   });
 
+  it('the rules that carry it are the ones that declare a threshold, and the published schema names each of them', () => {
+    const declare = [...new Set(Object.values(rulesByType).flatMap((rules) => rules.filter((r) => (r.thresholdKeys ?? []).length > 0).map((r) => r.name)))].sort();
+    expect(declare).toEqual(['answers_the_ask', 'cost_under_threshold', 'max_steps', 'no_tool_loop', 'tool_choice', 'verbosity_ratio']);
+    // The file a client reads (website/public/response-schema-v1.json), not the source it is rendered from.
+    const published = readFileSync(join(__dirname, '..', '..', '..', 'website', 'public', 'response-schema-v1.json'), 'utf8');
+    const named = /of a rule that declares the threshold it compares against \(([^)]+) do\)/.exec(published);
+    expect(named?.[1].split(/, | and /).sort()).toEqual(declare);
+  });
+
   it('an answered row says it on its evidence and carries no such field, and neither does a row that had nothing to judge', async () => {
     const answered = await engine().evaluateAll({ ...REPORT, costUsd: 0.25 });
     expect(row(answered, 'cost_under_threshold').thresholdSource).toBeUndefined();
@@ -588,5 +599,120 @@ describe("a plugin's policy that could not answer is read as a gate, whatever it
     } finally {
       rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
+  });
+});
+
+
+/*
+ * A request can send an inline rule under the name of a rule Iris ships.
+ * Who asked for a rule, and which rows the estimate rests on, are asked of
+ * the rule in hand and of the row, never of a name; and what a row says of
+ * who asked is the engine's to say, like the rest of its standing.
+ */
+describe('a rule a request sends under the name of a rule Iris ships is read as what it is', () => {
+  // A stand-in for the relevance judge: an object with the interface the engine calls. No model is called and no key is read.
+  const standIn = (): RelevanceJudge =>
+    ({
+      provider: 'anthropic',
+      model: 'stand-in-judge',
+      problem: null,
+      budget: {},
+      maxCallsPerRequest: 100,
+      redact: true,
+      notes: [],
+      judge: async () => ({ template: 'relevance', provider: 'anthropic', model: 'stand-in-judge', costUsd: 0, inputTokens: 0, outputTokens: 0, latencyMs: 1, score: 0.9, passThreshold: 0.7, passed: true, rationale: 'on the subject' }),
+    }) as unknown as RelevanceJudge;
+  const judged = (overrides: Partial<typeof defaultConfig.eval> = {}): EvalEngine => {
+    const e = engine(overrides);
+    e.setRelevanceJudge(standIn());
+    return e;
+  };
+  const REPORT = { input: 'Summarise the quarterly report in two sentences.', output: 'Revenue grew four percent on the quarter, led by the services line. Costs were flat and the margin widened by one point.' };
+  const custom = (result: EvalResult, name: string): EvalRuleResult => result.rule_results.find((r) => r.ruleName === name && r.origin === 'custom')!;
+  const builtIn = (result: EvalResult, name: string): EvalRuleResult => result.rule_results.find((r) => r.ruleName === name && r.origin !== 'custom')!;
+
+  it('an installed judge asks for the rule it answers for, and not for an inline rule called answers_the_ask', async () => {
+    // No gating severity, and a pattern that does not compile: the rule could not answer, and its fire would have taken no part.
+    const broken = { name: 'answers_the_ask', type: 'regex_no_match' as const, config: { pattern: '(margin widened', flags: 'i' } };
+    const result = await judged().evaluateAll({ ...REPORT }, [broken]);
+    expect(custom(result, 'answers_the_ask')).toMatchObject({ skipped: true, skipClass: 'config_invalid', role: 'advisory' });
+    expect(custom(result, 'answers_the_ask').asked).toBeUndefined();
+    // The rule the judge answers for answered, as a judgment.
+    expect(builtIn(result, 'answers_the_ask')).toMatchObject({ passed: true, kind: 'judgment', role: 'gate' });
+    expect(result.verdict).toMatchObject({ state: 'pass', basis: 'clean' });
+    expect(sentences(result)).not.toContain('which this deployment asked for');
+    expect(result.categories?.relevance).toMatchObject({ state: 'pass', passed: true });
+    // A deployment that fails an unanswered check is not failed by this one.
+    expect((await judged({ onCriticalSkipped: 'fail' }).evaluateAll({ ...REPORT }, [broken])).verdict).toMatchObject({ state: 'pass', basis: 'clean' });
+  });
+
+  it('nor for one of that name that lacks what it reads, which the name alone used to ask for', async () => {
+    // A cost ceiling of the call's own, under that name, on a call that sent no cost.
+    const ceiling = { name: 'answers_the_ask', type: 'cost_threshold' as const, config: { max_cost: 0.5 } };
+    const result = await judged().evaluateAll({ ...REPORT }, [ceiling]);
+    expect(custom(result, 'answers_the_ask')).toMatchObject({ skipped: true, skipClass: 'not_applicable' });
+    expect(custom(result, 'answers_the_ask').asked).toBeUndefined();
+    expect(result.verdict).toMatchObject({ state: 'pass', basis: 'clean' });
+  });
+
+  it('the rule the judge answers for is still asked for by the deployment: with no ask sent, the verdict is not checked', async () => {
+    const result = await judged().evaluateAll({ output: REPORT.output });
+    expect(builtIn(result, 'answers_the_ask')).toMatchObject({ skipped: true, skipClass: 'not_applicable', asked: 'config' });
+    expect(result.verdict).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing' });
+  });
+
+  it('the note beside a failed risk estimate names the weighed fire once, whatever else carries its name', async () => {
+    // An unfilled template: no_stub_output fires, and at the shipped settings the estimate fails the verdict on it.
+    const TEMPLATE = { output: 'TODO: write the summary.' };
+    const ONE = 'rests on no_stub_output. If its fires are not failures on your traffic';
+    const alone = await engine().evaluateAll({ ...TEMPLATE });
+    expect(alone.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['stub'] });
+    expect(sentences(alone)).toContain(ONE);
+    // An inline rule of that name that passes, and one that fires: a policy the estimate does not read.
+    const passes = { name: 'no_stub_output', type: 'regex_no_match' as const, config: { pattern: 'internal draft', flags: 'i' } };
+    const fires = { name: 'no_stub_output', type: 'regex_no_match' as const, config: { pattern: 'write the summary', flags: 'i' } };
+    for (const [what, rule] of [['passes', passes], ['fires', fires]] as const) {
+      const result = await engine().evaluateAll({ ...TEMPLATE }, [rule]);
+      expect(custom(result, 'no_stub_output'), what).toMatchObject({ passed: what === 'passes', kind: 'policy', role: 'advisory' });
+      expect(result.verdict, what).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['stub'] });
+      expect(sentences(result), what).toContain(ONE);
+      expect(sentences(result), what).not.toContain('no_stub_output, no_stub_output');
+    }
+  });
+
+  it('a result that says who asked for its rule, or what it lacked, is not taken at its word', async () => {
+    // A deployment's own detection, registered in code, stopped at a limit of work of its own. It has no published accuracy: its fire takes no part.
+    const scan = (said: Partial<EvalRuleResult>): EvalRule => ({
+      name: 'limit_scan',
+      description: 'A scan that stops at a limit of work.',
+      evalType: 'custom',
+      weight: 1,
+      critical: false,
+      kind: 'detection',
+      mechanism: 'pattern',
+      needs: ['output'],
+      version: 1,
+      evaluate: (): EvalRuleResult => ({ ruleName: 'limit_scan', passed: false, score: 0, message: 'Stopped at its limit', skipped: true, skipReason: 'stopped at its limit', budgetExceeded: true, ...said }),
+    });
+    for (const said of [{}, { asked: 'config' as const }, { asked: 'call' as const }, { lacked: ['cost' as const] }, { asked: 'config' as const, lacked: ['cost' as const] }]) {
+      const e = engine();
+      e.registerRule('custom', scan(said), 'embedder:limit_scan');
+      const result = await e.evaluateAll({ ...REPORT });
+      const own = row(result, 'limit_scan');
+      expect(own, JSON.stringify(said)).toMatchObject({ skipped: true, skipClass: 'defeated', role: 'advisory' });
+      expect(own.asked, JSON.stringify(said)).toBeUndefined();
+      expect(own.lacked, JSON.stringify(said)).toBeUndefined();
+      expect(result.verdict, JSON.stringify(said)).toMatchObject({ state: 'pass', basis: 'clean' });
+    }
+  });
+
+  it('what the call carried is read once, from the context the rules were handed: the rows and the evidence record say one thing', async () => {
+    // A context that carries a step list of its own and no tool calls. The engine derives the list it hands the rules, and the rules saw no call.
+    const steps = [{ index: 0, kind: 'tool', name: 'get_order', source: 'tool_call', status: 'ok', input: { id: 1182 }, output: 'paid' }] as unknown as EvalContext['steps'];
+    const e = engine({ configuredThresholdKeys: ['max_tool_repeats', 'max_steps'] } as Partial<typeof defaultConfig.eval>, { max_tool_repeats: 2, max_steps: 6 });
+    const result = await e.evaluateAll({ ...REPORT, steps });
+    expect(row(result, 'no_tool_loop')).toMatchObject({ skipped: true, skipClass: 'not_applicable', lacked: ['tool_calls'], asked: 'config' });
+    expect(result.provenance?.evidence?.carried).not.toContain('tool_calls');
+    expect(result.verdict).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['tool_calls'] });
   });
 });

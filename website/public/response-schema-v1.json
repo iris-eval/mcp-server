@@ -623,7 +623,7 @@
             ]
           },
           "thresholdSource": {
-            "description": "on a result that could not answer though there was something to judge, of a rule that compares against a number a deployment can set: whose number it stood at on this call. default is the one Iris ships; config is one the deployment or the call set (asked says which). An answered result says this on its count evidence",
+            "description": "on a result that could not answer though there was something to judge, of a rule that declares the threshold it compares against (tool_choice, answers_the_ask, cost_under_threshold, verbosity_ratio, no_tool_loop and max_steps do): whose number it stood at on this call. default is the one Iris ships; config is one the deployment or the call set (asked says which). An answered result says this on its count evidence",
             "type": "string",
             "enum": [
               "default",

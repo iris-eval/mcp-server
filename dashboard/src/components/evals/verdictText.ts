@@ -9,7 +9,7 @@ export const BASIS_TEXT: Record<VerdictBasis, string> = {
   policy_gate: 'A gate decided it: a threshold you set, or a judge question, and the rule named failed.',
   detector_veto: 'A critical rule fired. Its fail is the verdict, regardless of every other rule.',
   critical_unknown:
-    'A rule that had to judge could not: a critical rule or a gate, one the deployment or the call asked for, or one the risk estimate weighs that failed as it ran. The verdict is unknown rather than clean. eval.onCriticalSkipped decides whether unknown reads as a fail.',
+    'A rule that had to judge could not: a critical rule or a gate, one the deployment or the call asked for, or one the risk estimate weighs that failed as it ran. That is not a clean result: the verdict is unknown, or a fail where eval.onCriticalSkipped is set to "fail".',
   required_evidence_missing:
     'Evidence that was asked for, or that the capture source promised, is not in the record, so the verdict is unknown rather than clean.',
   risk_over_loss:
