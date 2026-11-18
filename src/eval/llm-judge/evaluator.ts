@@ -160,7 +160,7 @@ function planJudgeCall(params: PlanParams): JudgePlan {
   // asks for the two things a reply can get wrong.
   const strictSystem =
     systemPrompt +
-    '\n\nIMPORTANT: your previous response could not be read. Respond with ONLY the JSON object, with nothing before or after it and no code fences, and give "score" as a number, not in quotes.';
+    '\n\nIMPORTANT: your previous response could not be read. Respond with ONLY the JSON object: nothing before or after it, no code fences, and "score" as a number, not in quotes.';
   const retryMaxOutputTokens = Math.min(maxOutputTokens, 256);
 
   /*

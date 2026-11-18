@@ -30,14 +30,15 @@ export function replyObject(raw: unknown): Record<string, unknown> | null {
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/```$/, '')
     .trim();
-  if (!text.startsWith('{') || !text.endsWith('}')) return null;
   let parsed: unknown;
   try {
+    // The whole text, so prose on either side of an object is text that does not parse.
     parsed = JSON.parse(text);
   } catch {
     return null;
   }
-  return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
+  // A list, a number and a string are JSON and are not the object. So is `null`, which is returned as what it is.
+  return typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown> | null) : null;
 }
 
 /** The number a reply gives for a field that must be one from 0 to 1, or null when it gives none: not a JSON number, or one outside the range (which a number too large to hold is). */

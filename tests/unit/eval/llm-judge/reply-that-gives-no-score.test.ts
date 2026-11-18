@@ -145,7 +145,10 @@ describe('a judge reply that gives no score is not read as one', () => {
     const added = provider.systems[1].slice(provider.systems[0].length);
     expect(provider.systems[1].startsWith(provider.systems[0])).toBe(true);
     expect(added).toContain('your previous response could not be read');
-    expect(added).toContain('give "score" as a number, not in quotes');
+    // The two things a reply can get wrong, each asked for: the object alone, and a score that is a number.
+    expect(added).toContain('ONLY the JSON object');
+    expect(added).toContain('nothing before or after it');
+    expect(added).toContain('"score" as a number, not in quotes');
     // The reply WAS valid JSON: the request does not say otherwise.
     expect(added).not.toContain('not valid JSON');
   });
