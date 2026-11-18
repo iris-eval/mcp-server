@@ -5,7 +5,7 @@ import {
   type LLMProvider,
 } from '../llm-judge/client.js';
 import { estimateCostUsd, findPricing } from '../llm-judge/pricing.js';
-import { shownValue, unitNumber } from '../llm-judge/reply.js';
+import { replyObject, shownReply, shownValue, unitNumber } from '../llm-judge/reply.js';
 import {
   makeNonce,
   wrapUntrusted,
@@ -178,25 +178,18 @@ function parseJudgeResult(raw: string): {
   confidence: number;
   rationale: string;
 } {
-  const trimmed = raw
-    .trim()
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```$/i, '')
-    .trim();
-  const first = trimmed.indexOf('{');
-  const last = trimmed.lastIndexOf('}');
-  if (first < 0 || last <= first) {
-    throw new LLMJudgeError(
-      `Citation judge did not emit JSON: ${raw.slice(0, 200)}`,
-      'malformed_response',
-    );
-  }
-  let obj: Record<string, unknown>;
-  try {
-    obj = JSON.parse(trimmed.slice(first, last + 1)) as Record<string, unknown>;
-  } catch (err) {
-    throw new LLMJudgeError(`Citation judge reply was not valid JSON: ${(err as Error).message}`, 'malformed_response');
+  /*
+   * The reply is the JSON object alone, or it is not a reply
+   * (../llm-judge/reply.ts, replyObject): the prompt asks for "a single JSON
+   * object — no markdown, no prose". The object used to be cut out from the
+   * first brace to the last, so a judge that wrote it had no verdict to
+   * give, and quoted an object out of the page it was shown, had given that
+   * object's verdict. The page is whatever the output under evaluation chose
+   * to cite.
+   */
+  const obj = replyObject(raw);
+  if (obj === null) {
+    throw new LLMJudgeError(`Citation judge reply is not the JSON object it was asked for: ${shownReply(raw)}`, 'malformed_response');
   }
   /*
    * The verdict and the confidence are read only when the reply gives them:

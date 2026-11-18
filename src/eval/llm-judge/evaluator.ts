@@ -1,6 +1,6 @@
 import { callLLMJudge, estimateInputTokens, LLMJudgeError, type LLMProvider } from './client.js';
 import { estimateCostUsd, findPricing } from './pricing.js';
-import { shownValue, unitNumber } from './reply.js';
+import { replyObject, shownReply, shownValue, unitNumber } from './reply.js';
 import { getTemplate, type TemplateName } from './templates/index.js';
 
 /**
@@ -83,41 +83,19 @@ function parseJudgeResponse(raw: string): {
   rationale: string;
   dimensions: Record<string, number>;
 } {
-  // Strip common wrapping patterns (markdown fences, leading prose) to
-  // give the JSON parser the best chance.
-  const trimmed = raw
-    .trim()
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```$/i, '')
-    .trim();
-
-  // Find the first { and last } — models sometimes prepend "Here's the
-  // evaluation:" despite being told not to. Parse the substring.
-  const firstBrace = trimmed.indexOf('{');
-  const lastBrace = trimmed.lastIndexOf('}');
-  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
-    throw new LLMJudgeError(
-      `Judge response did not contain a JSON object: ${raw.slice(0, 200)}`,
-      'malformed_response',
-    );
+  /*
+   * The reply is the JSON object alone, or it is not a reply (reply.ts,
+   * replyObject). Every template asks for "a single JSON object — no
+   * markdown, no prose before or after", and that is what is read. The
+   * object used to be cut out from the first brace to the last, to forgive
+   * a model that wrote "Here is the evaluation:" first. The same cut read a
+   * judge that wrote it had no evaluation to give, and quoted an object out
+   * of the text it was judging, as having given that object's score.
+   */
+  const obj = replyObject(raw);
+  if (obj === null) {
+    throw new LLMJudgeError(`Judge reply is not the JSON object it was asked for: ${shownReply(raw)}`, 'malformed_response');
   }
-  const slice = trimmed.slice(firstBrace, lastBrace + 1);
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(slice);
-  } catch (err) {
-    throw new LLMJudgeError(
-      `Judge response was not valid JSON: ${(err as Error).message} — raw: ${slice.slice(0, 200)}`,
-      'malformed_response',
-    );
-  }
-
-  if (!parsed || typeof parsed !== 'object') {
-    throw new LLMJudgeError('Judge response was not a JSON object', 'malformed_response');
-  }
-  const obj = parsed as Record<string, unknown>;
 
   /*
    * The score is the judge's answer, and it is read only when the reply
@@ -176,10 +154,13 @@ function planJudgeCall(params: PlanParams): JudgePlan {
 
   // The retry prompt is fixed up front so the pre-flight estimate can
   // price it: a malformed first reply triggers ONE more call with this
-  // stricter system prompt and a smaller output cap.
+  // stricter system prompt and a smaller output cap. It says what is true
+  // of every malformed reply (it used to say the reply "was not valid JSON",
+  // also to a model whose JSON was valid and whose score was in quotes), and
+  // asks for the two things a reply can get wrong.
   const strictSystem =
     systemPrompt +
-    '\n\nIMPORTANT: your previous response was not valid JSON. Respond with ONLY the JSON object, no prefatory text, no code fences.';
+    '\n\nIMPORTANT: your previous response could not be read. Respond with ONLY the JSON object, with nothing before or after it and no code fences, and give "score" as a number, not in quotes.';
   const retryMaxOutputTokens = Math.min(maxOutputTokens, 256);
 
   /*

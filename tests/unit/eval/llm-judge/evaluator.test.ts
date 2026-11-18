@@ -72,10 +72,9 @@ describe('evaluateWithLLMJudge', () => {
     expect(low.passed).toBe(false);
   });
 
-  it('strips code-fence + prose wrappers around the JSON', async () => {
-    mockAnthropicJSON(
-      'Here is the evaluation:\n```json\n{"score":0.7,"passed":true,"rationale":"ok","dimensions":{}}\n```\nDone.',
-    );
+  // The object alone, in a code fence. Prose around it is not a reply that gave the object: reply-that-gives-no-score.test.ts.
+  it('reads the object inside a code fence', async () => {
+    mockAnthropicJSON('```json\n{"score":0.7,"passed":true,"rationale":"ok","dimensions":{}}\n```');
     const res = await evaluateWithLLMJudge({
       output: 'foo',
       template: 'helpfulness',

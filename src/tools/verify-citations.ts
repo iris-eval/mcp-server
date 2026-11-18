@@ -81,6 +81,7 @@ export function assertJudgeRan(result: {
       recovery: [
         'Check the key and the model: a refused key or an unknown model fails every citation the same way.',
         'Retry when the kind is a timeout, a rate limit or a provider server error.',
+        'When the kind is malformed_judge_response, the judge answered without a verdict that could be read (the JSON object alone, with a boolean under "supported" and a number from 0 to 1 under "confidence"): the first error says what stood in its place. Retry, and if it recurs pick another model.',
         'Raise max_cost_usd_total when the kind is cost_cap_reached.',
         `When the kind is daily_budget_reached, every judge call on this key has used the operator's ${DAILY_BUDGET_VAR} for today: retry after it resets, or the operator raises it.`,
       ],

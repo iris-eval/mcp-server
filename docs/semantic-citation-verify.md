@@ -173,7 +173,7 @@ Set when `resolve_status` is `ok` and `judge` is absent. Until 0.20.0 these were
 |---------------------------|---------------------------------------------------------------------------|
 | `cost_cap_reached`        | The next judge call would pass `max_cost_usd_total`; later citations are not attempted |
 | `daily_budget_reached`    | The next judge call does not fit in what is left of the day's `IRIS_LLM_JUDGE_DAILY_BUDGET_USD`; later citations are not attempted |
-| `malformed_judge_response`| The judge replied, but not with a readable verdict: no JSON object, no boolean under `supported`, or no number from 0 to 1 under `confidence`. The citation is not judged and takes no part in `passed` (until 0.22.0 a reply with no `supported` read as "not supported") |
+| `malformed_judge_response`| The judge replied, but not with a readable verdict: the reply is not the JSON object alone (prose around an object is not), or it has no boolean under `supported`, or no number from 0 to 1 under `confidence`. The judge is asked once for each citation. The citation is not judged and takes no part in `passed`: the verdict rests on the citations that were judged. Until 0.22.0 a reply with no `supported` read as "not supported" and counted against the output, and an object quoted inside a sentence was read as the verdict |
 | `auth`                    | The provider refused the key                                              |
 | `rate_limit`              | The provider rate-limited the call, after one retry                       |
 | `bad_request`             | The provider refused the request (for example, a model it does not serve) |
