@@ -24,7 +24,7 @@ import { createCustomRuleStore, type CustomRuleStore } from '../../src/custom-ru
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { EvalEngine } from '../../src/eval/engine.js';
 import { builtInRules } from '../../src/eval/criticality.js';
-import { builtInNameKept, builtInNameRefusal, builtInRuleNames, isBuiltInRuleName } from '../../src/eval/built-in-names.js';
+import { builtInNameKept, builtInNameNotEnabled, builtInNameRefusal, builtInRuleNames, isBuiltInRuleName } from '../../src/eval/built-in-names.js';
 import { refreshLocalLabels } from '../../src/eval/local-labels.js';
 import { keepInStep } from '../../src/eval/shared-state.js';
 import { registerRuleRoutes } from '../../src/dashboard/routes/rules.js';
@@ -79,7 +79,7 @@ function envelope(result: unknown): { code: string; message: string; field?: str
   return (JSON.parse(textOf(result as Parameters<typeof textOf>[0])) as { error: { code: string; message: string; field?: string; recovery: string[] } }).error;
 }
 
-async function call(app: express.Express, method: 'GET' | 'POST', path: string, body?: unknown): Promise<{ status: number; body: Record<string, unknown> }> {
+async function call(app: express.Express, method: 'GET' | 'POST' | 'PATCH', path: string, body?: unknown): Promise<{ status: number; body: Record<string, unknown> }> {
   const listening = app.listen(0);
   const { port } = listening.address() as { port: number };
   try {
@@ -109,6 +109,9 @@ describe('the names of the rules Iris ships', () => {
   it('are refused in a sentence that names each one and says what to do', () => {
     expect(builtInNameRefusal(['no_pii'])).toBe('"no_pii" is the name of a rule Iris ships, and a custom rule may not take it: the two would carry one name in every result. Choose another name.');
     expect(builtInNameRefusal(['no_pii', 'max_steps'])).toBe('"no_pii", "max_steps" are the names of rules Iris ships, and a custom rule may not take one: two rules would carry one name in every result. Choose other names.');
+    expect(builtInNameNotEnabled({ id: 'rule-1a2b', name: 'no_pii' })).toBe(
+      'The custom rule "no_pii" (rule-1a2b) carries the name of a rule Iris ships, and a custom rule may not take it, so it stays paused: the two would carry one name in every result. Deploy it again under a name of its own, then delete this one.',
+    );
   });
 });
 
@@ -221,6 +224,45 @@ describe('a rule stored under such a name before the doors refused it keeps runn
     const line = builtInNameKept(stored);
     expect(line).toContain(`"no_stub_output" (${stored.id}) carries the name of a rule Iris ships. It keeps running`);
     expect(line).toContain(`delete_rule with id "${stored.id}"`);
+  });
+
+  it('once paused, delete_rule does not turn it back on; it pauses, and turns on a rule of a name of its own, as before', async () => {
+    const { client, rules } = await server();
+    const stored = rules.deploy(LOCAL_TENANT, { name: 'no_pii', evalType: 'safety', definition: { name: 'no_pii', ...FIRES_ON_A_STUB } });
+    const own = rules.deploy(LOCAL_TENANT, { name: 'no_stub_text', evalType: 'custom', definition: { name: 'no_stub_text', ...FIRES_ON_A_STUB } });
+    // Turning on a rule that is already on answers as before: it was running, and keeps running.
+    expect(await client.callTool({ name: 'delete_rule', arguments: { rule_id: stored.id, enabled: true } })).toMatchObject({ structuredContent: { toggled: true, enabled: true } });
+    expect(await client.callTool({ name: 'delete_rule', arguments: { rule_id: stored.id, enabled: false } })).toMatchObject({ structuredContent: { toggled: true, enabled: false } });
+    const refused = envelope(await client.callTool({ name: 'delete_rule', arguments: { rule_id: stored.id, enabled: true } }));
+    expect(refused).toMatchObject({ code: 'IRIS_INVALID_ARGUMENT', field: 'enabled', message: builtInNameNotEnabled(stored) });
+    expect(rules.get(LOCAL_TENANT, stored.id)?.enabled).toBe(false);
+    await client.callTool({ name: 'delete_rule', arguments: { rule_id: own.id, enabled: false } });
+    expect(await client.callTool({ name: 'delete_rule', arguments: { rule_id: own.id, enabled: true } })).toMatchObject({ structuredContent: { toggled: true, enabled: true } });
+    // And it can still be deleted.
+    expect(await client.callTool({ name: 'delete_rule', arguments: { rule_id: stored.id } })).toMatchObject({ structuredContent: { deleted: true } });
+  });
+
+  it("once paused, the rules API's toggle does not turn it back on: 409, and the rule stays paused", async () => {
+    const rules = ruleStore();
+    const engine = new EvalEngine(0.7);
+    const app = express();
+    app.use(express.json());
+    app.use(createTenantMiddleware());
+    const router = express.Router();
+    registerRuleRoutes(router, (await sqlite()) as never, { customRuleStore: rules, evalEngine: engine });
+    app.use('/api/v1', router);
+    const stored = rules.deploy(LOCAL_TENANT, { name: 'no_tool_loop', evalType: 'cost', definition: { name: 'no_tool_loop', ...FIRES_ON_A_STUB } });
+    const own = rules.deploy(LOCAL_TENANT, { name: 'no_loop_text', evalType: 'cost', definition: { name: 'no_loop_text', ...FIRES_ON_A_STUB } });
+    expect((await call(app, 'PATCH', `/api/v1/rules/custom/${stored.id}`, { enabled: true })).status).toBe(200);
+    expect((await call(app, 'PATCH', `/api/v1/rules/custom/${stored.id}`, { enabled: false })).status).toBe(200);
+    const refused = await call(app, 'PATCH', `/api/v1/rules/custom/${stored.id}`, { enabled: true });
+    expect(refused.status).toBe(409);
+    expect(refused.body.error).toBe(builtInNameNotEnabled(stored));
+    expect(rules.get(LOCAL_TENANT, stored.id)?.enabled).toBe(false);
+    expect(engine.hasRule(stored.id)).toBe(false);
+    expect((await call(app, 'PATCH', `/api/v1/rules/custom/${own.id}`, { enabled: false })).status).toBe(200);
+    expect((await call(app, 'PATCH', `/api/v1/rules/custom/${own.id}`, { enabled: true })).status).toBe(200);
+    expect(engine.hasRule(own.id)).toBe(true);
   });
 });
 

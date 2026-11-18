@@ -7,7 +7,8 @@
  * refuses such a name (plugins.ts), and so does each door a custom rule comes
  * in by: deploy_rule, the rules API and its preview, and the inline rules of
  * evaluate_output. A rule stored under such a name before the doors refused
- * it keeps running, and the server says so when it starts.
+ * it keeps running, and the server says so when it starts; once paused, it is
+ * not turned back on (delete_rule with enabled, and the rules API's toggle).
  */
 import { builtInRules } from './criticality.js';
 
@@ -38,5 +39,13 @@ export function builtInNameKept(rule: { id: string; name: string }): string {
   return (
     `The deployed custom rule "${rule.name}" (${rule.id}) carries the name of a rule Iris ships. It keeps running, and the two share one name in every result. ` +
     `Deploy it again under a name of its own and delete this one (delete_rule with id "${rule.id}"); a label on its fires cannot be written, so that none weighs the rule Iris ships.`
+  );
+}
+
+/** What a door answers when asked to turn back on a paused stored rule that carries such a name. */
+export function builtInNameNotEnabled(rule: { id: string; name: string }): string {
+  return (
+    `The custom rule "${rule.name}" (${rule.id}) carries the name of a rule Iris ships, and a custom rule may not take it, so it stays paused: the two would carry one name in every result. ` +
+    'Deploy it again under a name of its own, then delete this one.'
   );
 }

@@ -6,7 +6,7 @@ import { RULE_NAME_MESSAGE, RULE_NAME_PATTERN, RULE_TYPE_VALUES } from '../../cu
 import type { EvalEngine } from '../../eval/engine.js';
 import { createCustomRule } from '../../eval/rules/custom.js';
 import { builtInRuleRoster, type BuiltInRuleMeta } from '../../eval/criticality.js';
-import { builtInNameRefusal, isBuiltInRuleName } from '../../eval/built-in-names.js';
+import { builtInNameNotEnabled, builtInNameRefusal, isBuiltInRuleName } from '../../eval/built-in-names.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import type { TenantId } from '../../types/tenant.js';
 import type { RulePreviewResult } from '../../types/custom-rule.js';
@@ -236,6 +236,11 @@ export function registerRuleRoutes(
         // Idempotent: the engine already matches the store; touching it
         // would double-register or no-op-unregister.
         res.json({ rule: existing });
+        return;
+      }
+      // 409 as for a deploy under such a name: a paused rule stored under the name of a rule Iris ships stays paused (eval/built-in-names.ts).
+      if (enabled && isBuiltInRuleName(existing.name)) {
+        res.status(409).json({ error: builtInNameNotEnabled(existing) });
         return;
       }
       const rule = opts.customRuleStore.setEnabled(tenantId, req.params.id, enabled);

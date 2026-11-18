@@ -601,6 +601,7 @@ Remove a deployed custom rule by ID. Idempotent-ish: re-deleting a removed rule 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `rule_id` | `string` | Yes | ID returned by `deploy_rule` |
+| `enabled` | `boolean` | No | When present the rule is kept: `false` pauses it, `true` turns it back on. A paused rule stored under the name of a rule Iris ships (by an earlier version) is not turned back on (`IRIS_INVALID_ARGUMENT`, field `enabled`): deploy it again under a name of its own |
 
 #### Response
 
@@ -1745,6 +1746,7 @@ Enable or disable a deployed rule without deleting it — the dashboard's toggle
 | `200` | `{ "rule": { ..., "enabled": false } }` — the rule as persisted |
 | `400` | Non-boolean `enabled`, or an unknown key: `{ "error": "Invalid toggle request", "details": [...] }` |
 | `404` | `{ "error": "Rule not found" }` |
+| `409` | `enabled: true` for a paused rule stored under the name of a rule Iris ships (by an earlier version): `{ "error": "The custom rule \"no_pii\" (rule-…) carries the name of a rule Iris ships, ... so it stays paused: ..." }`. Deploy it again under a name of its own |
 
 ---
 
