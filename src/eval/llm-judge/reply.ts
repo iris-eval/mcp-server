@@ -17,20 +17,24 @@
  */
 
 /**
- * A text with the white space at its two ends taken off: what `trim()`
- * takes, and four characters that have no width, which it does not (the
- * zero-width space, non-joiner and joiner, and the word joiner). A reply
- * that starts with one of those is still the reply, and an error could not
- * show what was wrong with it. No other character is taken.
- * One pass from each end, so the work does not grow with what a model
+ * What is not part of a reply at its two ends: white space of any kind, which
+ * is what `trim()` takes, and four characters that have no width, which it
+ * leaves (the zero-width space, non-joiner and joiner, and the word joiner).
+ * No other character is taken.
+ */
+const EDGE = /[\s\u200b-\u200d\u2060]/;
+
+/**
+ * A text with its two ends bared. A reply that starts with a character of no
+ * width is still the reply, and an error could not show what was wrong with
+ * it. One pass from each end, so the work does not grow with what a model
  * wrote in between.
  */
 function bare(text: string): string {
-  const edge = /[\s\u200b-\u200d\u2060]/;
   let start = 0;
   let end = text.length;
-  while (start < end && edge.test(text[start])) start++;
-  while (end > start && edge.test(text[end - 1])) end--;
+  while (start < end && EDGE.test(text[start])) start++;
+  while (end > start && EDGE.test(text[end - 1])) end--;
   return text.slice(start, end);
 }
 
@@ -41,11 +45,13 @@ const isFenceMark = (char: string | undefined): boolean => char === '`' || char 
  * A reply with its code fence taken off, when it has one: three or more
  * backticks, or three or more tildes.
  *
- * After the opening marks one word at most may stand: the language the
- * fence names, whatever characters it is written in, with or without a
- * space before it. Then the reply, on that line or on the next. More than
- * one word there is prose before the object, on a fence's own line as
- * anywhere else.
+ * After the opening marks, on their line, one word at most may stand: the
+ * language the fence names, in whatever characters it is written (any but
+ * white space, a fence's own marks and an opening brace). Before the word
+ * may stand what a reply's own ends are bared of. Then the reply, on that
+ * line or below it. More than one word there is prose before the object, on
+ * a fence's own line as anywhere else, and so is a word on the line below
+ * the marks.
  *
  * A fence that is opened and not closed, or closed and not opened, is taken
  * off too: what is left is still the whole of what the model said.
@@ -53,7 +59,13 @@ const isFenceMark = (char: string | undefined): boolean => char === '`' || char 
 function withoutFence(text: string): string {
   let open = 0;
   if (isFenceMark(text[0])) while (text[open] === text[0]) open++;
-  const rest = open >= 3 ? text.slice(open).replace(/^[ \t]*[^\s`{]*/, '') : text;
+  let from = 0;
+  if (open >= 3) {
+    from = open;
+    while (from < text.length && text[from] !== '\n' && text[from] !== '\r' && EDGE.test(text[from])) from++;
+    while (from < text.length && !/[\s{]/.test(text[from]) && !isFenceMark(text[from])) from++;
+  }
+  const rest = text.slice(from);
   const last = rest[rest.length - 1];
   let close = rest.length;
   if (isFenceMark(last)) while (close > 0 && rest[close - 1] === last) close--;

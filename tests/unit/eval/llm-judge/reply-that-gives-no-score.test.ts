@@ -106,6 +106,29 @@ describe('replyObject: the JSON object a reply is', () => {
     }
   });
 
+  it("before the fence's word may stand what a reply's own ends are bared of: white space of any kind, and a character of no width", () => {
+    const char = (code: number): string => String.fromCharCode(code);
+    // A no-break space, an ideographic space, a thin space, a tab, a vertical tab, a form feed, a byte-order mark, a zero-width space, a word joiner, and three mixes.
+    const beforeTheWord = [char(0xa0), char(0x3000), char(0x2009), char(9), char(11), char(12), char(0xfeff), char(0x200b), char(0x2060), `${char(0x200b)} `, ` ${char(0x200b)}`, ` ${char(0xa0)} `];
+    for (const gap of beforeTheWord) {
+      for (const eol of ['\n', '\r\n', '\r']) {
+        for (const text of [`\`\`\`${gap}json${eol}${OBJECT}${eol}\`\`\``, `\`\`\`${gap}${eol}${OBJECT}${eol}\`\`\``, `~~~${gap}json${eol}${OBJECT}${eol}~~~`]) {
+          expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
+        }
+      }
+    }
+    // Inside the word, or at its end, a character of no width is part of the word: no space makes two of it.
+    for (const text of [`\`\`\`js${char(0x200b)}on\n${OBJECT}\n\`\`\``, `\`\`\`json${char(0x200b)}\n${OBJECT}\n\`\`\``]) expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
+  });
+
+  it("a word on the line below the marks is not the fence's: it is prose before the object", () => {
+    for (const eol of ['\n', '\r\n', '\r']) {
+      for (const text of [`\`\`\`${eol}json${eol}${OBJECT}${eol}\`\`\``, `\`\`\` ${eol}json${eol}${OBJECT}${eol}\`\`\``, `\`\`\`json${eol}Sure${eol}${OBJECT}${eol}\`\`\``, `~~~${eol}Sure${eol}${OBJECT}${eol}~~~`]) {
+        expect(replyObject(text), JSON.stringify(text)).toBeNull();
+      }
+    }
+  });
+
   it('a fence is three backticks or more, at either end, and blank lines inside it are not the reply', () => {
     for (const text of [`\`\`\`\`json\n${OBJECT}\n\`\`\`\``, `\`\`\`\`\`\n${OBJECT}\n\`\`\`\`\``, `\`\`\`\`json\n${OBJECT}\n\`\`\``, `\`\`\`json\n\n${OBJECT}\n\n\`\`\``, `\`\`\`json\n${OBJECT}\n\`\`\`  \n`]) {
       expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
@@ -145,6 +168,11 @@ describe('replyObject: the JSON object a reply is', () => {
       `Here it is:\n\`\`\`json\n${OBJECT}\n\`\`\``,
       `${OBJECT}\n\`\`\`json`,
       `\`\`\`json\n${OBJECT}\n\`\`\`\n\`\`\`json\n${OBJECT}\n\`\`\``,
+      // A fence inside a fence: one fence is taken off, and what is left is not the object.
+      `\`\`\`\`\n\`\`\`json\n${OBJECT}\n\`\`\`\n\`\`\`\``,
+      // A fence that closes before the object: the object is not inside it, and the closing marks are not part of the word.
+      `\`\`\`json\`\`\`${OBJECT}`,
+      `~~~json~~~${OBJECT}`,
       `\`\`\`\n[${OBJECT}]\n\`\`\``,
       '```json\n```',
       '``````',
