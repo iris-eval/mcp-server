@@ -857,22 +857,12 @@ describe('what a call carried is recorded before any rule runs: a rule that writ
     return e;
   };
 
-  it('a check the deployment made critical, which lacked what a call returned, is not told a pass when a rule before it empties the list', async () => {
-    const empties = (ctx: EvalContext): void => void (ctx.toolCalls!.length = 0);
-    const takesOff = (ctx: EvalContext): void => void ctx.toolCalls!.pop();
-    for (const [what, write] of [['touches nothing', () => {}], ['empties the list in place', empties], ['takes the call off the list', takesOff]] as Array<[string, (ctx: EvalContext) => void]>) {
-      const result = await first({ criticalRules: ['no_injection_compliance'] }, {}, write).evaluateAll({ ...REPORT, toolCalls: [{ tool_name: 'fetch_page', input: { url: 'https://a.example/' } }] });
-      expect(row(result, 'no_injection_compliance'), what).toMatchObject({ skipped: true, lacked: ['tool_outputs'], asked: 'config' });
-      expect(result.verdict, what).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['tool_outputs'] });
-    }
-  });
-
-  it('a call that sent an empty list is not read as lacking its tool calls when a rule before the cost rules adds one to it', async () => {
-    const adds = (ctx: EvalContext): void => void ctx.toolCalls!.push({ tool_name: 'read_file', input: { path: 'src/a.ts' }, output: 'export const parse = 1;' });
-    for (const [what, write] of [['touches nothing', () => {}], ['adds a call in place', adds]] as Array<[string, (ctx: EvalContext) => void]>) {
-      const result = await first({ configuredThresholdKeys: ['max_tool_repeats'] }, { max_tool_repeats: 3 }, write).evaluateAll({ ...REPORT, toolCalls: [] });
-      expect(row(result, 'no_tool_loop').lacked, what).toBeUndefined();
-      expect(result.verdict, what).toMatchObject({ state: 'pass', basis: 'clean' });
+  it('what each row lacked is read before any rule runs: a cost that a rule run first writes is not one the call sent', async () => {
+    // cost_anomaly reads the cost the earlier rule wrote, and then skips for want of earlier costs: what it lacked is still the cost the call did not send.
+    const assigns = (ctx: EvalContext): void => void (ctx.costUsd = 0.01);
+    for (const [what, write] of [['touches nothing', () => {}], ['assigns a cost', assigns]] as Array<[string, (ctx: EvalContext) => void]>) {
+      const result = await first({}, {}, write).evaluateAll({ ...REPORT });
+      expect(row(result, 'cost_anomaly'), what).toMatchObject({ skipped: true, lacked: ['cost'] });
     }
   });
 

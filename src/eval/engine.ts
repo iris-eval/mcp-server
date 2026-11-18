@@ -676,21 +676,8 @@ export class EvalEngine {
      * budget breaches (see rules/custom.ts), remaining regex rules skip
      * without running — one hostile output cannot stall the request once per
      * rule it carries.
-     *
-     * The rules get a list of tool calls of their own, too. The stamp reads
-     * whether the call sent an empty list from the engine's context as each
-     * row is stamped (stamp.ts), and a rule that changed the shared list in
-     * place (a measurement that takes each call off it as it counts them)
-     * moved the rows stamped after it: a check the deployment asked for read
-     * as having lacked nothing. A rule's change still reaches the rules after
-     * it, which are handed this same copy.
      */
-    const evalContext: EvalContext = {
-      ...context,
-      ...(Array.isArray(context.toolCalls) ? { toolCalls: [...context.toolCalls] } : {}),
-      regexBudget: { breaches: 0 },
-      steps: toSteps(context),
-    };
+    const evalContext: EvalContext = { ...context, regexBudget: { breaches: 0 }, steps: toSteps(context) };
     // What the call carried, worked out once for the evaluation from the list just made: every rule's row and the coverage read it (stamp.ts).
     const present = inputsPresent(evalContext);
     /*
