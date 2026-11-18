@@ -28,6 +28,8 @@
  * POSIX permissions; on Windows they are as private as your user's temporary
  * folder. Nothing is stored in Iris, and nothing is sent anywhere.
  */
+// Stays first (src/apply-runtime-guard.ts).
+import '../src/apply-runtime-guard.js';
 import { createWriteStream, existsSync, mkdirSync, mkdtempSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';

@@ -27,6 +27,7 @@ import { agentModelOf } from './llm-judge/family.js';
 import type { RelevanceJudge } from './llm-judge/relevance-judge.js';
 import type { JudgeBudget } from './llm-judge/budget.js';
 import { PKG_VERSION } from '../config/defaults.js';
+import { warnIfUnguarded } from '../runtime-guard.js';
 import { generateEvalId } from '../utils/ids.js';
 
 /**
@@ -368,6 +369,8 @@ export class EvalEngine {
     ruleThresholds?: Record<string, unknown>,
     criticalityOverrides?: CriticalityOverrides,
   ) {
+    // An engine built in a host's own process, on a runtime that can make two results share their numbers, says so once (runtime-guard.ts). A process Iris owns has turned that off by now.
+    warnIfUnguarded();
     this.threshold = threshold;
     this.ruleThresholds = ruleThresholds;
     this.criticalityOverrides = criticalityOverrides;

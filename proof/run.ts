@@ -27,6 +27,8 @@
  * bootstrap seed.
  */
 
+// Stays first: the numbers this prints are measured with the compiler tier that can make two results share theirs turned off (src/apply-runtime-guard.ts).
+import '../src/apply-runtime-guard.js';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve, dirname, join } from 'node:path';

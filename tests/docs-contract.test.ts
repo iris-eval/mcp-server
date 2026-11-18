@@ -33,6 +33,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultConfig } from '../src/config/defaults.js';
 import { rulesByType } from '../src/eval/rules/index.js';
 import { ERROR_CODE_CATALOGUE, WARNING_CODE_CATALOGUE } from '../src/tools/errors.js';
+import { SHARED_NUMBERS_WARNING } from '../src/runtime-guard.js';
 
 const root = resolve(__dirname, '..');
 const read = (rel: string): string => readFileSync(join(root, rel), 'utf8');
@@ -125,6 +126,7 @@ const FOREIGN_FLAGS = new Set([
   'certificate-identity', // cosign verify / verify-blob, the exact signing workflow
   'iris-url', // pytest --iris-url (the Python client's plugin, packages/python)
   'iris-api-key', // pytest --iris-api-key (the same plugin)
+  'no-maglev', // node --no-maglev (the compiler tier the server turns off itself on Node 24 and 26; a host that embeds the engine may start Node with it)
 ]);
 
 describe('docs contract — every --flag in prose is a flag the CLI parses', () => {
@@ -269,6 +271,16 @@ function envVarsInServerJson(): Set<string> {
 /** Read by the code, deliberately not in the registry manifest: a test hook, not a user setting. */
 const INTERNAL_ENV_VARS = new Set(['IRIS_NO_AUTO_LAUNCH']);
 
+/**
+ * The code of a warning the library emits through Node (process.emitWarning),
+ * which shares the prefix and is neither a variable nor a tool's code: the
+ * one an engine gives when it is built on a runtime that can make two
+ * results share their numbers, with nothing in the way (src/runtime-guard.ts;
+ * tests/unit/runtime-guard.test.ts holds the code's spelling and that the
+ * warning carries it).
+ */
+const PROCESS_WARNING_CODES = new Set<string>([SHARED_NUMBERS_WARNING]);
+
 describe('docs contract — IRIS_* variables', () => {
   const read_ = envVarsReadBySrc();
   const pluginRead = envVarsReadByCapturePlugin();
@@ -286,10 +298,18 @@ describe('docs contract — IRIS_* variables', () => {
         // The error catalogue shares the prefix; a code is not a variable.
         if ((ERROR_CODE_CATALOGUE as readonly string[]).includes(m[0])) continue;
         if ((WARNING_CODE_CATALOGUE as readonly string[]).includes(m[0])) continue;
+        if (PROCESS_WARNING_CODES.has(m[0])) continue;
         if (!read_.has(m[0]) && !pluginRead.has(m[0]) && !pythonRead.has(m[0])) unknown.push(`${rel}: ${m[0]}`);
       }
     }
     expect([...new Set(unknown)]).toEqual([]);
+  });
+
+  it('each process warning\'s code is named in the prose a host reads, so the exemption above is for a code that is documented', () => {
+    for (const code of PROCESS_WARNING_CODES) {
+      expect(code).toMatch(/^IRIS_[A-Z0-9_]+$/);
+      expect(prose.some(({ text }) => text.includes(code)), code).toBe(true);
+    }
   });
 
   it('the capture plugin reads its own variables and shares one with the server (IRIS_HOME, where both keep their files); its own are not server settings', () => {

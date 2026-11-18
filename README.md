@@ -651,6 +651,10 @@ The floor is 22.13 rather than 22.0 because 22.13.0 is the first release that sh
 node --version  # Must be v22.13.0 or newer
 ```
 
+**Node 24 and 26.** One tier of the JavaScript engine's compiler has a defect in every Node 24 released so far, and in Node 26 before 26.12.0: two objects built by the same piece of code can come out sharing the storage of their fractional numbers, so that a number read later is another object's ([nodejs/node#66457](https://github.com/nodejs/node/issues/66457); Node 22 does not have it). An evaluation result is made of such numbers. The Iris server and CLI turn that tier off as the first thing they do on those engines, so nothing in Iris or in what it depends on is exposed to it, and results are the same. `--self-test` prints what is in force on its `runtime` line, and `iris://capabilities` carries it as `runtime`.
+
+If you evaluate in your own process through `@iris-eval/mcp-server/engine`, call `applyRuntimeGuard()` once before the first evaluation, or start Node with `--no-maglev`. An engine built on such a Node with neither says so once, as a Node warning (`IRIS_SHARED_NUMBERS`); a library does not change its host's engine.
+
 ### Windows: `cmd /c` not needed
 
 Claude Code's `/doctor` may suggest wrapping npx with `cmd /c`. This is not needed and causes path parsing issues. Use `npx` directly:
