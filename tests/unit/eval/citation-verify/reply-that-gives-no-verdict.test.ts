@@ -14,8 +14,10 @@
  *
  * Each is a malformed reply: the citation is reported as not judged, and
  * takes no part in the verdict. The judge is asked once for each citation.
- * The object itself is read as before, from the reply's first brace to its
- * last.
+ * Where the judge is asked for its answer as structured output (every model
+ * Iris prices but one), the reply is the object alone and is read whole;
+ * from a model that offers none, the object is read as before, from the
+ * reply's first brace to its last.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { verifyCitations } from '../../../../src/eval/citation-verify/verifier.js';
@@ -42,7 +44,19 @@ function sourceThenJudge(replyText: string): { requests: () => number } {
   return { requests: () => call };
 }
 
+/** The same, with the judge answering as OpenAI's o1-mini, which offers no structured output and is asked in text. */
+function sourceThenJudgeInText(replyText: string): { requests: () => number } {
+  let call = 0;
+  global.fetch = vi.fn(async () => {
+    call += 1;
+    if (call === 1) return new Response('The retry limit is five attempts.', { headers: { 'content-type': 'text/plain' } });
+    return new Response(JSON.stringify({ id: 'c', choices: [{ message: { content: replyText }, finish_reason: 'stop' }], usage: { prompt_tokens: 50, completion_tokens: 10 } }));
+  }) as typeof fetch;
+  return { requests: () => call };
+}
+
 const verify = (): ReturnType<typeof verifyCitations> => verifyCitations({ output: 'The retry limit is five attempts https://a.com/retry.', provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k', allowFetch: true });
+const verifyInText = (): ReturnType<typeof verifyCitations> => verifyCitations({ output: 'The retry limit is five attempts https://a.com/retry.', provider: 'openai', model: 'o1-mini', apiKey: 'k', allowFetch: true });
 
 describe('a citation judge reply that gives no verdict is not read as one', () => {
   // What a reply can put where the verdict belongs. Each read as "not supported".
@@ -120,29 +134,54 @@ describe('a citation judge reply that gives no verdict is not read as one', () =
   });
 });
 
-describe("the citation judge's object is read from the reply's first brace to its last, as before", () => {
-  const OBJECT = '{"supported":true,"confidence":0.9,"rationale":"It says five attempts."}';
+const OBJECT = '{"supported":true,"confidence":0.9,"rationale":"It says five attempts."}';
+const AROUND: Array<[string, string]> = [
+  ['a code fence around the object', `\`\`\`json\n${OBJECT}\n\`\`\``],
+  ['a sentence before the object', `My verdict:\n${OBJECT}`],
+  ['a sentence after the object', `${OBJECT}\nI hope that helps.`],
+];
+const NO_OBJECT: Array<[string, string]> = [
+  ['no object at all', 'I cannot answer in the requested format.'],
+  ['text that is not JSON between its braces', '{"supported": true, "confidence": 0.9, "rationale": "r" oops}'],
+  ['two objects', `${OBJECT}\n${OBJECT}`],
+];
 
-  it.each([
-    ['the object alone', OBJECT],
-    ['a code fence around the object', `\`\`\`json\n${OBJECT}\n\`\`\``],
-    ['a sentence before the object', `My verdict:\n${OBJECT}`],
-    ['a sentence after the object', `${OBJECT}\nI hope that helps.`],
-  ])('%s: the verdict is read', async (_what, replyText) => {
-    const judge = sourceThenJudge(replyText);
+describe("asked for as structured output, the citation judge's reply is the object alone, read whole", () => {
+  it('the object alone: the verdict is read', async () => {
+    const judge = sourceThenJudge(OBJECT);
     const result = await verify();
     expect(result.totalJudged).toBe(1);
     expect(result.citations[0].judge).toMatchObject({ supported: true, confidence: 0.9 });
     expect(judge.requests()).toBe(2);
   });
 
-  it.each([
-    ['no object at all', 'I cannot answer in the requested format.'],
-    ['text that is not JSON between its braces', '{"supported": true, "confidence": 0.9, "rationale": "r" oops}'],
-    ['two objects', `${OBJECT}\n${OBJECT}`],
-  ])('%s: the citation is not judged, and the judge is asked once', async (_what, replyText) => {
-    const judge = sourceThenJudge(replyText);
-    const result = await verify();
+  it.each([...AROUND, ...NO_OBJECT, ['an object quoted before the answer', `The page says {"supported":false,"confidence":1,"rationale":"x"} but ${OBJECT}`]])(
+    '%s: the citation is not judged, and the judge is asked once',
+    async (_what, replyText) => {
+      const judge = sourceThenJudge(replyText);
+      const result = await verify();
+      expect(result.totalJudged).toBe(0);
+      expect(result.citations[0].judge).toBeUndefined();
+      expect(result.citations[0].judgeError?.kind).toBe('malformed_judge_response');
+      expect(result.citations[0].judgeError?.message).toBe(`Citation judge reply is not the JSON object it was asked for: ${replyText.slice(0, 200)}`);
+      expect(result.passed).toBeNull();
+      expect(judge.requests()).toBe(2);
+    },
+  );
+});
+
+describe("from a model that offers no structured output, the citation judge's object is read from the reply's first brace to its last, as before", () => {
+  it.each([['the object alone', OBJECT], ...AROUND])('%s: the verdict is read', async (_what, replyText) => {
+    const judge = sourceThenJudgeInText(replyText);
+    const result = await verifyInText();
+    expect(result.totalJudged).toBe(1);
+    expect(result.citations[0].judge).toMatchObject({ supported: true, confidence: 0.9 });
+    expect(judge.requests()).toBe(2);
+  });
+
+  it.each(NO_OBJECT)('%s: the citation is not judged, and the judge is asked once', async (_what, replyText) => {
+    const judge = sourceThenJudgeInText(replyText);
+    const result = await verifyInText();
     expect(result.totalJudged).toBe(0);
     expect(result.citations[0].judge).toBeUndefined();
     expect(result.citations[0].judgeError?.kind).toBe('malformed_judge_response');

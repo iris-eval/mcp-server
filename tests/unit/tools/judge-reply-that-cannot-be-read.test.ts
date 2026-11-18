@@ -130,7 +130,7 @@ describe('what a caller is told when the judge\'s reply cannot be read', () => {
     it.each([
       ['a score of null', '{"score":null,"rationale":"as asked","dimensions":{}}', 'Judge score is not a number from 0 to 1: null'],
       ['a score in quotes', '{"score":"0.9","rationale":"as asked","dimensions":{}}', 'Judge score is not a number from 0 to 1: "0.9"'],
-      ['no object at all', 'I cannot evaluate this text.', 'Judge reply holds no JSON object: I cannot evaluate this text.'],
+      ['no object at all', 'I cannot evaluate this text.', 'Judge reply is not the JSON object it was asked for: I cannot evaluate this text.'],
     ])('%s, twice: an error that shows what stood in its place, and advice that is true of it', async (_what, reply, message) => {
       const calls = provider(reply);
       const e = envelope(await judge());
@@ -152,10 +152,17 @@ describe('what a caller is told when the judge\'s reply cannot be read', () => {
       expect(calls.judgeCalls()).toBe(2);
     });
 
-    it('the object is read as before, from its first brace to its last: with a sentence before it and a fence around it, it is the answer, on one call', async () => {
-      const calls = provider('Here is the evaluation:\n```json\n{"score":0.9,"rationale":"It is.","dimensions":{}}\n```');
+    it('asked for as structured output, the answer is the object alone: with a sentence before it and a fence around it, it is not the object asked for, and the error shows the reply', async () => {
+      const reply = 'Here is the evaluation:\n```json\n{"score":0.9,"rationale":"It is.","dimensions":{}}\n```';
+      const calls = provider(reply);
+      const e = envelope(await judge());
+      expect(e.kind).toBe('malformed_response');
+      expect(e.message).toContain('Judge reply is not the JSON object it was asked for: Here is the evaluation:');
+      expect(calls.judgeCalls()).toBe(2);
+      // The object alone is the answer, on one call.
+      const alone = provider('{"score":0.9,"rationale":"It is.","dimensions":{}}');
       expect(answer(await judge())).toMatchObject({ score: 0.9, passed: true });
-      expect(calls.judgeCalls()).toBe(1);
+      expect(alone.judgeCalls()).toBe(1);
     });
 
     it('the day\'s budget: a call that ends with no verdict is charged the worst case it was priced at, and an answer what its calls cost', async () => {
@@ -177,7 +184,7 @@ describe('what a caller is told when the judge\'s reply cannot be read', () => {
     it.each([
       ['no verdict', '{"confidence":0.9,"rationale":"r"}', 'Citation judge gave no verdict: \\"supported\\" is no value'],
       ['a confidence of null', '{"supported":true,"confidence":null,"rationale":"r"}', 'Citation judge confidence is not a number from 0 to 1: null'],
-      ['no object at all', 'I cannot answer in the requested format.', 'Citation judge reply holds no JSON object: I cannot answer in the requested format.'],
+      ['no object at all', 'I cannot answer in the requested format.', 'Citation judge reply is not the JSON object it was asked for: I cannot answer in the requested format.'],
     ])('one citation, and a reply with %s: an error, nothing stored, and advice about a reply that cannot be read', async (_what, reply, message) => {
       const calls = provider(reply);
       const result = await cite(ONE);
@@ -215,8 +222,8 @@ describe('what a caller is told when the judge\'s reply cannot be read', () => {
       expect(calls.judgeCalls()).toBe(3);
     });
 
-    it('a verdict of "not supported" given with a sentence before it is read as before, and fails the output', async () => {
-      const calls = provider('{"supported":true,"confidence":0.9,"rationale":"It says five."}', 'My verdict:\n{"supported":false,"confidence":0.9,"rationale":"It does not say that."}');
+    it('a verdict of "not supported" is read as given, and fails the output; given with a sentence before it, it is not the object asked for, and that citation is not judged', async () => {
+      const calls = provider('{"supported":true,"confidence":0.9,"rationale":"It says five."}', '{"supported":false,"confidence":0.9,"rationale":"It does not say that."}');
       const body = answer(await cite(TWO));
       expect(body).toMatchObject({ passed: false, total_judged: 2, total_supported: 1, total_resolved: 2 });
       const second = (body.citations as Array<{ judge_error?: unknown; judge?: { supported: boolean } }>)[1];
@@ -224,6 +231,12 @@ describe('what a caller is told when the judge\'s reply cannot be read', () => {
       expect(second.judge).toMatchObject({ supported: false });
       // The citation judge is asked once for each citation.
       expect(calls.judgeCalls()).toBe(2);
+      __clearCitationCacheForTests();
+      provider('{"supported":true,"confidence":0.9,"rationale":"It says five."}', 'My verdict:\n{"supported":false,"confidence":0.9,"rationale":"It does not say that."}');
+      const wrapped = answer(await cite(TWO));
+      expect(wrapped).toMatchObject({ total_judged: 1, total_supported: 1, total_resolved: 2 });
+      const kinds = (wrapped.citations as Array<{ judge_error?: { kind: string } }>).map((c) => c.judge_error?.kind);
+      expect(kinds).toEqual([undefined, 'malformed_judge_response']);
     });
 
     it('the day\'s budget: a citation whose reply cannot be read is charged what its one call cost', async () => {

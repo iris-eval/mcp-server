@@ -2,12 +2,16 @@
  * Reading a judge's reply.
  *
  * A judge is asked for a single JSON object, with a number in it: a score,
- * a confidence. What comes back is whatever the model wrote. The object is
- * read from the reply's first opening brace to its last closing brace, as it
- * always was, so a model that writes a sentence before the object, or a code
- * fence around it, still gives its answer on one call. A field of the object
- * is read only when the reply gives it as the template asks: a number from 0
- * to 1, or a boolean.
+ * a confidence. Where the provider and the model offer structured output,
+ * the object is asked for as that (answer.ts, client.ts): the reply is the
+ * object alone, and it is read whole (wholeObject), so nothing a model
+ * writes, and nothing it quotes, stands beside the answer and is read as it.
+ * A model that offers none is asked in text, and its object is read from the
+ * reply's first opening brace to its last closing brace (replyObject), so a
+ * model that writes a sentence before it, or a code fence around it, still
+ * gives its answer on one call. Either way, a field of the object is read
+ * only when the reply gives it as the template asks: a number from 0 to 1,
+ * or a boolean.
  *
  * Until 0.22.0 a field was converted with Number(), which makes a number of
  * things that are not one: `null`, `false`, `""` and `[]` all convert to 0,
@@ -31,6 +35,26 @@ export function replyObject(raw: unknown): Record<string, unknown> | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * The JSON object a reply asked for as structured output is, or null when it
+ * is not one: the whole reply read as JSON, with nothing cut from around it.
+ */
+export function wholeObject(raw: unknown): Record<string, unknown> | null {
+  if (typeof raw !== 'string') return null;
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  return value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+/** The answer object of a reply: read whole where it was asked for as structured output, else from its first brace to its last. */
+export function answerObject(raw: unknown, structured: boolean | undefined): Record<string, unknown> | null {
+  return structured === true ? wholeObject(raw) : replyObject(raw);
 }
 
 /** The number a reply gives for a field that must be one from 0 to 1, or null when it gives none: not a JSON number, or one outside the range (which a number too large to hold is). */

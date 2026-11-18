@@ -58,8 +58,8 @@ describe('relevance judge proof set', () => {
     expect(worst.anthropic).toBeLessThan(JUDGE_DEFAULT_COST_CAP_USD);
     expect(worst.openai).toBeLessThan(JUDGE_DEFAULT_COST_CAP_USD);
     // The figures docs/llm-as-judge.md quotes, to four decimal places.
-    expect(worst.anthropic.toFixed(4)).toBe('0.0060');
-    expect(worst.openai.toFixed(4)).toBe('0.0008');
+    expect(worst.anthropic.toFixed(4)).toBe('0.0083');
+    expect(worst.openai.toFixed(4)).toBe('0.0011');
   });
 
   it('the lexical answers_the_ask on the same cases: the gap the judge exists to close', async () => {

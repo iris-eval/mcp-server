@@ -8,11 +8,14 @@
  * asked for again once, and if the second reply is no better the call fails
  * as one that got no answer, which is what happened.
  *
- * The object itself is read as before, from the reply's first brace to its
- * last.
+ * Where the judge is asked for its answer as structured output (every model
+ * Iris prices but one), the reply is the object alone and is read whole.
+ * From a model that offers none, the object is read as before, from the
+ * reply's first brace to its last.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { evaluateWithLLMJudge, SECOND_REQUEST, worstCaseJudgeCostUsd } from '../../../../src/eval/llm-judge/evaluator.js';
+import { verdictAnswer } from '../../../../src/eval/llm-judge/answer.js';
 import { estimateInputTokens } from '../../../../src/eval/llm-judge/client.js';
 import { estimateCostUsd } from '../../../../src/eval/llm-judge/pricing.js';
 import { getTemplate } from '../../../../src/eval/llm-judge/templates/index.js';
@@ -39,7 +42,22 @@ function judgeReplies(...texts: string[]): { calls: () => number; systems: strin
   return { calls: () => n, systems };
 }
 
+/** The same, from OpenAI's o1-mini, which offers no structured output and is asked in text. */
+function judgeRepliesInText(...texts: string[]): { calls: () => number } {
+  let n = 0;
+  global.fetch = vi.fn(async () => {
+    const text = texts[Math.min(n, texts.length - 1)];
+    n += 1;
+    return new Response(JSON.stringify({ id: `c${n}`, choices: [{ message: { content: text }, finish_reason: 'stop' }], usage: { prompt_tokens: 100, completion_tokens: 30 } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+  return { calls: () => n };
+}
+
 const ask = (): ReturnType<typeof evaluateWithLLMJudge> => evaluateWithLLMJudge({ output: 'The sky is blue.', template: 'accuracy', provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k' });
+const askInText = (): ReturnType<typeof evaluateWithLLMJudge> => evaluateWithLLMJudge({ output: 'The sky is blue.', template: 'accuracy', provider: 'openai', model: 'o1-mini', apiKey: 'k' });
 const reply = (score: string): string => `{"score":${score},"rationale":"as asked","dimensions":{}}`;
 const GOOD = reply('0.6');
 
@@ -169,28 +187,30 @@ describe('a judge reply that gives no score is not read as one', () => {
     const template = getTemplate('accuracy');
     const system = template.buildSystem();
     const user = template.buildUser({ output: params.output });
+    // Each request carries the answer's schema and the provider's instructions for it.
+    const answer = verdictAnswer(template.dimensions);
     // The first request at the full output cap, and the second, with its sentence, at its own.
-    const first = estimateCostUsd(params.model, estimateInputTokens(system, user), 512)!;
-    const second = estimateCostUsd(params.model, estimateInputTokens(system + SECOND_REQUEST, user), 256)!;
+    const first = estimateCostUsd(params.model, estimateInputTokens(system, user, answer), 512)!;
+    const second = estimateCostUsd(params.model, estimateInputTokens(system + SECOND_REQUEST, user, answer), 256)!;
     expect(worstCaseJudgeCostUsd(params)).toBe(first + second);
     // 173 characters: 48 more than the sentence it replaced, which is twelve tokens in every call's worst case (a quarter of a token a character).
     expect(SECOND_REQUEST).toHaveLength(173);
-    const withoutIt = estimateCostUsd(params.model, estimateInputTokens(system, user), 256)!;
+    const withoutIt = estimateCostUsd(params.model, estimateInputTokens(system, user, answer), 256)!;
     expect(second).toBeGreaterThan(withoutIt);
-    expect(estimateInputTokens(system + SECOND_REQUEST, user) - estimateInputTokens(system + 'x'.repeat(125), user)).toBe(12);
+    expect(estimateInputTokens(system + SECOND_REQUEST, user, answer) - estimateInputTokens(system + 'x'.repeat(125), user, answer)).toBe(12);
   });
 
   it('a score too deep to write out, and a reply too long to show, are malformed replies like any other', async () => {
     const provider = judgeReplies(reply(`${'['.repeat(10_000)}0.9${']'.repeat(10_000)}`));
     await expect(ask()).rejects.toThrow('Judge score is not a number from 0 to 1: object');
     expect(provider.calls()).toBe(2);
-    // A reply that holds no object is shown by its first 200 characters.
+    // A reply that is not the object is shown by its first 200 characters.
     judgeReplies('x'.repeat(500));
     const error = await ask().then(
       () => null,
       (e: Error) => e,
     );
-    expect(error?.message).toBe(`Judge reply holds no JSON object: ${'x'.repeat(200)}`);
+    expect(error?.message).toBe(`Judge reply is not the JSON object it was asked for: ${'x'.repeat(200)}`);
   });
 
   it('a score of 0 and a score of 1 are scores: the ends of the range are read as given', async () => {
@@ -231,21 +251,44 @@ describe('a judge reply that gives no score is not read as one', () => {
   });
 });
 
-describe("the object is read from the reply's first brace to its last, as before", () => {
-  it.each([
-    ['a sentence before the object', `Here is the evaluation:\n${GOOD}`],
-    ['a sentence after the object', `${GOOD}\nI hope that helps.`],
-    ['a code fence around the object', `\`\`\`json\n${GOOD}\n\`\`\``],
-    ['a sentence around a fenced object', `Here is the evaluation:\n\`\`\`json\n${GOOD}\n\`\`\`\nDone.`],
-  ])('%s: the score is read, on one call', async (_what, text) => {
-    const provider = judgeReplies(text);
+const AROUND: Array<[string, string]> = [
+  ['a sentence before the object', `Here is the evaluation:\n${GOOD}`],
+  ['a sentence after the object', `${GOOD}\nI hope that helps.`],
+  ['a code fence around the object', `\`\`\`json\n${GOOD}\n\`\`\``],
+  ['a sentence around a fenced object', `Here is the evaluation:\n\`\`\`json\n${GOOD}\n\`\`\`\nDone.`],
+  ['an object quoted before the answer', `The output says ${reply('1')} but ${GOOD}`],
+];
+
+describe('asked for as structured output, the reply is the object alone, read whole', () => {
+  it('the object alone is the answer, with space around it as JSON allows', async () => {
+    const provider = judgeReplies(`\n ${GOOD} \n`);
     expect((await ask()).score).toBe(0.6);
     expect(provider.calls()).toBe(1);
   });
 
+  it.each(AROUND)('%s: not the object it was asked for; asked for again, and the error shows the reply', async (_what, text) => {
+    const provider = judgeReplies(text);
+    await expect(ask()).rejects.toThrow(`Judge reply is not the JSON object it was asked for: ${text.slice(0, 200)}`);
+    expect(provider.calls()).toBe(2);
+  });
+
   it('a reply that holds no object is malformed: it is asked for again, and the error shows its start', async () => {
     const provider = judgeReplies('I cannot evaluate this text.');
-    await expect(ask()).rejects.toThrow('Judge reply holds no JSON object: I cannot evaluate this text.');
+    await expect(ask()).rejects.toThrow('Judge reply is not the JSON object it was asked for: I cannot evaluate this text.');
+    expect(provider.calls()).toBe(2);
+  });
+});
+
+describe("from a model that offers no structured output, the object is read from the reply's first brace to its last, as before", () => {
+  it.each(AROUND.slice(0, 4))('%s: the score is read, on one call', async (_what, text) => {
+    const provider = judgeRepliesInText(text);
+    expect((await askInText()).score).toBe(0.6);
+    expect(provider.calls()).toBe(1);
+  });
+
+  it('a reply that holds no object is malformed: it is asked for again, and the error shows its start', async () => {
+    const provider = judgeRepliesInText('I cannot evaluate this text.');
+    await expect(askInText()).rejects.toThrow('Judge reply holds no JSON object: I cannot evaluate this text.');
     expect(provider.calls()).toBe(2);
   });
 });

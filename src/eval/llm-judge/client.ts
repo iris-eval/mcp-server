@@ -15,7 +15,11 @@
 //     that could not be reached from one that answered
 //   - Usage fields (input_tokens / output_tokens) surfaced so the
 //     evaluator can compute cost without a second API call
+//   - The answer asked for as structured output where the model offers it
+//     (answer.ts): Anthropic's output_config.format, OpenAI's strict
+//     json_schema response format; the reply is then the object alone
 
+import type { JudgeAnswer } from './answer.js';
 import { DEFAULT_JUDGE_DEADLINE_MS } from './deadline.js';
 
 export type LLMProvider = 'anthropic' | 'openai';
@@ -36,6 +40,8 @@ export interface LLMJudgeRequest {
   // Hard cap — if the request would require more than this many tokens
   // based on the prompt length, reject upfront rather than burning money.
   maxInputTokensEstimate?: number;
+  // The object the judge answers with (answer.ts), asked for as structured output where the model offers it.
+  answer?: JudgeAnswer;
 }
 
 export interface LLMJudgeResponse {
@@ -45,7 +51,39 @@ export interface LLMJudgeResponse {
   stopReason: string;
   latencyMs: number;
   rawProviderResponseId?: string;
+  /** True when the answer was asked for as structured output, so the reply's text is the answer object alone. */
+  structured?: boolean;
 }
+
+/**
+ * How each OpenAI model Iris prices (pricing.ts) is asked. Every one is sent
+ * `max_completion_tokens`: OpenAI's reference calls `max_tokens` deprecated
+ * and not compatible with the o-series. A reasoning model takes no
+ * `temperature`, and is asked for a low reasoning effort, since its reasoning
+ * counts against the same cap as its answer. Structured output (a strict
+ * `json_schema` response format) is asked of every model that offers it,
+ * GPT-4o and later. A model not listed is asked as `gpt-4o` is.
+ */
+export const OPENAI_MODELS: Readonly<Record<string, { reasoning: boolean; effort?: 'low'; structured: boolean }>> = {
+  'gpt-5': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5-mini': { reasoning: true, effort: 'low', structured: true },
+  'gpt-4.1-mini': { reasoning: false, structured: true },
+  'gpt-4o': { reasoning: false, structured: true },
+  'gpt-4o-mini': { reasoning: false, structured: true },
+  'o4-mini': { reasoning: true, effort: 'low', structured: true },
+  'o3-mini': { reasoning: true, effort: 'low', structured: true },
+  // Retired by OpenAI; it offers neither structured output nor a reasoning effort, and is asked in text.
+  'o1-mini': { reasoning: true, structured: false },
+};
+const AS_GPT_4O = { reasoning: false, structured: true } as const;
+
+/**
+ * An allowance, in tokens, for the instructions a provider adds to a request
+ * that asks for structured output. Neither provider publishes their size; it
+ * is above the largest tool-use system prompt Anthropic publishes (804
+ * tokens), so a worst case that counts it stays a ceiling.
+ */
+export const STRUCTURED_ANSWER_ALLOWANCE_TOKENS = 1_000;
 
 export class LLMJudgeError extends Error {
   constructor(
@@ -70,9 +108,12 @@ export class LLMJudgeError extends Error {
 // Very rough token estimate — good enough to reject obviously-too-big
 // prompts before round-tripping. Real tokenization differs per model;
 // both Anthropic and OpenAI hover near 4 chars/token for English text.
-export function estimateInputTokens(systemPrompt: string, userPrompt: string): number {
+// A request that asks for an answer as structured output also carries its
+// schema and the provider's instructions for it.
+export function estimateInputTokens(systemPrompt: string, userPrompt: string, answer?: JudgeAnswer): number {
   const chars = systemPrompt.length + userPrompt.length;
-  return Math.ceil(chars / 4);
+  if (answer === undefined) return Math.ceil(chars / 4);
+  return Math.ceil((chars + answer.name.length + JSON.stringify(answer.schema).length) / 4) + STRUCTURED_ANSWER_ALLOWANCE_TOKENS;
 }
 
 /** Why a request could not be made, in words, without throwing: a failed fetch carries its reason as its cause. */
@@ -157,6 +198,8 @@ function parseRetryAfter(headers: Headers): number | undefined {
 }
 
 async function callAnthropic(req: LLMJudgeRequest, deadline: number, budgetMs: number): Promise<LLMJudgeResponse> {
+  // Every Claude model Iris prices offers structured outputs; the answer comes back as the JSON object alone in a text block.
+  const structured = req.answer !== undefined;
   const { res, body, latencyMs } = await postBeforeDeadline(
     'Anthropic',
     'https://api.anthropic.com/v1/messages',
@@ -173,6 +216,7 @@ async function callAnthropic(req: LLMJudgeRequest, deadline: number, budgetMs: n
         temperature: req.temperature,
         system: req.systemPrompt,
         messages: [{ role: 'user', content: req.userPrompt }],
+        ...(req.answer !== undefined ? { output_config: { format: { type: 'json_schema', schema: req.answer.schema } } } : {}),
       }),
     },
     deadline,
@@ -217,10 +261,13 @@ async function callAnthropic(req: LLMJudgeRequest, deadline: number, budgetMs: n
     stopReason: json.stop_reason ?? 'unknown',
     latencyMs,
     rawProviderResponseId: json.id,
+    structured,
   };
 }
 
 async function callOpenAI(req: LLMJudgeRequest, deadline: number, budgetMs: number): Promise<LLMJudgeResponse> {
+  const how = OPENAI_MODELS[req.model] ?? AS_GPT_4O;
+  const structured = req.answer !== undefined && how.structured;
   const { res, body, latencyMs } = await postBeforeDeadline(
     'OpenAI',
     'https://api.openai.com/v1/chat/completions',
@@ -232,12 +279,15 @@ async function callOpenAI(req: LLMJudgeRequest, deadline: number, budgetMs: numb
       },
       body: JSON.stringify({
         model: req.model,
-        max_tokens: req.maxOutputTokens,
-        temperature: req.temperature,
+        max_completion_tokens: req.maxOutputTokens,
+        ...(how.reasoning ? (how.effort !== undefined ? { reasoning_effort: how.effort } : {}) : { temperature: req.temperature }),
         messages: [
           { role: 'system', content: req.systemPrompt },
           { role: 'user', content: req.userPrompt },
         ],
+        ...(structured && req.answer !== undefined
+          ? { response_format: { type: 'json_schema', json_schema: { name: req.answer.name, schema: req.answer.schema, strict: true } } }
+          : {}),
       }),
     },
     deadline,
@@ -265,12 +315,24 @@ async function callOpenAI(req: LLMJudgeRequest, deadline: number, budgetMs: numb
 
   const json = replyObject('OpenAI', body) as {
     id?: string;
-    choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
+    choices?: Array<{ message?: { content?: string | null; refusal?: string | null }; finish_reason?: string }>;
     usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
 
-  const firstText = Array.isArray(json.choices) ? json.choices[0]?.message?.content : undefined;
+  const choice = Array.isArray(json.choices) ? json.choices[0] : undefined;
+  const firstText = choice?.message?.content;
   if (!firstText) {
+    // A model that declines says so in `refusal`, and a reply that reached its cap before any answer ends at `length`.
+    const refusal = choice?.message?.refusal;
+    if (typeof refusal === 'string' && refusal !== '') {
+      throw new LLMJudgeError(`OpenAI's model declined to answer: ${refusal.slice(0, 200)}`, 'malformed_response');
+    }
+    if (choice?.finish_reason === 'length') {
+      throw new LLMJudgeError(
+        `OpenAI response had no message content: it ended at its output limit (max_completion_tokens ${req.maxOutputTokens}${how.reasoning ? ", which this model's reasoning counts against" : ''})`,
+        'malformed_response',
+      );
+    }
     throw new LLMJudgeError('OpenAI response had no message content', 'malformed_response');
   }
 
@@ -278,9 +340,10 @@ async function callOpenAI(req: LLMJudgeRequest, deadline: number, budgetMs: numb
     content: firstText,
     inputTokens: json.usage?.prompt_tokens ?? 0,
     outputTokens: json.usage?.completion_tokens ?? 0,
-    stopReason: json.choices?.[0]?.finish_reason ?? 'unknown',
+    stopReason: choice?.finish_reason ?? 'unknown',
     latencyMs,
     rawProviderResponseId: json.id,
+    structured,
   };
 }
 
@@ -292,7 +355,7 @@ async function callOpenAI(req: LLMJudgeRequest, deadline: number, budgetMs: numb
 // the wait the provider asked for. Callers that want more aggressive retry
 // can compose.
 export async function callLLMJudge(req: LLMJudgeRequest): Promise<LLMJudgeResponse> {
-  const estimatedInput = estimateInputTokens(req.systemPrompt, req.userPrompt);
+  const estimatedInput = estimateInputTokens(req.systemPrompt, req.userPrompt, req.answer);
   if (req.maxInputTokensEstimate && estimatedInput > req.maxInputTokensEstimate) {
     throw new LLMJudgeError(
       `Estimated input tokens (${estimatedInput}) exceed cap (${req.maxInputTokensEstimate}) — refusing to call`,

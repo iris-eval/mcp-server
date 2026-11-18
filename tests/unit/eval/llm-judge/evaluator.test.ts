@@ -72,15 +72,38 @@ describe('evaluateWithLLMJudge', () => {
     expect(low.passed).toBe(false);
   });
 
-  it('strips code-fence + prose wrappers around the JSON', async () => {
+  it('asked for structured output, takes no code-fence or prose wrappers around the JSON: the reply is the object alone', async () => {
     mockAnthropicJSON(
       'Here is the evaluation:\n```json\n{"score":0.7,"passed":true,"rationale":"ok","dimensions":{}}\n```\nDone.',
     );
+    await expect(
+      evaluateWithLLMJudge({
+        output: 'foo',
+        template: 'helpfulness',
+        provider: 'anthropic',
+        model: 'claude-haiku-4-5',
+        apiKey: 'k',
+      }),
+    ).rejects.toThrow('Judge reply is not the JSON object it was asked for: Here is the evaluation:');
+  });
+
+  it('strips code-fence + prose wrappers around the JSON from a model that offers no structured output', async () => {
+    global.fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            id: 'chatcmpl_mock',
+            choices: [{ message: { content: 'Here is the evaluation:\n```json\n{"score":0.7,"passed":true,"rationale":"ok","dimensions":{}}\n```\nDone.' }, finish_reason: 'stop' }],
+            usage: { prompt_tokens: 100, completion_tokens: 30 },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+    ) as typeof fetch;
     const res = await evaluateWithLLMJudge({
       output: 'foo',
       template: 'helpfulness',
-      provider: 'anthropic',
-      model: 'claude-haiku-4-5',
+      provider: 'openai',
+      model: 'o1-mini',
       apiKey: 'k',
     });
     expect(res.score).toBe(0.7);
