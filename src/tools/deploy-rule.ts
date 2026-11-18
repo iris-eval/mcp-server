@@ -15,6 +15,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
 import { RULE_NAME_MESSAGE, RULE_NAME_PATTERN, RULE_TYPE_VALUES } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
+import { builtInNameRefusal, isBuiltInRuleName } from '../eval/built-in-names.js';
 import { createCustomRule } from '../eval/rules/custom.js';
 import type { DeployedCustomRule } from '../types/custom-rule.js';
 import type { CustomRuleDefinition, EvalType } from '../types/eval.js';
@@ -135,7 +136,7 @@ const inputSchema = {
     .min(1)
     .max(80)
     .regex(RULE_NAME_PATTERN, RULE_NAME_MESSAGE)
-    .describe('Rule name, 1-80 letters, digits, dots, dashes and underscores (used in eval results). Must be unique among deployed rules unless replace=true'),
+    .describe('Rule name, 1-80 letters, digits, dots, dashes and underscores (used in eval results). Must be unique among deployed rules unless replace=true, and may not be the name of a rule Iris ships'),
   description: z
     .string()
     .max(500)
@@ -206,7 +207,7 @@ export function registerDeployRuleTool(
           'For a one-off check (custom_rules on evaluate_output). To pause a rule (delete_rule with enabled: false).',
         returns: deployRuleOutputSchema,
         errors:
-          'IRIS_DUPLICATE_RULE; IRIS_INVALID_RULE_CONFIG, naming the field; IRIS_STORAGE_ERROR. ' + ERROR_ENVELOPE_SENTENCE,
+          "IRIS_DUPLICATE_RULE; IRIS_INVALID_ARGUMENT for a built-in rule's name; IRIS_INVALID_RULE_CONFIG, naming the field; IRIS_STORAGE_ERROR. " + ERROR_ENVELOPE_SENTENCE,
         siblings: {
           list_rules: 'see what is deployed',
           delete_rule: 'remove or disable',
@@ -226,6 +227,14 @@ export function registerDeployRuleTool(
       if (carriesFence(args)) {
         throw irisError('IRIS_INVALID_ARGUMENT', 'The rule carries an <untrusted_…> tag, which marks stored text on a read and is not part of it. Nothing was deployed.', {
           recovery: [FENCE_RECOVERY],
+          retryable: false,
+        });
+      }
+      // A custom rule may not take the name of a rule Iris ships (eval/built-in-names.ts): the two would carry one name in every result.
+      if (isBuiltInRuleName(args.name)) {
+        throw irisError('IRIS_INVALID_ARGUMENT', `${builtInNameRefusal([args.name])} Nothing was deployed.`, {
+          field: 'name',
+          recovery: ['Deploy the rule under a name of its own: list_rules lists the rules Iris ships under built_in.'],
           retryable: false,
         });
       }

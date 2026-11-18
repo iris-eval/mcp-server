@@ -23,7 +23,9 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CustomRuleStore } from '../custom-rule-store.js';
 import type { EvalEngine } from '../eval/engine.js';
 import { createCustomRule } from '../eval/rules/custom.js';
+import { builtInNameNotEnabled, isBuiltInRuleName } from '../eval/built-in-names.js';
 import { LOCAL_TENANT } from '../types/tenant.js';
+import { irisError } from './errors.js';
 import { strictInput } from './strict-input.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { advertisedOutput } from './advertise.js';
@@ -66,7 +68,7 @@ export function registerDeleteRuleTool(
           'On built-in rules (they are not in the store). To replace a rule (deploy_rule with replace: true).',
         returns: deleteRuleOutputSchema,
         errors:
-          'IRIS_STORAGE_ERROR. A malformed rule_id is refused. ' + ERROR_ENVELOPE_SENTENCE,
+          "IRIS_STORAGE_ERROR. A malformed rule_id is refused. IRIS_INVALID_ARGUMENT for turning on a paused rule under a built-in rule's name. " + ERROR_ENVELOPE_SENTENCE,
         siblings: {
           deploy_rule: 'add or replace a rule',
           list_rules: 'find the id',
@@ -85,6 +87,15 @@ export function registerDeleteRuleTool(
     guarded(async (args) => {
       // OSS: MCP tools operate under LOCAL_TENANT. See list-rules.ts for context.
       if (args.enabled !== undefined) {
+        // A paused rule stored under the name of a rule Iris ships (by an earlier version) stays paused: turning it on is how such a name would come back in (eval/built-in-names.ts).
+        const stored = args.enabled ? customRuleStore.get(LOCAL_TENANT, args.rule_id) : undefined;
+        if (stored && !stored.enabled && isBuiltInRuleName(stored.name)) {
+          throw irisError('IRIS_INVALID_ARGUMENT', builtInNameNotEnabled(stored), {
+            field: 'enabled',
+            recovery: ['Deploy the rule again under a name of its own (deploy_rule), then delete this one (delete_rule without enabled).'],
+            retryable: false,
+          });
+        }
         const rule = customRuleStore.setEnabled(LOCAL_TENANT, args.rule_id, args.enabled, 'mcp');
         if (!rule) {
           return respond(deleteRuleOutputSchema, { deleted: false, toggled: false, rule_id: args.rule_id });

@@ -14,8 +14,12 @@ export default defineConfig({
      * test that builds a server from defaultConfig writes to the developer's
      * real ~/.iris — mcp-protocol.test.ts was appending to their actual
      * audit.log on every run. See tests/setup/iris-home.ts.
+     *
+     * And, first, turns off in every worker the compiler tier that can make
+     * two results share their numbers on Node 24 and 26
+     * (tests/setup/runtime-guard.ts).
      */
-    setupFiles: ['./tests/setup/iris-home.ts'],
+    setupFiles: ['./tests/setup/runtime-guard.ts', './tests/setup/iris-home.ts'],
     /*
      * Half the cores, not vitest's default of all but one: each worker is a
      * process with its own V8 garbage-collector and compiler threads, and at

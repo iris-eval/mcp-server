@@ -16,6 +16,8 @@
  * mangles the backslashes and creates a stray `C:Usersyou...` file.
  */
 
+// Stays first (src/apply-runtime-guard.ts).
+import '../src/apply-runtime-guard.js';
 import { parseArgs } from 'node:util';
 import { existsSync, unlinkSync } from 'node:fs';
 import {

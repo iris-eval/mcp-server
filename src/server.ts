@@ -5,6 +5,8 @@ import type { CustomRuleStore } from './custom-rule-store.js';
 import { EvalEngine } from './eval/engine.js';
 import { rulesByType } from './eval/rules/index.js';
 import { builtInRuleRoster } from './eval/criticality.js';
+import { builtInNameKept, isBuiltInRuleName } from './eval/built-in-names.js';
+import { LOCAL_TENANT } from './types/tenant.js';
 import { registerAllTools } from './tools/index.js';
 import { registerAllResources } from './resources/index.js';
 import { registerPrompts } from './prompts.js';
@@ -105,6 +107,8 @@ export function createIrisServer(
   // is immediately visible in the dashboard without a restart). If
   // none provided, create a fresh one loading from the default path.
   const ruleStore = customRuleStore ?? createCustomRuleStore();
+  // A rule stored under the name of a rule Iris ships, from before the doors refused one, keeps running: say so once, at startup (eval/built-in-names.ts).
+  for (const rule of ruleStore.enabledRules(LOCAL_TENANT)) if (isBuiltInRuleName(rule.name)) warn(builtInNameKept(rule));
 
   /*
    * The instructions are built from what THIS process will do: the

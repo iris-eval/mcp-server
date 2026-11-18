@@ -39,6 +39,8 @@
  * the website can render "pending" honestly until a keyed run replaces it.
  */
 
+// Stays first (src/apply-runtime-guard.ts).
+import '../../src/apply-runtime-guard.js';
 import { writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
