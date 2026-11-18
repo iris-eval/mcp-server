@@ -255,7 +255,8 @@ describe('a rule stored under such a name before the doors refused it keeps runn
     expect(await client.callTool({ name: 'delete_rule', arguments: { rule_id: stored.id, enabled: true } })).toMatchObject({ structuredContent: { toggled: true, enabled: true } });
     expect(await client.callTool({ name: 'delete_rule', arguments: { rule_id: stored.id, enabled: false } })).toMatchObject({ structuredContent: { toggled: true, enabled: false } });
     const refused = envelope(await client.callTool({ name: 'delete_rule', arguments: { rule_id: stored.id, enabled: true } }));
-    expect(refused).toMatchObject({ code: 'IRIS_INVALID_ARGUMENT', field: 'enabled', message: builtInNameNotEnabled(stored) });
+    expect(refused).toMatchObject({ code: 'IRIS_INVALID_ARGUMENT', field: 'enabled', message: builtInNameNotEnabled(stored), retryable: false });
+    expect(refused.recovery).toEqual(['Deploy the rule again under a name of its own (deploy_rule), then delete this one (delete_rule without enabled).']);
     expect(rules.get(LOCAL_TENANT, stored.id)?.enabled).toBe(false);
     await client.callTool({ name: 'delete_rule', arguments: { rule_id: own.id, enabled: false } });
     expect(await client.callTool({ name: 'delete_rule', arguments: { rule_id: own.id, enabled: true } })).toMatchObject({ structuredContent: { toggled: true, enabled: true } });
@@ -478,6 +479,8 @@ describe('the long form of the tools says the same', () => {
     const guide = toolGuide();
     expect(guide.deploy_rule.errors).toContain('IRIS_INVALID_ARGUMENT (field name) when the name is the name of a rule Iris ships, with replace true or false; a rule already deployed under it is kept, and nothing is deployed.');
     expect(guide.deploy_rule.parameters?.replace).toContain('Neither deploys a rule under the name of a rule Iris ships');
+    expect(guide.deploy_rule.does).toContain('The name of a rule Iris ships is refused whatever replace says (list_rules lists them under built_in).');
+    expect(guide.delete_rule.parameters?.enabled).toContain('true RE-ENABLES a disabled rule, unless it carries the name of a rule Iris ships.');
     expect(guide.delete_rule.errors).toContain('IRIS_INVALID_ARGUMENT (field enabled) for enabled: true on a paused rule stored under the name of a rule Iris ships; it stays paused.');
     expect(guide.delete_rule.does).toContain('A paused rule stored under the name of a rule Iris ships (by an earlier version) is not brought back');
     expect(guide.evaluate_output.errors).toContain('when a custom_rules entry takes the name of a rule Iris ships (field custom_rules, naming each; nothing evaluated or written)');
