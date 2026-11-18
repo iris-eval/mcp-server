@@ -1,5 +1,6 @@
 import { callLLMJudge, estimateInputTokens, LLMJudgeError, type LLMProvider } from './client.js';
 import { estimateCostUsd, findPricing } from './pricing.js';
+import { replyObject, shownReply, shownValue, unitNumber } from './reply.js';
 import { getTemplate, type TemplateName } from './templates/index.js';
 
 /**
@@ -82,67 +83,61 @@ function parseJudgeResponse(raw: string): {
   rationale: string;
   dimensions: Record<string, number>;
 } {
-  // Strip common wrapping patterns (markdown fences, leading prose) to
-  // give the JSON parser the best chance.
-  const trimmed = raw
-    .trim()
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```$/i, '')
-    .trim();
-
-  // Find the first { and last } — models sometimes prepend "Here's the
-  // evaluation:" despite being told not to. Parse the substring.
-  const firstBrace = trimmed.indexOf('{');
-  const lastBrace = trimmed.lastIndexOf('}');
-  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
-    throw new LLMJudgeError(
-      `Judge response did not contain a JSON object: ${raw.slice(0, 200)}`,
-      'malformed_response',
-    );
-  }
-  const slice = trimmed.slice(firstBrace, lastBrace + 1);
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(slice);
-  } catch (err) {
-    throw new LLMJudgeError(
-      `Judge response was not valid JSON: ${(err as Error).message} — raw: ${slice.slice(0, 200)}`,
-      'malformed_response',
-    );
+  /*
+   * The object the reply holds, from its first brace to its last (reply.ts,
+   * replyObject), as it always was: a model that writes "Here is the
+   * evaluation:" first, or fences the object, still gave it.
+   */
+  const obj = replyObject(raw);
+  if (obj === null) {
+    throw new LLMJudgeError(`Judge reply holds no JSON object: ${shownReply(raw)}`, 'malformed_response');
   }
 
-  if (!parsed || typeof parsed !== 'object') {
-    throw new LLMJudgeError('Judge response was not a JSON object', 'malformed_response');
-  }
-  const obj = parsed as Record<string, unknown>;
-
-  const scoreRaw = obj.score;
-  const score = typeof scoreRaw === 'number' ? scoreRaw : Number(scoreRaw);
-  if (!Number.isFinite(score) || score < 0 || score > 1) {
-    throw new LLMJudgeError(
-      `Judge score out of [0..1]: ${String(scoreRaw)}`,
-      'malformed_response',
-    );
+  /*
+   * The score is the judge's answer, and it is read only when the reply
+   * gives one: a JSON number from 0 to 1 (reply.ts). A reply whose score
+   * was `null`, `false`, `""` or `[]` used to read as a score of 0, which
+   * fails the output, and one whose score was `true` as 1, which passes it:
+   * a verdict from a reply that gave none. Such a reply is malformed, and is
+   * asked for again once like any other.
+   */
+  const score = unitNumber(obj.score);
+  if (score === null) {
+    throw new LLMJudgeError(`Judge score is not a number from 0 to 1: ${shownValue(obj.score)}`, 'malformed_response');
   }
 
   const rationale = typeof obj.rationale === 'string' ? obj.rationale : '';
+  // A dimension is kept when the reply gives a number for it. Anything else is left out, where it used to read as 0 or as 1.
   const dimensions: Record<string, number> = {};
-  if (obj.dimensions && typeof obj.dimensions === 'object') {
+  if (obj.dimensions && typeof obj.dimensions === 'object' && !Array.isArray(obj.dimensions)) {
     for (const [k, v] of Object.entries(obj.dimensions as Record<string, unknown>)) {
-      const n = typeof v === 'number' ? v : Number(v);
-      if (Number.isFinite(n)) dimensions[k] = n;
+      if (typeof v === 'number' && Number.isFinite(v)) dimensions[k] = v;
     }
   }
 
   return {
     score: Math.round(score * 100) / 100,
+    // The model's own boolean is recorded only when it is one; "true" in quotes is not.
     passed: typeof obj.passed === 'boolean' ? obj.passed : undefined,
     rationale,
     dimensions,
   };
 }
+
+/**
+ * What the second request adds to the system prompt, after a first reply
+ * that could not be read. It says what is true of every such reply (it used
+ * to say the reply "was not valid JSON", also to a model whose JSON was
+ * valid and whose score was in quotes), and asks for what is read: the JSON
+ * object, and a score that is a number.
+ *
+ * Every character of it is priced: the worst case a call is checked at
+ * before it is made counts this request too. So it stands in one place, and
+ * whatever else prices a judge call (the proof runner) asks
+ * `worstCaseJudgeCostUsd` and keeps no copy.
+ */
+export const SECOND_REQUEST =
+  '\n\nIMPORTANT: your previous response could not be read. Respond with ONLY the JSON object: nothing before or after it, no code fences, and "score" as a number, not in quotes.';
 
 /** What one judge evaluation will send, and the most it can cost. */
 interface JudgePlan {
@@ -171,9 +166,7 @@ function planJudgeCall(params: PlanParams): JudgePlan {
   // The retry prompt is fixed up front so the pre-flight estimate can
   // price it: a malformed first reply triggers ONE more call with this
   // stricter system prompt and a smaller output cap.
-  const strictSystem =
-    systemPrompt +
-    '\n\nIMPORTANT: your previous response was not valid JSON. Respond with ONLY the JSON object, no prefatory text, no code fences.';
+  const strictSystem = systemPrompt + SECOND_REQUEST;
   const retryMaxOutputTokens = Math.min(maxOutputTokens, 256);
 
   /*
