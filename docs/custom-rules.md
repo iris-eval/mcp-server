@@ -98,7 +98,7 @@ Every custom rule has the same structure:
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `name` | `string` | Yes | -- | Your identifier for this rule |
+| `name` | `string` | Yes | -- | Your identifier for this rule. Not the name of a rule Iris ships (`list_rules` lists them under `built_in`): in every result the two would carry one name, and the call is refused |
 | `type` | `string` | Yes | -- | One of the 9 types below |
 | `config` | `object` | Yes | -- | Type-specific configuration |
 | `weight` | `number` | No | `1` | Weight in the final score calculation |

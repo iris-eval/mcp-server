@@ -3115,17 +3115,35 @@ export class SqliteAdapter implements IStorageAdapter {
     return rows.map((r) => ({ id: r.id, evalId: r.eval_id, ruleName: r.rule_name, label: r.label, note: r.note, labelledAt: r.labelled_at }));
   }
 
-  async labelTallies(tenantId: TenantId): Promise<LabelTallyRow[]> {
+  async labelTallies(tenantId: TenantId, shipped: readonly string[] = []): Promise<LabelTallyRow[]> {
     assertTenant(tenantId);
+    /*
+     * A label was written on the first row of its name in the evaluation
+     * (routes/labels.ts). Under a name in `shipped`, that row is read back,
+     * and a label whose row was a custom rule's is left out of the tally: it
+     * was written on the fire of a custom rule that carried the name of a
+     * rule Iris ships, and would weigh that rule's fires. A row stored
+     * without its origin is counted, as it always was.
+     */
     const rows = this.db
       .prepare(
-        `SELECT rule_name, SUM(CASE WHEN label = 'right' THEN 1 ELSE 0 END) AS right, SUM(CASE WHEN label = 'wrong' THEN 1 ELSE 0 END) AS wrong
-           FROM verdict_labels
-          WHERE tenant_id = ? AND rule_name IS NOT NULL
-          GROUP BY rule_name
-          ORDER BY rule_name`,
+        `SELECT l.rule_name AS rule_name, SUM(CASE WHEN l.label = 'right' THEN 1 ELSE 0 END) AS right, SUM(CASE WHEN l.label = 'wrong' THEN 1 ELSE 0 END) AS wrong
+           FROM verdict_labels l
+          WHERE l.tenant_id = ? AND l.rule_name IS NOT NULL
+            AND NOT (
+              l.rule_name IN (SELECT value FROM json_each(?))
+              AND COALESCE((
+                SELECT json_extract(j.value, '$.origin')
+                  FROM eval_results e, json_each(CASE WHEN json_valid(e.rule_results) THEN e.rule_results ELSE '[]' END) j
+                 WHERE e.id = l.eval_id AND e.tenant_id = l.tenant_id AND json_extract(j.value, '$.ruleName') = l.rule_name
+                 ORDER BY CAST(j.key AS INTEGER)
+                 LIMIT 1
+              ), '') = 'custom'
+            )
+          GROUP BY l.rule_name
+          ORDER BY l.rule_name`,
       )
-      .all(tenantId) as Array<{ rule_name: string; right: number; wrong: number }>;
+      .all(tenantId, JSON.stringify(shipped)) as Array<{ rule_name: string; right: number; wrong: number }>;
     return rows.map((r) => ({ ruleName: r.rule_name, right: Number(r.right), wrong: Number(r.wrong) }));
   }
 

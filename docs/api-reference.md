@@ -222,7 +222,7 @@ Evaluate agent output quality using configurable rules. Runs a set of built-in o
 | `expected_trajectory` | `object` | No | -- | What the agent was expected to DO: `tool_calls` `[{ tool_name, input? }]` with `mode` (`strict` \| `unordered` \| `subset` \| `superset` \| `ordered_subset`, default `ordered_subset`) and `args` (`exact` \| `subset`, default `subset`) for `tool_sequence`; `step_budget` and `tolerance` (default 1.5) for `step_budget`. Both rules skip without it |
 | `input` | `string` | No | -- | Original input for context (used by relevance rules). With `trace_id` and no `input`, the ask stored on the trace is used |
 | `trace_id` | `string` | No | -- | A stored trace. Alone, the call scores the trace as stored and the result is the trace's verdict; with anything that differs from the record, the result is kept beside the trace ([below](#a-trace-has-one-verdict-and-a-caller-cannot-replace-it)) |
-| `custom_rules` | `CustomRule[]` | No | -- | Custom evaluation rules (required when `eval_type` is `custom`) |
+| `custom_rules` | `CustomRule[]` | No | -- | Custom evaluation rules (required when `eval_type` is `custom`). A rule under the name of a rule Iris ships is refused (`IRIS_INVALID_ARGUMENT`, field `custom_rules`) |
 | `cost_usd` | `number` | No | -- | Cost in USD (used by cost rules). With `trace_id` and no `cost_usd`, the cost stored on the trace is used |
 | `token_usage` | `TokenUsage` | No | -- | Token usage breakdown (used by cost rules). With `trace_id` and no `token_usage`, the usage stored on the trace is used |
 | `tools` | `ToolDescriptor[]` | No | -- | What the agent COULD call: your MCP `tools/list` result as it is, the same catalogue [`log_trace`](#log_trace) stores, held to the same limits. Read by `valid_tool_arguments` and `tool_choice`, and for the hints the loop and case-history rules read. Omit it and those two rules **skip rather than pass**; with `trace_id` it is loaded from the stored trace |
@@ -570,7 +570,7 @@ Register a new custom eval rule so it fires automatically on every `evaluate_out
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `name` | `string` | Yes | Rule name, 1-80 letters, digits, dots, dashes and underscores (the dashboard's rule). Unique among deployed rules unless `replace` is `true` |
+| `name` | `string` | Yes | Rule name, 1-80 letters, digits, dots, dashes and underscores (the dashboard's rule). Unique among deployed rules unless `replace` is `true`, and not the name of a rule Iris ships (`IRIS_INVALID_ARGUMENT`, field `name`, whatever `replace` says) |
 | `description` | `string` | No | What the rule checks + why (up to 500 chars) |
 | `eval_type` | `enum` | Yes | Category: `completeness` / `relevance` / `safety` / `cost` / `custom` — the rule fires on `evaluate_output` calls of this type (and on `all`). `evalType` is accepted as an alias; pass one spelling, not both |
 | `severity` | `enum` | No | `low` / `medium` / `high` / `critical` (default `medium`). low/medium: contributes to the weighted score only. **high/critical: a failing evaluation of this rule hard-fails the eval — `passed` is forced to `false` regardless of the weighted score** |
@@ -1541,7 +1541,7 @@ An empty window reports `passRate: null`, not zero: "0 of 0" is unknown.
 
 ### POST /api/v1/labels
 
-Label one rule's **fire** on one evaluation right or wrong — your judgement on your own traffic (0.14.0). Body: `{ "eval_id": "eval_…", "rule": "no_stub_output", "label": "right" | "wrong", "note": "optional, ≤ 500 chars" }`. A rule that did not run on the evaluation, or ran and did not fire, is refused with `400` and a sentence: labels are written on fires, so they say how often a rule's fires were right and nothing about what a quiet rule missed — which is why every surface says "local precision" and never "local accuracy" (the published number each local one stands beside is on [/proof](https://iris-eval.com/proof)). Labelling the same fire again replaces the earlier label (one current opinion per fire). `404` for an unknown evaluation.
+Label one rule's **fire** on one evaluation right or wrong — your judgement on your own traffic (0.14.0). Body: `{ "eval_id": "eval_…", "rule": "no_stub_output", "label": "right" | "wrong", "note": "optional, ≤ 500 chars" }`. A rule that did not run on the evaluation, or ran and did not fire, is refused with `400` and a sentence: labels are written on fires, so they say how often a rule's fires were right and nothing about what a quiet rule missed — which is why every surface says "local precision" and never "local accuracy" (the published number each local one stands beside is on [/proof](https://iris-eval.com/proof)). Labelling the same fire again replaces the earlier label (one current opinion per fire). `404` for an unknown evaluation. A label is written on the first row of its name on the evaluation, and the labels under the name of a rule Iris ships weigh that rule's fires: where that row is a custom rule's (a rule stored under such a name before the doors refused one), the label is refused with `400`, and a label stored on such a row by an earlier version is left out of the tally.
 
 Response `201`: the label, the rule's row as `GET /labels/stats` would report it now (`n`, `right`, `wrong`, the `precision` object `{ point, lo, hi }` — right ÷ (right + wrong) with its 95% Wilson interval, beside the published one on [/proof](https://iris-eval.com/proof) — and `local`), `min` (the floor, 20), and the current `prevalence` and `suggestion`.
 
@@ -1698,7 +1698,7 @@ Deploy a custom rule — the HTTP twin of [`deploy_rule`](#deploy_rule), same st
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | `string` | Yes | 1-80 chars; letters, digits, `.`, `-`, `_`. Unique among deployed rules unless `replace` is `true` |
+| `name` | `string` | Yes | 1-80 chars; letters, digits, `.`, `-`, `_`. Unique among deployed rules unless `replace` is `true`, and not the name of a rule Iris ships |
 | `description` | `string` | No | Up to 500 chars |
 | `evalType` | `string` | Yes | `completeness`, `relevance`, `safety`, `cost`, `custom` — the rule fires on evaluations of this type (and on `all`) |
 | `severity` | `string` | No | `low`, `medium` (default), `high`, `critical`. high/critical failures hard-fail the evaluation |
@@ -1723,6 +1723,7 @@ Deploy a custom rule — the HTTP twin of [`deploy_rule`](#deploy_rule), same st
 | Status | Meaning |
 |--------|---------|
 | `400` | `{ "error": "Invalid rule definition", "details": [...] }` — a malformed body, an unknown key (top level or inside `definition`), or a definition the store refuses (a regex that fails the ReDoS check or exceeds 1000 chars, a missing config key, a non-positive weight) |
+| `409` | The `name` is the name of a rule Iris ships: `{ "error": "\"no_pii\" is the name of a rule Iris ships, and a custom rule may not take it: ... Nothing was deployed." }`, whatever `replace` says. The preview (`POST /api/v1/rules/custom/preview`) answers the same for a `definition.name` of that kind. |
 | `409` | A rule with this `name` is already deployed and `replace` is not `true`. `{ "error": "A rule named \"...\" is already deployed: rule-XXXX (eval_type ..., severity ..., enabled). ... Pass replace: true ...", "existing": [ { "id", "evalType", "severity", "enabled" } ] }` — nothing was deployed |
 
 ---

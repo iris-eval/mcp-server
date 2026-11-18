@@ -504,8 +504,14 @@ export interface IStorageAdapter {
   insertVerdictLabel(tenantId: TenantId, label: Omit<VerdictLabel, 'labelledAt'> & { labelledAt?: string }): Promise<VerdictLabel>;
   /** Every label on one evaluation. */
   getLabelsForEval(tenantId: TenantId, evalId: string): Promise<VerdictLabel[]>;
-  /** Right and wrong counts per rule over every label the tenant has written. */
-  labelTallies(tenantId: TenantId): Promise<LabelTallyRow[]>;
+  /**
+   * Right and wrong counts per rule over every label the tenant has written.
+   * Under each name in `shipped` (the names of the rules Iris ships), a label
+   * counts only when it was written on that rule's own row: a label stored on
+   * the row of a custom rule that carried such a name, before the doors
+   * refused one, is left out, so that it weighs no rule Iris ships.
+   */
+  labelTallies(tenantId: TenantId, shipped?: readonly string[]): Promise<LabelTallyRow[]>;
   /**
    * A string that differs whenever the tenant's labels do: how many there
    * are and when the newest was written. A process that keeps something
