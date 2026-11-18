@@ -104,6 +104,16 @@ describe('replyObject: the JSON object a reply is', () => {
     for (const text of [`\`${OBJECT}\``, `\`\`${OBJECT}\`\``, `\`\`json\n${OBJECT}\n\`\``, `\`\n${OBJECT}\n\``, `${OBJECT}\``, `${OBJECT}\n\`\``, `\`\`\n${OBJECT}`]) expect(replyObject(text), JSON.stringify(text)).toBeNull();
   });
 
+  it('a fence can be made of tildes as of backticks: three or more of one of the two, and not a mix of them', () => {
+    for (const text of [`~~~json\n${OBJECT}\n~~~`, `~~~\n${OBJECT}\n~~~`, `~~~~ json\n${OBJECT}\n~~~~`, `~~~json ${OBJECT} ~~~`, `~~~json\n${OBJECT}`, `${OBJECT}\n~~~`]) {
+      expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
+    }
+    // Fewer than three, or three marks that are not all the same one, is not a fence at either end.
+    for (const text of [`~${OBJECT}~`, `~~json\n${OBJECT}\n~~`, `${OBJECT}\n~~`, `\`~\`${OBJECT}\`~\``, `~\`~\n${OBJECT}\n~\`~`, `${OBJECT}\n\`~\``, `\`\`~\n${OBJECT}`]) expect(replyObject(text), JSON.stringify(text)).toBeNull();
+    // Inside a fence of tildes the rule is the one for backticks: prose is not the object.
+    expect(replyObject(`~~~json\nHere it is: ${OBJECT}\n~~~`)).toBeNull();
+  });
+
   it('where the object starts on the same line as the backticks, one word at most may stand between them', () => {
     for (const text of [`\`\`\`${OBJECT}\`\`\``, `\`\`\`json${OBJECT}\`\`\``, `\`\`\`json ${OBJECT} \`\`\``, `\`\`\` json ${OBJECT}\`\`\``, `\`\`\` ${OBJECT} \`\`\``, '```json {"score":0.7,\n"rationale":"ok"}\n```']) {
       expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });

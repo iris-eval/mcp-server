@@ -33,14 +33,17 @@ function bare(text: string): string {
   return text.slice(start, end);
 }
 
+/** The two characters a code fence is made of. */
+const isFenceMark = (char: string | undefined): boolean => char === '`' || char === '~';
+
 /**
  * A reply with its code fence taken off, when it has one: three or more
- * backticks.
+ * backticks, or three or more tildes.
  *
  * The opening line of a fence is the fence's own. Whatever follows the
- * backticks on it (the language, with or without a space before it, or
+ * marks on it (the language, with or without a space before it, or
  * anything else a model writes there) is not the reply, which starts on
- * the next line. Where the object starts on the same line as the backticks,
+ * the next line. Where the object starts on the same line as the marks,
  * one word at most may stand between them: more than that is prose before
  * the object.
  *
@@ -49,15 +52,16 @@ function bare(text: string): string {
  */
 function withoutFence(text: string): string {
   let open = 0;
-  while (text[open] === '`') open++;
+  if (isFenceMark(text[0])) while (text[open] === text[0]) open++;
   let rest = text;
   if (open >= 3) {
     const lineEnd = text.indexOf('\n', open);
     const onTheLine = lineEnd === -1 ? text.slice(open) : text.slice(open, lineEnd);
     rest = lineEnd !== -1 && !onTheLine.includes('{') ? text.slice(lineEnd + 1) : text.slice(open).replace(/^[ \t]*[^\s`{]*[ \t]*/, '');
   }
+  const last = rest[rest.length - 1];
   let close = rest.length;
-  while (close > 0 && rest[close - 1] === '`') close--;
+  if (isFenceMark(last)) while (close > 0 && rest[close - 1] === last) close--;
   return rest.length - close >= 3 ? rest.slice(0, close) : rest;
 }
 
