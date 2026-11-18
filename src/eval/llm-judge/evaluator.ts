@@ -1,4 +1,5 @@
 import { callLLMJudge, estimateInputTokens, LLMJudgeError, type LLMProvider } from './client.js';
+import { DEFAULT_JUDGE_DEADLINE_MS } from './deadline.js';
 import { estimateCostUsd, findPricing } from './pricing.js';
 import { replyObject, shownReply, shownValue, unitNumber } from './reply.js';
 import { getTemplate, type TemplateName } from './templates/index.js';
@@ -223,6 +224,10 @@ export async function evaluateWithLLMJudge(
     throw new CostCapError(estimatedCost, maxCost);
   }
 
+  // One deadline for the whole call: both requests, their replies and any wait after a rate limit end before it.
+  const timeoutMs = params.timeoutMs ?? DEFAULT_JUDGE_DEADLINE_MS;
+  const deadline = Date.now() + timeoutMs;
+
   // First attempt
   let raw = await callLLMJudge({
     provider: params.provider,
@@ -232,7 +237,8 @@ export async function evaluateWithLLMJudge(
     maxOutputTokens,
     temperature,
     apiKey: params.apiKey,
-    timeoutMs: params.timeoutMs,
+    timeoutMs,
+    deadline,
     maxInputTokensEstimate: params.maxInputTokensEstimate,
   });
 
@@ -261,7 +267,8 @@ export async function evaluateWithLLMJudge(
       maxOutputTokens: retryMaxOutputTokens,
       temperature,
       apiKey: params.apiKey,
-      timeoutMs: params.timeoutMs,
+      timeoutMs,
+      deadline,
       maxInputTokensEstimate: params.maxInputTokensEstimate,
     });
     inputTokens += raw.inputTokens;
