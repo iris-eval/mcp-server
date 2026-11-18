@@ -29,6 +29,10 @@ export default {
 
 `evaluate` returns the same shape a built-in returns: `passed` (boolean), `score` (0–1), `message` (string), and optionally `evidence`, `skipped` with `skipReason`. It is synchronous — the engine keeps every deterministic rule synchronous on purpose, so a rule cannot reach the network by construction.
 
+Read `ctx`, and do not write to it: it is the evaluation's own, and the rules that run after yours are handed the same object. What the call carried is recorded before any rule runs, so a value a plugin writes there (a cost it defaults for its own arithmetic) is never evidence that the call sent one.
+
+Nine fields of a row are the engine's to write, from the plugin's declaration and the deployment's configuration: `critical`, `criticalSource`, `kind`, `role`, `state`, `advisory`, `thresholdSource`, `asked` and `lacked`. A returned result that sets one of them does not keep it. A deployment that wants a missing input to leave the verdict not checked names the input in `eval.requiredEvidence`.
+
 ## Naming it
 
 ```bash

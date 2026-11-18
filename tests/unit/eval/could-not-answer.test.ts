@@ -661,7 +661,37 @@ describe('a rule a request sends under the name of a rule Iris ships is read as 
     expect(result.verdict).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing' });
   });
 
-  it('the note beside a failed risk estimate names the weighed fire once, whatever else carries its name', async () => {
+  it('nor for a rule registered in code under that name: the judge answers for the rule Iris ships, whatever else is called by its name', async () => {
+    // A deployment's own measurement, registered under the name, that reads a cost. The call sends none.
+    const own: EvalRule = {
+      name: 'answers_the_ask',
+      description: "A measurement of the deployment's own, under the name of the rule the judge answers for.",
+      evalType: 'custom',
+      weight: 1,
+      critical: false,
+      kind: 'measurement',
+      mechanism: 'formula',
+      needs: ['output', 'cost'],
+      version: 1,
+      evaluate: (ctx): EvalRuleResult =>
+        typeof ctx.costUsd === 'number'
+          ? { ruleName: 'answers_the_ask', passed: true, score: 1, message: 'Measured' }
+          : { ruleName: 'answers_the_ask', passed: true, score: 1, message: 'No cost to measure', skipped: true, skipReason: 'no cost provided' },
+    };
+    const e = judged();
+    e.registerRule('custom', own, 'embedder:answers_the_ask');
+    const result = await e.evaluateAll({ ...REPORT });
+    const rows = result.rule_results.filter((r) => r.ruleName === 'answers_the_ask');
+    expect(rows).toHaveLength(2);
+    const registered = rows.find((r) => r.kind === 'measurement')!;
+    expect(registered).toMatchObject({ skipped: true, skipClass: 'not_applicable', lacked: ['cost'] });
+    expect(registered.asked).toBeUndefined();
+    // The rule the judge answers for answered, and nothing the deployment asked for is missing.
+    expect(rows.find((r) => r.kind === 'judgment')).toMatchObject({ passed: true, role: 'gate' });
+    expect(result.verdict).toMatchObject({ state: 'pass', basis: 'clean' });
+  });
+
+  it('the note beside a failed risk estimate names the weighed fire once, whatever custom rule carries its name', async () => {
     // An unfilled template: no_stub_output fires, and at the shipped settings the estimate fails the verdict on it.
     const TEMPLATE = { output: 'TODO: write the summary.' };
     const ONE = 'rests on no_stub_output. If its fires are not failures on your traffic';
@@ -706,13 +736,131 @@ describe('a rule a request sends under the name of a rule Iris ships is read as 
     }
   });
 
-  it('what the call carried is read once, from the context the rules were handed: the rows and the evidence record say one thing', async () => {
-    // A context that carries a step list of its own and no tool calls. The engine derives the list it hands the rules, and the rules saw no call.
+  it('a context with a step list of its own and no tool calls: the rows and the evidence record say one thing, that no tool call was carried', async () => {
+    // The engine derives the list it hands the rules from the calls and the spans, and the rules saw no call.
     const steps = [{ index: 0, kind: 'tool', name: 'get_order', source: 'tool_call', status: 'ok', input: { id: 1182 }, output: 'paid' }] as unknown as EvalContext['steps'];
     const e = engine({ configuredThresholdKeys: ['max_tool_repeats', 'max_steps'] } as Partial<typeof defaultConfig.eval>, { max_tool_repeats: 2, max_steps: 6 });
     const result = await e.evaluateAll({ ...REPORT, steps });
     expect(row(result, 'no_tool_loop')).toMatchObject({ skipped: true, skipClass: 'not_applicable', lacked: ['tool_calls'], asked: 'config' });
     expect(result.provenance?.evidence?.carried).not.toContain('tool_calls');
     expect(result.verdict).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['tool_calls'] });
+  });
+});
+
+/*
+ * What a call carried is what was sent. The engine hands its rules one
+ * context, and a deployment's own rule can write to it: default a missing
+ * cost for its own arithmetic, fill in a list, say who recorded the trace.
+ * The record of what the call carried is taken before any rule runs, so
+ * nothing a rule writes becomes evidence, and required evidence that was
+ * not sent stays missing.
+ */
+describe('what a call carried is recorded before any rule runs: a rule that writes to the context it is handed changes no evidence', () => {
+  const REPORT = { input: 'Summarise the quarterly report in two sentences.', output: 'Revenue grew four percent on the quarter, led by the services line. Costs were flat and the margin widened by one point.' };
+  /** A deployment's own measurement, registered in code, that writes to its context before it answers. */
+  const writing = (write: (ctx: EvalContext) => void): EvalRule => ({
+    name: 'acme_note',
+    description: "A measurement of the deployment's own.",
+    evalType: 'custom',
+    weight: 1,
+    critical: false,
+    kind: 'measurement',
+    mechanism: 'formula',
+    needs: ['output'],
+    version: 1,
+    evaluate: (ctx): EvalRuleResult => {
+      write(ctx);
+      return { ruleName: 'acme_note', passed: true, score: 1, message: 'Measured' };
+    },
+  });
+  const withRule = (overrides: Record<string, unknown>, write: (ctx: EvalContext) => void): EvalEngine => {
+    const e = engine(overrides as Partial<typeof defaultConfig.eval>);
+    e.registerRule('custom', writing(write), 'embedder:acme_note');
+    return e;
+  };
+
+  it('a cost the deployment requires and the call did not send is still missing when a rule gives itself one', async () => {
+    const writes: Array<[string, (ctx: EvalContext) => void]> = [
+      ['touches nothing', () => {}],
+      ['assigns a cost', (ctx) => void (ctx.costUsd = 0.01)],
+      ['defaults a cost, so its own division needs no guard', (ctx) => void (ctx.costUsd ??= 0)],
+    ];
+    for (const [what, write] of writes) {
+      const result = await withRule({ requiredEvidence: ['cost'] }, write).evaluateAll({ ...REPORT });
+      expect(row(result, 'acme_note'), what).toMatchObject({ passed: true });
+      expect(result.provenance?.evidence?.carried, what).toEqual(['input', 'output']);
+      expect(row(result, 'cost_under_threshold'), what).toMatchObject({ skipped: true, lacked: ['cost'] });
+      expect(result.verdict, what).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['cost'] });
+      expect(result.passed, what).toBe(false);
+    }
+  });
+
+  it('a list of tool calls that a capture source records in full and did not send is still a hole in the record when a rule defaults it to an empty one', async () => {
+    const recorded = { ...REPORT, recordedBy: 'harness' as const, capture: { name: 'acme-capture', version: '1.0.0', complete: ['tool_calls' as const] } };
+    for (const [what, write] of [['touches nothing', () => {}], ['defaults the list', (ctx: EvalContext) => void (ctx.toolCalls ??= [])]] as Array<[string, (ctx: EvalContext) => void]>) {
+      const result = await withRule({}, write).evaluateAll({ ...recorded });
+      expect(result.provenance?.evidence, what).toMatchObject({ recordedBy: 'harness', carried: ['input', 'output'] });
+      expect(result.provenance?.evidence?.toolCalls, what).toBeUndefined();
+      expect(result.verdict, what).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['tool_calls'] });
+    }
+  });
+
+  it('who recorded a trace is what the call said, and not what a rule writes afterwards', async () => {
+    const vouch = (ctx: EvalContext): void => {
+      ctx.recordedBy = 'harness';
+      ctx.capture = { name: 'acme-capture', complete: ['tool_calls'] };
+    };
+    for (const [what, write] of [['touches nothing', () => {}], ['says a capture source recorded it', vouch]] as Array<[string, (ctx: EvalContext) => void]>) {
+      const result = await withRule({ requiredEvidence: ['tool_calls'] }, write).evaluateAll({ ...REPORT, toolCalls: [] });
+      expect(result.provenance?.evidence, what).toMatchObject({ recordedBy: 'not_declared', carried: ['input', 'output'] });
+      expect(result.provenance?.evidence?.capture, what).toBeUndefined();
+      expect(result.verdict, what).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['tool_calls'] });
+    }
+  });
+
+  it('nor does a rule that changes, in place, a list it was handed: the record holds the calls that were sent, whichever way the rule changed them', async () => {
+    const sent = (): ToolCallRecord[] => [{ tool_name: 'read_file', input: { path: 'src/a.ts' }, output: 'export const parse = 1;' }];
+    const adds = (ctx: EvalContext): void => void ctx.toolCalls!.push({ tool_name: 'read_file', input: { path: 'src/b.ts' }, output: 'export const format = 2;' });
+    const empties = (ctx: EvalContext): void => void (ctx.toolCalls!.length = 0);
+    // One call sent: one call recorded, and tool calls the deployment requires are not reported missing.
+    for (const [what, write] of [['touches nothing', () => {}], ['adds a call to the list', adds], ['empties the list', empties]] as Array<[string, (ctx: EvalContext) => void]>) {
+      const result = await withRule({ requiredEvidence: ['tool_calls'] }, write).evaluateAll({ ...REPORT, toolCalls: sent() });
+      expect(result.provenance?.evidence, what).toMatchObject({ carried: ['input', 'output', 'tool_calls', 'tool_outputs'], toolCalls: 1 });
+      expect(result.verdict, what).toMatchObject({ state: 'pass', basis: 'clean' });
+    }
+    // An empty list sent, with nothing that recorded the trace: no call was carried, and a call a rule adds to the list is not one.
+    for (const [what, write] of [['touches nothing', () => {}], ['adds a call to the list', adds]] as Array<[string, (ctx: EvalContext) => void]>) {
+      const result = await withRule({ requiredEvidence: ['tool_calls'] }, write).evaluateAll({ ...REPORT, toolCalls: [] });
+      expect(result.provenance?.evidence?.carried, what).toEqual(['input', 'output']);
+      expect(result.verdict, what).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['tool_calls'] });
+    }
+  });
+
+  it('a plugin is handed the same context, and what it writes there is no more evidence than what a rule registered in code writes', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'iris-plugin-writes-'));
+    try {
+      const path = join(dir, 'cost-per-character.mjs');
+      writeFileSync(
+        path,
+        [
+          "export default { name: 'cost_per_character', kind: 'measurement', mechanism: 'formula', version: 1, needs: ['output'],",
+          "  description: 'What an answer cost for each character of it.',",
+          '  evaluate(ctx) {',
+          '    ctx.costUsd ??= 0;',
+          "    return { ruleName: 'cost_per_character', passed: true, score: 1, message: `${(ctx.costUsd / Math.max(1, ctx.output.length)).toFixed(6)} USD a character` };",
+          '  } };',
+          '',
+        ].join('\n'),
+      );
+      const e = engine({ requiredEvidence: ['cost'] } as Partial<typeof defaultConfig.eval>);
+      for (const p of await loadPlugins([{ path, sha256: createHash('sha256').update(readFileSync(path)).digest('hex') }])) e.registerRule(p.evalType, p.rule, p.id);
+      const result = await e.evaluateAll({ ...REPORT });
+      expect(row(result, 'cost_per_character')).toMatchObject({ passed: true, origin: 'plugin' });
+      expect(result.provenance?.evidence?.carried).toEqual(['input', 'output']);
+      expect(result.verdict).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['cost'] });
+      expect(sentences(result)).toContain('this deployment requires cost on every evaluation');
+    } finally {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    }
   });
 });

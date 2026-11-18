@@ -34,6 +34,13 @@ describe('verdictText', () => {
     expect(new Set(sentences).size).toBe(sentences.length);
   });
 
+  it('the sentence for a rule that had to judge and could not says which rules have to, and both things the verdict then is', () => {
+    const sentence = BASIS_TEXT.critical_unknown;
+    for (const who of ['a critical rule or a gate', 'one the deployment or the call asked for', 'one the risk estimate weighs that failed as it ran']) expect(sentence).toContain(who);
+    // Unknown, and a fail only where the deployment said so: the setting does not decide how an unknown verdict "reads".
+    expect(sentence).toContain('That is not a clean result: the verdict is unknown, or a fail where eval.onCriticalSkipped is set to "fail".');
+  });
+
   it('every question the server asks has a short label', () => {
     expect(Object.keys(QUESTION_LABEL).sort()).toEqual(
       ['safe_output', 'grounded', 'complete', 'relevant', 'task_completed', 'tool_use_correct', 'within_budget'].sort(),

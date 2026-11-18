@@ -681,6 +681,16 @@ export class EvalEngine {
     // What the call carried, worked out once for the evaluation from the list just made: every rule's row and the coverage read it (stamp.ts).
     const present = inputsPresent(evalContext);
     /*
+     * The record of what the call carried and who recorded it, taken here,
+     * before any rule runs, from the same context as the reading above: the
+     * record and the rows cannot say two things of one call. Every rule is
+     * handed this context and a deployment's own rule can write to it (a
+     * measurement that defaults a missing cost for its own arithmetic). What
+     * a rule writes is not what the call carried, so nothing a rule does can
+     * make evidence that was not sent read as sent.
+     */
+    const evidence = evidenceOf(evalContext);
+    /*
      * An output written as JSON, read as the text it carries (0.20.0). The
      * built-in text rules used to read a structured answer in its escaped
      * form: a line break was the two characters `\n` and a phrase in a
@@ -877,8 +887,8 @@ export class EvalEngine {
       threshold: this.threshold,
       ruleThresholds: this.ruleThresholds,
       composer: this.composerFacts(),
-      // What the call carried and who recorded it: the composer reads it, now and on every read of the stored row. Read from the context the rules were handed, as the stamp's own reading is (`present`, above), so the record and the rows cannot say two things of one call.
-      evidence: evidenceOf(evalContext),
+      // What the call carried and who recorded it, as taken before the rules ran: the composer reads it, now and on every read of the stored row.
+      evidence,
       judgedAt: new Date().toISOString(),
     });
     const coverage = deriveCoverage(ruleResults, present, provenance.evidence);
