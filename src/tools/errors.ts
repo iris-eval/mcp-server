@@ -130,7 +130,7 @@ function fieldOf(err: unknown, key: 'code' | 'errcode'): unknown {
   }
 }
 
-/** Node's built-in SQLite names every failure by a code of its own, with SQLite's number beside it (`errcode`); better-sqlite3 names it by SQLite's code. */
+/** Node's built-in SQLite names a failure SQLite reports by a code of its own, with SQLite's number beside it (`errcode`); better-sqlite3 names it by SQLite's code. (A connection already closed is another code, the runtime's, and is not the store's failure under either.) */
 const NODE_SQLITE_CODE = 'ERR_SQLITE_ERROR';
 
 function isSqliteError(err: unknown): boolean {

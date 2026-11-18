@@ -15,11 +15,12 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import express from 'express';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
 import { refreshLocalLabels } from '../../../src/eval/local-labels.js';
 import { registerLabelRoutes } from '../../../src/dashboard/routes/labels.js';
+import { createErrorHandler } from '../../../src/middleware/error-handler.js';
 import { createTenantMiddleware } from '../../../src/middleware/tenant.js';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
@@ -275,6 +276,33 @@ describe('POST /evaluations/:id/reevaluate', () => {
     expect(otherRuleAfter.provenance!.configHash).not.toBe(otherRuleBefore.provenance!.configHash);
     await h.store.close();
   }, 120_000);
+
+  it('a store that fails the write with a value that throws when read is answered with the JSON 500, as any failure is, and logged', async () => {
+    const h = await harness();
+    const { evalId } = await h.scoreOne(0);
+    const logged: string[] = [];
+    h.app.use(createErrorHandler({ debug: () => {}, info: () => {}, warn: () => {}, error: (m: string) => void logged.push(m) }));
+    const values: Array<[string, () => unknown]> = [
+      ['an Error whose message cannot be read', () => Object.defineProperty(new Error('x'), 'message', { get() { throw new Error('the message cannot be read'); } })],
+      ['an Error whose code cannot be read', () => Object.defineProperty(new Error('boom'), 'code', { get() { throw new Error('the code cannot be read'); } })],
+      ['a value every read of which throws', () => new Proxy({}, { get() { throw new Error('nothing of it can be read'); } })],
+    ];
+    const saved = process.env.NODE_ENV;
+    delete process.env.NODE_ENV;
+    try {
+      for (const [what, make] of values) {
+        const write = vi.spyOn(h.store, 'insertEvalResult').mockImplementation(() => Promise.reject(make()));
+        const answered = await call(h.app, 'POST', `/api/v1/evaluations/${evalId}/reevaluate`);
+        write.mockRestore();
+        expect(answered, what).toEqual({ status: 500, body: { error: 'Internal server error' } });
+      }
+      expect(logged).toHaveLength(values.length);
+    } finally {
+      if (saved === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = saved;
+      await h.store.close();
+    }
+  });
 
   it('refuses an evaluation with no stored trace, an unknown id, and a dashboard started without the engine', async () => {
     const h = await harness();

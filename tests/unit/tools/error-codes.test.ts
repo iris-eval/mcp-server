@@ -213,8 +213,17 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
 
   it('the server instructions say of a refused argument what holds of every refusal', () => {
     const said = client.getInstructions() ?? '';
-    expect(said).toContain('comes back as plain text saying why');
+    expect(said).toContain('An argument the schema rejects comes back as plain text saying why; an unknown one also lists the valid arguments.');
     expect(said).not.toContain('plain text naming IRIS_INVALID_ARGUMENT');
+  });
+
+  it('the API reference says, word for word, what the cases above show: the input schema in plain text, the code a tool refuses with, and what timeout_ms bounds', () => {
+    const reference = readFileSync(join(root, 'docs', 'api-reference.md'), 'utf8').replace(/\r\n/g, '\n');
+    expect(reference).toContain('Codes: `IRIS_INVALID_ARGUMENT` (an argument the tool itself refuses, once the input schema has let it in),');
+    expect(reference).toContain(
+      'An argument the input schema rejects never reaches the handler: the protocol layer answers with plain text and no envelope. For an unknown argument the text names it, the valid arguments and `IRIS_INVALID_ARGUMENT`; for a wrong type, a required argument left out or a value a check refuses, it names the argument and what was expected, and carries no code.',
+    );
+    expect(reference).toContain('`timeout_ms` on `evaluate_with_llm_judge` (default 60,000) bounds the wait for each reply to begin;');
   });
 
   it('IRIS_UNKNOWN_TRACE — nothing scored or written', async () => {
@@ -423,7 +432,7 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
       },
     }) as unknown as IStorageAdapter;
 
-  it('IRIS_UNKNOWN_TRACE — a linked write the store refuses for its trace is told as an unknown trace, whatever value it rejects with, read as the mapping reads it', async () => {
+  it("IRIS_UNKNOWN_TRACE — a linked write the store refuses for its trace is told as an unknown trace, for every value that says so: its words read as text, an error's message whatever it holds", async () => {
     const traceId = 'a'.repeat(32);
     await storage.insertTraces(LOCAL_TENANT, [{ trace_id: traceId, agent_name: 'codes', input: 'q', output: 'x', timestamp: '2026-11-18T00:00:00.000Z' }]);
     const said = 'FOREIGN KEY constraint failed';
@@ -437,6 +446,7 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
       ['a symbol', Symbol(said)],
       ['an error of another realm', ofAnotherRealm],
       ['an error whose message is an object that says it', Object.assign(new Error('replaced below'), { message: { toString: () => said } })],
+      ['an error whose message is a symbol that says it', Object.assign(new Error('replaced below'), { message: Symbol(said) })],
       ['an object with no prototype that carries the code', Object.assign(Object.create(null) as object, { code: 'SQLITE_CONSTRAINT_FOREIGNKEY' })],
       [
         'an error that says it, whose code cannot be read',
@@ -617,6 +627,31 @@ describe('toIrisError maps what the runtime throws', () => {
     expect(toIrisError('the disk is full').envelope.message).toBe('the disk is full');
     expect(toIrisError({ toString: () => 'a bare object with words' }).envelope.message).toBe('a bare object with words');
   });
+  it("a database another connection holds is one to retry, as SQLite numbers it (5 and 6) and as better-sqlite3 names it; any other failure of the store is not", () => {
+    const nodeSqlite = (errcode: number, said: string): Error => Object.assign(new Error(said), { code: 'ERR_SQLITE_ERROR', errcode });
+    expect(toIrisError(nodeSqlite(5, 'database is locked')).envelope).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: true });
+    expect(toIrisError(nodeSqlite(6, 'database table is locked')).envelope).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: true });
+    expect(toIrisError(nodeSqlite(1, 'no such table: eval_results')).envelope).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: false });
+    for (const [code, retryable] of [['SQLITE_BUSY', true], ['SQLITE_LOCKED', true], ['SQLITE_CONSTRAINT', false], ['SQLITE_FULL', false]] as const) {
+      expect(toIrisError(Object.assign(new Error('the store says no'), { code })).envelope, code).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable });
+    }
+  });
+  it("the mapping reads a value's code and its number without throwing, where reading them throws", () => {
+    const throwingOn = (key: 'code' | 'errcode', base: Error): Error =>
+      Object.defineProperty(base, key, {
+        get() {
+          throw new Error(`the ${key} cannot be read`);
+        },
+      });
+    // A code that cannot be read: the error's own words decide, as for an error with no code.
+    const locked = throwingOn('code', new Error('database is locked'));
+    expect(() => toIrisError(locked)).not.toThrow();
+    expect(toIrisError(locked).envelope).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: false, message: 'Iris storage failed: database is locked' });
+    // A number that cannot be read, under the built-in SQLite's code: the store's failure, and not one to retry.
+    const numberless = throwingOn('errcode', Object.assign(new Error('no such table: eval_results'), { code: 'ERR_SQLITE_ERROR' }));
+    expect(() => toIrisError(numberless)).not.toThrow();
+    expect(toIrisError(numberless).envelope).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: false });
+  });
   it('the store driver\'s words make a storage error only in an error\'s own message, not in a thrown string', () => {
     expect(toIrisError(new Error('database is locked')).envelope.code).toBe('IRIS_STORAGE_ERROR');
     const e = toIrisError('database is locked');
@@ -644,11 +679,14 @@ describe('the wrapper answers with an envelope whatever a handler fails with', (
     expect(e.message).toBe('Iris hit an unexpected error.');
   });
 
-  it('a failure mapped to an envelope its own schema refuses (no step to take; a step that is empty; no words) is the internal error too', async () => {
+  it('a failure mapped to an envelope its own schema refuses (no step to take; a step that is empty; no words; a code outside the catalogue; a retryable that is not a boolean; a list of valid values that are not text) is the internal error too', async () => {
     const noStep = irisError('IRIS_INVALID_ARGUMENT', 'a refusal written without a step to take');
     const emptyStep = irisError('IRIS_INVALID_ARGUMENT', 'a refusal written with a step that says nothing', { recovery: ['Pass output.', ''] });
     const noWords = Object.assign(new Error(''), { name: 'DuplicateRuleNameError' });
-    for (const odd of [noStep, emptyStep, noWords]) {
+    const offCatalogue = irisError('IRIS_NOT_A_CODE' as never, 'a refusal under a code nobody listed', { recovery: ['Pass output.'] });
+    const notBoolean = irisError('IRIS_INVALID_ARGUMENT', 'a refusal whose retryable is a word', { recovery: ['Pass output.'], retryable: 'yes' as never });
+    const validOfNumbers = irisError('IRIS_INVALID_ARGUMENT', 'a refusal whose valid values are numbers', { recovery: ['Pass output.'], valid: [1, 2] as never });
+    for (const odd of [noStep, emptyStep, noWords, offCatalogue, notBoolean, validOfNumbers]) {
       // The mapping answers; it is the envelope's schema that refuses what it answered.
       expect(toIrisError(odd).envelope.code).not.toBe('IRIS_INTERNAL_ERROR');
       expect(errorEnvelopeSchema.safeParse({ error: toIrisError(odd).envelope }).success).toBe(false);
