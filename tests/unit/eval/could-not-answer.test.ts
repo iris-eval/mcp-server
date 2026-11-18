@@ -836,6 +836,46 @@ describe('what a call carried is recorded before any rule runs: a rule that writ
     }
   });
 
+  it('nor does a rule that changes, in place, a call the list holds: the record holds what each call returned', async () => {
+    const recorded = { ...REPORT, recordedBy: 'harness' as const, capture: { name: 'acme-capture', version: '1.0.0', complete: ['tool_calls' as const, 'tool_outputs' as const] } };
+    const sent = (): ToolCallRecord[] => [
+      { tool_name: 'read_file', input: { path: 'src/a.ts' }, output: 'export const parse = 1;' },
+      { tool_name: 'read_file', input: { path: 'src/b.ts' }, output: 'export const format = 2;' },
+    ];
+    const deletesAnOutput = (ctx: EvalContext): void => void delete ctx.toolCalls![0].output;
+    for (const [what, write] of [['touches nothing', () => {}], ["deletes the first call's output", deletesAnOutput]] as Array<[string, (ctx: EvalContext) => void]>) {
+      const result = await withRule({ requiredEvidence: ['tool_outputs'] }, write).evaluateAll({ ...recorded, toolCalls: sent() });
+      expect(result.provenance?.evidence?.carried, what).toEqual(['input', 'output', 'tool_calls', 'tool_outputs']);
+      expect(result.verdict?.by ?? [], what).not.toContain('tool_outputs');
+    }
+  });
+
+  /** The same measurement, registered under `completeness`: it runs before the cost, safety and other rules, so a row stamped after it would show what it wrote. */
+  const first = (overrides: Record<string, unknown>, thresholds: Partial<typeof defaultConfig.eval.ruleThresholds>, write: (ctx: EvalContext) => void): EvalEngine => {
+    const e = engine(overrides as Partial<typeof defaultConfig.eval>, thresholds);
+    e.registerRule('completeness', { ...writing(write), evalType: 'completeness' }, 'embedder:acme_note');
+    return e;
+  };
+
+  it('a check the deployment made critical, which lacked what a call returned, is not told a pass when a rule before it empties the list', async () => {
+    const empties = (ctx: EvalContext): void => void (ctx.toolCalls!.length = 0);
+    const takesOff = (ctx: EvalContext): void => void ctx.toolCalls!.pop();
+    for (const [what, write] of [['touches nothing', () => {}], ['empties the list in place', empties], ['takes the call off the list', takesOff]] as Array<[string, (ctx: EvalContext) => void]>) {
+      const result = await first({ criticalRules: ['no_injection_compliance'] }, {}, write).evaluateAll({ ...REPORT, toolCalls: [{ tool_name: 'fetch_page', input: { url: 'https://a.example/' } }] });
+      expect(row(result, 'no_injection_compliance'), what).toMatchObject({ skipped: true, lacked: ['tool_outputs'], asked: 'config' });
+      expect(result.verdict, what).toMatchObject({ state: 'unknown', basis: 'required_evidence_missing', by: ['tool_outputs'] });
+    }
+  });
+
+  it('a call that sent an empty list is not read as lacking its tool calls when a rule before the cost rules adds one to it', async () => {
+    const adds = (ctx: EvalContext): void => void ctx.toolCalls!.push({ tool_name: 'read_file', input: { path: 'src/a.ts' }, output: 'export const parse = 1;' });
+    for (const [what, write] of [['touches nothing', () => {}], ['adds a call in place', adds]] as Array<[string, (ctx: EvalContext) => void]>) {
+      const result = await first({ configuredThresholdKeys: ['max_tool_repeats'] }, { max_tool_repeats: 3 }, write).evaluateAll({ ...REPORT, toolCalls: [] });
+      expect(row(result, 'no_tool_loop').lacked, what).toBeUndefined();
+      expect(result.verdict, what).toMatchObject({ state: 'pass', basis: 'clean' });
+    }
+  });
+
   it('a plugin is handed the same context, and what it writes there is no more evidence than what a rule registered in code writes', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'iris-plugin-writes-'));
     try {
