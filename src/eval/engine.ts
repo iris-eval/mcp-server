@@ -28,7 +28,7 @@ import type { RelevanceJudge } from './llm-judge/relevance-judge.js';
 import type { JudgeBudget } from './llm-judge/budget.js';
 import { PKG_VERSION } from '../config/defaults.js';
 import { generateEvalId } from '../utils/ids.js';
-import { InputTooDeepError, MAX_EVALUATED_DEPTH, nestingDepth } from '../utils/element-count.js';
+import { InputTooDeepError, MAX_EVALUATED_DEPTH, nestsDeeperThanEvaluated } from '../utils/element-count.js';
 
 /**
  * Every bundle eval_type="all" walks, in the order their categories are
@@ -614,9 +614,11 @@ export class EvalEngine {
      * this. This is for what no door stands in front of: a trace stored
      * before the limit existed, a file the command line reads, an embedder's
      * own call. The context is measured whole, once, before the first rule,
-     * and one nested deeper is refused, not half-judged.
+     * and one nested deeper is refused, not half-judged. The one caller that
+     * hands a rule a stored trace without an evaluation, the dashboard's
+     * rule preview, takes the same measure (nestsDeeperThanEvaluated).
      */
-    if (nestingDepth(context, MAX_EVALUATED_DEPTH) > MAX_EVALUATED_DEPTH) throw new InputTooDeepError(MAX_EVALUATED_DEPTH);
+    if (nestsDeeperThanEvaluated(context)) throw new InputTooDeepError(MAX_EVALUATED_DEPTH);
     const started = performance.now();
     const result = await this.runRules(evalType, rules, categories, context);
     if (this.observer) {

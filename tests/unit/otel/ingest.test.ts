@@ -9,7 +9,7 @@
  * decoded the way the OTLP JSON encoding writes them.
  */
 import { describe, expect, it } from 'vitest';
-import { fromOtlp, fromAnyValue, attributesToRecord, otlpTraceRequestSchema } from '../../../src/otel/ingest.js';
+import { fromOtlp, fromAnyValue, attributesToRecord, otlpTraceRequestSchema, wordsOf } from '../../../src/otel/ingest.js';
 import { toSteps } from '../../../src/eval/steps.js';
 import { jsonTextDepth, MAX_JSON_TEXT_DEPTH, nestingDepth } from '../../../src/utils/element-count.js';
 
@@ -296,19 +296,58 @@ describe('fromOtlp — the conventions beside GenAI', () => {
 
   it('of the OpenInference schemas of a model call, one nested too deep to read is passed over and the others are kept (#1040)', () => {
     const nested = (levels: number): string => `${'{"a":'.repeat(levels)}1${'}'.repeat(levels)}`;
-    const schema = (name: string, levels: number): string => `{"name":"${name}","parameters":${nested(levels)}}`;
+    // The two forms an instrumentor writes: the tool flat, one level around its schema, or OpenAI's, two levels around it.
+    const flat = (name: string, levels: number): string => `{"name":"${name}","parameters":${nested(levels)}}`;
+    const openai = (name: string, levels: number): string => `{"type":"function","function":{"name":"${name}","parameters":${nested(levels)}}}`;
+    // Each tool's own text is what is held to the limit: exactly at it a tool is read, and one level past it is not.
+    expect(jsonTextDepth(flat('x', MAX_JSON_TEXT_DEPTH - 1), Infinity)).toBe(MAX_JSON_TEXT_DEPTH);
+    expect(jsonTextDepth(openai('x', MAX_JSON_TEXT_DEPTH - 2), Infinity)).toBe(MAX_JSON_TEXT_DEPTH);
     const { trace } = one(request(undefined, [
       span('0000000000000001', 'chat', [
         kv('gen_ai.operation.name', str('chat')),
-        kv('llm.tools.0.tool.json_schema', str(schema('search', 3))),
-        kv('llm.tools.1.tool.json_schema', str(schema('deep', 20_000))),
-        // One level under the limit: the list the schemas are joined into is one level more.
-        kv('llm.tools.2.tool.json_schema', str(schema('edge', MAX_JSON_TEXT_DEPTH - 2))),
-        kv('llm.tools.3.tool.json_schema', str(schema('past', MAX_JSON_TEXT_DEPTH - 1))),
+        kv('llm.tools.0.tool.json_schema', str(flat('search', 3))),
+        kv('llm.tools.1.tool.json_schema', str(flat('deep', 20_000))),
+        kv('llm.tools.2.tool.json_schema', str(flat('flat_at', MAX_JSON_TEXT_DEPTH - 1))),
+        kv('llm.tools.3.tool.json_schema', str(flat('flat_past', MAX_JSON_TEXT_DEPTH))),
+        kv('llm.tools.4.tool.json_schema', str(openai('openai_at', MAX_JSON_TEXT_DEPTH - 2))),
+        kv('llm.tools.5.tool.json_schema', str(openai('openai_past', MAX_JSON_TEXT_DEPTH - 1))),
         kv('gen_ai.output.messages', str('ok')),
       ]),
     ]));
-    expect(trace.tools?.map((t) => t.name)).toEqual(['search', 'edge']);
+    expect(trace.tools?.map((t) => t.name)).toEqual(['search', 'flat_at', 'openai_at']);
+    // The schema of a tool read at the limit is the value its text encodes, whole.
+    expect(nestingDepth(trace.tools?.[1]?.inputSchema, Infinity)).toBe(MAX_JSON_TEXT_DEPTH - 1);
+    expect(nestingDepth(trace.tools?.[2]?.inputSchema, Infinity)).toBe(MAX_JSON_TEXT_DEPTH - 2);
+  });
+
+  it('a message list whose text nests deeper than a JSON text is read to stays the text it is, and one at the limit is read down to its words (#1040)', () => {
+    // LangChain's serialized message, its class name inside `arrays` more arrays: `{"messages":[{...,"id":[..., <arrays>]}]}` is four levels around them.
+    const serialized = (arrays: number): string =>
+      `{"messages":[{"lc":1,"type":"constructor","id":["langchain","schema","messages",${'['.repeat(arrays)}"HumanMessage"${']'.repeat(arrays)}],"kwargs":{"content":"What is the refund window?"}}]}`;
+    expect(jsonTextDepth(serialized(MAX_JSON_TEXT_DEPTH - 4), Infinity)).toBe(MAX_JSON_TEXT_DEPTH);
+    expect(wordsOf(serialized(0), 'input')).toBe('What is the refund window?');
+    expect(wordsOf(serialized(MAX_JSON_TEXT_DEPTH - 4), 'input')).toBe('What is the refund window?');
+    // Read as a value past the limit, the role was written out by a function that calls itself once for each level: at a few thousand levels it threw.
+    for (const arrays of [MAX_JSON_TEXT_DEPTH - 3, 3_000, 5_000, 200_000]) {
+      const text = serialized(arrays);
+      expect(wordsOf(text, 'input'), `${arrays} arrays`).toBe(text);
+      expect(wordsOf(text, 'output'), `${arrays} arrays`).toBe(text);
+    }
+  });
+
+  it('one span whose input is such a text does not lose the request: every trace in it is mapped (#1040)', () => {
+    const deep = `{"messages":[{"lc":1,"type":"constructor","id":["langchain","schema","messages",${'['.repeat(5_000)}"HumanMessage"${']'.repeat(5_000)}],"kwargs":{"content":"What is the refund window?"}}]}`;
+    const other = '6c9f000798038103d269b633813fc60d';
+    const mapped = fromOtlp(
+      otlpTraceRequestSchema.parse({
+        resourceSpans: [
+          { resource: { attributes: [kv('service.name', str('ordinary'))] }, scopeSpans: [{ scope: { name: 'x' }, spans: [span('0000000000000001', 'run', [kv('input.value', str('Plan the launch')), kv('output.value', str('Launch plan: three steps.'))])] }] },
+          { resource: { attributes: [kv('service.name', str('deep'))] }, scopeSpans: [{ scope: { name: 'x' }, spans: [{ ...span('0000000000000002', 'run', [kv('input.value', str(deep)), kv('gen_ai.output.messages', str(deep)), kv('output.value', str('Fourteen days.'))]), traceId: other }] }] },
+        ],
+      }),
+    );
+    expect(mapped.traces.map((t) => t.trace.agent_name).sort()).toEqual(['deep', 'ordinary']);
+    expect(mapped.traces.find((t) => t.trace.agent_name === 'deep')?.trace.input).toBe(deep);
   });
 
   it('usage is summed over leaf carriers only: an invoke_agent that carries the totals beside its chat children is counted once', () => {

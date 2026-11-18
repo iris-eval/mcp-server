@@ -11,23 +11,34 @@
  * Held here: how the levels are counted; a tool call, a JSON body and a
  * protobuf body one level past the limit are refused with the limit named,
  * and nothing is stored; one at the limit passes; the session keeps
- * serving; an embedder's config without the key still gets the default;
- * and at the default every rule still answers an input, an output and an
- * expected input nested as deep as the door lets in.
+ * serving; an embedder's config without the key still gets the default,
+ * and one outside the setting's range is held to it; a tool call is
+ * measured as it was sent, in front of every tool, before its schema and
+ * before the gate, and answered over the stdio and the HTTP transport
+ * however deep it nests; and at the default every rule still answers an
+ * input, an output and an expected input nested as deep as the door lets in.
  */
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Server } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { PassThrough } from 'node:stream';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { LATEST_PROTOCOL_VERSION } from '@modelcontextprotocol/sdk/types.js';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
+import type { StoreGate } from '../../src/storage/ready.js';
 import { createDashboardServer } from '../../src/dashboard/server.js';
 import { createIrisServer } from '../../src/server.js';
-import { DEFAULT_MAX_INPUT_DEPTH, defaultConfig } from '../../src/config/defaults.js';
+import { createStdioTransport } from '../../src/transport/stdio.js';
+import { createHttpTransport } from '../../src/transport/http.js';
+import { DEFAULT_MAX_INPUT_DEPTH, DEFAULT_MAX_INPUT_ELEMENTS, defaultConfig, maxInputDepthOf } from '../../src/config/defaults.js';
 import { decodeExportTraceServiceRequest, OtlpTooDeepError } from '../../src/otel/protobuf.js';
-import { InputTooDeepError, jsonTextDepth, MAX_EVALUATED_DEPTH, MAX_JSON_TEXT_DEPTH, nestingDepth } from '../../src/utils/element-count.js';
+import { InputTooDeepError, jsonTextDepth, MAX_EVALUATED_DEPTH, MAX_JSON_TEXT_DEPTH, nestingDepth, tooDeepMessage } from '../../src/utils/element-count.js';
+import { jsonByteLength, requestSizeLimitBytes } from '../../src/utils/size-limit.js';
+import { toIrisError } from '../../src/tools/errors.js';
 import { EvalEngine } from '../../src/eval/engine.js';
+import { rulesByType } from '../../src/eval/rules/index.js';
 import { toSteps } from '../../src/eval/steps.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
 import type { IrisConfig } from '../../src/types/config.js';
@@ -52,10 +63,10 @@ const withDepth = (maxInputDepth: number | undefined): IrisConfig => ({
 
 const tooDeep = (what: string, limit: number) => `${what} more than ${limit} levels deep, the limit (security.maxInputDepth, or IRIS_MAX_INPUT_DEPTH)`;
 
-async function mcp(config: IrisConfig): Promise<{ client: Client; storage: SqliteAdapter; stored: () => Promise<number> }> {
+async function mcp(config: IrisConfig, gate?: (storage: SqliteAdapter) => StoreGate): Promise<{ client: Client; storage: SqliteAdapter; stored: () => Promise<number> }> {
   const storage = new SqliteAdapter(':memory:');
   await storage.initialize();
-  const { mcpServer } = createIrisServer(config, storage, undefined, { warn: () => {} });
+  const { mcpServer } = createIrisServer(config, storage, undefined, { warn: () => {}, ...(gate ? { gate: gate(storage) } : {}) });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   await mcpServer.connect(serverSide);
   const client = new Client({ name: 'input-depth-limit', version: '0.1.0' });
@@ -81,6 +92,96 @@ async function dashboard(config: IrisConfig): Promise<{ base: string; stored: ()
 }
 
 const postJson = (url: string, body: unknown) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+
+/** What a raw session got back for one request: the JSON-RPC answer, or that none came. */
+type RawAnswer = { result?: { isError?: boolean; content?: Array<{ type: string; text?: string }> }; error?: { code: number; message: string } } | 'no answer';
+const NO_ANSWER_MS = 4_000;
+/** The text of a tool call's answer, for a session that writes its own requests. */
+const rawText = (answer: RawAnswer): string => (answer === 'no answer' ? 'no answer' : (answer.result?.content?.[0]?.text ?? JSON.stringify(answer)));
+/** A tools/call request's params as the text a client writes, the arguments given as text: a client's own JSON.stringify cannot write a value nested a few thousand levels deep. */
+const callText = (name: string, argumentsText: string): string => `{"name":${JSON.stringify(name)},"arguments":${argumentsText}}`;
+const INITIALIZE = JSON.stringify({ protocolVersion: LATEST_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: 'input-depth-limit-raw', version: '0.1.0' } });
+
+/**
+ * One MCP session over the stdio transport the server runs, with both of
+ * its streams held here: every request is written as the line of text a
+ * client would write to the server's stdin, and the answers are read off
+ * its stdout.
+ */
+async function rawStdio(config: IrisConfig): Promise<{ ask: (method: string, paramsText: string) => Promise<RawAnswer>; stored: () => Promise<number> }> {
+  const storage = new SqliteAdapter(':memory:');
+  await storage.initialize();
+  const { mcpServer } = createIrisServer(config, storage, undefined, { warn: () => {} });
+  const stdin = new PassThrough();
+  const stdout = new PassThrough();
+  // As src/index.ts builds it.
+  await mcpServer.connect(createStdioTransport({ stdin, stdout, maxMessageBytes: requestSizeLimitBytes(config.security.requestSizeLimit) }));
+  const waiting = new Map<number, (answer: RawAnswer) => void>();
+  let buffered = '';
+  stdout.on('data', (chunk: Buffer) => {
+    buffered += chunk.toString('utf8');
+    for (let end = buffered.indexOf('\n'); end >= 0; end = buffered.indexOf('\n')) {
+      const line = buffered.slice(0, end);
+      buffered = buffered.slice(end + 1);
+      if (line.trim() === '') continue;
+      const message = JSON.parse(line) as { id?: number } & Exclude<RawAnswer, string>;
+      if (typeof message.id === 'number') waiting.get(message.id)?.(message);
+    }
+  });
+  let next = 0;
+  const ask = (method: string, paramsText: string): Promise<RawAnswer> => {
+    const id = (next += 1);
+    const answered = new Promise<RawAnswer>((done) => {
+      waiting.set(id, done);
+      setTimeout(() => done('no answer'), NO_ANSWER_MS).unref();
+    });
+    stdin.write(`{"jsonrpc":"2.0","id":${id},"method":${JSON.stringify(method)},"params":${paramsText}}\n`);
+    return answered;
+  };
+  expect(await ask('initialize', INITIALIZE)).toHaveProperty('result');
+  stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n');
+  cleanup.push(async () => {
+    await mcpServer.close();
+    await storage.close();
+  });
+  return { ask, stored: async () => (await storage.queryTraces(LOCAL_TENANT, {})).total };
+}
+
+/** One MCP session over the HTTP transport the server runs, each request posted as text. */
+async function rawHttp(config: IrisConfig): Promise<{ ask: (method: string, paramsText: string) => Promise<RawAnswer>; stored: () => Promise<number> }> {
+  const storage = new SqliteAdapter(':memory:');
+  await storage.initialize();
+  const httpConfig: IrisConfig = { ...config, transport: { ...config.transport, type: 'http', host: '127.0.0.1', port: 0 } };
+  const { newMcpServer } = createIrisServer(httpConfig, storage, undefined, { warn: () => {} });
+  const http = await createHttpTransport(newMcpServer, httpConfig, quiet);
+  const url = `http://127.0.0.1:${(http.httpServer.address() as { port: number }).port}/mcp`;
+  cleanup.push(async () => {
+    await http.closeSessions();
+    http.httpServer.closeAllConnections?.();
+    await new Promise<void>((done) => http.httpServer.close(() => done()));
+    await storage.close();
+  });
+  let session: string | undefined;
+  let next = 0;
+  const ask = async (method: string, paramsText: string): Promise<RawAnswer> => {
+    const id = (next += 1);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', ...(session ? { 'mcp-session-id': session, 'mcp-protocol-version': LATEST_PROTOCOL_VERSION } : {}) },
+      body: `{"jsonrpc":"2.0","id":${id},"method":${JSON.stringify(method)},"params":${paramsText}}`,
+      signal: AbortSignal.timeout(NO_ANSWER_MS),
+    }).catch(() => undefined);
+    if (res === undefined) return 'no answer';
+    session ??= res.headers.get('mcp-session-id') ?? undefined;
+    const text = await res.text();
+    // The transport answers as JSON, or as one event of a stream whose data line is that JSON.
+    const data = text.trimStart().startsWith('{') ? text : (text.split('\n').find((line) => line.startsWith('data:'))?.slice(5) ?? '');
+    return data.trim() === '' ? 'no answer' : (JSON.parse(data) as RawAnswer);
+  };
+  expect(await ask('initialize', INITIALIZE)).toHaveProperty('result');
+  await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', 'mcp-session-id': session ?? '', 'mcp-protocol-version': LATEST_PROTOCOL_VERSION }, body: '{"jsonrpc":"2.0","method":"notifications/initialized"}' });
+  return { ask, stored: async () => (await storage.queryTraces(LOCAL_TENANT, {})).total };
+}
 
 describe('how the levels of an input are counted', () => {
   it('a scalar is no level, and an array or an object is one more than the deepest thing it holds', () => {
@@ -188,6 +289,229 @@ describe('a tool call nested deeper than the limit', () => {
     expect(past.isError).toBe(true);
     expect(textOf(past)).toContain(tooDeep("This call's arguments nest", DEFAULT_MAX_INPUT_DEPTH));
   });
+
+  it('stands in front of every tool the server registers, whatever key of the arguments holds the nesting', async () => {
+    const { client, stored } = await mcp(withDepth(6));
+    // The server's own list, so a tool added later is asked too.
+    const names = (await client.listTools()).tools.map((tool) => tool.name);
+    expect(names).toEqual(expect.arrayContaining(['evaluate_output', 'log_trace', 'evaluate_runs', 'get_traces', 'deploy_rule', 'delete_rule', 'list_rules']));
+    for (const name of names) {
+      // Under a key no tool names, in a list, and in the keys the two ingesting tools read: the arguments are one level, so six more are past the limit.
+      for (const args of [{ anything: objects(6) }, { anything: arrays(6) }, { metadata: objects(6) }, { spans: [{ attributes: objects(4) }] }, { tools: [{ name: 't', inputSchema: objects(4) }] }, { custom_rules: [{ config: objects(4) }] }]) {
+        expect(nestingDepth(args, Infinity), name).toBe(7);
+        const past = (await client.callTool({ name, arguments: args })) as ToolResult;
+        expect(past.isError, `${name} ${Object.keys(args)[0]}`).toBe(true);
+        expect(textOf(past), `${name} ${Object.keys(args)[0]}`).toContain(tooDeep("This call's arguments nest", 6));
+      }
+    }
+    expect(await stored()).toBe(0);
+  });
+
+  it('is measured as it was sent, before the tool\'s schema reads it: a catalogue nested thousands of levels deep is answered with the limit named', async () => {
+    // The catalogue's own check writes the catalogue out, a function that calls itself once for each level. Read before it was measured, a catalogue nested 6,000 levels ran the stack out there, and the caller was told only that.
+    const { client, stored } = await mcp(withDepth(DEFAULT_MAX_INPUT_DEPTH));
+    for (const levels of [DEFAULT_MAX_INPUT_DEPTH, 3_000, 6_000, 50_000]) {
+      for (const name of ['evaluate_output', 'log_trace']) {
+        const past = (await client.callTool({ name, arguments: { agent_name: 'a', output: 'x', tools: [{ name: 't', inputSchema: objects(levels) }] } })) as ToolResult;
+        expect(past.isError, `${name} ${levels}`).toBe(true);
+        const body = JSON.parse(textOf(past)) as { error: { code: string; message: string } };
+        expect(body.error.code, `${name} ${levels}`).toBe('IRIS_INVALID_ARGUMENT');
+        expect(body.error.message, `${name} ${levels}`).toContain(tooDeep("This call's arguments nest", DEFAULT_MAX_INPUT_DEPTH));
+      }
+    }
+    expect(await stored()).toBe(0);
+  });
+
+  it('measures what was sent and not what the tool keeps: a value under a key the tool does not read is refused like any other', async () => {
+    const { client, stored } = await mcp(withDepth(DEFAULT_MAX_INPUT_DEPTH));
+    const kept = (await client.callTool({ name: 'log_trace', arguments: { agent_name: 'a', output: 'x', token_usage: { prompt_tokens: 1, unread: objects(DEFAULT_MAX_INPUT_DEPTH - 2) } } })) as ToolResult;
+    expect(kept.isError ?? false).toBe(false);
+    const past = (await client.callTool({ name: 'log_trace', arguments: { agent_name: 'a', output: 'x', token_usage: { prompt_tokens: 1, unread: objects(DEFAULT_MAX_INPUT_DEPTH - 1) } } })) as ToolResult;
+    expect(past.isError).toBe(true);
+    expect(textOf(past)).toContain(tooDeep("This call's arguments nest", DEFAULT_MAX_INPUT_DEPTH));
+    expect(await stored()).toBe(1);
+  });
+
+  it('is refused before it waits at the gate, where an ordinary call is held', async () => {
+    let waited = 0;
+    // A store that is not serving yet, and does not come to serve while this test runs.
+    const shut = (storage: SqliteAdapter): StoreGate => ({
+      storage,
+      ready: new Promise<void>(() => {}),
+      hold: () => {},
+      wait: () => {
+        waited += 1;
+        return new Promise<void>(() => {});
+      },
+      open: false,
+    });
+    const { client } = await mcp(withDepth(6), shut);
+    const past = (await client.callTool({ name: 'evaluate_output', arguments: call(objects(4)) })) as ToolResult;
+    expect(past.isError).toBe(true);
+    expect(textOf(past)).toContain(tooDeep("This call's arguments nest", 6));
+    expect(waited).toBe(0);
+    // The probe can tell the two apart: a call at the limit reaches the gate and is held there.
+    const held = client.callTool({ name: 'evaluate_output', arguments: call(objects(3)) }).then(
+      () => 'answered',
+      () => 'closed',
+    );
+    expect(await Promise.race([held, new Promise((done) => setTimeout(() => done('held'), 200))])).toBe('held');
+    expect(waited).toBe(1);
+  });
+
+  it('counts the elements first: arguments over that limit are answered by the count, and the levels are measured inside it', async () => {
+    const { client } = await mcp({ ...withDepth(6), security: { ...withDepth(6).security, maxInputElements: 50 } });
+    const calls = (n: number) => ({ output: 'x', tool_calls: Array.from({ length: n }, () => ({ tool_name: 't', input: objects(4) })) });
+    // Thirty calls nested past the limit hold more than fifty elements: the count answers, as it does for a flat call that size.
+    const both = (await client.callTool({ name: 'evaluate_output', arguments: calls(30) })) as ToolResult;
+    expect(both.isError).toBe(true);
+    expect(textOf(both)).toMatch(/arguments contain more than the maximum of 50 elements/);
+    // One such call is within the count, and the levels answer.
+    const deep = (await client.callTool({ name: 'evaluate_output', arguments: calls(1) })) as ToolResult;
+    expect(deep.isError).toBe(true);
+    expect(textOf(deep)).toContain(tooDeep("This call's arguments nest", 6));
+  });
+
+  it('says to raise the limit only where it can be raised', async () => {
+    // Below the most the setting can be, the answer says so and names how high it goes.
+    const low = (await (await mcp(withDepth(6))).client.callTool({ name: 'evaluate_output', arguments: call(objects(4)) })) as ToolResult;
+    const lowBody = JSON.parse(textOf(low)) as { error: { message: string; recovery: string[] } };
+    expect(lowBody.error.message).toContain('or raise the limit.');
+    expect(lowBody.error.recovery.join(' ')).toContain(`can be set as high as ${MAX_EVALUATED_DEPTH}`);
+    // At the most, raising it is not on offer.
+    const top = (await (await mcp(withDepth(MAX_EVALUATED_DEPTH))).client.callTool({ name: 'evaluate_output', arguments: call(objects(MAX_EVALUATED_DEPTH - 2)) })) as ToolResult;
+    expect(top.isError).toBe(true);
+    const topBody = JSON.parse(textOf(top)) as { error: { message: string; recovery: string[] } };
+    expect(topBody.error.message).toContain(tooDeep("This call's arguments nest", MAX_EVALUATED_DEPTH));
+    expect(topBody.error.message).not.toContain('raise the limit');
+    expect(topBody.error.message).toContain(`no evaluation reads an input nested deeper than ${MAX_EVALUATED_DEPTH} levels`);
+    expect(topBody.error.recovery.join(' ')).not.toContain('raises');
+    expect(tooDeepMessage('The request body nests', MAX_EVALUATED_DEPTH)).not.toContain('raise the limit');
+    expect(tooDeepMessage('The request body nests', MAX_EVALUATED_DEPTH - 1)).toContain('or raise the limit.');
+  });
+
+  it('holds a config that did not come through the loader to the setting\'s range: the door never lets in what the engine refuses', async () => {
+    // An embedder's own config object: never deeper than an evaluation reads, and the default for what is not a whole number of at least 1.
+    const HELD: Array<[set: unknown, held: number]> = [[5_000, MAX_EVALUATED_DEPTH], [MAX_EVALUATED_DEPTH + 1, MAX_EVALUATED_DEPTH], [Infinity, MAX_EVALUATED_DEPTH], [NaN, DEFAULT_MAX_INPUT_DEPTH], [1.5, DEFAULT_MAX_INPUT_DEPTH], [0, DEFAULT_MAX_INPUT_DEPTH], [-5, DEFAULT_MAX_INPUT_DEPTH], ['300', DEFAULT_MAX_INPUT_DEPTH], [null, DEFAULT_MAX_INPUT_DEPTH]];
+    for (const [set, held] of HELD) expect(maxInputDepthOf({ maxInputDepth: set as number }), String(set)).toBe(held);
+    for (const within of [1, 6, DEFAULT_MAX_INPUT_DEPTH, 300, MAX_EVALUATED_DEPTH]) expect(maxInputDepthOf({ maxInputDepth: within })).toBe(within);
+    for (const set of [5_000, Infinity, NaN]) {
+      const { client, stored } = await mcp(withDepth(set));
+      // Logged and judged in one call: let in by a door standing past the engine, the trace was stored and the call then answered with the engine's refusal.
+      const past = (await client.callTool({ name: 'log_trace', arguments: { agent_name: 'a', output: 'Done.', evaluate: true, tool_calls: [{ tool_name: 't', input: objects(600) }] } })) as ToolResult;
+      expect(past.isError, String(set)).toBe(true);
+      expect(textOf(past), String(set)).toContain("This call's arguments nest more than");
+      expect(await stored(), String(set)).toBe(0);
+    }
+  });
+});
+
+describe('a tool call nested deeper than the limit, through the transports a client uses', () => {
+  // A request is written here as text, as a client writes it: the arguments of one call, its input nested in arrays.
+  const deepCall = (levels: number): string => callText('evaluate_output', `{"output":"The file was read.","tool_calls":[{"tool_name":"read_file","input":${'['.repeat(levels)}1${']'.repeat(levels)}}]}`);
+  const ordinary = callText('evaluate_output', '{"output":"The file was read.","tool_calls":[{"tool_name":"read_file","input":{"path":"src/a.ts"}}]}');
+  const refusal = tooDeep("This call's arguments nest", DEFAULT_MAX_INPUT_DEPTH);
+  const OVER_THE_COUNT = `arguments contain more than the maximum of ${DEFAULT_MAX_INPUT_ELEMENTS} elements`;
+
+  it('over stdio it is answered with the limit named however deep it nests, and the session goes on', async () => {
+    // The transport measures every message in bytes by writing it out, which calls itself once for each level: from about 4,800 levels that threw, and the request was never answered.
+    const { ask, stored } = await rawStdio(withDepth(DEFAULT_MAX_INPUT_DEPTH));
+    for (const levels of [DEFAULT_MAX_INPUT_DEPTH, 4_700, 4_800, 5_000, 50_000, 90_000]) {
+      const answer = await ask('tools/call', deepCall(levels));
+      expect(rawText(answer), `${levels} arrays`).toContain(refusal);
+      expect(answer === 'no answer' ? undefined : answer.result?.isError, `${levels} arrays`).toBe(true);
+    }
+    // Deeper still it holds more elements than a call may: answered all the same, by the count, which is taken first.
+    expect(rawText(await ask('tools/call', deepCall(200_000)))).toContain(OVER_THE_COUNT);
+    // A catalogue nested as deep, which the tool's schema would write out.
+    for (const levels of [6_000, 50_000]) {
+      const answer = await ask('tools/call', callText('log_trace', `{"agent_name":"a","output":"x","tools":[{"name":"t","inputSchema":${'{"a":'.repeat(levels)}1${'}'.repeat(levels)}}]}`));
+      expect(rawText(answer), `a catalogue of ${levels} objects`).toContain(refusal);
+    }
+    const after = await ask('tools/call', ordinary);
+    expect(after === 'no answer' ? undefined : (after.result?.isError ?? false)).toBe(false);
+    expect(await stored()).toBe(0);
+  }, 30_000);
+
+  it('over stdio a message over the byte limit is still refused for its size when it is nested too deep to write out, with its size given', async () => {
+    const { ask } = await rawStdio({ ...withDepth(DEFAULT_MAX_INPUT_DEPTH), security: { ...defaultConfig.security, requestSizeLimit: '20kb' } });
+    // 10,000 arrays are 20,000 bytes of brackets alone: over 20 KiB with what stands around them, and nested deeper than the message can be written out.
+    const params = deepCall(10_240);
+    const answer = await ask('tools/call', params);
+    const id = 2;
+    const bytes = Buffer.byteLength(`{"jsonrpc":"2.0","id":${id},"method":"tools/call","params":${params}}`);
+    expect(bytes).toBeGreaterThan(20 * 1024);
+    expect(answer === 'no answer' ? 'no answer' : answer.error?.message).toContain(`Request too large: ${bytes} bytes, over the 20480-byte limit (security.requestSizeLimit)`);
+    // Under the limit and as deep, it goes on to the door.
+    expect(rawText(await ask('tools/call', deepCall(5_000)))).toContain(refusal);
+  });
+
+  it('over HTTP it is answered with the limit named however deep it nests, and the session goes on', async () => {
+    const { ask, stored } = await rawHttp(withDepth(DEFAULT_MAX_INPUT_DEPTH));
+    for (const levels of [DEFAULT_MAX_INPUT_DEPTH, 5_000, 50_000, 90_000]) {
+      const answer = await ask('tools/call', deepCall(levels));
+      expect(rawText(answer), `${levels} arrays`).toContain(refusal);
+    }
+    expect(rawText(await ask('tools/call', deepCall(200_000)))).toContain(OVER_THE_COUNT);
+    for (const levels of [6_000, 50_000]) {
+      const answer = await ask('tools/call', callText('log_trace', `{"agent_name":"a","output":"x","tools":[{"name":"t","inputSchema":${'{"a":'.repeat(levels)}1${'}'.repeat(levels)}}]}`));
+      expect(rawText(answer), `a catalogue of ${levels} objects`).toContain(refusal);
+    }
+    const after = await ask('tools/call', ordinary);
+    expect(after === 'no answer' ? undefined : (after.result?.isError ?? false)).toBe(false);
+    expect(await stored()).toBe(0);
+  }, 30_000);
+
+  it('at the limit it is let in over both, and judged', async () => {
+    // { output, tool_calls: [{ tool_name, input }] }: three levels around the input.
+    const at = deepCall(DEFAULT_MAX_INPUT_DEPTH - 3);
+    for (const session of [await rawStdio(withDepth(DEFAULT_MAX_INPUT_DEPTH)), await rawHttp(withDepth(DEFAULT_MAX_INPUT_DEPTH))]) {
+      const answer = await session.ask('tools/call', at);
+      expect(answer === 'no answer' ? undefined : (answer.result?.isError ?? false)).toBe(false);
+      expect((JSON.parse(rawText(answer)) as { rule_results: unknown[] }).rule_results.length).toBeGreaterThan(20);
+    }
+  });
+});
+
+describe('the bytes of a message, counted without writing it out', () => {
+  it('are the bytes JSON.stringify would write, for a value of any shape', () => {
+    const VALUES: unknown[] = [
+      null, true, false, 0, -0, 1, -1, 1.5, 1e21, 1.5e-7, 2 ** 53, '', 'plain', 'é', '日本語', '😀', 'a"b', 'a\\b', 'line\nbreak\ttab', '\u0000\u001f', '\ud800', '</script>', '  ',
+      [], {}, [[]], [{}], { a: [] }, [1, 'two', null, true, [3, [4, { five: 5 }]]], { 'k"ey': 'v', 'é': { '😀': ['\\'] }, '': 0 },
+      { a: undefined, b: 1 }, { a: undefined }, [undefined, 1, undefined], { __proto__: null, a: 1 }, JSON.parse('{"__proto__":{"a":[1]},"b":2}'),
+      objects(40), arrays(40), Array.from({ length: 500 }, (_, n) => ({ n, text: `value ${n}`, more: [n, n + 0.5, String(n)] })),
+      { jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name: 'evaluate_output', arguments: { output: 'The file was read.', tool_calls: [{ tool_name: 'read_file', input: { path: 'src/a.ts' } }] } } },
+    ];
+    for (const value of VALUES) expect(jsonByteLength(value), JSON.stringify(value)?.slice(0, 60)).toBe(Buffer.byteLength(JSON.stringify(value), 'utf8'));
+    // Generated: nested lists and objects of every scalar, with keys and strings that need escaping.
+    let seed = 0x2f6e2b1;
+    const random = (): number => {
+      seed = (Math.imul(seed ^ (seed >>> 15), 0x2c1b3c6d) + 0x9e3779b9) | 0;
+      return ((seed ^ (seed >>> 13)) >>> 0) / 0x1_0000_0000;
+    };
+    const SCALARS: unknown[] = [null, true, false, 0, 7, -3.25, 1e300, '', 'x', 'two words', 'q"uote', 'back\\slash', '\n', 'é😀', '\u0007'];
+    const build = (depth: number): unknown => {
+      const pick = random();
+      if (depth === 0 || pick < 0.4) return SCALARS[Math.floor(random() * SCALARS.length)];
+      const size = Math.floor(random() * 5);
+      if (pick < 0.7) return Array.from({ length: size }, () => build(depth - 1));
+      return Object.fromEntries(Array.from({ length: size }, (_, n) => [`${String(SCALARS[3 + Math.floor(random() * (SCALARS.length - 3))])}${n}`, build(depth - 1)]));
+    };
+    for (let n = 0; n < 2_000; n += 1) {
+      const value = build(6);
+      expect(jsonByteLength(value)).toBe(Buffer.byteLength(JSON.stringify(value), 'utf8'));
+    }
+  });
+
+  it('measures a value nested deeper than JSON.stringify can write', () => {
+    // `levels` arrays around a 1: two brackets each, and the 1.
+    for (const levels of [10_000, 200_000]) {
+      expect(() => JSON.stringify(arrays(levels))).toThrow(RangeError);
+      expect(jsonByteLength(arrays(levels))).toBe(2 * levels + 1);
+      // `{"a":` and `}` for each object: six bytes a level.
+      expect(jsonByteLength(objects(levels))).toBe(6 * levels + 1);
+    }
+  });
 });
 
 describe('a request body nested deeper than the limit', () => {
@@ -211,6 +535,12 @@ describe('a request body nested deeper than the limit', () => {
     const datasets = await postJson(`${base}/api/v1/datasets`, { label: 'd', case_keys: arrays(5) });
     expect(datasets.status).toBe(413);
     expect(((await datasets.json()) as { limit: number }).limit).toBe(5);
+    // Whatever the method: a body that is changed is measured as one that is created.
+    for (const [method, path] of [['PATCH', '/api/v1/preferences'], ['PATCH', '/api/v1/runs/some-run'], ['PUT', '/api/v1/preferences'], ['DELETE', '/api/v1/datasets/some-dataset']] as const) {
+      const changed = await fetch(`${base}${path}`, { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ anything: arrays(5) }) });
+      expect(changed.status, `${method} ${path}`).toBe(413);
+      expect(((await changed.json()) as { error: string }).error, `${method} ${path}`).toContain(tooDeep('The request body nests', 5));
+    }
     // 50,000 levels of arrays are 100 KB and 50,000 elements: within the bytes, within the elements, and deeper than any stack.
     const deep = await fetch(`${base}/api/v1/traces`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: `{"agent_name":"a","output":"x","metadata":${'['.repeat(50_000)}${']'.repeat(50_000)}}` });
     expect(deep.status).toBe(413);
@@ -322,7 +652,22 @@ describe('a protobuf body nested deeper than the limit', () => {
 describe('a string that holds JSON, which is no level to a door', () => {
   const text = (levels: number): string => `${'{"a":'.repeat(levels)}1${'}'.repeat(levels)}`;
 
-  it('its depth is read off the text: what the value it parses to would measure, whatever its strings hold', () => {
+  it('where an object writes one key twice the text nests deeper than the value it parses to, and never the other way', () => {
+    // JSON.parse keeps the last value of a key written twice, so the text's brackets can outnumber the value's levels. The scan errs to the side of reading such a text as the text it is.
+    const TWICE: Array<[text: string, textDepth: number, valueDepth: number]> = [
+      [`{"a":${text(300)},"a":1}`, 301, 1],
+      [`{"a":1,"a":${text(300)}}`, 301, 301],
+      [`{"k":{"a":${text(4)},"a":[]}}`, 6, 3],
+      [`[{"a":[[[1]]],"a":2},[[3]]]`, 5, 3],
+    ];
+    for (const [written, textDepth, valueDepth] of TWICE) {
+      expect(jsonTextDepth(written, Infinity), written.slice(0, 40)).toBe(textDepth);
+      expect(nestingDepth(JSON.parse(written), Infinity), written.slice(0, 40)).toBe(valueDepth);
+      expect(jsonTextDepth(written, Infinity)).toBeGreaterThanOrEqual(nestingDepth(JSON.parse(written), Infinity));
+    }
+  });
+
+  it('its depth is read off the text: for a text that writes no key twice, what the value it parses to would measure, whatever its strings hold', () => {
     // A JSON text is read as the value it encodes down to as many levels as a door lets in by default.
     expect(MAX_JSON_TEXT_DEPTH).toBe(256);
     expect(MAX_JSON_TEXT_DEPTH).toBe(DEFAULT_MAX_INPUT_DEPTH);
@@ -408,6 +753,60 @@ describe('an input no door stood in front of', () => {
       // One bundle is refused as every bundle is.
       await expect(engine.evaluate('cost', context(past))).rejects.toBeInstanceOf(InputTooDeepError);
     }
+  });
+
+  it('the engine measures the whole of what a rule can be handed, wherever the nesting stands in it', async () => {
+    const engine = new EvalEngine();
+    const base = { output: 'The file was read and the report written.', toolCalls: [{ tool_name: 'read_file', input: { path: 'src/a.ts' } }] };
+    // Each places an object nested `under` levels where the whole context then nests one level past what the engine reads.
+    const PLACES: Array<[where: string, around: number, context: (deep: unknown) => Record<string, unknown>]> = [
+      ['a call\'s input', 3, (deep) => ({ ...base, toolCalls: [{ tool_name: 'read_file', input: deep }] })],
+      ['a call\'s output', 3, (deep) => ({ ...base, toolCalls: [{ tool_name: 'read_file', input: {}, output: deep }] })],
+      ['a span\'s attribute', 4, (deep) => ({ ...base, spans: [{ span_id: 's1', name: 'tool.read_file', kind: 'TOOL', attributes: { args: deep } }] })],
+      ['a catalogue\'s schema', 3, (deep) => ({ ...base, tools: [{ name: 'read_file', inputSchema: deep }] })],
+      ['an expected input', 4, (deep) => ({ ...base, expectedTrajectory: { tool_calls: [{ tool_name: 'read_file', input: deep }] } })],
+      ['the metadata', 2, (deep) => ({ ...base, metadata: { extra: deep } })],
+      ['a setting sent with the call', 2, (deep) => ({ ...base, customConfig: { extra: deep } })],
+      ['an earlier run of the case', 4, (deep) => ({ ...base, caseHistory: [{ tools: [deep] }] })],
+    ];
+    for (const [where, around, context] of PLACES) {
+      const at = context(objects(MAX_EVALUATED_DEPTH - around));
+      expect(nestingDepth(at, Infinity), where).toBe(MAX_EVALUATED_DEPTH);
+      await expect(engine.evaluateAll(at as never), where).resolves.toHaveProperty('rule_results');
+      const past = context(objects(MAX_EVALUATED_DEPTH - around + 1));
+      expect(nestingDepth(past, Infinity), where).toBe(MAX_EVALUATED_DEPTH + 1);
+      await expect(engine.evaluateAll(past as never), where).rejects.toBeInstanceOf(InputTooDeepError);
+    }
+  });
+
+  it('the engine refuses before the first rule is asked: no rule is handed any part of such an input', async () => {
+    const engine = new EvalEngine();
+    const asked = Object.values(rulesByType)
+      .flat()
+      .map((rule) => vi.spyOn(rule, 'evaluate'));
+    const calls = (): number => asked.reduce((total, spy) => total + spy.mock.calls.length, 0);
+    try {
+      // The probe can see a rule being asked: an ordinary run asks more than twenty.
+      await engine.evaluateAll({ output: 'The file was read.', toolCalls: [{ tool_name: 'read_file', input: { path: 'src/a.ts' } }] });
+      expect(calls()).toBeGreaterThan(20);
+      for (const spy of asked) spy.mockClear();
+      await expect(engine.evaluateAll({ output: 'The file was read.', toolCalls: [{ tool_name: 'read_file', input: objects(MAX_EVALUATED_DEPTH - 2) }] })).rejects.toBeInstanceOf(InputTooDeepError);
+      await expect(engine.evaluate('safety', { output: 'The file was read.', metadata: { extra: objects(MAX_EVALUATED_DEPTH) } })).rejects.toBeInstanceOf(InputTooDeepError);
+      expect(calls()).toBe(0);
+    } finally {
+      for (const spy of asked) spy.mockRestore();
+    }
+  });
+
+  it('the engine\'s refusal names its own limit, which no setting moves, and sends its reader to no setting', () => {
+    const refusal = new InputTooDeepError(MAX_EVALUATED_DEPTH);
+    expect(refusal.message).toContain(`nests more than ${MAX_EVALUATED_DEPTH} levels deep, the deepest an evaluation reads`);
+    expect(refusal.message).toContain('No setting raises this limit');
+    expect(refusal.message).not.toMatch(/maxInputDepth|IRIS_MAX_INPUT_DEPTH/);
+    const answered = toIrisError(refusal).envelope;
+    expect(answered.code).toBe('IRIS_INVALID_ARGUMENT');
+    expect(answered.recovery.join(' ')).toContain('Send the nested value flatter, or as text');
+    expect(answered.recovery.join(' ')).not.toMatch(/maxInputDepth|IRIS_MAX_INPUT_DEPTH|raise/);
   });
 
   it('a trace stored before the limit existed is not half-judged when it is read back: the call is answered with the limit named', async () => {

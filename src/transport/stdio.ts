@@ -1,9 +1,27 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import type { Readable, Writable } from 'node:stream';
+import { jsonByteLength } from '../utils/size-limit.js';
 
 /** JSON-RPC "Invalid Request": the message was read and is refused before any handler runs. */
 const INVALID_REQUEST = -32600;
+
+/**
+ * A message's compact JSON in bytes. Writing a message out calls itself
+ * once for each level, and on one nested a few thousand levels deep the
+ * stack runs out: the size was never known, and the request was never
+ * answered (#1040). Such a message is measured by a walk that keeps a list
+ * of its own, so it goes on to the server like any other, where a tool call
+ * nested too deep is answered with the limit named (src/server.ts).
+ */
+function messageBytes(message: JSONRPCMessage): number {
+  try {
+    return Buffer.byteLength(JSON.stringify(message), 'utf8');
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error;
+    return jsonByteLength(message);
+  }
+}
 
 export interface StdioTransportOptions {
   /**
@@ -42,7 +60,7 @@ export function createStdioTransport(options: StdioTransportOptions = {}): Stdio
 
   let handler: StdioServerTransport['onmessage'];
   const guarded = (message: JSONRPCMessage): void => {
-    const bytes = Buffer.byteLength(JSON.stringify(message), 'utf8');
+    const bytes = messageBytes(message);
     if (bytes <= limit) {
       handler?.(message);
       return;

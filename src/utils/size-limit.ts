@@ -24,6 +24,50 @@ export function parseSizeLimit(value: string): number | null {
   return bytes > 0 ? bytes : null;
 }
 
+/** The bytes of one value that holds nothing: a string as JSON writes it, a number, `true`, `false`, `null`. */
+function scalarJsonBytes(value: unknown): number {
+  if (typeof value === 'string') return Buffer.byteLength(JSON.stringify(value), 'utf8');
+  if (typeof value === 'number') return Number.isFinite(value) ? JSON.stringify(value).length : 4;
+  if (typeof value === 'boolean') return value ? 4 : 5;
+  return 4;
+}
+
+/**
+ * The bytes of `value` as compact JSON, counted without writing it out.
+ *
+ * JSON.stringify calls itself once for each level, and on a value nested a
+ * few thousand levels deep the stack runs out before it returns. This walk
+ * keeps a list of its own, so it measures a value nested to any depth. For
+ * a value JSON.parse returned it is `Buffer.byteLength(JSON.stringify(value))`:
+ * the brackets, a comma between neighbours, each key with its colon, and
+ * every string as JSON writes it. A key whose value is undefined is not
+ * written, and an undefined array element is written `null`, as there.
+ */
+export function jsonByteLength(value: unknown): number {
+  let bytes = 0;
+  const pending: unknown[] = [value];
+  while (pending.length > 0) {
+    const node = pending.pop();
+    if (node === null || typeof node !== 'object') {
+      bytes += scalarJsonBytes(node);
+    } else if (Array.isArray(node)) {
+      bytes += 2 + Math.max(0, node.length - 1);
+      for (const child of node) pending.push(child);
+    } else {
+      let members = 0;
+      for (const key of Object.keys(node)) {
+        const child = (node as Record<string, unknown>)[key];
+        if (child === undefined) continue;
+        members += 1;
+        bytes += Buffer.byteLength(JSON.stringify(key), 'utf8') + 1;
+        pending.push(child);
+      }
+      bytes += 2 + Math.max(0, members - 1);
+    }
+  }
+  return bytes;
+}
+
 /** The configured limit in bytes; throws with the setting's name when it cannot be read. */
 export function requestSizeLimitBytes(value: string): number {
   const bytes = parseSizeLimit(value);

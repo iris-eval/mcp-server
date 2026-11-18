@@ -17,8 +17,9 @@ import { judgeBudgetFromEnv } from './eval/llm-judge/budget.js';
 import type { StoreGate } from './storage/ready.js';
 import { errorResult } from './tools/respond.js';
 import { irisError, toIrisError } from './tools/errors.js';
+import { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { maxInputDepthOf, maxInputElementsOf } from './config/defaults.js';
-import { nestingDepth, tooDeepMessage } from './utils/element-count.js';
+import { countElements, MAX_EVALUATED_DEPTH, nestingDepth, tooDeepMessage } from './utils/element-count.js';
 
 export interface IrisServer {
   mcpServer: McpServer;
@@ -79,34 +80,49 @@ function gateRequests(server: McpServer, gate: StoreGate): void {
 }
 
 /**
- * The nesting limit on a tool call (security.maxInputDepth, #1040). Every
- * tool registered on `server` from here on has its arguments measured
- * before it runs, and arguments nested deeper than the limit are answered
- * with the error envelope of a refused argument: the tool never sees them,
- * and no rule reads them. The SDK has counted their elements by then
- * (maxToolInputElements), so the walk reads no more than that limit allows.
+ * The nesting limit on a tool call (security.maxInputDepth, #1040). The
+ * arguments of every tool call to `server` are measured as they were sent,
+ * before anything reads them: before the SDK checks them against the
+ * tool's schema (a schema's own check may write a value out, which calls
+ * itself once for each level), before the gate, before the tool. Arguments
+ * nested deeper than the limit are answered with the error envelope of a
+ * refused argument, and no rule reads them.
+ *
+ * The SDK answers every tool call from one handler, which McpServer sets
+ * when the first tool is registered: this stands in front of that handler,
+ * so it stands in front of every tool, whatever the tool's schema keeps.
+ * The elements are counted first, as on the dashboard port: arguments over
+ * that limit are left to the SDK's own count and refusal, so the walk that
+ * measures the levels reads no more than the element limit allows.
+ *
+ * Returns whether the door stands: true once the handler it fronts was set.
  */
-function limitNesting(server: McpServer, maxDepth: number): void {
-  type Handler = (...args: unknown[]) => unknown;
-  const registerTool = server.registerTool.bind(server) as unknown as (name: string, config: unknown, handler: Handler) => unknown;
-  (server as unknown as { registerTool: typeof registerTool }).registerTool = (name, config, handler) => {
-    // A tool with an input schema is handed the caller's arguments first; a tool without one is handed nothing of the caller's.
-    const takesArguments = (config as { inputSchema?: unknown } | null | undefined)?.inputSchema !== undefined;
-    if (!takesArguments) return registerTool(name, config, handler);
-    return registerTool(name, config, (...args: unknown[]) => {
-      if (nestingDepth(args[0], maxDepth) > maxDepth) {
+function limitNesting(server: McpServer, maxDepth: number, maxElements: number): () => boolean {
+  type Handler = (request: unknown, extra: unknown) => unknown;
+  const lowLevel = server.server;
+  const setRequestHandler = lowLevel.setRequestHandler.bind(lowLevel) as unknown as (schema: unknown, handler: Handler) => void;
+  let stands = false;
+  (lowLevel as unknown as { setRequestHandler: typeof setRequestHandler }).setRequestHandler = (schema, handler) => {
+    if (schema !== CallToolRequestSchema) return setRequestHandler(schema, handler);
+    stands = true;
+    return setRequestHandler(schema, (request, extra) => {
+      const args = (request as { params?: { arguments?: unknown } } | undefined)?.params?.arguments;
+      if (countElements(args, maxElements) <= maxElements && nestingDepth(args, maxDepth) > maxDepth) {
         return errorResult(
           irisError('IRIS_INVALID_ARGUMENT', tooDeepMessage("This call's arguments nest", maxDepth), {
             recovery: [
               'Send the nested value flatter, or as text.',
-              'Or the operator raises security.maxInputDepth (IRIS_MAX_INPUT_DEPTH); past a few thousand levels some rules give no answer.',
+              maxDepth < MAX_EVALUATED_DEPTH
+                ? `Or the operator raises security.maxInputDepth (IRIS_MAX_INPUT_DEPTH), which can be set as high as ${MAX_EVALUATED_DEPTH}.`
+                : `security.maxInputDepth (IRIS_MAX_INPUT_DEPTH) is at its highest: no evaluation reads an input nested deeper than ${MAX_EVALUATED_DEPTH} levels.`,
             ],
           }),
         );
       }
-      return handler(...args);
+      return handler(request, extra);
     });
   };
+  return () => stands;
 }
 
 export function createIrisServer(
@@ -185,12 +201,14 @@ export function createIrisServer(
       },
       { instructions, maxToolInputElements },
     );
-    // Measured first, so a call nested too deep is refused before it waits at the gate.
-    limitNesting(server, maxInputDepth);
+    // In front of everything a tool call meets, so a call nested too deep is refused before its arguments are checked and before it waits at the gate.
+    const doorStands = limitNesting(server, maxInputDepth, maxToolInputElements);
     if (options?.gate) gateRequests(server, options.gate);
     registerAllTools(server, storage, evalEngine, ruleStore);
     registerAllResources(server, storage, capabilities, ruleStore.auditPath);
     registerPrompts(server, config.server.version);
+    // A server that could not put the limit in front of its tool calls does not start: the SDK did not set the handler where this stands.
+    if (!doorStands()) throw new Error('The nesting limit (security.maxInputDepth) could not be put in front of tool calls: the MCP SDK set no tools/call handler on this server.');
     return server;
   };
 

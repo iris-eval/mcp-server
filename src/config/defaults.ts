@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import type { IrisConfig } from '../types/index.js';
 import { irisHome } from '../utils/iris-home.js';
+import { MAX_EVALUATED_DEPTH } from '../utils/element-count.js';
 
 // Read version from package.json to avoid hardcoded drift
 let pkgVersion = '0.1.8';
@@ -106,9 +107,21 @@ export function maxInputElementsOf(security: { maxInputElements?: number; maxToo
  */
 export const DEFAULT_MAX_INPUT_DEPTH = 256;
 
-/** The nesting limit a config sets, else the default. A config built without the key (an embedder's) still gets the limit. */
+/**
+ * The nesting limit a config sets, else the default. A config built without
+ * the key (an embedder's) still gets the limit.
+ *
+ * A config file and the environment are held to the setting's range as
+ * they load (src/config). An embedder's own object does not pass through
+ * that, so it is held to the same range here: never more than the engine
+ * evaluates (a door must not let in what the engine then refuses, with a
+ * trace already stored), and the default for anything that is not a whole
+ * number of at least 1.
+ */
 export function maxInputDepthOf(security: { maxInputDepth?: number } | undefined): number {
-  return security?.maxInputDepth ?? DEFAULT_MAX_INPUT_DEPTH;
+  const set: unknown = security?.maxInputDepth;
+  if (typeof set !== 'number' || !(set >= 1) || (Number.isFinite(set) && !Number.isInteger(set))) return DEFAULT_MAX_INPUT_DEPTH;
+  return Math.min(set, MAX_EVALUATED_DEPTH);
 }
 
 /*

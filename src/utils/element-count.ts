@@ -100,6 +100,17 @@ export function nestingDepth(value: unknown, max: number): number {
 export const MAX_EVALUATED_DEPTH = 512;
 
 /**
+ * Whether what a rule is about to be handed nests deeper than any rule is
+ * asked to read. One measure for every caller of a rule: the engine takes it
+ * before the first rule of an evaluation, and the dashboard's rule preview,
+ * which hands a rule a stored trace without an evaluation, takes it for
+ * each trace.
+ */
+export function nestsDeeperThanEvaluated(context: unknown): boolean {
+  return nestingDepth(context, MAX_EVALUATED_DEPTH) > MAX_EVALUATED_DEPTH;
+}
+
+/**
  * How deep a JSON text may nest and still be read as the value it encodes,
  * where a string that holds JSON is read so (jsonTextDepth, below). It is
  * the default of security.maxInputDepth, and a constant: the places that
@@ -110,8 +121,10 @@ export const MAX_JSON_TEXT_DEPTH = 256;
 /**
  * How deep a JSON text nests, read off the text without parsing it: the
  * most arrays and objects that stand open at one place outside its strings.
- * For a text that is JSON this is the nestingDepth of the value it parses
- * to. It stops at the first bracket past `max`, and returns `max + 1`.
+ * The value a JSON text parses to nests no deeper than this, and exactly
+ * this deep unless an object writes one key twice: only the last value of
+ * such a key is kept, so the text can nest deeper than the value does. It
+ * stops at the first bracket past `max`, and returns `max + 1`.
  *
  * A string is no level to a door, and several places read a string that
  * holds JSON as the value it encodes (a span's arguments, an object output
@@ -144,11 +157,15 @@ export function jsonTextDepth(text: string, max: number): number {
   return deepest;
 }
 
-/** What a door says of an input nested deeper than the limit, after naming it (`The request body nests`): the limit, the setting, and what to do. */
+/**
+ * What a door says of an input nested deeper than the limit, after naming it (`The request body nests`): the limit, the setting, and what to do.
+ * The limit can be raised only as far as MAX_EVALUATED_DEPTH, so a door that already stands there does not say to raise it.
+ */
 export function tooDeepMessage(itNests: string, limit: number): string {
   return (
     `${itNests} more than ${limit} levels deep, the limit (security.maxInputDepth, or IRIS_MAX_INPUT_DEPTH). ` +
-    'Nothing was read or stored. Send the nested value flatter or as text, or raise the limit.'
+    'Nothing was read or stored. Send the nested value flatter or as text' +
+    (limit < MAX_EVALUATED_DEPTH ? ', or raise the limit.' : `: the limit is at its highest, and no evaluation reads an input nested deeper than ${MAX_EVALUATED_DEPTH} levels.`)
   );
 }
 
@@ -158,18 +175,23 @@ export function tooDeepBody(limit: number): { error: string; limit: number } {
 }
 
 /**
- * An evaluation was handed an input nested deeper than the limit, by a road
- * no door stands on: a trace stored before the limit existed, a file read
- * by the command line, an embedder's own call. The engine measures every
- * context before a rule reads it and refuses with this, so that no rule is
- * left to give no answer on it. `status` is what the dashboard answers with.
+ * An evaluation was handed an input nested deeper than the engine reads, by
+ * a road no door stands on: a trace stored before the limit existed, a file
+ * read by the command line, an embedder's own call. The engine measures
+ * every context before a rule reads it and refuses with this, so that no
+ * rule is left to give no answer on it. `status` is what the dashboard
+ * answers with.
+ *
+ * The limit it names is MAX_EVALUATED_DEPTH, which no setting moves: the
+ * message does not send its reader to security.maxInputDepth, whose most
+ * is that same number.
  */
 export class InputTooDeepError extends Error {
   readonly status = 422;
   constructor(readonly limit: number) {
     super(
-      `The input to this evaluation nests more than ${limit} levels deep, the limit (security.maxInputDepth, or IRIS_MAX_INPUT_DEPTH), so no rule read it. ` +
-        'A rule that writes an input out gives no answer on one nested much deeper than this, and a rule that gave no answer takes no part in the verdict.',
+      `The input to this evaluation nests more than ${limit} levels deep, the deepest an evaluation reads, so no rule read it. ` +
+        'A rule that writes an input out gives no answer on one nested much deeper than this. No setting raises this limit.',
     );
     this.name = 'InputTooDeepError';
   }
