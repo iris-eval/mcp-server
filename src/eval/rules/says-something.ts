@@ -60,7 +60,7 @@
  * trimming is done by hand, and the loop is found with one pass of the
  * prefix function over at most LOOP_SCAN_CHARS.
  */
-import type { EvalContext, EvalRule, EvalRuleResult, Evidence } from '../../types/eval.js';
+import type { EvalContext, EvalRule, RuleAnswer, Evidence } from '../../types/eval.js';
 import { contentTerms } from '../terms.js';
 import { ASK_VERBS } from '../text/asks.js';
 import { MIN_ASK_TERMS_TO_JUDGE } from './relevance.js';
@@ -436,7 +436,7 @@ export const saysSomething: EvalRule = {
   question: 'complete',
   classes: ['stub'],
   version: 2,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     const output = context.output;
     if (output.trim().length === 0) {
       return { ruleName: 'says_something', passed: false, score: 0, skipped: true, skipClass: 'not_applicable', skipReason: 'the output is empty; non_empty_output judges that', message: 'Not judged: the output is empty' };

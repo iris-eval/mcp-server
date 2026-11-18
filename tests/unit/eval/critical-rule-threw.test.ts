@@ -15,7 +15,7 @@ import { createCustomRule } from '../../../src/eval/rules/index.js';
 import { builtInRules } from '../../../src/eval/criticality.js';
 import { deriveCoverage } from '../../../src/eval/verdict.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
-import type { EvalContext, EvalRule, EvalRuleResult } from '../../../src/types/eval.js';
+import type { EvalContext, EvalRule, EvalRuleResult, RuleAnswer } from '../../../src/types/eval.js';
 import type { RuleSeverity } from '../../../src/types/custom-rule.js';
 
 const CLEAN: EvalContext = {
@@ -28,7 +28,7 @@ function throwing(name: string, severity?: RuleSeverity): EvalRule {
   const rule = createCustomRule({ name, type: 'min_length', config: { min_length: 5 } }, severity);
   return {
     ...rule,
-    evaluate(): EvalRuleResult {
+    evaluate(): RuleAnswer {
       throw new TypeError("Cannot read properties of undefined (reading 'toLowerCase')");
     },
   };
@@ -127,8 +127,10 @@ describe('a rule that throws while it judges', () => {
     expect(why([row({ ruleName: 'a', threw: true })])).toMatchObject({ status: 'unjudged', why: 'defeated: a could not judge this output (the rule threw)' });
     expect(why([row({ ruleName: 'b', evidenceIncomplete: true })])).toMatchObject({ status: 'unjudged', why: 'defeated: b could not judge this output (the evidence it reads was cut)' });
     expect(why([row({ ruleName: 'c', budgetExceeded: true })])).toMatchObject({ status: 'unjudged', why: 'defeated: c could not judge this output (sandbox budget)' });
-    // A row stored before the causes were kept says only that it was defeated, and reads as the one cause there was then.
-    expect(why([row({ ruleName: 'd' })])).toMatchObject({ status: 'unjudged', why: 'defeated: d could not judge this output (sandbox budget)' });
+    // A row stored before the throw and the cut were flagged carries the one flag there was then, the budget's, and reads as it.
+    expect(why([row({ ruleName: 'd', budgetExceeded: true })])).toMatchObject({ status: 'unjudged', why: 'defeated: d could not judge this output (sandbox budget)' });
+    // A row with no flag is a rule that said it could not judge (0.22.0): its skip reason says why.
+    expect(why([row({ ruleName: 'e' })])).toMatchObject({ status: 'unjudged', why: 'defeated: e could not judge this output (the rule could not judge this input)' });
     expect(why([row({ ruleName: 'a', threw: true }), row({ ruleName: 'c', budgetExceeded: true })])).toMatchObject({ why: 'defeated: a, c could not judge this output (the rule threw; sandbox budget)' });
   });
 });

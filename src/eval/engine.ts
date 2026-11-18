@@ -750,6 +750,7 @@ export class EvalEngine {
               score: 0,
               message: 'Judgment rules are not run on this path: it may not call a paid provider.',
               skipped: true,
+              skipClass: 'not_applicable' as const,
               skipReason: 'this evaluation may not spend (context.allowPaid is not set)',
             }
           : readingAs(rule, evalContext, structured);
@@ -1132,6 +1133,7 @@ function evaluateGuarded(rule: EvalRule, context: EvalContext): EvalRuleResult {
       score: 0,
       message: `This rule failed while evaluating the output and gave no answer: ${reason.slice(0, 200)}`,
       skipped: true,
+      skipClass: 'defeated',
       skipReason: 'the rule threw on this input',
       threw: true,
     };

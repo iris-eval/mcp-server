@@ -159,8 +159,19 @@ export interface EvalRule {
    * which is what every custom rule does.
    */
   outputView?: 'values' | 'labelled';
-  evaluate(context: EvalContext): EvalRuleResult;
+  evaluate(context: EvalContext): RuleAnswer;
 }
+
+/**
+ * What a rule's `evaluate` returns. A result that skipped says which kind of
+ * skip it is (`skipClass`): `not_applicable` where there was nothing to
+ * judge, `defeated` or `config_invalid` where the rule could not judge. The
+ * type requires it, so every place a rule skips says which, and none is read
+ * as having had nothing to judge by default. A skip that says nothing (a
+ * plugin's, which no compiler checks) is read as a check that could not
+ * judge (stamp.ts, skipClassOf).
+ */
+export type RuleAnswer = (EvalRuleResult & { skipped?: false }) | (EvalRuleResult & { skipped: true; skipClass: SkipClass });
 
 /**
  * What the caller expected the agent to DO — the trajectory

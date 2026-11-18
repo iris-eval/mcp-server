@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { EvalRule, EvalContext, EvalRuleResult } from '../../types/eval.js';
+import type { EvalRule, EvalContext, EvalRuleResult, RuleAnswer } from '../../types/eval.js';
 import { sentencesOf } from '../text/sentences.js';
 
 /*
@@ -70,9 +70,9 @@ export const keywordOverlap: EvalRule = {
   question: 'relevant',
   classes: ['off_task'],
   version: 2,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     if (!context.input) {
-      return { ruleName: 'keyword_overlap', passed: false, score: 0, message: 'No input provided', skipped: true, skipReason: 'context.input not provided' };
+      return { ruleName: 'keyword_overlap', passed: false, score: 0, message: 'No input provided', skipped: true, skipClass: 'not_applicable', skipReason: 'context.input not provided' };
     }
     const inputTerms = new Set(contentTerms(context.input));
     if (inputTerms.size === 0) {
@@ -137,14 +137,14 @@ export const topicConsistency: EvalRule = {
   question: 'relevant',
   classes: ['off_task'],
   version: 2,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     if (!context.input) {
-      return { ruleName: 'topic_consistency', passed: false, score: 0, message: 'No input provided', skipped: true, skipReason: 'context.input not provided' };
+      return { ruleName: 'topic_consistency', passed: false, score: 0, message: 'No input provided', skipped: true, skipClass: 'not_applicable', skipReason: 'context.input not provided' };
     }
     const inputWords = context.input.toLowerCase().split(/\W+/).filter((w) => w.length > 3);
     const outputWords = context.output.toLowerCase().split(/\W+/).filter((w) => w.length > 3);
     if (inputWords.length === 0 || outputWords.length === 0) {
-      return { ruleName: 'topic_consistency', passed: false, score: 0, message: 'Insufficient text for topic analysis', skipped: true, skipReason: 'input or output has no words > 3 chars' };
+      return { ruleName: 'topic_consistency', passed: false, score: 0, message: 'Insufficient text for topic analysis', skipped: true, skipClass: 'not_applicable', skipReason: 'input or output has no words > 3 chars' };
     }
     // v0.3.1: skip when the output is too brief — a handful of words cannot
     // be judged on topic or off it, and the rule used to cry wolf there.
@@ -156,12 +156,13 @@ export const topicConsistency: EvalRule = {
         score: 1,
         message: `Output too brief for meaningful topic analysis (${outputWords.length} words ≥ 4 chars; min ${minOutputWords})`,
         skipped: true,
+        skipClass: 'not_applicable',
         skipReason: `output has < ${minOutputWords} words ≥ 4 chars`,
       };
     }
     const topic = new Set(contentTerms(context.input));
     if (topic.size === 0) {
-      return { ruleName: 'topic_consistency', passed: false, score: 0, message: 'Insufficient text for topic analysis', skipped: true, skipReason: 'input has no content terms' };
+      return { ruleName: 'topic_consistency', passed: false, score: 0, message: 'Insufficient text for topic analysis', skipped: true, skipClass: 'not_applicable', skipReason: 'input has no content terms' };
     }
 
     // Walk the output line by line so list items can be read under their
@@ -188,7 +189,7 @@ export const topicConsistency: EvalRule = {
       if (!isItem && line.trim().length > 0) leadInConnected = lineConnected;
     }
     if (sentences === 0) {
-      return { ruleName: 'topic_consistency', passed: false, score: 0, message: 'Insufficient text for topic analysis', skipped: true, skipReason: 'output has no content terms' };
+      return { ruleName: 'topic_consistency', passed: false, score: 0, message: 'Insufficient text for topic analysis', skipped: true, skipClass: 'not_applicable', skipReason: 'output has no content terms' };
     }
     const ratio = connected / sentences;
     const threshold = (context.customConfig?.topic_consistency as number) ?? DEFAULT_TOPIC_THRESHOLD;
@@ -274,7 +275,7 @@ function isEcho(output: string, ask: string): boolean {
  * below, which advises at the shipped thresholds; the composer names the
  * fallback in interpretations so it is never read as the judge's verdict.
  */
-function judgedByTheJudge(context: EvalContext, lexical: string): EvalRuleResult | null {
+function judgedByTheJudge(context: EvalContext, lexical: string): RuleAnswer | null {
   const j = context.relevanceJudgment;
   if (!j || j.error !== undefined || j.score === undefined || j.passed === undefined) return null;
   const by = `the relevance judge (${j.provider}/${j.model})`;
@@ -313,7 +314,7 @@ export const answersTheAsk: EvalRule = {
   question: 'relevant',
   classes: ['off_task'],
   version: 2,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     const ko = keywordOverlap.evaluate(context);
     const tc = topicConsistency.evaluate(context);
     const pct = (r: EvalRuleResult) => (r.value ? `${(r.value.value * 100).toFixed(0)}%` : '?');
@@ -322,11 +323,13 @@ export const answersTheAsk: EvalRule = {
     // The judge's failed attempt rides on whichever lexical result follows, so the reader sees both.
     const attempt = context.relevanceJudgment ? { judge: context.relevanceJudgment } : {};
     const lexical = answersTheAskLexically(context, ko, tc, pct);
+    // A judge the deployment installed did not answer, and the words alone could not judge either: the rule could not judge.
+    if (lexical.skipped && context.relevanceJudgment) return { ...lexical, ...attempt, skipClass: 'defeated' };
     return { ...lexical, ...attempt };
   },
 };
 
-function answersTheAskLexically(context: EvalContext, ko: EvalRuleResult, tc: EvalRuleResult, pct: (r: EvalRuleResult) => string): EvalRuleResult {
+function answersTheAskLexically(context: EvalContext, ko: EvalRuleResult, tc: EvalRuleResult, pct: (r: EvalRuleResult) => string): RuleAnswer {
   const askTerms = new Set(contentTerms(context.input ?? '')).size;
   /*
    * The threshold behind this rule is its two measurements' thresholds.

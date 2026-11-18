@@ -474,9 +474,13 @@ describe('a check that could not answer leaves the verdict unknown where its ans
         'A critical check was asked and could not answer (no_pii), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.',
       );
     }
-    // Accepted by the deployment ("pass"), the verdict is what the other layers make it and this sentence is not written; the path still carries the layer and who it named.
-    expect(sentence(asked, { onCriticalSkipped: 'pass' })).toBe('');
+    // Accepted by the deployment ("pass"), the verdict is what the other layers make it; the path still carries the layer and who it named, and a sentence says the check could not answer and is accepted.
+    expect(sentence(asked, { onCriticalSkipped: 'pass' })).toBe(
+      'A check that had to answer could not (cost_under_threshold, which this deployment asked for), and this deployment accepts that: eval.onCriticalSkipped is "pass". The verdict above says nothing about what it checks.',
+    );
     expect(verdictPath(evaluation(asked), cfg({ onCriticalSkipped: 'pass' })).find((n) => n.node === 'unknown')).toEqual({ node: 'unknown', by: ['cost_under_threshold'], decided: false });
+    // A verdict given under the earlier rules keeps what it was given: no sentence.
+    for (const rules of [1, 2]) expect(sentence(asked, { onCriticalSkipped: 'pass', rules }), `rules ${rules}`).toBe('');
   });
 
   it('the clause of a later layer says what the layer reads, and under the earlier rules what it read then', () => {
