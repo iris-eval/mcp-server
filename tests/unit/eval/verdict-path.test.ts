@@ -483,6 +483,30 @@ describe('a check that could not answer leaves the verdict unknown where its ans
     for (const rules of [1, 2]) expect(sentence(asked, { onCriticalSkipped: 'pass', rules }), `rules ${rules}`).toBe('');
   });
 
+  it('the sentence for an accepted check names no critical one, which a sentence of its own names, and is not said where the deployment fails such a verdict', () => {
+    const said = (rows: EvalRuleResult[], over: Partial<ComposeConfig>): string[] => {
+      const result = evaluation(rows) as EvalResult;
+      return interpretations(result, compose(result, cfg(over)), cfg(over)).map((i) => i.text);
+    };
+    const both = [unanswered({ ruleName: 'no_pii', kind: 'detection', critical: true }), unanswered({ ruleName: 'cost_under_threshold', kind: 'policy', thresholdSource: 'config', asked: 'config', threw: true }), plain];
+    expect(said(both, { onCriticalSkipped: 'pass' }).filter((t) => t.includes('and this deployment accepts that'))).toEqual([
+      'A check that had to answer could not (cost_under_threshold, which this deployment asked for), and this deployment accepts that: eval.onCriticalSkipped is "pass". The verdict above says nothing about what it checks.',
+    ]);
+    for (const onCriticalSkipped of ['fail', 'unknown'] as const) {
+      expect(said(both, { onCriticalSkipped }).filter((t) => t.includes('accepts that')), onCriticalSkipped).toEqual([]);
+    }
+  });
+
+  it('"Critical check(s) did not judge this output" is said beside the layer of a critical rule with nothing to judge, from the composer rules 3; a verdict given under the earlier rules keeps what it was given', () => {
+    const said = (rules: number): string[] => {
+      const rows = [unanswered({ ruleName: 'no_secrets', kind: 'detection', critical: true }), row({ ruleName: 'tool_choice', kind: 'policy', critical: true, skipped: true, skipClass: 'not_applicable', passed: false }), plain];
+      const result = evaluation(rows) as EvalResult;
+      return interpretations(result, compose(result, cfg({ rules })), cfg({ rules })).map((i) => i.text);
+    };
+    expect(said(3).some((t) => t.startsWith('Critical check(s) did not judge this output (tool_choice)'))).toBe(true);
+    for (const rules of [1, 2]) expect(said(rules).some((t) => t.startsWith('Critical check(s) did not judge this output')), `rules ${rules}`).toBe(false);
+  });
+
   it('the clause of a later layer says what the layer reads, and under the earlier rules what it read then', () => {
     const rows = [unanswered({ ruleName: 'no_tool_loop', kind: 'detection', threw: true }), unanswered({ ruleName: 'no_secrets', kind: 'detection', critical: true }), row({ ruleName: 'no_pii', kind: 'detection', passed: false, critical: true }), plain];
     const clause = (of: EvalRuleResult[], over: Partial<ComposeConfig>): string => {
