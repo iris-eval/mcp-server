@@ -199,17 +199,17 @@ function parseJudgeResult(raw: string): {
     throw new LLMJudgeError(`Citation judge reply was not valid JSON: ${(err as Error).message}`, 'malformed_response');
   }
   /*
-   * The ruling and the confidence are read only when the reply gives them:
+   * The verdict and the confidence are read only when the reply gives them:
    * a JSON boolean, and a JSON number from 0 to 1 (../llm-judge/reply.ts).
-   * The ruling used to be `obj.supported === true`, so a reply that left it
+   * The verdict used to be `obj.supported === true`, so a reply that left it
    * out, gave `null`, or gave `"true"` in quotes read as "not supported": a
-   * ruling against the citation from a reply that made none. The confidence
+   * verdict against the citation from a reply that made none. The confidence
    * was converted with Number(), which reads `null` as 0 and `true` as 1.
    * Either is a malformed reply now, and the citation is reported as not
    * judged, which is what happened.
    */
   if (typeof obj.supported !== 'boolean') {
-    throw new LLMJudgeError(`Citation judge gave no ruling: "supported" is ${shownValue(obj.supported)}`, 'malformed_response');
+    throw new LLMJudgeError(`Citation judge gave no verdict: "supported" is ${shownValue(obj.supported)}`, 'malformed_response');
   }
   const confidence = unitNumber(obj.confidence);
   if (confidence === null) {

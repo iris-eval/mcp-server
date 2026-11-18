@@ -1,10 +1,10 @@
 /*
- * The citation judge's reply is read as a ruling only when it gives one.
+ * The citation judge's reply is read as a verdict only when it gives one.
  *
  * The judge is asked for `"supported": <boolean>` and a confidence from 0
- * to 1. The ruling used to be read as `supported === true`, so a reply that
+ * to 1. The verdict used to be read as `supported === true`, so a reply that
  * left it out, or gave `null`, or gave `"true"` in quotes, read as "not
- * supported": a ruling against the citation, from a reply that made none,
+ * supported": a verdict against the citation, from a reply that made none,
  * and `passed: false` for the whole output. The confidence was converted
  * with Number(), which reads `null` as 0 and `true` as 1. Either is a
  * malformed reply: the citation is reported as not judged, and takes no
@@ -36,10 +36,10 @@ function sourceThenJudge(replyText: string): void {
 
 const verify = (): ReturnType<typeof verifyCitations> => verifyCitations({ output: 'The retry limit is five attempts https://a.com/retry.', provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k', allowFetch: true });
 
-describe('a citation judge reply that gives no ruling is not read as one', () => {
-  // What a reply can put where the ruling belongs. Each read as "not supported".
+describe('a citation judge reply that gives no verdict is not read as one', () => {
+  // What a reply can put where the verdict belongs. Each read as "not supported".
   it.each([['left out', '{"confidence":0.9,"rationale":"r"}'], ['null', '{"supported":null,"confidence":0.9,"rationale":"r"}'], ['"true" in quotes', '{"supported":"true","confidence":0.9,"rationale":"r"}'], ['1', '{"supported":1,"confidence":0.9,"rationale":"r"}'], ['"yes"', '{"supported":"yes","confidence":0.9,"rationale":"r"}'], ['a list', '{"supported":[true],"confidence":0.9,"rationale":"r"}']])(
-    'a ruling that is %s: the citation is not judged, and the output is not failed for it',
+    'a verdict that is %s: the citation is not judged, and the output is not failed for it',
     async (_what, replyText) => {
       sourceThenJudge(replyText);
       const result = await verify();
@@ -48,7 +48,7 @@ describe('a citation judge reply that gives no ruling is not read as one', () =>
       expect(result.totalSupported).toBe(0);
       expect(result.citations[0].judge).toBeUndefined();
       expect(result.citations[0].judgeError?.kind).toBe('malformed_judge_response');
-      expect(result.citations[0].judgeError?.message).toContain('gave no ruling');
+      expect(result.citations[0].judgeError?.message).toContain('gave no verdict');
       // Nothing was judged, so there is no verdict: not a fail, which is what "not supported" gave.
       expect(result.passed).toBeNull();
       expect(result.overallScore).toBeNull();
@@ -74,7 +74,7 @@ describe('a citation judge reply that gives no ruling is not read as one', () =>
     expect(result.citations[0].judgeError?.message).toContain('not valid JSON');
   });
 
-  it('a ruling the reply does give is read as given, either way, with a confidence at either end of the range', async () => {
+  it('a verdict the reply does give is read as given, either way, with a confidence at either end of the range', async () => {
     sourceThenJudge('{"supported":false,"confidence":0,"rationale":"The source does not mention it."}');
     const against = await verify();
     expect(against.totalJudged).toBe(1);
