@@ -98,6 +98,24 @@ describe('several MCP clients on one HTTP endpoint', () => {
     await b.client.close();
   }, 60_000);
 
+  it('an error a tool answers reaches a client that has listed the tools, with its code and what to do', async () => {
+    // With the tools listed, the SDK's client checks the structured content of every result against the tool's output schema. The error envelope went out as structured content, and such a client threw the whole result away.
+    const { url } = await boot();
+    const { client } = await connect(url, 'client-errors');
+    await client.listTools();
+    const refused = (await client.callTool({ name: 'evaluate_output', arguments: { output: 'x', trace_id: 'f'.repeat(32) } })) as { isError?: boolean; structuredContent?: unknown };
+    expect(refused.isError).toBe(true);
+    expect(refused.structuredContent).toBeUndefined();
+    const error = body(refused).error as { code: string; field: string; recovery: string[] };
+    expect(error).toMatchObject({ code: 'IRIS_UNKNOWN_TRACE', field: 'trace_id' });
+    expect(error.recovery.length).toBeGreaterThan(0);
+    // An answer still carries its structured content, the same object as its text.
+    const judged = (await client.callTool({ name: 'evaluate_output', arguments: { output: 'Paris is the capital of France.' } })) as { isError?: boolean; structuredContent?: unknown };
+    expect(judged.isError ?? false).toBe(false);
+    expect(judged.structuredContent).toEqual(body(judged));
+    await client.close();
+  }, 60_000);
+
   it('after one client ends its session, another connects, and the one still open keeps working', async () => {
     const { url, http } = await boot();
     const a = await connect(url, 'client-a');

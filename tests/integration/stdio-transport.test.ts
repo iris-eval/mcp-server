@@ -53,6 +53,20 @@ describe('Stdio Transport Integration', () => {
       // isolation through the real child-env path rather than trusting
       // the in-process unit test for iris-home.
       expect(existsSync(join(irisHome, 'iris.db'))).toBe(true);
+
+      /*
+       * An error a tool answers reaches this client with its code. Having
+       * listed the tools, the SDK's client checks the structured content of
+       * every result against the tool's output schema: while the error
+       * envelope went out as structured content, a client like this one
+       * threw the whole result away.
+       */
+      const refused = (await client.callTool({ name: 'evaluate_output', arguments: { output: 'x', trace_id: 'f'.repeat(32) } })) as { isError?: boolean; structuredContent?: unknown; content: Array<{ type: string; text?: string }> };
+      expect(refused.isError).toBe(true);
+      expect(refused.structuredContent).toBeUndefined();
+      const envelope = JSON.parse(refused.content.find((c) => c.type === 'text')?.text ?? '{}') as { error?: { code?: string; recovery?: string[] } };
+      expect(envelope.error?.code).toBe('IRIS_UNKNOWN_TRACE');
+      expect(envelope.error?.recovery?.length).toBeGreaterThan(0);
     } finally {
       await client.close();
     }

@@ -1,0 +1,10 @@
+# Advisories against dashboard/package-lock.json that OSV-Scanner, and OpenSSF
+# Scorecard's Vulnerabilities check, should report as assessed rather than open.
+# Each entry carries its reason; the full assessment is the advisory's row in
+# SECURITY-EXPOSURE.md, and the entry leaves when that row is closed.
+# ignoreUntil makes each one lapse unless it is reviewed again.
+
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2027-02-17
+reason = "The fault needs a glob pattern of one shape, and no outside input becomes a pattern for this copy: its patterns are the tools' own defaults, this repository's configuration, and the command line of whoever runs a tool. picomatch 4.0.7 is a development dependency of the dashboard, needed by its build, its tests, Storybook's build plugins and the lint's TypeScript parser (vite, vitest, tinyglobby, unplugin, @rollup/pluginutils), and by Jest packages that are there for type definitions. The bundle a browser loads holds none. It compiles the tools' own default patterns and the include list of the dashboard's Vitest configuration. No fixed release exists: 4.0.7 is the newest. It moves by a lockfile bump when one is published."
