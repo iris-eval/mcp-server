@@ -239,5 +239,8 @@ Providers enforce *their* limits — usage tier, per-key quota. Iris's cap is *u
 **Why retry on malformed JSON?**
 Base rates: good frontier models emit valid JSON ~97% of the time with explicit instructions. The 3% is almost always recoverable by adding "the previous response wasn't JSON — respond with only the object". One retry costs ~$0.0003 and recovers the call; two retries is diminishing returns and risks the cost cap being hit by the retries themselves. One retry is the right spot.
 
+**What counts as malformed?**
+A reply that is not a JSON object, and a reply whose `score` is not a JSON number from 0 to 1. `null`, a boolean, a number in quotes, a list and an object are not scores, and none of them is read as one (until 0.22.0 `null` read as 0 and `true` as 1). A dimension is kept when the reply gives a number for it and left out otherwise. The model's own `passed` is recorded only when it is a boolean. When the second reply is malformed too, the call fails with `malformed_response` and gives no verdict.
+
 **Why `eval_type='custom'` instead of a new `'llm_judge'` type?**
 Future work. Adding an `EvalType` value ripples through every storage query, filter, rule registry. The rule-results payload already carries enough provenance (`ruleName: llm_judge:<template>:<model>`) for the dashboard to filter + visualize the subset. When LLM-judge usage patterns stabilize (is it mostly RAG faithfulness? Mostly correctness on labeled datasets?), we'll graduate it to a first-class type with dedicated UI. Until then: custom bucket, provenance in rule_results, no schema ripple.

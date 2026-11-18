@@ -5,6 +5,7 @@ import {
   type LLMProvider,
 } from '../llm-judge/client.js';
 import { estimateCostUsd, findPricing } from '../llm-judge/pricing.js';
+import { shownValue, unitNumber } from '../llm-judge/reply.js';
 import {
   makeNonce,
   wrapUntrusted,
@@ -191,18 +192,31 @@ function parseJudgeResult(raw: string): {
       'malformed_response',
     );
   }
-  const obj = JSON.parse(trimmed.slice(first, last + 1)) as Record<string, unknown>;
-  const supported = obj.supported === true;
-  const confRaw = obj.confidence;
-  const confidence = typeof confRaw === 'number' ? confRaw : Number(confRaw);
-  if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) {
-    throw new LLMJudgeError(
-      `Citation judge confidence out of [0..1]: ${String(confRaw)}`,
-      'malformed_response',
-    );
+  let obj: Record<string, unknown>;
+  try {
+    obj = JSON.parse(trimmed.slice(first, last + 1)) as Record<string, unknown>;
+  } catch (err) {
+    throw new LLMJudgeError(`Citation judge reply was not valid JSON: ${(err as Error).message}`, 'malformed_response');
+  }
+  /*
+   * The ruling and the confidence are read only when the reply gives them:
+   * a JSON boolean, and a JSON number from 0 to 1 (../llm-judge/reply.ts).
+   * The ruling used to be `obj.supported === true`, so a reply that left it
+   * out, gave `null`, or gave `"true"` in quotes read as "not supported": a
+   * ruling against the citation from a reply that made none. The confidence
+   * was converted with Number(), which reads `null` as 0 and `true` as 1.
+   * Either is a malformed reply now, and the citation is reported as not
+   * judged, which is what happened.
+   */
+  if (typeof obj.supported !== 'boolean') {
+    throw new LLMJudgeError(`Citation judge gave no ruling: "supported" is ${shownValue(obj.supported)}`, 'malformed_response');
+  }
+  const confidence = unitNumber(obj.confidence);
+  if (confidence === null) {
+    throw new LLMJudgeError(`Citation judge confidence is not a number from 0 to 1: ${shownValue(obj.confidence)}`, 'malformed_response');
   }
   const rationale = typeof obj.rationale === 'string' ? obj.rationale : '';
-  return { supported, confidence: Math.round(confidence * 100) / 100, rationale };
+  return { supported: obj.supported, confidence: Math.round(confidence * 100) / 100, rationale };
 }
 
 export async function verifyCitations(

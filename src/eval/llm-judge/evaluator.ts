@@ -1,5 +1,6 @@
 import { callLLMJudge, estimateInputTokens, LLMJudgeError, type LLMProvider } from './client.js';
 import { estimateCostUsd, findPricing } from './pricing.js';
+import { shownValue, unitNumber } from './reply.js';
 import { getTemplate, type TemplateName } from './templates/index.js';
 
 /**
@@ -118,26 +119,31 @@ function parseJudgeResponse(raw: string): {
   }
   const obj = parsed as Record<string, unknown>;
 
-  const scoreRaw = obj.score;
-  const score = typeof scoreRaw === 'number' ? scoreRaw : Number(scoreRaw);
-  if (!Number.isFinite(score) || score < 0 || score > 1) {
-    throw new LLMJudgeError(
-      `Judge score out of [0..1]: ${String(scoreRaw)}`,
-      'malformed_response',
-    );
+  /*
+   * The score is the judge's answer, and it is read only when the reply
+   * gives one: a JSON number from 0 to 1 (reply.ts). A reply whose score
+   * was `null`, `false`, `""` or `[]` used to read as a score of 0, which
+   * fails the output, and one whose score was `true` as 1, which passes it:
+   * a verdict from a reply that gave none. Such a reply is malformed, and is
+   * asked for again once like any other.
+   */
+  const score = unitNumber(obj.score);
+  if (score === null) {
+    throw new LLMJudgeError(`Judge score is not a number from 0 to 1: ${shownValue(obj.score)}`, 'malformed_response');
   }
 
   const rationale = typeof obj.rationale === 'string' ? obj.rationale : '';
+  // A dimension is kept when the reply gives a number for it. Anything else is left out, where it used to read as 0 or as 1.
   const dimensions: Record<string, number> = {};
-  if (obj.dimensions && typeof obj.dimensions === 'object') {
+  if (obj.dimensions && typeof obj.dimensions === 'object' && !Array.isArray(obj.dimensions)) {
     for (const [k, v] of Object.entries(obj.dimensions as Record<string, unknown>)) {
-      const n = typeof v === 'number' ? v : Number(v);
-      if (Number.isFinite(n)) dimensions[k] = n;
+      if (typeof v === 'number' && Number.isFinite(v)) dimensions[k] = v;
     }
   }
 
   return {
     score: Math.round(score * 100) / 100,
+    // The model's own boolean is recorded only when it is one; "true" in quotes is not.
     passed: typeof obj.passed === 'boolean' ? obj.passed : undefined,
     rationale,
     dimensions,
