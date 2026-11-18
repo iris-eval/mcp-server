@@ -20,6 +20,7 @@
  *     its own data.
  */
 import { openDriver, isBusyError, type Driver, type DriverName } from './driver.js';
+import { storedRowOriginSql } from './label-rows.js';
 import { resolveCaseKey } from '../eval/case-key.js';
 import { caseRunOf } from '../eval/case-history.js';
 
@@ -3091,16 +3092,17 @@ export class SqliteAdapter implements IStorageAdapter {
    * current judgement, and counting both would weigh one fire twice in the
    * precision every verdict then reads.
    */
-  async insertVerdictLabel(tenantId: TenantId, label: Omit<VerdictLabel, 'labelledAt'> & { labelledAt?: string }): Promise<VerdictLabel> {
+  async insertVerdictLabel(tenantId: TenantId, label: Omit<VerdictLabel, 'labelledAt'> & { labelledAt?: string; rowOrigin?: string | null }): Promise<VerdictLabel> {
     assertTenant(tenantId);
     // After any TRUNCATE in flight (insertTraces says why).
     while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     const labelledAt = label.labelledAt ?? new Date().toISOString();
     const write = this.db.transaction(() => {
       this.db.prepare('DELETE FROM verdict_labels WHERE tenant_id = ? AND eval_id = ? AND rule_name IS ?').run(tenantId, label.evalId, label.ruleName);
+      // Whose row the label stands on, kept with it (migration 024): the tally reads it after the evaluation is swept.
       this.db
-        .prepare('INSERT INTO verdict_labels (id, tenant_id, eval_id, rule_name, label, note, labelled_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run(label.id, tenantId, label.evalId, label.ruleName, label.label, label.note, labelledAt);
+        .prepare('INSERT INTO verdict_labels (id, tenant_id, eval_id, rule_name, label, note, labelled_at, row_origin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(label.id, tenantId, label.evalId, label.ruleName, label.label, label.note, labelledAt, label.rowOrigin ?? null);
     });
     write();
     this.labelStamp = undefined;
@@ -3115,17 +3117,35 @@ export class SqliteAdapter implements IStorageAdapter {
     return rows.map((r) => ({ id: r.id, evalId: r.eval_id, ruleName: r.rule_name, label: r.label, note: r.note, labelledAt: r.labelled_at }));
   }
 
-  async labelTallies(tenantId: TenantId): Promise<LabelTallyRow[]> {
+  async labelTallies(tenantId: TenantId, shipped: readonly string[] = []): Promise<LabelTallyRow[]> {
     assertTenant(tenantId);
+    /*
+     * A label was written on the first row of its name in the evaluation
+     * (routes/labels.ts). Under a name in `shipped`, a label whose row was a
+     * custom rule's is left out of the tally: it was written on the fire of
+     * a custom rule that carried the name of a rule Iris ships, and would
+     * weigh that rule's fires. Whose row it was is kept on the label
+     * (`row_origin`, migration 024), so it holds after the retention sweep
+     * deletes the evaluation. The column is empty for a label on the row of
+     * a rule Iris ships, and for one a release before 0.22.0 wrote after the
+     * upgrade (it names the columns it knows); such a label is read from the
+     * stored evaluation while it is held (label-rows.ts), and is counted
+     * where neither says, which leaves the second kind counted once its
+     * evaluation is gone (#1072).
+     */
     const rows = this.db
       .prepare(
-        `SELECT rule_name, SUM(CASE WHEN label = 'right' THEN 1 ELSE 0 END) AS right, SUM(CASE WHEN label = 'wrong' THEN 1 ELSE 0 END) AS wrong
-           FROM verdict_labels
-          WHERE tenant_id = ? AND rule_name IS NOT NULL
-          GROUP BY rule_name
-          ORDER BY rule_name`,
+        `SELECT l.rule_name AS rule_name, SUM(CASE WHEN l.label = 'right' THEN 1 ELSE 0 END) AS right, SUM(CASE WHEN l.label = 'wrong' THEN 1 ELSE 0 END) AS wrong
+           FROM verdict_labels l
+          WHERE l.tenant_id = ? AND l.rule_name IS NOT NULL
+            AND NOT (
+              l.rule_name IN (SELECT value FROM json_each(?))
+              AND COALESCE(l.row_origin, (${storedRowOriginSql('l')}), '') = 'custom'
+            )
+          GROUP BY l.rule_name
+          ORDER BY l.rule_name`,
       )
-      .all(tenantId) as Array<{ rule_name: string; right: number; wrong: number }>;
+      .all(tenantId, JSON.stringify(shipped)) as Array<{ rule_name: string; right: number; wrong: number }>;
     return rows.map((r) => ({ ruleName: r.rule_name, right: Number(r.right), wrong: Number(r.wrong) }));
   }
 

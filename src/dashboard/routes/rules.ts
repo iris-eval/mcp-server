@@ -6,6 +6,7 @@ import { RULE_NAME_MESSAGE, RULE_NAME_PATTERN, RULE_TYPE_VALUES } from '../../cu
 import type { EvalEngine } from '../../eval/engine.js';
 import { createCustomRule } from '../../eval/rules/custom.js';
 import { builtInRuleRoster, type BuiltInRuleMeta } from '../../eval/criticality.js';
+import { builtInNameNotEnabled, builtInNameRefusal, isBuiltInRuleName } from '../../eval/built-in-names.js';
 import { requireTenant } from '../../middleware/tenant.js';
 import type { TenantId } from '../../types/tenant.js';
 import type { RulePreviewResult } from '../../types/custom-rule.js';
@@ -143,6 +144,11 @@ export function registerRuleRoutes(
     try {
       const tenantId = requireTenant(req);
       const input = DeploySchema.parse(req.body);
+      // 409 as for a name already deployed: the body is valid, and the name is taken by a rule Iris ships (eval/built-in-names.ts).
+      if (isBuiltInRuleName(input.name)) {
+        res.status(409).json({ error: `${builtInNameRefusal([input.name])} Nothing was deployed.` });
+        return;
+      }
 
       // Server overrides the inner definition's `name` so it always matches the
       // user-facing rule name. Avoids confusion when the rule name and the
@@ -232,6 +238,11 @@ export function registerRuleRoutes(
         res.json({ rule: existing });
         return;
       }
+      // 409 as for a deploy under such a name: a paused rule stored under the name of a rule Iris ships stays paused (eval/built-in-names.ts).
+      if (enabled && isBuiltInRuleName(existing.name)) {
+        res.status(409).json({ error: builtInNameNotEnabled(existing) });
+        return;
+      }
       const rule = opts.customRuleStore.setEnabled(tenantId, req.params.id, enabled);
       if (!rule) {
         res.status(404).json({ error: 'Rule not found' });
@@ -271,6 +282,11 @@ export function registerRuleRoutes(
     try {
       const tenantId = requireTenant(req);
       const input = PreviewSchema.parse(req.body);
+      // The name a rule is previewed under is the name it would be deployed under, and is refused here as it would be there.
+      if (input.definition.name !== undefined && isBuiltInRuleName(input.definition.name)) {
+        res.status(409).json({ error: builtInNameRefusal([input.definition.name]) });
+        return;
+      }
       const result = await previewRule(tenantId, input, storage);
       res.json(result);
     } catch (err) {

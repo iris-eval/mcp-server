@@ -47,7 +47,8 @@ describe('migration 011 — the schema it adds', () => {
 
     const db = new Database(path, { readonly: true });
     const cols = (db.prepare('PRAGMA table_info(verdict_labels)').all() as Array<{ name: string }>).map((c) => c.name);
-    expect(cols).toEqual(['id', 'tenant_id', 'eval_id', 'rule_name', 'label', 'note', 'labelled_at']);
+    // The seven 011 creates, and the one 024 adds after them (whose row a label was written on).
+    expect(cols).toEqual(['id', 'tenant_id', 'eval_id', 'rule_name', 'label', 'note', 'labelled_at', 'row_origin']);
     const indexes = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'index'").all() as Array<{ name: string }>).map((r) => r.name);
     expect(indexes).toEqual(expect.arrayContaining(['idx_verdict_labels_tenant_rule', 'idx_verdict_labels_tenant_eval']));
     expect((db.prepare("SELECT id FROM _iris_migrations WHERE id = '011-verdict-labels'").get() as { id: string } | undefined)?.id).toBe('011-verdict-labels');
