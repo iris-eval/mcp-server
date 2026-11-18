@@ -12,6 +12,8 @@
  * The keys are split across child processes, one per core; each key's
  * values depend only on its own seed, so the split does not change them.
  */
+// Stays first, here and so in each child this file is run in: the thresholds are numbers worked out in long loops (src/apply-runtime-guard.ts).
+import '../../src/apply-runtime-guard.js';
 import { fork } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';

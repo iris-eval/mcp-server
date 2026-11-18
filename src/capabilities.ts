@@ -29,6 +29,7 @@ import { toolGuide, type ServedToolGuide } from './tools/guide.js';
 import { RESOURCE_URIS } from './resources/uris.js';
 import { EVALUATE_MY_AGENT_PROMPT } from './instructions.js';
 import { webhookSettings, type WebhookSettings } from './notify/config.js';
+import { runtimeReport, type RuntimeReport } from './runtime-guard.js';
 
 /** The most inline custom rules one evaluate_output call may carry. */
 export const MAX_INLINE_CUSTOM_RULES = 10;
@@ -73,6 +74,8 @@ export interface Capabilities {
   retention: { days: number; sweepIntervalHours: number };
   /** The outbound webhook: the events and the receiver's host, never the URL's token or the secret; null when none. */
   notify: { webhook: WebhookSettings | null };
+  /** The Node and V8 this server runs on, and what stands between it and the engine defect that can make two results share their numbers (runtime-guard.ts). */
+  runtime: RuntimeReport;
   tools: readonly string[];
   /** Per tool: behaviour, when not to use it, errors, parameters and output fields — the detail tools/list does not carry. */
   toolGuide: Record<string, ServedToolGuide>;
@@ -141,6 +144,7 @@ export function buildCapabilities(ctx: CapabilitiesContext): Capabilities {
     },
     retention: { days: config.retention.days, sweepIntervalHours: config.retention.sweepIntervalHours },
     notify: { webhook: webhookSettings(config.notify?.webhook) },
+    runtime: runtimeReport(),
     tools: TOOL_NAMES,
     toolGuide: toolGuide(),
     resources: RESOURCE_URIS,

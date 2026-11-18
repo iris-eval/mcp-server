@@ -10,6 +10,8 @@
  * rules it was judged under (Provenance.composer.rules), and a row with no
  * stamp reads under rules 1.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SqliteAdapter } from '../../../src/storage/sqlite-adapter.js';
 import { EvalEngine } from '../../../src/eval/engine.js';
@@ -42,10 +44,30 @@ const context = {
 describe('the composer rules a row was judged under', () => {
   it('this build stamps its rules, and judges a failure over a layer that could not check', async () => {
     const r = await engine.evaluateAll(context);
-    expect(COMPOSER_RULES).toBe(2);
-    expect(r.provenance!.composer!.rules).toBe(2);
+    expect(COMPOSER_RULES).toBe(3);
+    expect(r.provenance!.composer!.rules).toBe(3);
     expect(r.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss' });
     expect(r.verdict!.also).toContainEqual({ basis: 'required_evidence_missing', state: 'unknown', by: ['cost'] });
+  });
+
+  it('a row whose loop check threw is judged not checked now, and is stored and read back so', async () => {
+    // An embedder's own run: a BigInt in a call's input, which no request can carry, makes the rules that write an input out throw.
+    const quiet = { input: context.input, output: 'The parser now accepts ISO week dates; the change is in src/date.ts and its test.', toolCalls: [{ tool_name: 'read_file', input: { path: 'src/date.ts', at: 10n } }] };
+    const plain = new EvalEngine(defaultConfig.eval.defaultThreshold, defaultConfig.eval.ruleThresholds, { ...defaultConfig.eval } as never);
+    const r = await plain.evaluateAll(quiet);
+    const threw = r.rule_results.filter((x) => x.threw === true).map((x) => x.ruleName);
+    expect(threw).toContain('no_tool_loop');
+    expect(r.verdict).toMatchObject({ state: 'unknown', passed: false, basis: 'critical_unknown' });
+    expect(r.verdict!.by).toContain('no_tool_loop');
+
+    const s = await store();
+    // BigInt has no JSON: the row is stored as its results, which is all a read composes from.
+    const stored = { ...r, id: 'now', rule_results: r.rule_results } as EvalResult;
+    await s.insertEvalResult(LOCAL_TENANT, stored);
+    const read = (await s.getEvalById(LOCAL_TENANT, 'now'))!;
+    expect(read.verdict).toMatchObject({ state: 'unknown', passed: false, basis: 'critical_unknown' });
+    expect(read.verdict!.by).toEqual(r.verdict!.by);
+    // What the same run read as when main judged and stored it is the fixture's row `threw`, below: a clean pass, read back as one.
   });
 
   it('a row stored now reads back fail; the same row without the stamp reads back as 0.19.0 gave it', async () => {
@@ -77,5 +99,177 @@ describe('the composer rules a row was judged under', () => {
     const quiet = await engine.evaluateAll({ input: context.input, output: 'The parser now accepts ISO week dates; the change is in src/date.ts and its test.' });
     expect(compose(quiet, { ...cfg, rules: 1 })).toEqual(compose(quiet, { ...cfg, rules: 2 }));
     expect(compose(quiet, cfg).state).toBe('unknown');
+  });
+});
+
+/*
+ * Rows an EARLIER version judged and stored, with what that version read
+ * back for each: tests/fixtures/readback/rows-stored-by-main.json, made by
+ * the script beside it from main at the commit the file names, the last
+ * before the composer's rules became 3.
+ *
+ * A row this version judges and then stamps with an earlier number holds
+ * only what this version puts in a row. These hold what the earlier code
+ * put there, so they are what a store written before an upgrade holds.
+ * Each is compared whole: the verdict with its layers and the names in
+ * them, `passed`, every sentence, and the critical rules that skipped.
+ */
+interface StoredByMain {
+  madeFrom: string;
+  rows: Array<{ id: string; what: string; stored: EvalResult; read: { verdict: unknown; passed: boolean; interpretations: unknown[]; critical_skipped: string[] } }>;
+}
+const storedByMain = JSON.parse(readFileSync(resolve(__dirname, '../../fixtures/readback/rows-stored-by-main.json'), 'utf8')) as StoredByMain;
+
+describe('a row an earlier version judged and stored reads back as that version gave it', () => {
+  const readBack = async (stored: EvalResult) => {
+    const s = await store();
+    await s.insertEvalResult(LOCAL_TENANT, stored);
+    const read = (await s.getEvalById(LOCAL_TENANT, stored.id))!;
+    return { verdict: read.verdict, passed: read.passed, interpretations: read.interpretations ?? [], critical_skipped: read.critical_skipped ?? [] };
+  };
+
+  const stored = (id: string) => storedByMain.rows.find((row) => row.id === id)!;
+  const given = (id: string) => stored(id).read.verdict;
+  const told = (id: string): string => JSON.stringify(stored(id).read.interpretations);
+  /** The rules of a stored row that gave no answer though there was something to judge, as main wrote them. */
+  const couldNot = (id: string) => stored(id).stored.rule_results.filter((r) => r.skipped === true && (r.skipClass === 'defeated' || r.skipClass === 'config_invalid'));
+
+  /*
+   * What the fixture holds, said of each row from what main stored and gave.
+   * It is not every kind of row a store can hold: none was judged with a
+   * judge installed, for one bundle, with labels in force or from spans,
+   * none has the verdict `no_rules`, and one alone has no rules number.
+   */
+  it('the rows are of the earlier rules, and each is the kind of row its name says, as main gave it', () => {
+    expect(storedByMain.madeFrom).toBe('70377aac');
+    expect(storedByMain.rows.map((row) => row.id)).toEqual([
+      'risk-no-class',
+      'risk-no-class-and-evidence',
+      'plugin-fire-beside-a-weighed-one',
+      'threw',
+      'threw-with-its-threshold-set',
+      'critical-threw-beside-a-veto',
+      'report-only-lacking-its-input',
+      'critical-threw',
+      'two-critical-could-not-answer',
+      'critical-threw-where-that-is-a-failure',
+      'plugin-policy-threw',
+      'shipped-threshold-threw-where-defaults-gate',
+      'custom-broken-where-defaults-gate',
+      'critical-custom-shares-a-built-ins-name',
+      'critical-custom-shares-a-name-beside-a-veto',
+      'risk-beside-a-rule-of-that-name-that-passed',
+      'risk-beside-a-rule-of-that-name-that-fired',
+      'risk-no-class-unstamped',
+    ]);
+    for (const row of storedByMain.rows) expect(row.stored.provenance?.composer?.rules ?? 1, row.id).toBeLessThan(3);
+    // The kinds a row under the earlier rules can hold that these rules compose otherwise (the comment on COMPOSER_RULES), each as main gave it.
+    // A risk failure in which no class is more likely than not: no class was named.
+    expect(given('risk-no-class')).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: [] });
+    // A rule that threw: it took no part.
+    expect(given('threw')).toMatchObject({ state: 'pass', basis: 'clean' });
+    expect(couldNot('threw').filter((r) => r.threw === true).map((r) => r.ruleName)).toContain('no_tool_loop');
+    // A gate that could not answer and was not critical, three ways: a plugin's policy, a policy at a shipped number where defaults gate, a custom rule where they do. Each was a clean pass.
+    for (const [id, name] of [
+      ['plugin-policy-threw', 'no_refund_promise'],
+      ['shipped-threshold-threw-where-defaults-gate', 'cost_under_threshold'],
+      ['custom-broken-where-defaults-gate', 'no_internal_draft'],
+    ] as const) {
+      expect(couldNot(id).map((r) => [r.ruleName, r.critical === true]), id).toEqual([[name, false]]);
+      expect(given(id), id).toMatchObject({ state: 'pass', basis: 'clean' });
+    }
+    // And the rows whose sentence the earlier rules already wrote: a critical rule that could not answer, alone, two of them, where that is a failure, and beside a veto.
+    expect(given('critical-threw')).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['no_tool_loop'] });
+    expect(told('critical-threw')).toContain('A critical check was asked and could not answer (no_tool_loop), so this verdict is unknown rather than clean.');
+    expect(told('two-critical-could-not-answer')).toContain('A critical check was asked and could not answer (no_tool_loop, no_internal_draft), so this verdict is unknown rather than clean.');
+    expect(given('critical-threw-where-that-is-a-failure')).toMatchObject({ state: 'fail', basis: 'critical_unknown', by: ['no_tool_loop'] });
+    expect(told('critical-threw-where-that-is-a-failure')).toContain('so this verdict is unknown rather than clean');
+    // Two rules of one name: the built-in of that name skipped, and the custom rule that carries it is the critical one that could not answer.
+    for (const [id, name] of [
+      ['critical-custom-shares-a-built-ins-name', 'cost_under_threshold'],
+      ['critical-custom-shares-a-name-beside-a-veto', 'max_steps'],
+    ] as const) {
+      const rows = stored(id).stored.rule_results.filter((r) => r.ruleName === name);
+      expect(rows.map((r) => [r.skipped === true, r.critical === true, r.skipClass]), id).toEqual([
+        [true, false, 'not_applicable'],
+        [true, true, 'config_invalid'],
+      ]);
+    }
+    expect(told('critical-custom-shares-a-built-ins-name')).toContain('A critical check was asked and could not answer (cost_under_threshold), so this verdict is unknown rather than clean.');
+    expect(told('critical-custom-shares-a-name-beside-a-veto')).toContain('a critical check was asked and could not answer (max_steps)');
+    // Two rules of one name beside a failure of the risk estimate: the built-in inference fired and was weighed, and the custom rule of its name is a policy that advises, having passed or having fired. The note named one rule.
+    for (const [id, customPassed] of [
+      ['risk-beside-a-rule-of-that-name-that-passed', true],
+      ['risk-beside-a-rule-of-that-name-that-fired', false],
+    ] as const) {
+      const rows = stored(id).stored.rule_results.filter((r) => r.ruleName === 'no_stub_output');
+      expect(rows.map((r) => [r.kind, r.origin === 'custom', r.passed, r.role]), id).toEqual([
+        ['inference', false, false, 'risk'],
+        ['policy', true, customPassed, 'advisory'],
+      ]);
+      expect(given(id), id).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: [] });
+      expect(told(id), id).toContain('rests on no_stub_output. If its fires are not failures on your traffic');
+    }
+  });
+
+  for (const row of storedByMain.rows) {
+    it(`${row.id}: ${row.what}`, async () => {
+      expect(await readBack(row.stored)).toEqual(row.read);
+    });
+  }
+
+  it('the same rule results stamped with these rules compose otherwise: what the rules number holds apart', async () => {
+    // The probe can fail: stamped 3, three of the rows read as another verdict than the earlier version gave, and it is by the stamp that they do not.
+    const restamped = async (id: string) => {
+      const stored = structuredClone(storedByMain.rows.find((row) => row.id === id)!.stored);
+      stored.id = `${stored.id}-under-rules-3`;
+      stored.provenance!.composer!.rules = 3;
+      return readBack(stored);
+    };
+    expect((await restamped('risk-no-class')).verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['stub'] });
+    expect((await restamped('threw')).verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown' });
+    const plugin = await restamped('plugin-fire-beside-a-weighed-one');
+    expect(plugin.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['stub'] });
+    expect(JSON.stringify(plugin.interpretations)).toContain('rests on no_stub_output.');
+    expect(JSON.stringify(storedByMain.rows.find((row) => row.id === 'plugin-fire-beside-a-weighed-one')!.read.interpretations)).toContain('rests on no_stub_output, acme_account_scan.');
+    // The three gates that could not answer and were not critical: each a clean pass as given, and not checked under these rules.
+    expect((await restamped('plugin-policy-threw')).verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['no_refund_promise'] });
+    expect((await restamped('shipped-threshold-threw-where-defaults-gate')).verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['cost_under_threshold'] });
+    expect((await restamped('custom-broken-where-defaults-gate')).verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['no_internal_draft'] });
+    // A critical rule that threw beside a weighed one that threw: under these rules the layer names both, and the sentence is the wider one.
+    const both = await restamped('critical-threw');
+    expect(both.verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['grounded_in_reads', 'no_tool_loop'] });
+    expect(JSON.stringify(both.interpretations)).toContain('A check that had to answer could not (grounded_in_reads, which failed while it judged this run; no_tool_loop)');
+    // Where that is a failure, these rules say so; the row as given was told it was unknown.
+    expect(JSON.stringify((await restamped('critical-threw-where-that-is-a-failure')).interpretations)).toContain('and this deployment treats that as a failure');
+  });
+
+  it('two rules of one name beside a failed estimate: under these rules the verdict names the class, and the note still names the weighed fire once', async () => {
+    // The note is written from the rows: a row is named when it fired and the estimate weighed it. Asked by name, the custom rule that carries the weighed rule's name was named beside it, though it is a policy, and though it had passed.
+    for (const id of ['risk-beside-a-rule-of-that-name-that-passed', 'risk-beside-a-rule-of-that-name-that-fired']) {
+      const under3 = structuredClone(stored(id).stored);
+      under3.id = `${under3.id}-under-rules-3`;
+      under3.provenance!.composer!.rules = 3;
+      const read = await readBack(under3);
+      expect(read.verdict, id).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['stub'] });
+      const notes = (read.interpretations as Array<{ text: string }>).filter((i) => i.text.includes('rests on'));
+      expect(notes, id).toHaveLength(1);
+      expect(notes[0].text, id).toContain('rests on no_stub_output. If its fires are not failures on your traffic');
+    }
+  });
+
+  it('a critical rule that shares its name with a rule that skipped is told as critical, under the earlier rules and under these', async () => {
+    // The sentence is written from the rows the layer named. Looked up by name, it was written from the first row of that name, the built-in's, which had skipped for want of a cost: "which gates here", of a critical rule.
+    const CRITICAL = 'A critical check was asked and could not answer (cost_under_threshold), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to \\"pass\\" to accept that risk, or to \\"fail\\" to treat it as a failure.';
+    expect(told('critical-custom-shares-a-built-ins-name')).toContain(CRITICAL);
+    const asGiven = await readBack(stored('critical-custom-shares-a-built-ins-name').stored);
+    expect(JSON.stringify(asGiven.interpretations)).toContain(CRITICAL);
+    const under3 = structuredClone(stored('critical-custom-shares-a-built-ins-name').stored);
+    under3.id = `${under3.id}-under-rules-3`;
+    under3.provenance!.composer!.rules = 3;
+    const read = await readBack(under3);
+    expect(read.verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['cost_under_threshold'] });
+    expect(JSON.stringify(read.interpretations)).toContain(CRITICAL);
+    expect(JSON.stringify(read.interpretations)).not.toContain('which gates here');
   });
 });

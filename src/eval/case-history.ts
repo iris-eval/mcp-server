@@ -384,6 +384,16 @@ export function unusualActions(called: readonly string[], tools: readonly ToolDe
   return { m, unusual: mine.actions, unusualLookups: mine.lookups, unplaced: mine.unplaced, departing };
 }
 
+/**
+ * How many earlier runs of its case a run is read against: the window's,
+ * less the ones whose calls were not recorded. It is `m` of the two
+ * readings above, counted without reading what any run called, so it can be
+ * asked of a history a reading would stumble over.
+ */
+export function earlierRunsRead(context: Pick<EvalContext, 'caseHistory'>): number {
+  return recordedRuns(caseHistoryOf(context) ?? []).length;
+}
+
 /** More than half of the earlier runs depart from each other: the case has no usual way of going. */
 export function hasNoUsualWay(reading: Pick<ActionReading, 'm' | 'departing'>): boolean {
   return reading.departing !== null && 2 * reading.departing > reading.m;

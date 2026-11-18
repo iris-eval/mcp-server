@@ -34,7 +34,7 @@
  * numbers and regenerates them; none is restated here, where it would go
  * stale.
  */
-import type { EvalResult, FailureClass } from '../types/eval.js';
+import type { EvalResult, EvalRuleResult, FailureClass } from '../types/eval.js';
 import { publishedAccuracyFor } from './accuracy.js';
 import { PUBLISHED_ACCURACY_CORPUS_VERSION } from './published-accuracy.js';
 import { FAILURE_CLASS_IDS } from './failure-classes.js';
@@ -107,14 +107,27 @@ const localPpv = (l: { right: number; wrong: number }): number => (l.right + 0.5
  * records, and nothing else changed.
  */
 
+/**
+ * Whether the estimate reads a result: an answered detection or inference
+ * with a published family, that does not only report. One predicate, asked
+ * of a ROW: by detectorsOf below, and by whoever says which rows the
+ * estimate rests on (compose.ts). Asked by a rule's name where a row is
+ * meant, a custom rule that carries a weighed rule's name would be said to
+ * have been weighed.
+ */
+export function weighedByTheEstimate(r: EvalRuleResult): boolean {
+  if (r.skipped) return false;
+  if (r.kind !== 'detection' && r.kind !== 'inference') return false;
+  // A rule that only reports (eval.advisoryRules, or a reason of the rule's own) is not evidence either way: its fire is not weighed, and its silence does not lower the estimate.
+  if (r.advisory === true) return false;
+  return publishedAccuracyFor(r.ruleName) !== null;
+}
+
 /** The evaluated detections and inferences with a published family, one entry per rule. */
 export function detectorsOf(result: Pick<EvalResult, 'rule_results'>): Detector[] {
   const out: Detector[] = [];
   for (const r of result.rule_results) {
-    if (r.skipped) continue;
-    if (r.kind !== 'detection' && r.kind !== 'inference') continue;
-    // A rule the deployment set to report only (eval.advisoryRules) is not evidence either way: its fire is not weighed, and its silence does not lower the estimate.
-    if (r.advisory === true) continue;
+    if (!weighedByTheEstimate(r)) continue;
     const acc = publishedAccuracyFor(r.ruleName);
     if (!acc) continue;
     const u = r.uncertainty;

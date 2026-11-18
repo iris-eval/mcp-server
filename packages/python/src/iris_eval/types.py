@@ -51,10 +51,21 @@ class RuleResult(TypedDict, total=False):
     #: On a rule that skipped for missing evidence: the inputs it reads that
     #: the call did not carry.
     lacked: list[str]
-    #: On such a rule, when somebody had asked for it: ``config`` (the
-    #: deployment) or ``call`` (the call itself). The verdict is then
-    #: ``unknown``, not ``pass``.
+    #: On a rule that skipped for missing evidence, or that could not answer
+    #: (it threw, was stopped at a limit, read a record that was cut, or its
+    #: definition is broken), when somebody had asked for it: ``config`` (the
+    #: deployment) or ``call`` (the call itself). The verdict is read from
+    #: that: ``unknown`` as shipped; where the rule could not answer, the
+    #: server's ``eval.onCriticalSkipped`` set to ``fail`` makes it a failure
+    #: and ``pass`` accepts it; a layer that fails outranks either.
     asked: str
+    #: On a result that could not answer, of a rule that declares the threshold
+    #: it compares against (``tool_choice``, ``answers_the_ask``,
+    #: ``cost_under_threshold``, ``verbosity_ratio``, ``no_tool_loop`` and
+    #: ``max_steps`` do): whose number it stood at on this call,
+    #: ``default`` (the one Iris ships) or ``config`` (the deployment's or
+    #: the call's; ``asked`` says which). Server 0.22.0+.
+    thresholdSource: str
     #: When the output was a JSON object or array: ``values`` (what its fields
     #: say) or ``labelled`` (the same, each with its field name). Evidence
     #: offsets still point into the output as sent (server 0.20.0+).

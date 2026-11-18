@@ -40,7 +40,7 @@
  * invent one.
  */
 import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type EvalRuleResult, type Evidence } from '../../types/eval.js';
-import { CASE_HISTORY_MIN, CASE_HISTORY_WEIGH_MIN, CASE_HISTORY_WINDOW, caseHistoryOf, droppedSteps, hasNoUsualWay, listNames, readOnlyWordsNotTaken, toolNameOf, toolsOfSteps, unusualActions } from '../case-history.js';
+import { CASE_HISTORY_MIN, CASE_HISTORY_WEIGH_MIN, CASE_HISTORY_WINDOW, caseHistoryOf, droppedSteps, earlierRunsRead, hasNoUsualWay, listNames, readOnlyWordsNotTaken, toolNameOf, toolsOfSteps, unusualActions } from '../case-history.js';
 import { stepScopeNote, stepStatsOf, stepsOf, trajectoryAbsence } from '../steps.js';
 import { skipWithoutTrajectory } from './trajectory.js';
 
@@ -81,6 +81,24 @@ function skipUnreadable(ruleName: string): EvalRuleResult {
   };
 }
 
+/**
+ * no_unusual_action's own reason a result takes no part in a verdict: the
+ * run is read against fewer earlier runs than the rule's error rates were
+ * measured against. Weighed where it was measured, and below that the same
+ * finding with this reason beside it.
+ *
+ * It is the rule's declaration (`reportsOnly`) and the words on its result
+ * (`advisoryWhy`), from one place, because the engine has to be able to ask
+ * without an answer: a run the rule could not answer for has no result to
+ * carry the reason, and read as weighed it left the verdict unknown where
+ * the rule's finding would have changed nothing. It counts the earlier runs
+ * and reads nothing any of them called.
+ */
+function belowItsMeasure(context: EvalContext): string | undefined {
+  const m = earlierRunsRead(context);
+  return m < CASE_HISTORY_WEIGH_MIN ? `the case has ${runs(m)} by this agent, and the rule is weighed in the verdict from ${CASE_HISTORY_WEIGH_MIN}` : undefined;
+}
+
 export const noUnusualAction: EvalRule = {
   name: 'no_unusual_action',
   description:
@@ -93,6 +111,7 @@ export const noUnusualAction: EvalRule = {
   question: 'tool_use_correct',
   classes: ['wrong_trajectory'],
   version: 1,
+  reportsOnly: belowItsMeasure,
   evaluate(context: EvalContext): EvalRuleResult {
     const skip = skipWithoutTrajectory('no_unusual_action', context);
     if (skip) return skip;
@@ -139,9 +158,12 @@ export const noUnusualAction: EvalRule = {
      * Weighed where it was measured. Below CASE_HISTORY_WEIGH_MIN earlier
      * runs the result is the same finding, with the reason it takes no part
      * in the verdict: the engine reads `advisoryWhy` and leaves the result
-     * out of the risk estimate, a pass as much as a fail.
+     * out of the risk estimate, a pass as much as a fail. The reason is the
+     * rule's declaration, which the engine asks by itself where there is no
+     * result (belowItsMeasure).
      */
-    const reportsOnly = m < CASE_HISTORY_WEIGH_MIN ? { advisoryWhy: `the case has ${runs(m)} by this agent, and the rule is weighed in the verdict from ${CASE_HISTORY_WEIGH_MIN}` } : {};
+    const why = belowItsMeasure(context);
+    const reportsOnly = why !== undefined ? { advisoryWhy: why } : {};
     const evidence: Evidence[] = [{ type: 'count', stat: 'unusual_actions', unit: 'tools', value: unusual.length, threshold: 0, thresholdSource: 'rule' }];
     const flagged = new Set(unusual);
     for (const step of steps) {
