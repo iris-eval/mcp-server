@@ -597,7 +597,7 @@ jobs:
       #    --certificate-identity=https://github.com/iris-eval/mcp-server/.github/workflows/release.yml@refs/tags/vX.Y.Z
       #    --certificate-oidc-issuer=https://token.actions.githubusercontent.com`.
       - name: Install cosign
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532  # v4.1.3
 
       - name: Sign Docker image by digest
         env:
@@ -698,7 +698,7 @@ jobs:
       # while carrying a valid signature. tests/release-workflow-consistency
       # pins the suffix at every site in this file.
       - name: Install cosign
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532  # v4.1.3
 
       - name: Sign SBOMs with cosign (keyless)
         run: |
@@ -1173,7 +1173,7 @@ jobs:
       # assets from the release just checked and verify each SBOM against its
       # bundle under the identity this workflow signs with.
       - name: Install cosign
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532  # v4.1.3
 
       - name: GitHub release — the SBOM signatures verify
         env:
