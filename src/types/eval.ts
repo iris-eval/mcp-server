@@ -114,6 +114,19 @@ export interface EvalRule {
    * the step budget and none for the sequence of calls.
    */
   expects?: (context: EvalContext) => boolean;
+  /**
+   * For a detection or an inference whose result only reports on some
+   * calls (`no_unusual_action`, read against fewer earlier runs than its
+   * error rates were measured against): the reason, in words, when this
+   * call is one of them, and undefined when it is not. It is the rule's
+   * DECLARATION, so it can be asked without an answer. The rule gives the
+   * same words on its result (`advisoryWhy`), and the engine asks here for
+   * a run the rule could not answer for, whose row has no result to carry
+   * them: read as weighed, such a row left the verdict unknown where the
+   * rule's finding would have changed nothing. It reads the context only,
+   * and a declaration that throws is taken as giving no reason.
+   */
+  reportsOnly?: (context: EvalContext) => string | undefined;
   question?: QuestionId;
   classes?: readonly FailureClass[];
   /** Bumped when the rule's meaning changes, so a stored result names the definition that produced it. */
@@ -473,9 +486,12 @@ export interface Interpretation {
  * One layer of the composer's decision, in the order it is asked
  * (`verdictPath` in eval/compose.ts). `by` is what that layer found: rule
  * names for the gate, veto and unknown layers, the missing inputs for the
- * evidence layer, and the failure classes over even odds for the risk
- * layer — the same vocabulary `Verdict.by` carries, because the verdict is
- * stamped from the node that decided.
+ * evidence layer, and for the risk layer the failure classes that carried
+ * the estimate over the loss threshold: each class more likely than not by
+ * itself, or, where none is, the likeliest class a weighed rule fired in
+ * (0.22.0; `carriedBy` in eval/compose.ts). It is the same vocabulary
+ * `Verdict.by` carries, because the verdict is stamped from the node that
+ * decided.
  *
  * A path ends at the node that decided. A node with an empty `by` was asked
  * and found nothing. What the layers after the deciding one would have said
@@ -755,22 +771,30 @@ export interface EvalRuleResult {
    */
   criticalSource?: 'default' | 'config';
   /**
-   * True when this result reported and took no part in the verdict, neither
+   * True when this result reports and takes no part in the verdict, neither
    * vetoing nor entering the risk estimate. Two things set it: the
    * deployment named the rule in `eval.advisoryRules`, or the rule itself
-   * reported below the standing its error rates were measured at, and then
-   * `advisoryWhy` says so. Stamped on the row so a stored evaluation
-   * re-composes as it was decided. Absent on every other result.
+   * reports below the standing its error rates were measured at, and then
+   * `advisoryWhy` says so. A rule on the deployment's list carries it on
+   * every result. A rule's own reason marks the result it came with and,
+   * from 0.22.0, a result that could not answer though there was something
+   * to judge (the rule threw, was stopped at a limit, read a record that
+   * was cut, or its definition is broken): the rule's finding would have
+   * changed nothing, so its silence changes nothing either. Stamped on the
+   * row so a stored evaluation re-composes as it was decided. Absent on
+   * every other result.
    */
   advisory?: boolean;
   /**
    * The rule's own reason a result takes no part in the verdict, in words:
    * `no_unusual_action` gives it when the case has fewer earlier runs than
-   * the rule is weighed from. Returned by the rule, and kept by the engine
-   * only when it is why `advisory` is true: absent when `eval.advisoryRules`
-   * names the rule (that is then the standing reason), and absent when the
-   * deployment made the rule critical, which is the deployment saying every
-   * fire of it decides.
+   * the rule is weighed from. Returned by the rule with its answer, and
+   * asked of the rule's declaration (`EvalRule.reportsOnly`) for a result
+   * that could not answer. Kept by the engine only when it is why
+   * `advisory` is true: absent when `eval.advisoryRules` names the rule
+   * (that is then the standing reason), and absent when the deployment made
+   * the rule critical, which is the deployment saying every fire of it
+   * decides.
    */
   advisoryWhy?: string;
   /**
@@ -798,11 +822,32 @@ export interface EvalRuleResult {
    * installed the judge that answers it. `call`: the call itself set the
    * threshold, supplied the gating rule inline, or supplied the expectation
    * the rule compares against (an expected trajectory). Such a rule was not
-   * "not applicable". It was asked and could not answer, and the verdict is
-   * not a pass. A rule the deployment set to report (eval.advisoryRules) is
-   * asked for by nobody and carries none.
+   * "not applicable": it was asked and could not answer, and the verdict is
+   * read from that. Where it lacked an input the verdict is unknown
+   * (`required_evidence_missing`), which `eval.onCriticalSkipped: "pass"`
+   * lifts for a critical rule alone. Where it could not answer though there
+   * was something to judge, the third layer names it (`critical_unknown`):
+   * the verdict is unknown as shipped, a failure under
+   * `eval.onCriticalSkipped: "fail"`, and what it was without the rule under
+   * `"pass"`, which accepts every check that layer names. A layer that fails
+   * outranks either, and this is then beside the failure (`also`). A rule
+   * the deployment set to report (eval.advisoryRules) is asked for by nobody
+   * and carries none.
    */
   asked?: 'config' | 'call';
+  /**
+   * On a result that could not answer though there was something to judge,
+   * of a rule that compares against a number a deployment can set (the rule
+   * declares `thresholdKeys`): whose number the rule stood at on this call.
+   * `default`: the one Iris ships. `config`: the deployment or the call set
+   * it, and `asked` says which. An answered result says this on its count
+   * evidence (`thresholdSource` there), and the composer reads a policy's
+   * standing from it: a policy at a shipped number advises. A result with
+   * no answer has no evidence, so the engine writes the fact here, from the
+   * rule in hand, and the composer reads the row either way. Absent on
+   * every other result.
+   */
+  thresholdSource?: 'default' | 'config';
   // Set when the rule skipped because its DEFINITION is broken (invalid
   // config / uncompilable regex), not because this input had nothing to
   // evaluate. Lets surfaces holding the whole definition — rule preview —

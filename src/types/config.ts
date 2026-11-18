@@ -165,10 +165,16 @@ export interface IrisConfig {
      */
     falsePassCost?: number;
     /**
-     * What a critical rule that was ASKED and could not answer does to the
-     * verdict — defeated by the output, or configured invalidly. Not the
-     * same as never asked, which is coverage. Today's behaviour is `pass`,
-     * which is the fail-open seam; the default is `unknown`.
+     * What a check whose answer would have counted, and that could not
+     * answer, does to the verdict: it threw, was stopped at a limit, read a
+     * record that was cut, or its definition is broken. A critical rule,
+     * and from 0.22.0 a rule somebody asked for, a gate, and a weighed rule
+     * that threw (the key keeps the name it had when only critical rules
+     * were read). Not the same as never asked, which is coverage. `unknown`,
+     * the default: the verdict is not checked. `fail`: it is a failure.
+     * `pass`: every such check is accepted, and the verdict is what the
+     * other layers make it; a critical rule that lacked an input is
+     * accepted with it.
      */
     onCriticalSkipped?: 'unknown' | 'fail' | 'pass';
     /** Inputs every evaluation must carry; an absent one makes the verdict unknown rather than clean. */

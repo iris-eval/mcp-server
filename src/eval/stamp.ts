@@ -228,6 +228,19 @@ export function uncertaintyOf(rule: EvalRule, raw: EvalRuleResult, options: Stam
   }
 }
 
+/**
+ * Whose number a rule stands at on this call, for a rule that compares
+ * against a number a deployment can set (it declares `thresholdKeys`):
+ * `config` when the deployment or the call set one of them, `default` when
+ * the number is the one Iris ships. undefined for a rule that declares
+ * none. From the same answer `askedOf` reads, so the two cannot disagree.
+ */
+export function thresholdStandingOf(rule: Pick<EvalRule, 'thresholdKeys'>, context: EvalContext): 'default' | 'config' | undefined {
+  const keys = rule.thresholdKeys ?? [];
+  if (keys.length === 0) return undefined;
+  return keys.some((key) => thresholdSetBy(context, key) !== undefined) ? 'config' : 'default';
+}
+
 /** Everything the engine adds to a raw rule result besides ruleId, category and criticality. */
 export function stampRuleResult(
   rule: EvalRule,
@@ -235,7 +248,7 @@ export function stampRuleResult(
   context: EvalContext,
   effective: EffectiveCriticality,
   options: StampOptions = {},
-): Pick<EvalRuleResult, 'kind' | 'question' | 'classes' | 'ruleVersion' | 'saw' | 'skipClass' | 'lacked' | 'asked' | 'uncertainty' | 'origin'> {
+): Pick<EvalRuleResult, 'kind' | 'question' | 'classes' | 'ruleVersion' | 'saw' | 'skipClass' | 'lacked' | 'asked' | 'thresholdSource' | 'uncertainty' | 'origin'> {
   const present = options.present ?? inputsPresent(context);
   const skipClass = skipClassOf(raw);
   // What a rule that had nothing to judge was missing, and whether anyone had asked for it.
@@ -260,6 +273,17 @@ export function stampRuleResult(
   const reportsOnly = effective.advisory === true;
   const asked = !reportsOnly && (lacked.length > 0 || couldNotAnswer) ? askedOf(rule, context, effective, options) : undefined;
   /*
+   * Whose number the rule stood at, on a row that could not answer. An
+   * answered row says it on its count evidence, which is where the composer
+   * reads a policy's standing (gate.ts, decides): a policy at a number Iris
+   * ships advises. A row with no answer has no evidence, so the fact is
+   * written here, from the rule in hand and by what the rule itself
+   * declares. Looked up later by the row's name, a rule object that carried
+   * a built-in policy's name was read as that policy, and passed clean by
+   * throwing where its fire gates.
+   */
+  const stoodAt = couldNotAnswer ? thresholdStandingOf(rule, context) : undefined;
+  /*
    * A result an LLM judge decided (answers_the_ask with a relevance judge,
    * #649) is a judgment, whatever the rule declares for its lexical
    * reading: the claim is the model's, so the kind and the uncertainty say
@@ -279,6 +303,7 @@ export function stampRuleResult(
     ...(skipClass !== undefined ? { skipClass } : {}),
     ...(lacked.length > 0 ? { lacked } : {}),
     ...(asked !== undefined ? { asked } : {}),
+    ...(stoodAt !== undefined ? { thresholdSource: stoodAt } : {}),
     ...(uncertainty !== undefined ? { uncertainty } : {}),
   };
 }

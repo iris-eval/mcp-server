@@ -196,18 +196,33 @@ describe('a check that could not answer leaves the verdict unknown where its ans
   });
 
   it('a policy at a shipped threshold nobody set only reports, and its row says so: no part by its fire, none by its silence', () => {
-    // The three built-in policies that compare against a number Iris ships. An answered row says whose number it was on its evidence; a row that could not answer has none, and read by that alone it was a gate.
-    for (const name of ['cost_under_threshold', 'max_steps', 'answers_the_ask']) {
+    // An answered row says whose number it compared against on its evidence. A row that could not answer has none, so the engine writes the same fact on the row (thresholdSource), and the composer reads the row either way.
+    // The fact is the row's own, and no name is looked up: the built-in policies that have a shipped number, and a name nothing ships.
+    for (const name of ['cost_under_threshold', 'max_steps', 'answers_the_ask', 'a_policy_of_any_name']) {
       for (const [how, flags] of STOPPED) {
-        const r = unanswered({ ruleName: name, kind: 'policy', ...flags });
-        expect(roleOf(r, cfg()), `${name}: ${how}`).toBe('advisory');
-        expect(unknownOf([r, plain]), `${name}: ${how}`).toEqual([]);
-        expect(compose(evaluation([r, plain]), cfg()), `${name}: ${how}`).toMatchObject({ state: 'pass', basis: 'clean' });
+        const shipped = unanswered({ ruleName: name, kind: 'policy', thresholdSource: 'default', ...flags });
+        expect(roleOf(shipped, cfg()), `${name}: ${how}`).toBe('advisory');
+        expect(unknownOf([shipped, plain]), `${name}: ${how}`).toEqual([]);
+        expect(compose(evaluation([shipped, plain]), cfg()), `${name}: ${how}`).toMatchObject({ state: 'pass', basis: 'clean' });
+        // Somebody set the number: it gates, and has to answer.
+        const set = unanswered({ ruleName: name, kind: 'policy', thresholdSource: 'config', asked: 'config', ...flags });
+        expect(roleOf(set, cfg()), `${name}: ${how}`).toBe('gate');
+        expect(unknownOf([set, plain]), `${name}: ${how}`).toEqual([name]);
+        // At the shipped number, and asked for some other way (an installed judge, an expectation the call supplied): it has to answer too.
+        const asked = unanswered({ ruleName: name, kind: 'policy', thresholdSource: 'default', asked: 'call', ...flags });
+        expect(roleOf(asked, cfg()), `${name}: ${how}`).toBe('gate');
+        expect(unknownOf([asked, plain]), `${name}: ${how}`).toEqual([name]);
+        // A row that carries no such fact is a policy with no shipped number to advise at: a gate, whatever it is called. A rule object of an embedder's own may carry a built-in's name.
+        const bare = unanswered({ ruleName: name, kind: 'policy', ...flags });
+        expect(roleOf(bare, cfg()), `${name}: ${how}`).toBe('gate');
+        expect(unknownOf([bare, plain]), `${name}: ${how}`).toEqual([name]);
       }
     }
     // The same rule answering at the shipped threshold advises too: the two rows agree.
     const fired = row({ ruleName: 'cost_under_threshold', kind: 'policy', passed: false, evidence: [{ type: 'count', stat: 'cost', unit: 'usd', value: 1, threshold: 0.5, thresholdSource: 'default' }] });
     expect(roleOf(fired, cfg())).toBe('advisory');
+    // The field is read on a row that could not answer and nowhere else: an answered row is read by its evidence.
+    expect(roleOf({ ...fired, thresholdSource: 'config' }, cfg())).toBe('advisory');
     // A custom rule below gating severity advises, answered or not.
     const custom = unanswered({ ruleName: 'no_internal_draft', kind: 'policy', origin: 'custom', skipClass: 'config_invalid', configInvalid: true });
     expect(roleOf(custom, cfg())).toBe('advisory');
@@ -300,6 +315,17 @@ describe('a check that could not answer leaves the verdict unknown where its ans
     // A critical rule that could not answer was unknown under every rule set.
     const critical = [unanswered({ ruleName: 'no_pii', kind: 'detection', threw: true, critical: true }), plain];
     for (const rules of [1, 2, 3]) expect(compose(evaluation(critical), cfg({ rules })).state, `rules ${rules}`).toBe('unknown');
+    // Who asked was not read there either. No earlier release wrote `asked` on a row that could not answer; a row that carries it under an earlier number is read as that number read it.
+    for (const asked of ['config', 'call'] as const) {
+      for (const [how, flags] of STOPPED) {
+        const r = unanswered({ ruleName: 'tool_sequence', kind: 'policy', asked, ...flags });
+        for (const rules of [1, 2]) {
+          expect(unknownOf([r, plain], { rules }), `asked ${asked}, ${how}, rules ${rules}`).toEqual([]);
+          expect(compose(evaluation([r, plain]), cfg({ rules })), `asked ${asked}, ${how}, rules ${rules}`).toMatchObject({ state: 'pass', basis: 'clean' });
+        }
+        expect(unknownOf([r, plain], { rules: 3 }), `asked ${asked}, ${how}`).toEqual(['tool_sequence']);
+      }
+    }
   });
 
   it('under the earlier rules a risk failure names a class only when one is more likely than not, and is told every detection that fired', () => {
@@ -355,13 +381,76 @@ describe('a check that could not answer leaves the verdict unknown where its ans
     expect(sentence([...mixed, fired])).toBe(`A check that had to answer could not (${NAMES}). The verdict failed on other grounds; that check is still not answered. Set eval.onCriticalSkipped to "pass" to accept that risk.`);
   });
 
+  it('the sentence is of the row the layer named, not of the first row that carries the name', () => {
+    const sentence = (rows: EvalRuleResult[], over: Partial<ComposeConfig> = {}): string => {
+      const result = evaluation(rows) as EvalResult;
+      return interpretations(result, compose(result, cfg(over)), cfg(over)).find((i) => i.configKey === 'eval.onCriticalSkipped')?.text ?? '';
+    };
+    // A custom rule may carry a built-in's name. The built-in skipped for want of a cost; the custom rule of that name, critical, has a pattern that does not compile.
+    const builtIn = row({ ruleName: 'cost_under_threshold', kind: 'policy', skipped: true, skipClass: 'not_applicable', passed: false, lacked: ['cost'] });
+    const custom = unanswered({ ruleName: 'cost_under_threshold', kind: 'policy', origin: 'custom', critical: true, asked: 'call', skipClass: 'config_invalid', configInvalid: true });
+    const CRITICAL = 'A critical check was asked and could not answer (cost_under_threshold), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.';
+    for (const rules of [1, 2, 3]) {
+      expect(compose(evaluation([builtIn, custom, plain]), cfg({ rules })), `rules ${rules}`).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['cost_under_threshold'] });
+      expect(sentence([builtIn, custom, plain], { rules }), `rules ${rules}`).toBe(CRITICAL);
+    }
+    // The other way about: the row of that name that the layer named is the one that is not critical, and the sentence says why THAT one is there.
+    const stopped = unanswered({ ruleName: 'no_internal_draft', kind: 'policy', origin: 'custom', skipClass: 'config_invalid', configInvalid: true });
+    const gating = unanswered({ ruleName: 'no_internal_draft', kind: 'policy', origin: 'plugin', threw: true });
+    expect(compose(evaluation([stopped, gating, plain]), cfg()).by).toEqual(['no_internal_draft']);
+    expect(sentence([stopped, gating, plain])).toContain('(no_internal_draft, which failed while it judged this run)');
+    // Two rows of one name that the layer both named are both told, in the order they stand.
+    const asked = unanswered({ ruleName: 'no_internal_draft', kind: 'policy', origin: 'custom', critical: true, asked: 'call', skipClass: 'config_invalid', configInvalid: true });
+    expect(compose(evaluation([gating, asked, plain]), cfg()).by).toEqual(['no_internal_draft', 'no_internal_draft']);
+    expect(sentence([gating, asked, plain])).toContain('(no_internal_draft, which failed while it judged this run; no_internal_draft)');
+  });
+
+  it('two critical checks are told as critical checks always were, under every rule set', () => {
+    const rows = [unanswered({ ruleName: 'no_pii', kind: 'detection', critical: true }), unanswered({ ruleName: 'no_secrets', kind: 'detection', critical: true, threw: true }), plain];
+    for (const rules of [1, 2, 3]) {
+      const result = evaluation(rows) as EvalResult;
+      const text = interpretations(result, compose(result, cfg({ rules })), cfg({ rules })).find((i) => i.configKey === 'eval.onCriticalSkipped')?.text;
+      expect(text, `rules ${rules}`).toBe('A critical check was asked and could not answer (no_pii, no_secrets), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.');
+    }
+  });
+
+  it('where the deployment treats an unanswered check as a failure, the sentence says the verdict failed for it', () => {
+    const sentence = (rows: EvalRuleResult[], over: Partial<ComposeConfig>): string => {
+      const result = evaluation(rows) as EvalResult;
+      return interpretations(result, compose(result, cfg(over)), cfg(over)).find((i) => i.configKey === 'eval.onCriticalSkipped')?.text ?? '';
+    };
+    const critical = [unanswered({ ruleName: 'no_pii', kind: 'detection', critical: true }), plain];
+    const asked = [unanswered({ ruleName: 'cost_under_threshold', kind: 'policy', thresholdSource: 'config', asked: 'config', threw: true }), plain];
+    expect(compose(evaluation(critical), cfg({ onCriticalSkipped: 'fail' }))).toMatchObject({ state: 'fail', basis: 'critical_unknown' });
+    expect(sentence(critical, { onCriticalSkipped: 'fail' })).toBe(
+      'A critical check was asked and could not answer (no_pii), and this deployment treats that as a failure: eval.onCriticalSkipped is "fail". Set it to "unknown" to have such a verdict read as not checked, or to "pass" to accept that risk.',
+    );
+    expect(sentence(asked, { onCriticalSkipped: 'fail' })).toBe(
+      'A check that had to answer could not (cost_under_threshold, which this deployment asked for), and this deployment treats that as a failure: eval.onCriticalSkipped is "fail". Set it to "unknown" to have such a verdict read as not checked, or to "pass" to accept that risk.',
+    );
+    // A verdict given under the earlier rules keeps the sentence it was given, which called a failed verdict unknown.
+    for (const rules of [1, 2]) {
+      expect(sentence(critical, { onCriticalSkipped: 'fail', rules }), `rules ${rules}`).toBe(
+        'A critical check was asked and could not answer (no_pii), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.',
+      );
+    }
+    // Accepted by the deployment ("pass"), the verdict is what the other layers make it and this sentence is not written; the path still carries the layer and who it named.
+    expect(sentence(asked, { onCriticalSkipped: 'pass' })).toBe('');
+    expect(verdictPath(evaluation(asked), cfg({ onCriticalSkipped: 'pass' })).find((n) => n.node === 'unknown')).toEqual({ node: 'unknown', by: ['cost_under_threshold'], decided: false });
+  });
+
   it('the clause of a later layer says what the layer reads, and under the earlier rules what it read then', () => {
     const rows = [unanswered({ ruleName: 'no_tool_loop', kind: 'detection', threw: true }), unanswered({ ruleName: 'no_secrets', kind: 'detection', critical: true }), row({ ruleName: 'no_pii', kind: 'detection', passed: false, critical: true }), plain];
-    const clause = (over: Partial<ComposeConfig>): string => {
-      const result = evaluation(rows) as EvalResult;
+    const clause = (of: EvalRuleResult[], over: Partial<ComposeConfig>): string => {
+      const result = evaluation(of) as EvalResult;
       return interpretations(result, compose(result, cfg(over)), cfg(over)).find((i) => i.text.includes('is not the only layer'))?.text ?? '';
     };
-    expect(clause({})).toBe('detector_veto decided this verdict, and it is not the only layer that would have: a check whose answer would have counted could not answer (no_tool_loop, no_secrets). Clearing no_pii alone does not clear the verdict.');
-    expect(clause({ rules: 2 })).toBe('detector_veto decided this verdict, and it is not the only layer that would have: a critical check was asked and could not answer (no_secrets). Clearing no_pii alone does not clear the verdict.');
+    expect(clause(rows, {})).toBe('detector_veto decided this verdict, and it is not the only layer that would have: a check whose answer would have counted could not answer (no_tool_loop, no_secrets). Clearing no_pii alone does not clear the verdict.');
+    expect(clause(rows, { rules: 2 })).toBe('detector_veto decided this verdict, and it is not the only layer that would have: a critical check was asked and could not answer (no_secrets). Clearing no_pii alone does not clear the verdict.');
+    // Of critical rules alone the clause is the one it always was, under every rule set: the layer names nothing a verdict under the earlier rules could not have named.
+    const onlyCritical = rows.slice(1);
+    for (const rules of [1, 2, 3]) {
+      expect(clause(onlyCritical, { rules }), `rules ${rules}`).toBe('detector_veto decided this verdict, and it is not the only layer that would have: a critical check was asked and could not answer (no_secrets). Clearing no_pii alone does not clear the verdict.');
+    }
   });
 });

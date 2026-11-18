@@ -15,8 +15,8 @@
  *
  *   node --import tsx tests/fixtures/readback/make-rows-stored-by-main.mts <root of the earlier checkout> <commit>
  *
- * The committed file was made from main at bba11172, the last commit before
- * the composer's rules became 3.
+ * The committed file was made from main at 70377aac, where the composer's
+ * rules are 2.
  */
 import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -41,9 +41,11 @@ const engine = (overrides: Record<string, unknown> = {}, thresholds: Record<stri
 
 // A deployment's own detection, as eval.plugins loads one: it has no published accuracy, so the risk estimate does not weigh it.
 const pluginPath = join(here, 'acme-account-scan.mjs');
-const withPlugin = async (overrides: Record<string, unknown>) => {
+// And a deployment's own policy, which throws on a call that sends no ask.
+const policyPluginPath = join(here, 'no-refund-promise.mjs');
+const withPlugin = async (overrides: Record<string, unknown>, path: string = pluginPath) => {
   const e = engine(overrides);
-  for (const p of await loadPlugins([{ path: pluginPath, sha256: createHash('sha256').update(readFileSync(pluginPath)).digest('hex') }])) e.registerRule(p.evalType, p.rule, p.id);
+  for (const p of await loadPlugins([{ path, sha256: createHash('sha256').update(readFileSync(path)).digest('hex') }])) e.registerRule(p.evalType, p.rule, p.id);
   return e;
 };
 
@@ -83,6 +85,58 @@ const ROWS: Array<{ id: string; what: string; make: () => Promise<any> }> = [
         input: 'Summarise the quarterly report in two sentences.',
         output: 'Revenue rose four percent on the quarter, and costs were flat.',
       }),
+  },
+  // A critical rule that could not answer, in each form the earlier rules told it: these read as not checked then, and the sentence they were given is kept word for word.
+  {
+    id: 'critical-threw',
+    what: 'a rule the deployment made critical threw: given as not checked, with the sentence a critical check was told',
+    make: () => engine({ criticalRules: ['no_tool_loop'] }).evaluateAll({ input: ask, output: fixed, toolCalls: unwritable }),
+  },
+  {
+    id: 'two-critical-could-not-answer',
+    what: 'two critical rules could not answer, one that threw and an inline rule at gating severity whose pattern does not compile: the sentence joins their names',
+    make: () => engine({ criticalRules: ['no_tool_loop'] }).evaluateAll({ input: ask, output: fixed, toolCalls: unwritable }, [{ name: 'no_internal_draft', type: 'regex_no_match', severity: 'critical', config: { pattern: '(internal draft', flags: 'i' } }]),
+  },
+  {
+    id: 'critical-threw-where-that-is-a-failure',
+    what: 'the same critical rule where the deployment treats an unanswered check as a failure: given as a failure, and told it was unknown',
+    make: () => engine({ criticalRules: ['no_tool_loop'], onCriticalSkipped: 'fail' }).evaluateAll({ input: ask, output: fixed, toolCalls: unwritable }),
+  },
+  // A gate that could not answer and was not critical, three ways: the earlier rules read none of them, and each was given as a clean pass.
+  {
+    id: 'plugin-policy-threw',
+    what: "a deployment's own policy, loaded as a plugin, threw on a call that sent no ask: given as a clean pass",
+    make: async () => (await withPlugin({}, policyPluginPath)).evaluateAll({ output: 'You will get a full refund within five days, and the store opens at nine tomorrow morning.' }),
+  },
+  {
+    id: 'shipped-threshold-threw-where-defaults-gate',
+    what: 'the cost ceiling at its shipped number threw on a cost that is text, where the deployment made shipped thresholds gate: given as a clean pass',
+    make: () => engine({ defaultsGate: true }).evaluateAll({ input: 'Summarise the quarterly report in two sentences.', output: 'Revenue grew four percent on the quarter, led by the services line. Costs were flat and the margin widened by one point.', costUsd: '0.25' }),
+  },
+  {
+    id: 'custom-broken-where-defaults-gate',
+    what: 'an inline rule below gating severity whose pattern does not compile, where the deployment made defaults gate: given as a clean pass',
+    make: () =>
+      engine({ defaultsGate: true }).evaluateAll({ input: 'Summarise the quarterly report in two sentences.', output: 'Revenue grew four percent on the quarter, led by the services line. Internal draft, do not circulate.' }, [
+        { name: 'no_internal_draft', type: 'regex_no_match', config: { pattern: '(internal draft', flags: 'i' } },
+      ]),
+  },
+  // Two rules of one name in one evaluation: a custom rule may carry a built-in's name, and the built-in's row stands first.
+  {
+    id: 'critical-custom-shares-a-built-ins-name',
+    what: 'an inline rule at gating severity named cost_under_threshold, whose pattern does not compile, on a call that sent no cost: the built-in of that name skipped beside it',
+    make: () =>
+      engine().evaluateAll({ input: 'Summarise the quarterly report in two sentences.', output: 'Revenue grew four percent on the quarter, led by the services line. Costs were flat and the margin widened by one point.' }, [
+        { name: 'cost_under_threshold', type: 'regex_no_match', severity: 'critical', config: { pattern: '(over budget', flags: 'i' } },
+      ]),
+  },
+  {
+    id: 'critical-custom-shares-a-name-beside-a-veto',
+    what: 'the same under the name max_steps, in an answer that also leaks an identifier: the second form of the sentence',
+    make: () =>
+      engine().evaluateAll({ input: 'Summarise the quarterly report in two sentences.', output: 'Revenue grew four percent on the quarter. Your SSN is 536-22-8145.' }, [
+        { name: 'max_steps', type: 'regex_no_match', severity: 'critical', config: { pattern: '(too many steps', flags: 'i' } },
+      ]),
   },
 ];
 

@@ -132,8 +132,14 @@ describe('a row an earlier version judged and stored reads back as that version 
     return { verdict: read.verdict, passed: read.passed, interpretations: read.interpretations ?? [], critical_skipped: read.critical_skipped ?? [] };
   };
 
+  const stored = (id: string) => storedByMain.rows.find((row) => row.id === id)!;
+  const given = (id: string) => stored(id).read.verdict;
+  const told = (id: string): string => JSON.stringify(stored(id).read.interpretations);
+  /** The rules of a stored row that gave no answer though there was something to judge, as main wrote them. */
+  const couldNot = (id: string) => stored(id).stored.rule_results.filter((r) => r.skipped === true && (r.skipClass === 'defeated' || r.skipClass === 'config_invalid'));
+
   it('the rows are of the earlier rules, and each kind of row this change could have re-meant is among them', () => {
-    expect(storedByMain.madeFrom).toBe('bba11172');
+    expect(storedByMain.madeFrom).toBe('70377aac');
     expect(storedByMain.rows.map((row) => row.id)).toEqual([
       'risk-no-class',
       'risk-no-class-and-evidence',
@@ -142,14 +148,51 @@ describe('a row an earlier version judged and stored reads back as that version 
       'threw-with-its-threshold-set',
       'critical-threw-beside-a-veto',
       'report-only-lacking-its-input',
+      'critical-threw',
+      'two-critical-could-not-answer',
+      'critical-threw-where-that-is-a-failure',
+      'plugin-policy-threw',
+      'shipped-threshold-threw-where-defaults-gate',
+      'custom-broken-where-defaults-gate',
+      'critical-custom-shares-a-built-ins-name',
+      'critical-custom-shares-a-name-beside-a-veto',
       'risk-no-class-unstamped',
     ]);
     for (const row of storedByMain.rows) expect(row.stored.provenance?.composer?.rules ?? 1, row.id).toBeLessThan(3);
-    // The rows the earlier rules read otherwise than these do: a risk failure that names no class, and a rule that threw and takes no part.
-    const given = (id: string) => storedByMain.rows.find((row) => row.id === id)!.read.verdict;
+    // The kinds a row under the earlier rules can hold that these rules compose otherwise (the comment on COMPOSER_RULES), each as main gave it.
+    // A risk failure in which no class is more likely than not: no class was named.
     expect(given('risk-no-class')).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: [] });
+    // A rule that threw: it took no part.
     expect(given('threw')).toMatchObject({ state: 'pass', basis: 'clean' });
-    expect(storedByMain.rows.find((row) => row.id === 'threw')!.stored.rule_results.filter((r) => r.threw === true).map((r) => r.ruleName)).toContain('no_tool_loop');
+    expect(couldNot('threw').filter((r) => r.threw === true).map((r) => r.ruleName)).toContain('no_tool_loop');
+    // A gate that could not answer and was not critical, three ways: a plugin's policy, a policy at a shipped number where defaults gate, a custom rule where they do. Each was a clean pass.
+    for (const [id, name] of [
+      ['plugin-policy-threw', 'no_refund_promise'],
+      ['shipped-threshold-threw-where-defaults-gate', 'cost_under_threshold'],
+      ['custom-broken-where-defaults-gate', 'no_internal_draft'],
+    ] as const) {
+      expect(couldNot(id).map((r) => [r.ruleName, r.critical === true]), id).toEqual([[name, false]]);
+      expect(given(id), id).toMatchObject({ state: 'pass', basis: 'clean' });
+    }
+    // And the rows whose sentence the earlier rules already wrote: a critical rule that could not answer, alone, two of them, where that is a failure, and beside a veto.
+    expect(given('critical-threw')).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['no_tool_loop'] });
+    expect(told('critical-threw')).toContain('A critical check was asked and could not answer (no_tool_loop), so this verdict is unknown rather than clean.');
+    expect(told('two-critical-could-not-answer')).toContain('A critical check was asked and could not answer (no_tool_loop, no_internal_draft), so this verdict is unknown rather than clean.');
+    expect(given('critical-threw-where-that-is-a-failure')).toMatchObject({ state: 'fail', basis: 'critical_unknown', by: ['no_tool_loop'] });
+    expect(told('critical-threw-where-that-is-a-failure')).toContain('so this verdict is unknown rather than clean');
+    // Two rules of one name: the built-in of that name skipped, and the custom rule that carries it is the critical one that could not answer.
+    for (const [id, name] of [
+      ['critical-custom-shares-a-built-ins-name', 'cost_under_threshold'],
+      ['critical-custom-shares-a-name-beside-a-veto', 'max_steps'],
+    ] as const) {
+      const rows = stored(id).stored.rule_results.filter((r) => r.ruleName === name);
+      expect(rows.map((r) => [r.skipped === true, r.critical === true, r.skipClass]), id).toEqual([
+        [true, false, 'not_applicable'],
+        [true, true, 'config_invalid'],
+      ]);
+    }
+    expect(told('critical-custom-shares-a-built-ins-name')).toContain('A critical check was asked and could not answer (cost_under_threshold), so this verdict is unknown rather than clean.');
+    expect(told('critical-custom-shares-a-name-beside-a-veto')).toContain('a critical check was asked and could not answer (max_steps)');
   });
 
   for (const row of storedByMain.rows) {
@@ -172,5 +215,30 @@ describe('a row an earlier version judged and stored reads back as that version 
     expect(plugin.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss', by: ['stub'] });
     expect(JSON.stringify(plugin.interpretations)).toContain('rests on no_stub_output.');
     expect(JSON.stringify(storedByMain.rows.find((row) => row.id === 'plugin-fire-beside-a-weighed-one')!.read.interpretations)).toContain('rests on no_stub_output, acme_account_scan.');
+    // The three gates that could not answer and were not critical: each a clean pass as given, and not checked under these rules.
+    expect((await restamped('plugin-policy-threw')).verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['no_refund_promise'] });
+    expect((await restamped('shipped-threshold-threw-where-defaults-gate')).verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['cost_under_threshold'] });
+    expect((await restamped('custom-broken-where-defaults-gate')).verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['no_internal_draft'] });
+    // A critical rule that threw beside a weighed one that threw: under these rules the layer names both, and the sentence is the wider one.
+    const both = await restamped('critical-threw');
+    expect(both.verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['grounded_in_reads', 'no_tool_loop'] });
+    expect(JSON.stringify(both.interpretations)).toContain('A check that had to answer could not (grounded_in_reads, which failed while it judged this run; no_tool_loop)');
+    // Where that is a failure, these rules say so; the row as given was told it was unknown.
+    expect(JSON.stringify((await restamped('critical-threw-where-that-is-a-failure')).interpretations)).toContain('and this deployment treats that as a failure');
+  });
+
+  it('a critical rule that shares its name with a rule that skipped is told as critical, under the earlier rules and under these', async () => {
+    // The sentence is written from the rows the layer named. Looked up by name, it was written from the first row of that name, the built-in's, which had skipped for want of a cost: "which gates here", of a critical rule.
+    const CRITICAL = 'A critical check was asked and could not answer (cost_under_threshold), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to \\"pass\\" to accept that risk, or to \\"fail\\" to treat it as a failure.';
+    expect(told('critical-custom-shares-a-built-ins-name')).toContain(CRITICAL);
+    const asGiven = await readBack(stored('critical-custom-shares-a-built-ins-name').stored);
+    expect(JSON.stringify(asGiven.interpretations)).toContain(CRITICAL);
+    const under3 = structuredClone(stored('critical-custom-shares-a-built-ins-name').stored);
+    under3.id = `${under3.id}-under-rules-3`;
+    under3.provenance!.composer!.rules = 3;
+    const read = await readBack(under3);
+    expect(read.verdict).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['cost_under_threshold'] });
+    expect(JSON.stringify(read.interpretations)).toContain(CRITICAL);
+    expect(JSON.stringify(read.interpretations)).not.toContain('which gates here');
   });
 });
