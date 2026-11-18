@@ -65,7 +65,7 @@ await callTool('evaluate_with_llm_judge', {
 export IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL=0.02
 ```
 
-The cap is **pre-checked pessimistically** — Iris estimates worst-case cost (entire `max_output_tokens` billable at output rate, plus the one retry that fires if the judge's first reply is not valid JSON) and refuses the call if that would exceed the cap. You never get a surprise bill.
+The cap is **pre-checked pessimistically** — Iris estimates worst-case cost (entire `max_output_tokens` billable at output rate, plus the one retry that fires if the judge's first reply cannot be read) and refuses the call if that would exceed the cap. You never get a surprise bill.
 
 ---
 
@@ -179,7 +179,7 @@ To add a new model: edit `src/eval/llm-judge/pricing.ts`, add the row here, add 
 
 Three layers, checked in order:
 
-1. **Pre-call pessimistic estimate** — input chars ÷ 4 for tokens, full `max_output_tokens` billable, and the malformed-JSON retry (same prompt plus a short suffix, output capped at 256) priced on top. If the two-attempt worst case exceeds the cap, the call never fires.
+1. **Pre-call pessimistic estimate** — input chars ÷ 4 for tokens, full `max_output_tokens` billable, and the retry for a reply that cannot be read (same prompt plus a short suffix, output capped at 256) priced on top. If the two-attempt worst case exceeds the cap, the call never fires.
 2. **Provider-side limits** — rate limits (429) are retried once respecting `Retry-After`; a second 429 is a hard fail.
 3. **Post-call actual cost** — returned in every response as `cost_usd`, computed from provider-reported `input_tokens` + `output_tokens` × pricing table, summed across both attempts when a retry ran. Stored on the eval result so the dashboard can show it.
 
@@ -207,7 +207,7 @@ The evaluation stands and is stored; nothing is refused — you may have no othe
 | `Anthropic auth failed (401)`                | Throws `LLMJudgeError kind=auth` immediately                                    | Check `IRIS_ANTHROPIC_API_KEY` has a valid, live key                    |
 | `Anthropic rate-limited (429)`               | Retries once using `Retry-After` header; throws `LLMJudgeError kind=rate_limit` on second fail | Raise rate limit with provider or throttle caller                       |
 | `Request timed out after 60000ms`            | `LLMJudgeError kind=timeout`                                                    | Raise `timeout_ms` or pick a faster model                               |
-| `Judge response was not valid JSON`          | Retries once with stricter system prompt (smaller max_output_tokens)            | If the retry also fails, inspect `raw_response_id` to pull provider logs |
+| `Judge reply holds no JSON object`, `Judge score is not a number from 0 to 1` | Retries once with a stricter system prompt (smaller max_output_tokens); `LLMJudgeError kind=malformed_response` when the second reply is no better | Retry; if it recurs, pick another model. The message shows what stood where the object, or the score, belongs |
 | `Estimated max cost ... exceeds cap ...`     | Refuses upfront, never calls the API                                            | Raise `IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL` or shrink `max_output_tokens` |
 | `Unknown model "xyz"`                        | Throws at argument validation                                                   | Add pricing to `src/eval/llm-judge/pricing.ts` + CHANGELOG              |
 
@@ -236,8 +236,18 @@ Supply-chain minimalism. The wire format is simple, the SDKs pull in dozens of t
 **Why a pessimistic pre-check instead of letting the provider enforce?**
 Providers enforce *their* limits — usage tier, per-key quota. Iris's cap is *user intent*: "don't let an agent accidentally burn $50 on one eval because the rubric got fed the full book". A budget guard that only triggers after the money is spent is not a guard.
 
-**Why retry on malformed JSON?**
-Base rates: good frontier models emit valid JSON ~97% of the time with explicit instructions. The 3% is almost always recoverable by adding "the previous response wasn't JSON — respond with only the object". One retry costs ~$0.0003 and recovers the call; two retries is diminishing returns and risks the cost cap being hit by the retries themselves. One retry is the right spot.
+**Why retry on a reply that cannot be read?**
+Base rates: good frontier models emit valid JSON ~97% of the time with explicit instructions. The 3% is almost always recoverable by asking again for the object alone, with its score as a number. One retry costs ~$0.0003 and recovers the call; two retries is diminishing returns and risks the cost cap being hit by the retries themselves. One retry is the right spot.
+
+**What counts as malformed?**
+Two things.
+
+- **A reply that holds no JSON object.** The object is read from the reply's first opening brace to its last closing brace, so a sentence before it or a code fence around it does not make a reply malformed; a reply with no braces, or with text between them that is not JSON, does.
+- **A reply whose `score` is not a JSON number from 0 to 1.** `null`, a boolean, a number in quotes, a list and an object are not scores, and none of them is read as one. Until 0.22.0 `null` read as 0 and `true` as 1.
+
+A dimension is kept when the reply gives a number for it and left out otherwise. The model's own `passed` is recorded only when it is a boolean. A malformed first reply is asked for again once; when the second is malformed too, the call fails with `malformed_response` and gives no verdict. (A response from the provider that carries no text at all fails with the same kind, after one call.)
+
+A caller of the tool gets an error, `IRIS_PROVIDER_ERROR` with `kind: "malformed_response"`, whose message shows what stood where the object or the score belongs: the first 200 characters of a reply, the first 80 of a value. The call is charged to the day's budget (`IRIS_LLM_JUDGE_DAILY_BUDGET_USD`) at the worst case it was priced at before it was made, as every call of this tool that ends with no verdict is.
 
 **Why `eval_type='custom'` instead of a new `'llm_judge'` type?**
 Future work. Adding an `EvalType` value ripples through every storage query, filter, rule registry. The rule-results payload already carries enough provenance (`ruleName: llm_judge:<template>:<model>`) for the dashboard to filter + visualize the subset. When LLM-judge usage patterns stabilize (is it mostly RAG faithfulness? Mostly correctness on labeled datasets?), we'll graduate it to a first-class type with dedicated UI. Until then: custom bucket, provenance in rule_results, no schema ripple.
