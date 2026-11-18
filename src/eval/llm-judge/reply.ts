@@ -24,11 +24,11 @@
  */
 export function replyObject(raw: unknown): Record<string, unknown> | null {
   if (typeof raw !== 'string') return null;
-  // A model that fences its answer still gave the answer alone.
+  // A model that fences its answer still gave the answer alone: three or more backticks, with or without a language named on the opening line.
   const text = raw
     .trim()
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/```$/, '')
+    .replace(/^`{3,}[\w+-]*\s*/, '')
+    .replace(/`{3,}$/, '')
     .trim();
   let parsed: unknown;
   try {

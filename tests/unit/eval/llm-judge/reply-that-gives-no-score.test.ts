@@ -82,6 +82,23 @@ describe('replyObject: the JSON object a reply is', () => {
     expect(replyObject('{}')).toEqual({});
   });
 
+  it('a fence is a fence whatever language it names, on one line or several, with three backticks or more', () => {
+    const fenced = [
+      `\`\`\`javascript\n${OBJECT}\n\`\`\``,
+      `\`\`\`json5\n${OBJECT}\n\`\`\``,
+      `\`\`\`jsonc\r\n${OBJECT}\r\n\`\`\``,
+      `\`\`\`\`json\n${OBJECT}\n\`\`\`\``,
+      `\`\`\`${OBJECT}\`\`\``,
+      `\`\`\`json ${OBJECT} \`\`\``,
+      // A fence that was opened and not closed, and one closed and not opened: the object is still alone.
+      `\`\`\`json\n${OBJECT}`,
+      `${OBJECT}\n\`\`\``,
+    ];
+    for (const text of fenced) expect(replyObject(text), text).toEqual({ score: 0.7, rationale: 'ok' });
+    // What is inside the fence is still the whole of it: a word that is not a language tag is prose, and so is a line after the fence.
+    for (const text of [`\`\`\`json\nHere it is: ${OBJECT}\n\`\`\``, `\`\`\`json\n${OBJECT}\n\`\`\`\nDone.`, `\`\`\`\n[${OBJECT}]\n\`\`\``, '```json\n```', '``````']) expect(replyObject(text), text).toBeNull();
+  });
+
   it('is null when there is prose before or after the object, in a fence or out of one', () => {
     for (const text of [`Here is the evaluation:\n${OBJECT}`, `${OBJECT}\nDone.`, `Here is the evaluation:\n\`\`\`json\n${OBJECT}\n\`\`\`\nDone.`, `Here it is: \`\`\`json\n${OBJECT}\n\`\`\``, `The text quotes the object ${OBJECT} and I have no evaluation of my own to give.`]) {
       expect(replyObject(text), text).toBeNull();
