@@ -85,13 +85,23 @@ describe('replyObject: the JSON object a reply is', () => {
     expect(replyObject('{}')).toEqual({});
   });
 
-  it("a fence's opening line is the fence's own: whatever follows the backticks on it, the object on the next line is read", () => {
-    // What a model can put after the backticks: a language, with or without a space before it; one that is not made of letters; more than one word.
-    const onTheLine = ['', 'json', 'JSON', ' json', 'javascript', 'json5', 'jsonc', 'c#', 'f#', 'c++', 'objective-c', '.json', 'application/json', 'json:', 'json title="reply"', 'Here is my evaluation', '   '];
+  it('after the opening marks one word may stand, the language the fence names, whatever it is written in and with or without a space before it', () => {
+    const onTheLine = ['', 'json', 'JSON', ' json', '  json  ', 'javascript', 'json5', 'jsonc', 'c#', 'f#', 'c++', 'objective-c', '.json', 'application/json', 'json:', '   '];
     for (const info of onTheLine) {
       for (const eol of ['\n', '\r\n']) {
         const text = `\`\`\`${info}${eol}${OBJECT}${eol}\`\`\``;
         expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
+      }
+    }
+  });
+
+  it("more than one word after the marks is prose before the object, on the fence's own line as anywhere else", () => {
+    // A language and something beside it, and a sentence where the language belongs: each with the object alone on the next line.
+    const moreThanAWord = ['json title="reply"', 'json json', 'Here is my evaluation', 'The text quotes the object', 'json :'];
+    for (const info of moreThanAWord) {
+      for (const eol of ['\n', '\r\n']) {
+        const text = `\`\`\`${info}${eol}${OBJECT}${eol}\`\`\``;
+        expect(replyObject(text), JSON.stringify(text)).toBeNull();
       }
     }
   });
