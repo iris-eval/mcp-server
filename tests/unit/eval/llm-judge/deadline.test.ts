@@ -122,8 +122,18 @@ describe('a judge call answers inside its deadline', () => {
     for (const body of ['null', '[]', '"a judgment"', '42']) {
       global.fetch = vi.fn(async () => new Response(body, { status: 200 })) as typeof fetch;
       const r = await settle(callLLMJudge({ ...REQUEST }), 10);
-      expect(r.error, body).toMatchObject({ kind: 'malformed_response' });
+      expect(r.error, body).toMatchObject({ kind: 'malformed_response', message: 'Anthropic response was not a JSON object' });
     }
+    global.fetch = vi.fn(async () => new Response('{"id":', { status: 200 })) as typeof fetch;
+    expect((await settle(callLLMJudge({ ...REQUEST }), 10)).error).toMatchObject({ kind: 'malformed_response', message: 'Anthropic response was not valid JSON' });
+  });
+
+  it('a deadline already past makes no request: the call is a timeout at once', async () => {
+    global.fetch = vi.fn(async () => new Response(JUDGMENT, { status: 200 })) as typeof fetch;
+    const r = await settle(callLLMJudge({ ...REQUEST, timeoutMs: 1_000, deadline: Date.now() - 1 }), 10);
+    expect(r.error).toMatchObject({ kind: 'timeout', message: 'Anthropic did not answer within 1000 ms' });
+    expect(r.at).toBe(0);
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it("the evaluator's second request, for a reply it could not read, shares the first one's deadline", async () => {
@@ -141,7 +151,8 @@ describe('a judge call answers inside its deadline', () => {
       evaluateWithLLMJudge({ template: 'accuracy', output: 'The sky is blue.', provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k', timeoutMs: 1_000 }),
       2_000,
     );
-    expect(r.error).toMatchObject({ kind: 'timeout' });
+    // The time named is the call's, not what was left of it for the second request.
+    expect(r.error).toMatchObject({ kind: 'timeout', message: 'Anthropic did not answer within 1000 ms' });
     // One deadline: the second request had what the first left of the thousand milliseconds.
     expect(r.at).toBe(1_000);
     expect(n).toBe(2);
