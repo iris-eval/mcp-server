@@ -23,9 +23,8 @@ afterEach(() => {
 const raw = (store: SqliteAdapter) => (store as unknown as { db: { prepare(sql: string): { all(...p: unknown[]): Array<Record<string, unknown>>; run(...p: unknown[]): unknown }; exec(sql: string): void } }).db;
 
 describe('migration 023 — the runs of a case', () => {
-  it('is the last known migration, after 022, with the floor 015 already holds', () => {
-    expect(KNOWN_MIGRATION_IDS[KNOWN_MIGRATION_IDS.length - 1]).toBe('023-case-runs');
-    expect(KNOWN_MIGRATION_IDS[KNOWN_MIGRATION_IDS.length - 2]).toBe('022-trace-capture');
+  it('comes after 022, with the floor 015 already holds', () => {
+    expect(KNOWN_MIGRATION_IDS.indexOf('023-case-runs')).toBe(KNOWN_MIGRATION_IDS.indexOf('022-trace-capture') + 1);
     expect(COMPAT_FLOORS.get('023-case-runs')).toBe('0.20.0');
   });
 

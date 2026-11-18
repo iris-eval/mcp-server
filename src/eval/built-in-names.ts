@@ -20,12 +20,6 @@ export function isBuiltInRuleName(name: string): boolean {
   return names.has(name);
 }
 
-/** The names of the rules Iris ships, sorted. */
-export function builtInRuleNames(): string[] {
-  names ??= new Set(builtInRules().map((r) => r.name));
-  return [...names].sort();
-}
-
 /** What a door answers when custom rules come in under the names of rules Iris ships. */
 export function builtInNameRefusal(taken: readonly string[]): string {
   const quoted = taken.map((n) => `"${n}"`).join(', ');
@@ -38,7 +32,7 @@ export function builtInNameRefusal(taken: readonly string[]): string {
 export function builtInNameKept(rule: { id: string; name: string }): string {
   return (
     `The deployed custom rule "${rule.name}" (${rule.id}) carries the name of a rule Iris ships. It keeps running, and the two share one name in every result. ` +
-    `Deploy it again under a name of its own and delete this one (delete_rule with id "${rule.id}"); a label on its fires cannot be written, so that none weighs the rule Iris ships.`
+    `Deploy it again under a name of its own and delete this one (delete_rule with rule_id "${rule.id}"); a label on its fires cannot be written, so that none weighs the rule Iris ships.`
   );
 }
 

@@ -20,6 +20,7 @@
  *     its own data.
  */
 import { openDriver, isBusyError, type Driver, type DriverName } from './driver.js';
+import { storedRowOriginSql } from './label-rows.js';
 import { resolveCaseKey } from '../eval/case-key.js';
 import { caseRunOf } from '../eval/case-history.js';
 
@@ -3091,16 +3092,17 @@ export class SqliteAdapter implements IStorageAdapter {
    * current judgement, and counting both would weigh one fire twice in the
    * precision every verdict then reads.
    */
-  async insertVerdictLabel(tenantId: TenantId, label: Omit<VerdictLabel, 'labelledAt'> & { labelledAt?: string }): Promise<VerdictLabel> {
+  async insertVerdictLabel(tenantId: TenantId, label: Omit<VerdictLabel, 'labelledAt'> & { labelledAt?: string; rowOrigin?: string | null }): Promise<VerdictLabel> {
     assertTenant(tenantId);
     // After any TRUNCATE in flight (insertTraces says why).
     while (this.checkpointer?.truncateInProgress) await this.checkpointer.whenTruncated();
     const labelledAt = label.labelledAt ?? new Date().toISOString();
     const write = this.db.transaction(() => {
       this.db.prepare('DELETE FROM verdict_labels WHERE tenant_id = ? AND eval_id = ? AND rule_name IS ?').run(tenantId, label.evalId, label.ruleName);
+      // Whose row the label stands on, kept with it (migration 024): the tally reads it after the evaluation is swept.
       this.db
-        .prepare('INSERT INTO verdict_labels (id, tenant_id, eval_id, rule_name, label, note, labelled_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run(label.id, tenantId, label.evalId, label.ruleName, label.label, label.note, labelledAt);
+        .prepare('INSERT INTO verdict_labels (id, tenant_id, eval_id, rule_name, label, note, labelled_at, row_origin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(label.id, tenantId, label.evalId, label.ruleName, label.label, label.note, labelledAt, label.rowOrigin ?? null);
     });
     write();
     this.labelStamp = undefined;
@@ -3119,11 +3121,14 @@ export class SqliteAdapter implements IStorageAdapter {
     assertTenant(tenantId);
     /*
      * A label was written on the first row of its name in the evaluation
-     * (routes/labels.ts). Under a name in `shipped`, that row is read back,
-     * and a label whose row was a custom rule's is left out of the tally: it
-     * was written on the fire of a custom rule that carried the name of a
-     * rule Iris ships, and would weigh that rule's fires. A row stored
-     * without its origin is counted, as it always was.
+     * (routes/labels.ts). Under a name in `shipped`, a label whose row was a
+     * custom rule's is left out of the tally: it was written on the fire of
+     * a custom rule that carried the name of a rule Iris ships, and would
+     * weigh that rule's fires. Whose row it was is kept on the label
+     * (`row_origin`, migration 024), so it holds after the retention sweep
+     * deletes the evaluation; a label that does not say (one an earlier
+     * release wrote after the upgrade) is read from the stored evaluation
+     * while it is held (label-rows.ts), and is counted where neither says.
      */
     const rows = this.db
       .prepare(
@@ -3132,13 +3137,7 @@ export class SqliteAdapter implements IStorageAdapter {
           WHERE l.tenant_id = ? AND l.rule_name IS NOT NULL
             AND NOT (
               l.rule_name IN (SELECT value FROM json_each(?))
-              AND COALESCE((
-                SELECT json_extract(j.value, '$.origin')
-                  FROM eval_results e, json_each(CASE WHEN json_valid(e.rule_results) THEN e.rule_results ELSE '[]' END) j
-                 WHERE e.id = l.eval_id AND e.tenant_id = l.tenant_id AND json_extract(j.value, '$.ruleName') = l.rule_name
-                 ORDER BY CAST(j.key AS INTEGER)
-                 LIMIT 1
-              ), '') = 'custom'
+              AND COALESCE(l.row_origin, (${storedRowOriginSql('l')}), '') = 'custom'
             )
           GROUP BY l.rule_name
           ORDER BY l.rule_name`,

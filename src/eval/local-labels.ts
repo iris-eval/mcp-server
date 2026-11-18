@@ -9,7 +9,7 @@ import type { TenantId } from '../types/tenant.js';
 import type { EvalEngine } from './engine.js';
 import { publishedAccuracyFor } from './accuracy.js';
 import { builtInRules } from './criticality.js';
-import { builtInRuleNames } from './built-in-names.js';
+import { builtInRuleNames } from './criticality.js';
 import { sensitivity } from './stats.js';
 import { LOCAL_LABEL_WINDOW, estimatedPrior, localPrecision, samplingSuggestion, type EstimatedPrior, type LocalPrecision, type SamplingSuggestion } from './labels.js';
 

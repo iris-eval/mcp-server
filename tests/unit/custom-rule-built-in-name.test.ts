@@ -23,8 +23,8 @@ import { defaultConfig } from '../../src/config/defaults.js';
 import { createCustomRuleStore, type CustomRuleStore } from '../../src/custom-rule-store.js';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { EvalEngine } from '../../src/eval/engine.js';
-import { builtInRules } from '../../src/eval/criticality.js';
-import { builtInNameKept, builtInNameNotEnabled, builtInNameRefusal, builtInRuleNames, isBuiltInRuleName } from '../../src/eval/built-in-names.js';
+import { builtInRuleNames, builtInRules } from '../../src/eval/criticality.js';
+import { builtInNameKept, builtInNameNotEnabled, builtInNameRefusal, isBuiltInRuleName } from '../../src/eval/built-in-names.js';
 import { refreshLocalLabels } from '../../src/eval/local-labels.js';
 import { keepInStep } from '../../src/eval/shared-state.js';
 import { registerRuleRoutes } from '../../src/dashboard/routes/rules.js';
@@ -34,6 +34,8 @@ import { runIngest } from '../../src/cli/ingest.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
 import type { CustomRuleDefinition } from '../../src/types/eval.js';
 import { textOf } from '../helpers/mcp-results.js';
+import { up } from '../../src/storage/migrations/024-label-row-origin.js';
+import { toolGuide } from '../../src/tools/guide.js';
 
 const dirs: string[] = [];
 const closers: Array<() => Promise<unknown>> = [];
@@ -59,7 +61,7 @@ async function sqlite(): Promise<SqliteAdapter> {
 }
 
 /** A server built as Iris builds it, asked by a client that has listed the tools. */
-async function server(): Promise<{ client: Client; rules: CustomRuleStore }> {
+async function server(): Promise<{ client: Client; rules: CustomRuleStore; storage: SqliteAdapter }> {
   const storage = await sqlite();
   const rules = ruleStore();
   const { mcpServer } = createIrisServer(defaultConfig, storage, rules);
@@ -69,8 +71,11 @@ async function server(): Promise<{ client: Client; rules: CustomRuleStore }> {
   await client.connect(clientTransport);
   closers.unshift(() => client.close());
   await client.listTools();
-  return { client, rules };
+  return { client, rules, storage };
 }
+
+/** How many evaluations the store holds. */
+const storedCount = async (storage: SqliteAdapter): Promise<number> => (await storage.queryEvalResults(LOCAL_TENANT, { limit: 100 })).results.length;
 
 /** The envelope of an error a tool answered. */
 function envelope(result: unknown): { code: string; message: string; field?: string; recovery: string[] } {
@@ -119,9 +124,9 @@ describe('each door a custom rule comes in by refuses the name of a rule Iris sh
   it('deploy_rule: an error naming the rule, and nothing deployed', async () => {
     const { client, rules } = await server();
     const refused = envelope(await client.callTool({ name: 'deploy_rule', arguments: { name: 'no_pii', eval_type: 'custom', definition: FIRES_ON_A_STUB } }));
-    expect(refused).toMatchObject({ code: 'IRIS_INVALID_ARGUMENT', field: 'name' });
+    expect(refused).toMatchObject({ code: 'IRIS_INVALID_ARGUMENT', field: 'name', retryable: false });
     expect(refused.message).toBe(`${builtInNameRefusal(['no_pii'])} Nothing was deployed.`);
-    expect(refused.recovery.join(' ')).toContain('list_rules lists the rules Iris ships under built_in');
+    expect(refused.recovery).toEqual(['Deploy the rule under a name of its own: list_rules lists the rules Iris ships under built_in.']);
     expect(rules.list(LOCAL_TENANT)).toEqual([]);
     // A name of its own is deployed as before.
     const deployed = await client.callTool({ name: 'deploy_rule', arguments: { name: 'no_stub_text', eval_type: 'custom', definition: FIRES_ON_A_STUB } });
@@ -129,28 +134,32 @@ describe('each door a custom rule comes in by refuses the name of a rule Iris sh
     expect(rules.list(LOCAL_TENANT).map((r) => r.name)).toEqual(['no_stub_text']);
   });
 
-  it('deploy_rule refuses it with replace: true as well, where a deployed rule of that name would have been replaced', async () => {
+  it('deploy_rule refuses it with replace: true as well, and a rule stored under that name by an earlier version is kept, not replaced', async () => {
     const { client, rules } = await server();
+    const earlier = rules.deploy(LOCAL_TENANT, { name: 'max_steps', evalType: 'cost', definition: { name: 'max_steps', ...FIRES_ON_A_STUB } });
     const refused = envelope(await client.callTool({ name: 'deploy_rule', arguments: { name: 'max_steps', eval_type: 'cost', definition: FIRES_ON_A_STUB, replace: true } }));
     expect(refused).toMatchObject({ code: 'IRIS_INVALID_ARGUMENT', field: 'name' });
-    expect(rules.list(LOCAL_TENANT)).toEqual([]);
+    expect(rules.list(LOCAL_TENANT).map((r) => r.id)).toEqual([earlier.id]);
   });
 
-  it("evaluate_output's inline rules: an error naming each, and nothing evaluated", async () => {
-    const { client } = await server();
+  it("evaluate_output's inline rules: an error naming each, and nothing evaluated or stored", async () => {
+    const { client, storage } = await server();
     const refused = envelope(
       await client.callTool({
         name: 'evaluate_output',
         arguments: { ...STUB, custom_rules: [{ name: 'answers_the_ask', ...FIRES_ON_A_STUB }, { name: 'no_stub_text', ...FIRES_ON_A_STUB }, { name: 'no_pii', ...FIRES_ON_A_STUB }, { name: 'no_pii', ...FIRES_ON_A_STUB }] },
       }),
     );
-    expect(refused).toMatchObject({ code: 'IRIS_INVALID_ARGUMENT', field: 'custom_rules' });
+    expect(refused).toMatchObject({ code: 'IRIS_INVALID_ARGUMENT', field: 'custom_rules', retryable: false });
     expect(refused.message).toBe(`${builtInNameRefusal(['answers_the_ask', 'no_pii'])} Nothing was evaluated.`);
+    expect(refused.recovery).toEqual(['Send each custom_rules entry under a name of its own: list_rules lists the rules Iris ships under built_in.']);
+    expect(await storedCount(storage)).toBe(0);
     // Inline rules of names of their own are evaluated as before.
     const answered = await client.callTool({ name: 'evaluate_output', arguments: { ...STUB, custom_rules: [{ name: 'no_stub_text', ...FIRES_ON_A_STUB }] } });
     expect((answered as { isError?: boolean }).isError).toBeFalsy();
     const rows = (JSON.parse(textOf(answered as Parameters<typeof textOf>[0])) as { rule_results: Array<{ ruleName: string; passed: boolean; origin?: string }> }).rule_results;
     expect(rows.filter((r) => r.ruleName === 'no_stub_text')).toEqual([expect.objectContaining({ passed: false, origin: 'custom' })]);
+    expect(await storedCount(storage)).toBe(1);
   });
 
   it('the rules API and its preview: 409, the refusal, and nothing deployed', async () => {
@@ -171,27 +180,37 @@ describe('each door a custom rule comes in by refuses the name of a rule Iris sh
     // A preview with no name, and a deploy under a name of its own, go through.
     expect((await call(app, 'POST', '/api/v1/rules/custom/preview', { definition: FIRES_ON_A_STUB })).status).toBe(200);
     expect((await call(app, 'POST', '/api/v1/rules/custom', { name: 'no_loop_text', evalType: 'cost', definition: FIRES_ON_A_STUB })).status).toBe(201);
+    // With replace: true over a rule an earlier version stored under the name: refused, and the stored rule kept.
+    const earlier = rules.deploy(LOCAL_TENANT, { name: 'max_steps', evalType: 'cost', definition: { name: 'max_steps', ...FIRES_ON_A_STUB } });
+    expect((await call(app, 'POST', '/api/v1/rules/custom', { name: 'max_steps', evalType: 'cost', definition: FIRES_ON_A_STUB, replace: true })).status).toBe(409);
+    expect(rules.list(LOCAL_TENANT).filter((r) => r.name === 'max_steps').map((r) => r.id)).toEqual([earlier.id]);
   });
 });
 
 describe('a rule stored under such a name before the doors refused it keeps running, and the server says so', () => {
-  it('the server says so once when it starts, naming the rule, and says nothing of a rule of a name of its own', async () => {
+  it('the server says so once when it starts, naming the rule that runs, and says nothing of a rule of a name of its own or of one that is paused', async () => {
     const rules = ruleStore();
     const kept = rules.deploy(LOCAL_TENANT, { name: 'no_pii', evalType: 'safety', definition: { name: 'no_pii', ...FIRES_ON_A_STUB } });
     rules.deploy(LOCAL_TENANT, { name: 'no_stub_text', evalType: 'custom', definition: { name: 'no_stub_text', ...FIRES_ON_A_STUB } });
+    const paused = rules.deploy(LOCAL_TENANT, { name: 'max_steps', evalType: 'cost', definition: { name: 'max_steps', ...FIRES_ON_A_STUB } });
+    rules.setEnabled(LOCAL_TENANT, paused.id, false);
     const said: string[] = [];
     createIrisServer(defaultConfig, await sqlite(), rules, { warn: (line) => said.push(line) });
     expect(said.filter((line) => line.includes('carries the name of a rule Iris ships'))).toEqual([builtInNameKept(kept)]);
   });
 
-  it('iris-eval ingest says so too, on its own stream', async () => {
+  it('iris-eval ingest says so too, on its own stream: once, of the rule that runs, and of no paused one', async () => {
     const saved = { home: process.env.IRIS_HOME, db: process.env.IRIS_DB_PATH };
     const home = mkdtempSync(join(tmpdir(), 'iris-built-in-name-ingest-'));
     dirs.push(home);
     process.env.IRIS_HOME = home;
     process.env.IRIS_DB_PATH = join(home, 'iris.db');
     try {
-      const kept = createCustomRuleStore().deploy(LOCAL_TENANT, { name: 'no_stub_output', evalType: 'completeness', definition: { name: 'no_stub_output', ...FIRES_ON_A_STUB } });
+      const store = createCustomRuleStore();
+      const kept = store.deploy(LOCAL_TENANT, { name: 'no_stub_output', evalType: 'completeness', definition: { name: 'no_stub_output', ...FIRES_ON_A_STUB } });
+      store.deploy(LOCAL_TENANT, { name: 'no_stub_text', evalType: 'custom', definition: { name: 'no_stub_text', ...FIRES_ON_A_STUB } });
+      const paused = store.deploy(LOCAL_TENANT, { name: 'max_steps', evalType: 'cost', definition: { name: 'max_steps', ...FIRES_ON_A_STUB } });
+      store.setEnabled(LOCAL_TENANT, paused.id, false);
       let err = '';
       const sink = (append: (s: string) => void): Writable => new Writable({ write: (chunk, _enc, cb) => (append(chunk.toString()), cb()) });
       const code = await runIngest({
@@ -203,7 +222,8 @@ describe('a rule stored under such a name before the doors refused it keeps runn
         stderr: sink((s) => (err += s)),
       });
       expect(code).toBe(0);
-      expect(err).toContain(builtInNameKept(kept));
+      // Once, and of that rule alone.
+      expect(err.split(/\r?\n/).filter((line) => line.includes('carries the name of a rule Iris ships'))).toEqual([builtInNameKept(kept)]);
     } finally {
       if (saved.home === undefined) delete process.env.IRIS_HOME;
       else process.env.IRIS_HOME = saved.home;
@@ -221,9 +241,10 @@ describe('a rule stored under such a name before the doors refused it keeps runn
     const rows = (await engine.evaluateAll({ ...STUB })).rule_results.filter((r) => r.ruleName === 'no_stub_output');
     expect(rows.map((r) => r.origin ?? 'built-in').sort()).toEqual(['built-in', 'custom']);
     expect(rows.every((r) => r.passed === false)).toBe(true);
-    const line = builtInNameKept(stored);
-    expect(line).toContain(`"no_stub_output" (${stored.id}) carries the name of a rule Iris ships. It keeps running`);
-    expect(line).toContain(`delete_rule with id "${stored.id}"`);
+    expect(builtInNameKept(stored)).toBe(
+      `The deployed custom rule "no_stub_output" (${stored.id}) carries the name of a rule Iris ships. It keeps running, and the two share one name in every result. ` +
+        `Deploy it again under a name of its own and delete this one (delete_rule with rule_id "${stored.id}"); a label on its fires cannot be written, so that none weighs the rule Iris ships.`,
+    );
   });
 
   it('once paused, delete_rule does not turn it back on; it pauses, and turns on a rule of a name of its own, as before', async () => {
@@ -292,7 +313,7 @@ describe('a label under the name of a rule Iris ships is that rule\'s', () => {
     const evalId = await customRowOnly(store, engine);
     const refused = await call(app, 'POST', '/api/v1/labels', { eval_id: evalId, rule: 'no_stub_output', label: 'wrong' });
     expect(refused.status).toBe(400);
-    expect(refused.body.error).toBe('no_stub_output on this evaluation is a custom rule that carries the name of a rule Iris ships, and a label under that name weighs the rule Iris ships, so it cannot be labelled. Deploy the custom rule under a name of its own.');
+    expect(refused.body.error).toBe("The first row named no_stub_output on this evaluation is a custom rule's, and a label under the name of a rule Iris ships weighs that rule, so it cannot be written here.");
     expect(await store.getLabelsForEval(LOCAL_TENANT, evalId)).toEqual([]);
   });
 
@@ -325,5 +346,151 @@ describe('a label under the name of a rule Iris ships is that rule\'s', () => {
     const template = await engine.evaluateAll({ ...STUB });
     expect(template.verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss' });
     expect(template.rule_results.find((r) => r.ruleName === 'no_stub_output')?.uncertainty?.basis).toBe('published_accuracy');
+  });
+});
+
+describe("whose row a label stands on is kept with the label, and read where the evaluation is gone", () => {
+  const raw = (store: SqliteAdapter) => (store as unknown as { db: { prepare(sql: string): { run(...a: unknown[]): unknown; get(...a: unknown[]): Record<string, unknown> | undefined; all(...a: unknown[]): Array<Record<string, unknown>> }; exec(sql: string): void } }).db;
+  async function labels(): Promise<{ store: SqliteAdapter; engine: EvalEngine; app: express.Express }> {
+    const store = await sqlite();
+    const engine = new EvalEngine(0.7, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+    const app = express();
+    app.use(express.json());
+    app.use(createTenantMiddleware());
+    const router = express.Router();
+    registerLabelRoutes(router, store, { evalEngine: engine });
+    app.use('/api/v1', router);
+    return { store, engine, app };
+  }
+  /** A stored evaluation whose first row named no_stub_output is a custom rule's fire, as an earlier version stored it. */
+  async function customRow(store: SqliteAdapter, engine: EvalEngine, rewrite?: (rows: Array<Record<string, unknown>>) => unknown): Promise<string> {
+    const result = await engine.evaluate('custom', { ...STUB }, [{ name: 'no_stub_output', ...FIRES_ON_A_STUB }]);
+    await store.insertEvalResult(LOCAL_TENANT, result);
+    if (rewrite) raw(store).prepare('UPDATE eval_results SET rule_results = ? WHERE id = ?').run(JSON.stringify(rewrite(result.rule_results as unknown as Array<Record<string, unknown>>)), result.id);
+    return result.id;
+  }
+  const deleteEvaluations = (store: SqliteAdapter): void => void raw(store).prepare("UPDATE eval_results SET created_at = '2020-01-01T00:00:00.000Z'").run();
+
+  it("a label written through the route keeps whose row it was, and the tally reads that after the retention sweep deletes the evaluation", async () => {
+    const { store, engine, app } = await labels();
+    const both = await engine.evaluateAll({ ...STUB }, [{ name: 'no_stub_text', ...FIRES_ON_A_STUB }]);
+    await store.insertEvalResult(LOCAL_TENANT, both);
+    expect((await call(app, 'POST', '/api/v1/labels', { eval_id: both.id, rule: 'no_stub_output', label: 'right' })).status).toBe(201);
+    expect((await call(app, 'POST', '/api/v1/labels', { eval_id: both.id, rule: 'no_stub_text', label: 'wrong' })).status).toBe(201);
+    expect(raw(store).prepare('SELECT rule_name, row_origin FROM verdict_labels ORDER BY rule_name').all()).toEqual([
+      { rule_name: 'no_stub_output', row_origin: null },
+      { rule_name: 'no_stub_text', row_origin: 'custom' },
+    ]);
+    deleteEvaluations(store);
+    expect(await store.deleteEvalResultsOlderThan(LOCAL_TENANT, 30)).toBe(1);
+    expect(await store.labelTallies(LOCAL_TENANT, builtInRuleNames())).toEqual([
+      { ruleName: 'no_stub_output', right: 1, wrong: 0 },
+      { ruleName: 'no_stub_text', right: 0, wrong: 1 },
+    ]);
+  });
+
+  it('labels an earlier version wrote on a custom rule\'s fires are given their row at upgrade, and stay out of the tally after the sweep and after a purge', async () => {
+    const { store, engine } = await labels();
+    for (let i = 0; i < 20; i += 1) {
+      const evalId = await customRow(store, engine);
+      raw(store).prepare("INSERT INTO verdict_labels (id, tenant_id, eval_id, rule_name, label, note, labelled_at) VALUES (?, 'local', ?, 'no_stub_output', 'wrong', NULL, datetime('now'))").run(`label-${i}`, evalId);
+    }
+    // As an earlier version left them: no row kept with the label. The migration fills it once, from each stored evaluation.
+    raw(store).prepare('UPDATE verdict_labels SET row_origin = NULL').run();
+    up(raw(store) as never);
+    expect(raw(store).prepare("SELECT COUNT(*) AS n FROM verdict_labels WHERE row_origin = 'custom'").get()).toEqual({ n: 20 });
+    deleteEvaluations(store);
+    expect(await store.deleteEvalResultsOlderThan(LOCAL_TENANT, 30)).toBe(20);
+    expect(await store.labelTallies(LOCAL_TENANT, builtInRuleNames())).toEqual([]);
+    await refreshLocalLabels(engine, store, LOCAL_TENANT);
+    expect((await engine.evaluateAll({ ...STUB })).verdict).toMatchObject({ state: 'fail', basis: 'risk_over_loss' });
+    // A purge keeps labels too; they stay out.
+    await store.purge(LOCAL_TENANT);
+    expect(await store.labelTallies(LOCAL_TENANT, builtInRuleNames())).toEqual([]);
+  });
+
+  it("a label that keeps no row (one a release older than this one wrote after the upgrade) is read from its evaluation while it is held, and counted once it is gone", async () => {
+    const { store, engine } = await labels();
+    const evalId = await customRow(store, engine);
+    raw(store).prepare("INSERT INTO verdict_labels (id, tenant_id, eval_id, rule_name, label, note, labelled_at) VALUES ('older', 'local', ?, 'no_stub_output', 'wrong', NULL, datetime('now'))").run(evalId);
+    expect(await store.labelTallies(LOCAL_TENANT, builtInRuleNames())).toEqual([]);
+    deleteEvaluations(store);
+    await store.deleteEvalResultsOlderThan(LOCAL_TENANT, 30);
+    expect(await store.labelTallies(LOCAL_TENANT, builtInRuleNames())).toEqual([{ ruleName: 'no_stub_output', right: 0, wrong: 1 }]);
+  });
+
+  it("a custom rule's row stored before rows carried their origin is told by the deployed rule's id: the route refuses the label, and the tally leaves out one written before", async () => {
+    const { store, engine, app } = await labels();
+    const older = (rows: Array<Record<string, unknown>>) => rows.map((r) => (r.ruleName === 'no_stub_output' ? { ...Object.fromEntries(Object.entries(r).filter(([k]) => k !== 'origin')), ruleId: 'rule-0a1b2c' } : r));
+    const evalId = await customRow(store, engine, older);
+    const refused = await call(app, 'POST', '/api/v1/labels', { eval_id: evalId, rule: 'no_stub_output', label: 'wrong' });
+    expect(refused.status).toBe(400);
+    raw(store).prepare("INSERT INTO verdict_labels (id, tenant_id, eval_id, rule_name, label, note, labelled_at) VALUES ('before', 'local', ?, 'no_stub_output', 'wrong', NULL, datetime('now'))").run(evalId);
+    expect(await store.labelTallies(LOCAL_TENANT, builtInRuleNames())).toEqual([]);
+  });
+
+  it("a quiet custom row under a shipped name is told it is a custom rule's, not that it did not fire; and where the rule Iris ships ran after it, the sentence says that fire cannot be labelled here", async () => {
+    const { store, engine, app } = await labels();
+    const quiet = await engine.evaluate('custom', { output: 'All done.' }, [{ name: 'no_stub_output', ...FIRES_ON_A_STUB }]);
+    await store.insertEvalResult(LOCAL_TENANT, quiet);
+    expect((await call(app, 'POST', '/api/v1/labels', { eval_id: quiet.id, rule: 'no_stub_output', label: 'right' })).body.error).toBe(
+      "The first row named no_stub_output on this evaluation is a custom rule's, and a label under the name of a rule Iris ships weighs that rule, so it cannot be written here.",
+    );
+    const rules = ruleStore();
+    rules.deploy(LOCAL_TENANT, { name: 'no_stub_output', evalType: 'completeness', definition: { name: 'no_stub_output', ...FIRES_ON_A_STUB } });
+    const first = new EvalEngine(0.7, defaultConfig.eval.ruleThresholds, defaultConfig.eval);
+    keepInStep(first, rules, store, LOCAL_TENANT)();
+    const ranBoth = await first.evaluateAll({ ...STUB });
+    expect(ranBoth.rule_results.filter((r) => r.ruleName === 'no_stub_output').map((r) => r.origin ?? 'built-in')).toEqual(['custom', 'built-in']);
+    await store.insertEvalResult(LOCAL_TENANT, ranBoth);
+    expect((await call(app, 'POST', '/api/v1/labels', { eval_id: ranBoth.id, rule: 'no_stub_output', label: 'right' })).body.error).toBe(
+      "The first row named no_stub_output on this evaluation is a custom rule's, and a label under the name of a rule Iris ships weighs that rule, so it cannot be written here. The rule Iris ships ran on this evaluation as well, after the custom rule, and its fire cannot be labelled on this evaluation.",
+    );
+  });
+
+  it('the tally reads rows by their place, takes any stored shape without failing, and counts a label it cannot place', async () => {
+    const { store, engine } = await labels();
+    const shipped = { ruleName: 'no_stub_output', passed: false, score: 0, message: 'fired' };
+    const custom = { ...shipped, origin: 'custom' };
+    const filler = (n: number) => Array.from({ length: n }, (_, i) => ({ ruleName: `r${i}`, passed: true, score: 1, message: 'ok' }));
+    const shapes: Array<[string, unknown, number]> = [
+      // The rule Iris ships at place 9 and a custom row at place 10: place 9 comes first.
+      ['shipped at 9, custom at 10', [...filler(9), shipped, custom], 1],
+      ['custom at 9, shipped at 10', [...filler(9), custom, shipped], 0],
+      ['not JSON', 'not json', 1],
+      ['a JSON object, not a list', { no_stub_output: custom }, 1],
+      ['a list with a string before the custom row', ['a string', custom], 0],
+      // A row named by `rule`, the earliest releases' key, is read by that name, as the route reads it.
+      ['a custom row named by rule', [{ rule: 'no_stub_output', passed: false, score: 0, message: 'fired', origin: 'custom' }], 0],
+    ];
+    for (const [i, [, rows]] of shapes.entries()) {
+      const evalId = await customRow(store, engine);
+      raw(store).prepare('UPDATE eval_results SET rule_results = ? WHERE id = ?').run(typeof rows === 'string' ? rows : JSON.stringify(rows), evalId);
+      raw(store).prepare("INSERT INTO verdict_labels (id, tenant_id, eval_id, rule_name, label, note, labelled_at) VALUES (?, 'local', ?, 'no_stub_output', 'wrong', NULL, datetime('now'))").run(`shape-${i}`, evalId);
+    }
+    const counted = shapes.reduce((n, [, , c]) => n + c, 0);
+    expect(await store.labelTallies(LOCAL_TENANT, builtInRuleNames())).toEqual([{ ruleName: 'no_stub_output', right: 0, wrong: counted }]);
+  });
+});
+
+describe('the long form of the tools says the same', () => {
+  it('deploy_rule, delete_rule and evaluate_output name the refusal', () => {
+    const guide = toolGuide();
+    expect(guide.deploy_rule.errors).toContain('IRIS_INVALID_ARGUMENT (field name) when the name is the name of a rule Iris ships, with replace true or false; a rule already deployed under it is kept, and nothing is deployed.');
+    expect(guide.deploy_rule.parameters?.replace).toContain('Neither deploys a rule under the name of a rule Iris ships');
+    expect(guide.delete_rule.errors).toContain('IRIS_INVALID_ARGUMENT (field enabled) for enabled: true on a paused rule stored under the name of a rule Iris ships; it stays paused.');
+    expect(guide.delete_rule.does).toContain('A paused rule stored under the name of a rule Iris ships (by an earlier version) is not brought back');
+    expect(guide.evaluate_output.errors).toContain('when a custom_rules entry takes the name of a rule Iris ships (field custom_rules, naming each; nothing evaluated or written)');
+  });
+
+  it('and so do the descriptions a client lists', async () => {
+    const { client } = await server();
+    const tools = new Map((await client.listTools()).tools.map((tool) => [tool.name, tool]));
+    type Schema = { description?: string; items?: Schema; properties?: Record<string, Schema> };
+    const property = (tool: string, name: string): Schema | undefined => (tools.get(tool)?.inputSchema as Schema | undefined)?.properties?.[name];
+    expect(tools.get('deploy_rule')?.description).toContain("IRIS_INVALID_ARGUMENT for a built-in rule's name");
+    expect(property('deploy_rule', 'name')?.description).toContain('and may not be the name of a rule Iris ships');
+    expect(tools.get('delete_rule')?.description).toContain("IRIS_INVALID_ARGUMENT for turning on a paused rule under a built-in rule's name");
+    expect(property('evaluate_output', 'custom_rules')?.items?.properties?.name?.description).toBe('Rule name as it will appear in rule_results; not the name of a rule Iris ships');
   });
 });
