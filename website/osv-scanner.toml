@@ -8,3 +8,8 @@
 id = "GHSA-g3hv-75wg-m249"
 ignoreUntil = 2027-02-03
 reason = "minimatch 3.1.5 is loaded only by the website's ESLint 9 lint tooling (eslint, @eslint/eslintrc, @eslint/config-array and the plugins eslint-config-next bundles), never at runtime, and matches only glob patterns committed to this repository. Those plugins call minimatch 3's CommonJS export as a function; the fixed 11.x line has no default export, so it cannot be overridden in. It moves with the website's ESLint 10 upgrade (issue #54). Every other minimatch copy in the repository is 11.0.4."
+
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2027-02-17
+reason = "The fault needs a glob pattern of one shape, and no outside input becomes a pattern for these copies. picomatch 2.3.2 and 4.0.4 are development dependencies of the website, both under its lint (eslint-config-next), and neither is loaded while the site serves. 2.3.2 comes with fast-glob under @next/eslint-plugin-next, which expands a pattern only for a setting this repository does not set, so it compiles none. 4.0.4 comes with tinyglobby, which the lint's import resolver and TypeScript parser use: it compiles the include and exclude lists of website/tsconfig.json, the resolver's own ignore pattern and, when the folder the lint runs in has a glob character in its path, that path. No fixed release exists in any line: 4.0.7 is the newest. They move by a lockfile bump when one is published."
