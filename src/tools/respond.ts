@@ -65,9 +65,9 @@ export function respond<S extends z.ZodType>(schema: S, payload: object, links: 
 
 /*
  * What a caller is promised about a failure: a code from the catalogue, a
- * sentence, and at least one thing to do about it. A message with no words
- * and a list with no step are refused here, so a throw site written without
- * one cannot send its envelope (errorResult, below).
+ * sentence, and at least one thing to do about it. An empty message, a list
+ * with no step and a step that is empty are refused here, so a throw site
+ * written without one cannot send its envelope (errorResult, below).
  */
 export const errorEnvelopeSchema = z.looseObject({
   error: z.looseObject({

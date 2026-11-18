@@ -20,6 +20,7 @@
 import { readdirSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { runInNewContext } from 'node:vm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
@@ -32,6 +33,7 @@ import { createCustomRuleStore } from '../../../src/custom-rule-store.js';
 import { registerEvaluateOutputTool } from '../../../src/tools/evaluate-output.js';
 import { ERROR_CODE_CATALOGUE, irisError, toIrisError } from '../../../src/tools/errors.js';
 import { errorEnvelopeSchema, guarded } from '../../../src/tools/respond.js';
+import { toolGuide } from '../../../src/tools/guide.js';
 import { LOCAL_TENANT } from '../../../src/types/tenant.js';
 import { LLMJudgeError } from '../../../src/eval/llm-judge/client.js';
 import { __setDnsLookupForTests, __clearCitationCacheForTests } from '../../../src/eval/citation-verify/resolve.js';
@@ -147,11 +149,66 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
     for (const [name, args, argument] of refusals) {
       const r = (await client.callTool({ name, arguments: args })) as Result;
       expect(r.isError).toBe(true);
-      expect(text(r)).toContain(argument);
+      // The argument as the refusal names its place: every refusal of a tool begins with the tool's name, which can hold the argument's.
+      expect(text(r)).toContain(` at ${argument}`);
       expect(text(r)).not.toContain('IRIS_');
       // Plain text: nothing here parses as an envelope.
       expect(() => JSON.parse(text(r)) as unknown).toThrow();
     }
+  });
+
+  it("compare_runs, evaluate_runs and log_trace: what each description names under Errors is what its tool answers, and what the input schema refuses is plain text", async () => {
+    const listed = new Map((await client.listTools()).tools.map((tool) => [tool.name, tool.description ?? '']));
+    const errorsOf = (tool: string): string => listed.get(tool)!.split('Errors.')[1] ?? '';
+    const namedBy = (tool: string): string[] => [...new Set(errorsOf(tool).match(/IRIS_[A-Z_]+/g) ?? [])].sort();
+    // Each refusal a description calls the tool's own, and the envelope it comes back as.
+    const own: Array<[string, Record<string, unknown>, string]> = [
+      ['compare_runs', { after: 'run-b' }, 'IRIS_INVALID_ARGUMENT'],
+      ['compare_runs', { before: 'run-a', after: 'run-b', dataset: 'no-such-dataset' }, 'IRIS_INVALID_ARGUMENT'],
+      ['evaluate_runs', { run: 'run-s', into: 'run-s' }, 'IRIS_INVALID_ARGUMENT'],
+      ['evaluate_runs', { run: 'no-such-run' }, 'IRIS_UNKNOWN_TRACE'],
+      ['log_trace', { agent_name: 'codes', evaluate: true }, 'IRIS_INVALID_ARGUMENT'],
+    ];
+    const answered = new Map<string, Set<string>>();
+    for (const [tool, args, code] of own) {
+      const e = envelope((await client.callTool({ name: tool, arguments: args })) as Result);
+      expect(e.code, `${tool} ${JSON.stringify(args)}`).toBe(code);
+      answered.set(tool, new Set([...(answered.get(tool) ?? []), e.code]));
+    }
+    // The codes each description names: the ones its tool answered above, and the store's, which every tool that reads or writes the store can answer (provoked through evaluate_output below).
+    for (const tool of ['compare_runs', 'evaluate_runs', 'log_trace']) {
+      expect(namedBy(tool), tool).toEqual([...(answered.get(tool) ?? []), 'IRIS_STORAGE_ERROR'].sort());
+    }
+    // Each refusal the input schema makes: plain text that names no code and parses as no envelope.
+    const schemas: Array<[string, Record<string, unknown>, string]> = [
+      ['compare_runs', { before: '', after: 'run-b' }, 'before'],
+      ['compare_runs', { before: 'run-a', after: '' }, 'after'],
+      ['compare_runs', { before: 'run-a', after: 'run-b', equivalence_margin: 0 }, 'equivalence_margin'],
+      ['compare_runs', { before: 'run-a', after: 'run-b', equivalence_margin: 2 }, 'equivalence_margin'],
+      ['evaluate_runs', { run: '' }, 'run'],
+      ['evaluate_runs', { run: 'run-s', into: '' }, 'into'],
+      ['log_trace', { agent_name: 'codes', spans: [{ span_id: 's1', start_time: '2026-11-18T00:00:00.000Z' }] }, 'spans[0].name'],
+      ['log_trace', { agent_name: 'codes', tool_calls: [{ input: {} }] }, 'tool_calls[0].tool_name'],
+    ];
+    for (const [tool, args, place] of schemas) {
+      const r = (await client.callTool({ name: tool, arguments: args })) as Result;
+      expect(r.isError, `${tool} ${place}`).toBe(true);
+      expect(text(r), `${tool} ${place}`).toContain(` at ${place}`);
+      expect(text(r), `${tool} ${place}`).not.toContain('IRIS_');
+      expect(() => JSON.parse(text(r)) as unknown, `${tool} ${place}`).toThrow();
+    }
+    // What each description and each line of the long form says of these refusals, word for word: the cases above are what it says.
+    expect(errorsOf('compare_runs')).toContain('IRIS_INVALID_ARGUMENT (no baseline pinned, or no such dataset); IRIS_STORAGE_ERROR.');
+    expect(errorsOf('evaluate_runs')).toContain('IRIS_INVALID_ARGUMENT (into names the run being re-evaluated); IRIS_UNKNOWN_TRACE (source run empty); IRIS_STORAGE_ERROR.');
+    const guide = toolGuide();
+    expect(guide.compare_runs.errors).toContain('IRIS_INVALID_ARGUMENT when no baseline is pinned for an omitted before, or dataset names none. An empty run id, or an equivalence_margin outside (0, 1], is refused by the input schema in plain text.');
+    expect(guide.evaluate_runs.errors).toContain('IRIS_INVALID_ARGUMENT when into names the run being re-evaluated. An empty run id is refused by the input schema in plain text. IRIS_UNKNOWN_TRACE when the source run has no traces.');
+    expect(guide.log_trace.errors).toContain('An unknown argument is refused before the handler runs, naming the valid keys; a malformed span or tool_calls entry is refused saying what is wrong.');
+    // What log_trace's description says of the rest, as its tool does it: an unknown argument names the valid ones, a malformed one says why.
+    expect(errorsOf('log_trace')).toContain('Unknown arguments are refused naming the valid keys; malformed ones, saying why.');
+    const unknown = text((await client.callTool({ name: 'log_trace', arguments: { agent_name: 'codes', bogus: 1 } })) as Result);
+    expect(unknown).toContain('Valid arguments');
+    expect(text((await client.callTool({ name: 'log_trace', arguments: { agent_name: 5 } })) as Result)).not.toContain('Valid arguments');
   });
 
   it('the server instructions say of a refused argument what holds of every refusal', () => {
@@ -297,6 +354,36 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
     provoked.add(e.code);
   });
 
+  it("IRIS_STORAGE_ERROR — the built-in SQLite's failures are the store's, and a database another connection holds is one to retry", async () => {
+    // Node's own SQLite names every failure ERR_SQLITE_ERROR, with SQLite's number beside it: real failures, not their shape copied.
+    const { DatabaseSync } = await import('node:sqlite');
+    const dir = mkdtempSync(join(tmpdir(), 'iris-node-sqlite-'));
+    const path = join(dir, 'held.db');
+    const a = new DatabaseSync(path);
+    const b = new DatabaseSync(path, { timeout: 0 });
+    const caught = (fn: () => unknown): unknown => {
+      try {
+        fn();
+      } catch (err) {
+        return err;
+      }
+      throw new Error('it did not fail');
+    };
+    try {
+      a.exec('CREATE TABLE t (x INTEGER)');
+      const missing = caught(() => a.prepare('SELECT * FROM missing').all());
+      a.exec('BEGIN EXCLUSIVE');
+      const locked = caught(() => b.exec('INSERT INTO t VALUES (1)'));
+      a.exec('ROLLBACK');
+      expect(toIrisError(missing).envelope).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: false, message: 'Iris storage failed: no such table: missing' });
+      expect(toIrisError(locked).envelope).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: true, message: 'Iris storage failed: database is locked' });
+    } finally {
+      a.close();
+      b.close();
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    }
+  });
+
   it('IRIS_INTERNAL_ERROR — anything unrecognised is reported as such, never dressed up as a caller mistake', async () => {
     const broken = { evaluateAll: () => { throw new Error('engine exploded'); }, evaluate: () => { throw new Error('engine exploded'); }, relevanceJudgeInForce: () => null } as unknown as EvalEngine;
     const e = envelope(await callIsolated(storage, broken, { output: 'x' }));
@@ -320,6 +407,100 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
       const e = envelope(await callIsolated(failing, undefined, { output: 'x' }));
       expect(e.code).toBe('IRIS_INTERNAL_ERROR');
       expect(e.message).toBe('Iris hit an unexpected error.');
+    }
+  });
+
+  /** The store as it is, but for a write of an evaluation that rejects with the value given. */
+  const rejectingTheWrite = (value: unknown): IStorageAdapter =>
+    new Proxy(storage, {
+      get(target, prop, receiver) {
+        if (prop === 'insertEvalResult') {
+          return async () => {
+            throw value;
+          };
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    }) as unknown as IStorageAdapter;
+
+  it('IRIS_UNKNOWN_TRACE — a linked write the store refuses for its trace is told as an unknown trace, whatever value it rejects with, read as the mapping reads it', async () => {
+    const traceId = 'a'.repeat(32);
+    await storage.insertTraces(LOCAL_TENANT, [{ trace_id: traceId, agent_name: 'codes', input: 'q', output: 'x', timestamp: '2026-11-18T00:00:00.000Z' }]);
+    const said = 'FOREIGN KEY constraint failed';
+    const ofAnotherRealm: unknown = runInNewContext(`new Error(${JSON.stringify(said)})`);
+    const values: Array<[string, unknown]> = [
+      ['an error', new Error(said)],
+      ['a string', said],
+      ['an object that says it', { toString: () => said }],
+      ['a list that holds it', [said]],
+      ['a boxed string', new String(said)],
+      ['a symbol', Symbol(said)],
+      ['an error of another realm', ofAnotherRealm],
+      ['an error whose message is an object that says it', Object.assign(new Error('replaced below'), { message: { toString: () => said } })],
+      ['an object with no prototype that carries the code', Object.assign(Object.create(null) as object, { code: 'SQLITE_CONSTRAINT_FOREIGNKEY' })],
+      [
+        'an error that says it, whose code cannot be read',
+        Object.defineProperty(new Error(said), 'code', {
+          get() {
+            throw new Error('the code cannot be read');
+          },
+        }),
+      ],
+    ];
+    for (const [what, value] of values) {
+      const e = envelope(await callIsolated(rejectingTheWrite(value), undefined, { output: 'x', trace_id: traceId }));
+      expect(e.code, what).toBe('IRIS_UNKNOWN_TRACE');
+    }
+  });
+
+  it('IRIS_UNKNOWN_TRACE — a trace deleted between the check and the write is told as an unknown trace, under each SQLite the store runs on', async () => {
+    for (const driver of ['native', 'node'] as const) {
+      const real = new SqliteAdapter(':memory:', { driver });
+      await real.initialize();
+      try {
+        const traceId = 'c'.repeat(32);
+        await real.insertTraces(LOCAL_TENANT, [{ trace_id: traceId, agent_name: 'codes', input: 'q', output: 'x', timestamp: '2026-11-18T00:00:00.000Z' }]);
+        // The race: the trace is gone by the time the evaluation is written, and the driver's own foreign key refuses the write.
+        const racing = new Proxy(real, {
+          get(target, prop, receiver) {
+            if (prop === 'insertEvalResult') {
+              return async (...args: Parameters<IStorageAdapter['insertEvalResult']>) => {
+                await target.deleteTrace(LOCAL_TENANT, traceId);
+                return target.insertEvalResult(...args);
+              };
+            }
+            return Reflect.get(target, prop, receiver);
+          },
+        }) as unknown as IStorageAdapter;
+        const e = envelope(await callIsolated(racing, undefined, { output: 'x', trace_id: traceId }));
+        expect(e.code, driver).toBe('IRIS_UNKNOWN_TRACE');
+      } finally {
+        await real.close();
+      }
+    }
+  });
+
+  it('IRIS_INTERNAL_ERROR — a linked write the store refuses with a value that throws when it is read is answered by the mapping, never with the value in its place', async () => {
+    const traceId = 'b'.repeat(32);
+    await storage.insertTraces(LOCAL_TENANT, [{ trace_id: traceId, agent_name: 'codes', input: 'q', output: 'x', timestamp: '2026-11-18T00:00:00.000Z' }]);
+    const throwing = (key: 'message' | 'code'): Error =>
+      Object.defineProperty(new Error('replaced below'), key, {
+        get() {
+          throw new Error(`the ${key} cannot be read`);
+        },
+      });
+    const unreadable = new Proxy({}, {
+      get() {
+        throw new Error('nothing of it can be read');
+      },
+      getPrototypeOf() {
+        throw new Error('nothing of it can be read');
+      },
+    });
+    for (const [what, value] of [['an error whose message throws', throwing('message')], ['an error whose code throws', throwing('code')], ['a value every read of which throws', unreadable]] as Array<[string, unknown]>) {
+      const e = envelope(await callIsolated(rejectingTheWrite(value), undefined, { output: 'x', trace_id: traceId }));
+      expect(e.code, what).toBe('IRIS_INTERNAL_ERROR');
+      expect(e.message, what).not.toMatch(/cannot be read|nothing of it/);
     }
   });
 
@@ -463,10 +644,11 @@ describe('the wrapper answers with an envelope whatever a handler fails with', (
     expect(e.message).toBe('Iris hit an unexpected error.');
   });
 
-  it('a failure mapped to an envelope its own schema refuses (no step to take; no words) is the internal error too', async () => {
+  it('a failure mapped to an envelope its own schema refuses (no step to take; a step that is empty; no words) is the internal error too', async () => {
     const noStep = irisError('IRIS_INVALID_ARGUMENT', 'a refusal written without a step to take');
+    const emptyStep = irisError('IRIS_INVALID_ARGUMENT', 'a refusal written with a step that says nothing', { recovery: ['Pass output.', ''] });
     const noWords = Object.assign(new Error(''), { name: 'DuplicateRuleNameError' });
-    for (const odd of [noStep, noWords]) {
+    for (const odd of [noStep, emptyStep, noWords]) {
       // The mapping answers; it is the envelope's schema that refuses what it answered.
       expect(toIrisError(odd).envelope.code).not.toBe('IRIS_INTERNAL_ERROR');
       expect(errorEnvelopeSchema.safeParse({ error: toIrisError(odd).envelope }).success).toBe(false);

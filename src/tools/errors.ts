@@ -106,9 +106,9 @@ const CAPABILITIES = CAPABILITIES_RESOURCE_URI;
  * What a thrown value says for itself, always as text. A promise can reject
  * with anything: with nothing at all (null, undefined), with an object that
  * cannot be made a string, with an error whose message is not text. Those
- * say nothing, and the internal error's own sentence stands for them: here
- * where nothing below knows the value, and at the envelope's own check
- * where something does (an envelope always carries a message, respond.ts).
+ * say nothing, and a sentence of Iris's own stands for them: the store's
+ * where the value carries a SQLite code, the internal error's otherwise
+ * (toIrisError, below; an envelope always carries a message, respond.ts).
  */
 function messageOf(err: unknown): string {
   if (err === null || err === undefined) return '';
@@ -120,12 +120,33 @@ function messageOf(err: unknown): string {
   }
 }
 
+/** One field of a thrown value, or undefined where it has none or reading it throws. */
+function fieldOf(err: unknown, key: 'code' | 'errcode'): unknown {
+  try {
+    // Reading a field of null here threw inside the catch that was building the envelope, and the caller got that throw's one line.
+    return (err as Record<string, unknown> | null | undefined)?.[key];
+  } catch {
+    return undefined;
+  }
+}
+
+/** Node's built-in SQLite names every failure by a code of its own, with SQLite's number beside it (`errcode`); better-sqlite3 names it by SQLite's code. */
+const NODE_SQLITE_CODE = 'ERR_SQLITE_ERROR';
+
 function isSqliteError(err: unknown): boolean {
-  // Reading a field of null here threw inside the catch that was building the envelope, and the caller got that throw's one line.
-  const code = (err as { code?: unknown } | null | undefined)?.code;
+  const code = fieldOf(err, 'code');
   if (typeof code === 'string' && code.startsWith('SQLITE_')) return true;
+  if (code === NODE_SQLITE_CODE) return true;
   // Only an error's own message is read for the driver's words, as before: a thrown string that happens to hold them is not the store's.
   return /SQLITE|database is locked|disk I\/O error|readonly database/i.test(err instanceof Error ? messageOf(err) : '');
+}
+
+/** The store was busy or locked: SQLITE_BUSY and SQLITE_LOCKED, as better-sqlite3 names them and as Node's built-in SQLite numbers them (5 and 6). */
+function isSqliteBusy(err: unknown): boolean {
+  const code = fieldOf(err, 'code');
+  if (code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED') return true;
+  const errcode = fieldOf(err, 'errcode');
+  return code === NODE_SQLITE_CODE && (errcode === 5 || errcode === 6);
 }
 
 /**
@@ -234,9 +255,8 @@ export function toIrisError(err: unknown): IrisError {
   }
 
   if (isSqliteError(err)) {
-    const code = (err as { code?: string }).code ?? '';
     return irisError('IRIS_STORAGE_ERROR', message === '' ? 'Iris storage failed.' : `Iris storage failed: ${message}`, {
-      retryable: code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED',
+      retryable: isSqliteBusy(err),
       recovery: [
         'Retry once. If it recurs, check that the database path is writable and the disk is not full.',
         'Run `npx @iris-eval/mcp-server --self-test` to probe the configured home and database.',

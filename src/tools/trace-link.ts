@@ -64,6 +64,16 @@ export async function assertTraceExists(
   await getTraceOrThrow(storage, tenantId, traceId);
 }
 
+/** What a store's failure says, as text: an error's message, or the value itself, made a string; nothing where it is nothing or reading it throws. */
+function textOfFailure(err: unknown): string {
+  try {
+    const said: unknown = err instanceof Error ? err.message : err;
+    return said === null || said === undefined ? '' : String(said);
+  } catch {
+    return '';
+  }
+}
+
 /** insertEvalResult with the foreign-key race translated into the same clear message. */
 export async function insertLinkedEvalResult(
   storage: IStorageAdapter,
@@ -73,9 +83,15 @@ export async function insertLinkedEvalResult(
   try {
     await storage.insertEvalResult(tenantId, result);
   } catch (err) {
-    // What the store failed with is thrown on as it is. Reading it for the race must not throw in its place: a store can reject with nothing at all.
-    const code = (err as { code?: unknown } | null | undefined)?.code;
-    const message = err instanceof Error ? err.message : typeof err === 'string' ? err : '';
+    // What the store failed with is thrown on as it is. Reading it for the race must not throw in its place: a store can reject with nothing at all,
+    // or with a value whose every read throws. Every other value is read as text, an error's message whatever it holds, so each says here what it says.
+    let code: unknown;
+    try {
+      code = (err as { code?: unknown } | null | undefined)?.code;
+    } catch {
+      code = undefined;
+    }
+    const message = textOfFailure(err);
     if (result.trace_id && (code === 'SQLITE_CONSTRAINT_FOREIGNKEY' || /FOREIGN KEY constraint failed/i.test(message))) {
       throw unknownTraceError(result.trace_id);
     }
