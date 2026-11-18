@@ -18,9 +18,10 @@
 
 /**
  * A text with the white space at its two ends taken off: what `trim()`
- * takes, and the characters that have no width (a zero-width space or
- * joiner, a word joiner), which it does not. A reply that starts with one
- * is still the reply, and an error could not show what was wrong with it.
+ * takes, and four characters that have no width, which it does not (the
+ * zero-width space, non-joiner and joiner, and the word joiner). A reply
+ * that starts with one of those is still the reply, and an error could not
+ * show what was wrong with it. No other character is taken.
  * One pass from each end, so the work does not grow with what a model
  * wrote in between.
  */
