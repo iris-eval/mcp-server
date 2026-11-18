@@ -371,6 +371,15 @@ describe('a rule that only reports for a reason of its own says so when it could
     }
   });
 
+  it('a call the rule had nothing to judge in carries no mark: the reason goes with an answer, or with a silence where there was something to judge', async () => {
+    // No tool calls were sent, so the rule has nothing to read, against four earlier runs as against none.
+    const nothing = await engine().evaluateAll({ input: REFUND.input, output: REFUND.output, caseHistory: earlier(4) });
+    expect(row(nothing, 'no_unusual_action')).toMatchObject({ skipped: true, skipClass: 'not_applicable' });
+    expect(row(nothing, 'no_unusual_action').advisory).toBeUndefined();
+    expect(row(nothing, 'no_unusual_action').advisoryWhy).toBeUndefined();
+    expect(nothing.verdict!.by).not.toContain('no_unusual_action');
+  });
+
   it('a deployment that made the rule critical has said every fire of it decides: its reason gives way on a silence as on an answer', async () => {
     const promoted = await engine({ criticalRules: ['no_unusual_action'] }).evaluateAll({ ...REFUND, caseHistory: withANumber(4) });
     expect(row(promoted, 'no_unusual_action')).toMatchObject({ skipped: true, threw: true, critical: true, role: 'veto' });

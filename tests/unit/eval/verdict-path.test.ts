@@ -208,6 +208,10 @@ describe('a check that could not answer leaves the verdict unknown where its ans
         const set = unanswered({ ruleName: name, kind: 'policy', thresholdSource: 'config', asked: 'config', ...flags });
         expect(roleOf(set, cfg()), `${name}: ${how}`).toBe('gate');
         expect(unknownOf([set, plain]), `${name}: ${how}`).toEqual([name]);
+        // The number alone says it, as an answered row's evidence does: a row that says a number was set is a gate, whether or not it also says who asked. (The engine writes both from one answer; a row is data, and is read as written.)
+        const setOnly = unanswered({ ruleName: name, kind: 'policy', thresholdSource: 'config', ...flags });
+        expect(roleOf(setOnly, cfg()), `${name}: ${how}`).toBe('gate');
+        expect(unknownOf([setOnly, plain]), `${name}: ${how}`).toEqual([name]);
         // At the shipped number, and asked for some other way (an installed judge, an expectation the call supplied): it has to answer too.
         const asked = unanswered({ ruleName: name, kind: 'policy', thresholdSource: 'default', asked: 'call', ...flags });
         expect(roleOf(asked, cfg()), `${name}: ${how}`).toBe('gate');
@@ -403,6 +407,18 @@ describe('a check that could not answer leaves the verdict unknown where its ans
     const asked = unanswered({ ruleName: 'no_internal_draft', kind: 'policy', origin: 'custom', critical: true, asked: 'call', skipClass: 'config_invalid', configInvalid: true });
     expect(compose(evaluation([gating, asked, plain]), cfg()).by).toEqual(['no_internal_draft', 'no_internal_draft']);
     expect(sentence([gating, asked, plain])).toContain('(no_internal_draft, which failed while it judged this run; no_internal_draft)');
+  });
+
+  it('a verdict that was not composed from the rows beside it is told by the names it carries', () => {
+    // interpretations() is handed its verdict. One composed from other rows names checks these rows do not make: it is told by its own names, as critical checks always were, and never by a list read off rows that did not make it.
+    const CRITICAL = 'A critical check was asked and could not answer (no_pii), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.';
+    const handed = compose(evaluation([unanswered({ ruleName: 'no_pii', kind: 'detection', critical: true }), plain]), cfg());
+    expect(handed).toMatchObject({ state: 'unknown', basis: 'critical_unknown', by: ['no_pii'] });
+    const text = (rows: EvalRuleResult[]): string | undefined => interpretations(evaluation(rows) as EvalResult, handed, cfg()).find((i) => i.configKey === 'eval.onCriticalSkipped')?.text;
+    // Rows in which nothing failed to answer.
+    expect(text([plain])).toBe(CRITICAL);
+    // Rows in which another check did: the layer they make is not the one the verdict carries.
+    expect(text([unanswered({ ruleName: 'no_refund_promise', kind: 'policy', origin: 'plugin', threw: true }), plain])).toBe(CRITICAL);
   });
 
   it('two critical checks are told as critical checks always were, under every rule set', () => {
