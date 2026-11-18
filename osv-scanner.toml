@@ -1,0 +1,10 @@
+# Advisories against package-lock.json that OSV-Scanner, and OpenSSF
+# Scorecard's Vulnerabilities check, should report as assessed rather than open.
+# Each entry carries its reason; the full assessment is the advisory's row in
+# SECURITY-EXPOSURE.md, and the entry leaves when that row is closed.
+# ignoreUntil makes each one lapse unless it is reviewed again.
+
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2027-02-17
+reason = "The fault needs a glob pattern of one shape, and no outside input becomes a pattern for this copy: its patterns are the tools' own defaults, this repository's configuration, and the command line of whoever runs a tool. picomatch 4.0.7 is a development dependency, loaded by the test runner (vitest, vite, tinyglobby) and, through tinyglobby, by the lint's TypeScript parser, and never by the published package. It compiles the test runner's own default patterns and the include and exclude lists of this repository's Vitest configurations; the parser expands a pattern only for a project glob, and none is set. No fixed release exists: 4.0.7 is the newest. It moves by a lockfile bump when one is published."
