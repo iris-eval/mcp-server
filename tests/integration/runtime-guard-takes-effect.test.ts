@@ -26,7 +26,7 @@ const FIXTURE = resolve(root, 'tests', 'fixtures', 'runtime-guard', 'hot.ts');
 const WARNS = resolve(root, 'tests', 'fixtures', 'runtime-guard', 'engine-warns.ts');
 const STARTED = resolve(root, 'tests', 'fixtures', 'runtime-guard', 'started-with.ts');
 
-type WarnsMode = 'none' | 'guard' | 'apply-after-import' | 'guard-worker';
+type WarnsMode = 'none' | 'guard' | 'library' | 'apply-after-import' | 'guard-worker' | 'none-then-worker';
 
 /** The warnings of Iris's own that a fresh process emitted while it built two evaluators; null when the process did not get that far. */
 function warningsOf(mode: WarnsMode): string[] | null {
@@ -42,7 +42,7 @@ function built(mode: WarnsMode): { warnings: string[] | null; state: string | un
 }
 
 /** What a process started with these flags, or this NODE_OPTIONS, reads of the guard before and after the step asked, and the lines the engine printed about its hot function. */
-function startedWith(flags: string[], nodeOptions: string | undefined, step: 'read' | 'apply'): { before?: string; after?: string; lines: string[]; done: boolean } {
+function startedWith(flags: string[], nodeOptions: string | undefined, step: 'read' | 'apply' | 'apply-as-clean'): { before?: string; after?: string; lines: string[]; done: boolean } {
   const env = { ...process.env };
   if (nodeOptions === undefined) delete env['NODE_OPTIONS'];
   else env['NODE_OPTIONS'] = nodeOptions;
@@ -90,7 +90,7 @@ describe.skipIf(!v8SharesNumbers())('on an engine that has the defect', () => {
     const { lines, done } = tiersChosen('library');
     expect(done).toBe(true);
     expect(lines.some((line) => line.includes('MAGLEV'))).toBe(true);
-    expect(built('none').state).toBe('unguarded');
+    expect(built('library').state).toBe('unguarded');
   }, 90_000);
 
   it('a host that imports the library and then applies the guard through it is told nothing: the library speaks when an evaluator is built, not when it is imported', () => {
@@ -101,17 +101,41 @@ describe.skipIf(!v8SharesNumbers())('on an engine that has the defect', () => {
     expect(built('guard-worker')).toEqual({ warnings: [], state: 'applied' });
   }, 90_000);
 
-  it.each([
-    ['--no-maglev', undefined],
-    ['--no_maglev', undefined],
-    ['--nomaglev', undefined],
-    ['--jitless', undefined],
-    [undefined, '--jitless'],
-  ] as Array<[string | undefined, string | undefined]>)('a process started with the tier off (flag %s, NODE_OPTIONS %s) reads as started, and the tier at fault never compiles', (flag, nodeOptions) => {
-    const run = startedWith(flag === undefined ? [] : [flag], nodeOptions, 'read');
+  it.each([['--no-maglev'], ['--no_maglev'], ['--nomaglev'], ['--jitless']] as Array<[string]>)('a process started with the tier off (%s on the command line) reads as started, and the tier at fault never compiles', (flag) => {
+    const run = startedWith([flag], undefined, 'read');
     expect(run.done).toBe(true);
     expect(run.before).toBe('started');
     expect(run.lines.filter((line) => line.includes('MAGLEV'))).toEqual([]);
+  }, 90_000);
+
+  it('the reading is of the command line alone: a process given --jitless in NODE_OPTIONS reads as unguarded, though no tier compiles in it (#1068)', () => {
+    const run = startedWith([], '--jitless', 'read');
+    expect(run.done).toBe(true);
+    expect(run.before).toBe('unguarded');
+    expect(run.lines.filter((line) => line.includes('MAGLEV'))).toEqual([]);
+  }, 90_000);
+
+  it('on an engine without the defect the guard does nothing: the flag is not set, and the tier compiles as before', () => {
+    const run = startedWith([], undefined, 'apply-as-clean');
+    expect(run.done).toBe(true);
+    expect([run.before, run.after]).toEqual(['not_needed', 'not_needed']);
+    expect(run.lines.some((line) => line.includes('MAGLEV'))).toBe(true);
+  }, 90_000);
+
+  it("the guard turns the tier off in a start the reading takes for one with it off already (a later flag that implies it back on): Iris's own processes do not rest on the reading", () => {
+    const run = startedWith(['--no-maglev', '--maglev-future'], undefined, 'apply');
+    expect(run.done).toBe(true);
+    expect(run.lines.filter((line) => line.includes('MAGLEV'))).toEqual([]);
+    // Without the guard the same start compiles it with that tier.
+    expect(startedWith(['--no-maglev', '--maglev-future'], undefined, 'read').lines.some((line) => line.includes('MAGLEV'))).toBe(true);
+  }, 90_000);
+
+  it("a host that imports the library and builds evaluators through it is told once, and the library's own state reads unguarded", () => {
+    expect(built('library')).toEqual({ warnings: [SHARED_NUMBERS_WARNING], state: 'unguarded' });
+  }, 90_000);
+
+  it('a worker thread started after the process was warned is not warned again', () => {
+    expect(built('none-then-worker')).toEqual({ warnings: [SHARED_NUMBERS_WARNING], state: 'unguarded unguarded' });
   }, 90_000);
 
   it('a process started with the tier off and then on again reads as unguarded, and the guard turns it off: the tier at fault never compiles', () => {

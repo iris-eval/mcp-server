@@ -109,45 +109,18 @@ export type RuntimeGuardState = 'not_needed' | 'applied' | 'started' | 'unguarde
 export const RUNTIME_GUARD_STATES: readonly RuntimeGuardState[] = ['not_needed', 'started', 'applied', 'unguarded'];
 
 /**
- * The arguments of NODE_OPTIONS, split as Node splits them: at a space,
- * except inside double quotes, where a backslash escapes the next character.
- * Any other white space is part of an argument.
- */
-function optionsOf(text: string): string[] {
-  const args: string[] = [];
-  let arg = '';
-  let open = false;
-  let quoted = false;
-  for (let i = 0; i < text.length; i += 1) {
-    const c = text[i];
-    if (quoted && c === '\\' && i + 1 < text.length) {
-      arg += text[(i += 1)];
-    } else if (c === '"') {
-      quoted = !quoted;
-      open = true;
-    } else if (!quoted && c === ' ') {
-      if (open) args.push(arg);
-      arg = '';
-      open = false;
-    } else {
-      arg += c;
-      open = true;
-    }
-  }
-  if (open) args.push(arg);
-  return args;
-}
-
-/**
  * Whether the process was started with the tier off, or with no compiler at
- * all, read as the engine reads its flags: `--no-maglev`, `--no_maglev` and
+ * all, read from Node's command line: `--no-maglev`, `--no_maglev` and
  * `--nomaglev` are one flag, so are `--jitless` and its negations, and of
- * two that disagree the last one stands. Node hands the engine the flags in
- * NODE_OPTIONS first and those on its command line after them.
+ * two that disagree the last one stands. It is a reading of two flags, not
+ * of the engine: a start that turns the tier off another way (in
+ * NODE_OPTIONS, with one dash, or by a flag that implies it) reads as on,
+ * and a few rare starts that turn it back on read as off (#1068). Iris's own
+ * processes do not rest on it: the guard sets the flag whatever it reads.
  */
-export function tierOffAtStart(execArgv: readonly string[], nodeOptions = ''): boolean {
+export function tierOffAtStart(execArgv: readonly string[]): boolean {
   const flags = new Map<string, boolean>();
-  for (const arg of [...optionsOf(nodeOptions), ...execArgv]) {
+  for (const arg of execArgv) {
     const name = /^--([A-Za-z0-9_-]+)$/.exec(arg)?.[1].replace(/_/g, '-');
     for (const flag of ['maglev', 'jitless']) {
       if (name === flag) flags.set(flag, true);
@@ -157,10 +130,10 @@ export function tierOffAtStart(execArgv: readonly string[], nodeOptions = ''): b
   return flags.get('jitless') === true || flags.get('maglev') === false;
 }
 
-/** The state, from the facts it rests on: whether the engine has the defect, what the process was started with (its command line and NODE_OPTIONS), and whether the guard was applied in it. */
-export function guardStateOf(affected: boolean, execArgv: readonly string[], applied: boolean, nodeOptions = ''): RuntimeGuardState {
+/** The state, from the facts it rests on: whether the engine has the defect, what the process was started with (its command line), and whether the guard was applied in it. */
+export function guardStateOf(affected: boolean, execArgv: readonly string[], applied: boolean): RuntimeGuardState {
   if (!affected) return 'not_needed';
-  if (tierOffAtStart(execArgv, nodeOptions)) return 'started';
+  if (tierOffAtStart(execArgv)) return 'started';
   return applied ? 'applied' : 'unguarded';
 }
 
@@ -195,7 +168,7 @@ function mark(key: string): void {
 }
 
 export function runtimeGuardState(): RuntimeGuardState {
-  return guardStateOf(v8SharesNumbers(), process.execArgv, marked(APPLIED), process.env['NODE_OPTIONS'] ?? '');
+  return guardStateOf(v8SharesNumbers(), process.execArgv, marked(APPLIED));
 }
 
 /**
@@ -203,9 +176,10 @@ export function runtimeGuardState(): RuntimeGuardState {
  * a process Iris owns it is the first thing done (apply-runtime-guard.ts,
  * imported first by the entry point); a host that evaluates through the
  * library calls it once, before its first evaluation. Safe to call again.
- * The flag is set whatever the process was started with: where the tier is
- * already off it changes nothing, and where it was turned off and on again,
- * or by a spelling the reading above does not know, it is off after this.
+ * The flag is set whatever the process was started with, and whatever the
+ * reading above makes of it: where the tier is already off it changes
+ * nothing, and where it is on, however the start reads, it is off after
+ * this.
  * The engine's flags are the process's, so a worker thread started after
  * this runs with the tier off as well, and reads the guard as applied.
  */

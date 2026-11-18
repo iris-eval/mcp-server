@@ -8,7 +8,7 @@ export default defineConfig({
   test: {
     globals: true,
     include: ['tests/mcpb/**/*.test.ts'],
-    // The runtime guard first, as in every config (src/runtime-guard.ts).
+    // The runtime guard first, as in every configuration whose tests evaluate (src/runtime-guard.ts).
     setupFiles: ['./tests/setup/runtime-guard.ts', './tests/setup/iris-home.ts'],
     testTimeout: 120_000,
     hookTimeout: 120_000,

@@ -134,31 +134,26 @@ describe('what stands between a process and the defect', () => {
     expect(guardStateOf(AFFECTED, ['--no-maglev-osr'], false)).toBe('unguarded');
   });
 
-  it('what the process was started with is read as the engine reads its flags: each spelling it takes, NODE_OPTIONS before the command line, the last one standing', () => {
-    const rows: Array<[execArgv: string[], nodeOptions: string, state: RuntimeGuardState]> = [
-      [[], '', 'unguarded'],
-      [['--no-maglev'], '', 'started'],
-      [['--no_maglev'], '', 'started'],
-      [['--nomaglev'], '', 'started'],
-      [['--jitless'], '', 'started'],
-      [[], '--jitless', 'started'],
-      [[], '--max-old-space-size=4096   --jitless', 'started'],
-      [[], '"--jitless"', 'started'],
-      [[], '--title="a --jitless"', 'unguarded'],
-      // Inside quotes a backslash escapes the next character, so an escaped quote leaves the value open; only a space separates.
-      [[], '--title="a \\" --jitless"', 'unguarded'],
-      [[], '--title=a\t--jitless', 'unguarded'],
-      // Of two that disagree, the engine keeps the last; Node hands it NODE_OPTIONS first.
-      [['--no-maglev', '--maglev'], '', 'unguarded'],
-      [['--maglev', '--no-maglev'], '', 'started'],
-      [['--jitless', '--no-jitless'], '', 'unguarded'],
-      [['--no-jitless'], '--jitless', 'unguarded'],
-      [['--jitless'], '--no-jitless', 'started'],
-      [['--no-maglev-osr', '--maglev-inlining'], '', 'unguarded'],
+  it("what the process was started with is read from Node's command line: four spellings of two flags, the last one standing", () => {
+    const rows: Array<[execArgv: string[], state: RuntimeGuardState]> = [
+      [[], 'unguarded'],
+      [['--no-maglev'], 'started'],
+      [['--no_maglev'], 'started'],
+      [['--nomaglev'], 'started'],
+      [['--jitless'], 'started'],
+      // Of two that disagree, the engine keeps the last.
+      [['--no-maglev', '--maglev'], 'unguarded'],
+      [['--maglev', '--no-maglev'], 'started'],
+      [['--jitless', '--no-jitless'], 'unguarded'],
+      [['--no-jitless', '--jitless'], 'started'],
+      [['--no-maglev-osr', '--maglev-inlining'], 'unguarded'],
+      // What the reading does not take reads as unguarded, a warning that need not be given (#1068).
+      [['-no-maglev'], 'unguarded'],
+      [['--lite-mode'], 'unguarded'],
     ];
-    for (const [execArgv, nodeOptions, state] of rows) {
-      expect(guardStateOf(AFFECTED, execArgv, false, nodeOptions), `${execArgv.join(' ')} | NODE_OPTIONS=${nodeOptions}`).toBe(state);
-      expect(tierOffAtStart(execArgv, nodeOptions)).toBe(state === 'started');
+    for (const [execArgv, state] of rows) {
+      expect(guardStateOf(AFFECTED, execArgv, false), execArgv.join(' ')).toBe(state);
+      expect(tierOffAtStart(execArgv)).toBe(state === 'started');
     }
   });
 
@@ -177,7 +172,7 @@ describe('what stands between a process and the defect', () => {
     expect(before === 'not_needed').toBe(!v8SharesNumbers());
   });
 
-  const startedWithTheTierOn = !tierOffAtStart(process.execArgv, process.env['NODE_OPTIONS'] ?? '');
+  const startedWithTheTierOn = !tierOffAtStart(process.execArgv);
 
   it.runIf(v8SharesNumbers() && startedWithTheTierOn)('the guard is marked applied only once the engine has taken the flag', () => {
     const putBack = forgetMarks();
@@ -294,6 +289,9 @@ describe('what the documents say of the guard is what the code does', () => {
   it('the reference describes `runtime`, and names every state the guard can be in', () => {
     const runtime = /the `runtime` \([^]*?\), the `tools`/.exec(reference)?.[0] ?? '';
     expect(runtime).toContain('`sharedNumbers`');
+    // The list is every state of the type: a state left out of it (and of the reference) fails here, where the compiler holds the record.
+    const everyState: Record<RuntimeGuardState, true> = { not_needed: true, started: true, applied: true, unguarded: true };
+    expect([...RUNTIME_GUARD_STATES].sort()).toEqual(Object.keys(everyState).sort());
     for (const state of RUNTIME_GUARD_STATES) expect(runtime, state).toContain(`\`${state}\``);
   });
 });
@@ -342,23 +340,30 @@ describe('every entry point Iris owns applies the guard before anything else', (
       return [at, at.replace(/\.js$/, '.ts'), at.replace(/\.js$/, '.tsx'), `${at}.ts`, `${at}.tsx`, join(at, 'index.ts')].find((p) => /\.[cm]?[jt]sx?$/.test(p) && existsSync(p));
     };
     // Statements that load a module at run time: not `import type` or `export type`, which leave nothing behind.
-    const LOADS = /(?:^|\n)\s*(?:import|export)\s+(?!type\b)(?:[^'";]*?\sfrom\s*)?['"](\.{1,2}\/[^'"]+)['"]|import\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*\)/g;
+    const LOADS = /(?:^|\n)\s*(?:import|export)\s+(?!type\b)(?:[^'";]*?\sfrom\s*)?['"](\.{1,2}\/[^'"]+)['"]|(?:import|require)\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*\)/g;
+    // A module named any other way (a template, a variable) could not be followed.
+    const UNNAMED = /\b(?:import|require)\((?!\s*['"])/g;
     const engine = join(root, 'src', 'eval', 'engine.ts');
     const queue = [...files(join(root, 'dashboard', 'tests')), ...files(join(root, 'dashboard', 'src'))];
     const seen = new Set<string>();
     const server: string[] = [];
+    const unnamed: string[] = [];
     while (queue.length > 0) {
       const file = queue.pop()!;
       if (seen.has(file)) continue;
       seen.add(file);
       if (relative(root, file).replace(/\\/g, '/').startsWith('src/')) server.push(relative(root, file).replace(/\\/g, '/'));
-      for (const m of readFileSync(file, 'utf8').matchAll(LOADS)) {
+      const text = readFileSync(file, 'utf8');
+      if (UNNAMED.test(text)) unnamed.push(relative(root, file).replace(/\\/g, '/'));
+      UNNAMED.lastIndex = 0;
+      for (const m of text.matchAll(LOADS)) {
         const target = resolved(file, m[1] ?? m[2]);
         if (target !== undefined) queue.push(target);
       }
     }
     // What the dashboard does load of the server's: the search parser and what it imports.
     expect(server.length).toBeGreaterThan(0);
+    expect(unnamed).toEqual([]);
     expect(seen.has(engine)).toBe(false);
     expect(server.filter((file) => file.startsWith('src/eval/') || file === 'src/runtime-guard.ts')).toEqual([]);
   });
