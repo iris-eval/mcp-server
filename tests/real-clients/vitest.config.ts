@@ -8,7 +8,8 @@ export default defineConfig({
   test: {
     globals: true,
     include: ['tests/real-clients/**/*.test.ts'],
-    setupFiles: ['./tests/setup/iris-home.ts'],
+    // The runtime guard first, as in every configuration whose tests evaluate (src/runtime-guard.ts).
+    setupFiles: ['./tests/setup/runtime-guard.ts', './tests/setup/iris-home.ts'],
     testTimeout: 180_000,
   },
 });
