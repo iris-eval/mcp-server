@@ -497,6 +497,24 @@ describe('a check that could not answer leaves the verdict unknown where its ans
     }
   });
 
+  it('the sentence for two accepted checks names each with why it had to answer, and is a warning to the operator', () => {
+    const two = [
+      unanswered({ ruleName: 'acme_first', kind: 'policy', thresholdSource: 'config', threw: true }),
+      unanswered({ ruleName: 'cost_under_threshold', kind: 'policy', thresholdSource: 'config', asked: 'config', threw: true }),
+      plain,
+    ];
+    const result = evaluation(two) as EvalResult;
+    const told = interpretations(result, compose(result, cfg({ onCriticalSkipped: 'pass' })), cfg({ onCriticalSkipped: 'pass' })).filter((i) => i.text.includes('and this deployment accepts that'));
+    expect(told).toEqual([
+      {
+        severity: 'warn',
+        addressee: 'operator',
+        text: 'A check that had to answer could not (acme_first, which failed while it judged this run; cost_under_threshold, which this deployment asked for), and this deployment accepts that: eval.onCriticalSkipped is "pass". The verdict above says nothing about what they check.',
+        configKey: 'eval.onCriticalSkipped',
+      },
+    ]);
+  });
+
   it('"Critical check(s) did not judge this output" is said beside the layer of a critical rule with nothing to judge, from the composer rules 3; a verdict given under the earlier rules keeps what it was given', () => {
     const said = (rules: number): string[] => {
       const rows = [unanswered({ ruleName: 'no_secrets', kind: 'detection', critical: true }), row({ ruleName: 'tool_choice', kind: 'policy', critical: true, skipped: true, skipClass: 'not_applicable', passed: false }), plain];

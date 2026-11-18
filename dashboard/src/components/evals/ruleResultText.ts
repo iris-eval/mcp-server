@@ -40,7 +40,7 @@ export function roleText(r: Pick<EvalRuleResult, 'role' | 'advisoryWhy'>): strin
 
 export const SKIP_CLASS_TEXT: Record<NonNullable<EvalRuleResult['skipClass']>, string> = {
   not_applicable: 'Not applicable: the rule had nothing to judge on this input.',
-  defeated: 'Defeated: the rule was asked and could not answer on this input. What it reads was cut or longer than it reads, its pattern ran past the time budget, or the rule failed while it judged.',
+  defeated: 'Defeated: the rule was asked and could not answer on this input. What it reads was cut or longer than it reads, its pattern ran past the time budget, the rule failed while it judged, or it could not judge what it was sent (its reason says what).',
   config_invalid: 'Configuration invalid: the rule was configured with a value it cannot use.',
 };
 

@@ -272,7 +272,9 @@ function isEcho(output: string, ask: string): boolean {
  * deployment chose the judge by naming its model. A judge that could not
  * answer (misconfigured, over the cost cap, a provider error) is recorded on
  * the result with its reason, and the rule falls back to the lexical reading
- * below, which advises at the shipped thresholds; the composer names the
+ * below, which advises at the shipped thresholds where the words can judge;
+ * where they cannot either, the rule could not judge (`defeated`), and the
+ * verdict reads it where the rule had to answer. The composer names the
  * fallback in interpretations so it is never read as the judge's verdict.
  */
 function judgedByTheJudge(context: EvalContext, lexical: string): RuleAnswer | null {
@@ -358,7 +360,7 @@ function answersTheAskLexically(context: EvalContext, ko: EvalRuleResult, tc: Ev
   }
   const skipped = ko.skipped ? ko : tc.skipped ? tc : askTerms < MIN_ASK_TERMS_TO_JUDGE ? { skipReason: `the ask has ${askTerms} content term${askTerms === 1 ? '' : 's'}; ${MIN_ASK_TERMS_TO_JUDGE} are needed to say an output answers something else` } : null;
   if (skipped) {
-    // not_applicable, never "asked and could not answer": without an ask, or an output too brief to measure, the question does not apply — a critical rule's skip must not turn every output-only evaluation unknown.
+    // The words alone had nothing to judge: without an ask, or an output too brief to measure, the question does not apply, and a critical rule's skip must not turn every output-only evaluation unknown. Where an installed judge did not answer either, answersTheAsk says the rule could not judge.
     return { ruleName: 'answers_the_ask', passed: false, score: 0, skipped: true, skipClass: 'not_applicable', skipReason: skipped.skipReason ?? 'a relevance measurement skipped', message: 'Not judged: a relevance measurement skipped' };
   }
   const fired = !ko.passed && !tc.passed;

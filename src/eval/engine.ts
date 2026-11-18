@@ -809,7 +809,7 @@ export class EvalEngine {
         // The judge is installed for one rule, and that is asked of the rule in hand: a rule a request sends may carry the name.
         judgeInForce: this.relevanceJudge !== null && rule === answersTheAsk,
       });
-      // There was something to judge and the rule gave no answer: it threw, was stopped at a limit, read a record that was cut, or its definition is broken.
+      // There was something to judge and the rule gave no answer: it threw, was stopped at a limit, read a record that was cut, could not judge what it was sent, or its definition is broken.
       const couldNotAnswer = stamp.skipClass !== undefined && stamp.skipClass !== 'not_applicable';
       /*
        * A result that reports and takes no part in the verdict. Stamped on

@@ -193,8 +193,8 @@ export function roleOf(r: EvalRuleResult, cfg: ComposeConfig): Role {
  *   - a detection or an inference the estimate weighs is one voice among
  *     several. It counts when it THREW, which no natural run does and an
  *     input built for it can. Stopped at a limit of work, by a record that
- *     was cut or by a definition that is broken, it takes no part, as
- *     before (#1038 is where those are decided);
+ *     was cut, by an input it could not judge or by a definition that is
+ *     broken, it takes no part, as before (#1038 is where those are decided);
  *   - a rule that only reports and that nobody asked for takes no part by
  *     its fire, and none by its silence. Its row says that it reports, on
  *     an answer and on a silence alike (engine.ts).
@@ -945,6 +945,8 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
     });
   }
   const unanswered = verdict.basis === 'critical_unknown' ? verdict : (verdict.also ?? []).find((l) => l.basis === 'critical_unknown');
+  // Whether the layer was composed from these rows (couldNot, in order); a verdict handed in with a layer these rows do not make is known only by its names.
+  const layerFromRows = unanswered !== undefined && couldNot.length === unanswered.by.length && couldNot.every((r, i) => r.ruleName === unanswered.by[i]);
   if (unanswered !== undefined) {
     /*
      * A rule that is not critical is here because somebody asked for it
@@ -953,7 +955,7 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
      * of the row the layer named. A verdict handed in with a layer these
      * rows do not make (it was not composed from them) is told by its names.
      */
-    const fromRows = couldNot.length === unanswered.by.length && couldNot.every((r, i) => r.ruleName === unanswered.by[i]);
+    const fromRows = layerFromRows;
     const tells = fromRows ? couldNot.map(whyItHadTo) : unanswered.by;
     // Of critical rules alone the sentence is the one it always was, which is also what a verdict given under the earlier rules was told.
     const allCritical = !fromRows || !beyondCritical;
@@ -1032,8 +1034,9 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
    * the layer named another check.
    */
   const rulesNow = (cfg.rules ?? COMPOSER_RULES) >= 3;
-  const namedByLayer = new Set(unanswered?.by ?? []);
-  const skippedCritical = result.rule_results.filter((r) => isCritical(r) && r.skipped === true && !namedByLayer.has(r.ruleName)).map((r) => r.ruleName);
+  // The layer's own rows where it was composed from these rows, never a name looked up among them: a critical rule beside a check of its name is still told.
+  const namedByLayer = (r: EvalRuleResult): boolean => unanswered !== undefined && (layerFromRows ? couldNot.includes(r) : unanswered.by.includes(r.ruleName));
+  const skippedCritical = result.rule_results.filter((r) => isCritical(r) && r.skipped === true && !namedByLayer(r)).map((r) => r.ruleName);
   if (skippedCritical.length > 0 && (unanswered === undefined || rulesNow)) {
     out.push({
       severity: 'warn',

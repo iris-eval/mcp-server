@@ -399,13 +399,15 @@ export interface EvalContext {
 export type Role = 'gate' | 'veto' | 'risk' | 'advisory';
 
 /**
- * Why a rule skipped. `not_applicable`: the evidence it needs was not
- * supplied (never asked — coverage). `defeated`: asked and could not answer
- * on this input: the output stalled its pattern past the sandbox budget, the
- * evidence it reads was cut, or the rule threw. `config_invalid`: asked and
- * could not answer, because its definition is broken. A gate that fails
- * closed treats the last two as unknown; the first is a coverage fact, not a
- * verdict.
+ * Why a rule skipped. `not_applicable`: there was nothing to judge, because
+ * the evidence it needs was not supplied or its question does not apply to
+ * what was (coverage). `defeated`: asked and could not answer on this input:
+ * the output stalled its pattern past the sandbox budget, the evidence it
+ * reads was cut, the rule threw, it could not judge what it was sent, or a
+ * plugin's skip did not say there was nothing to judge. `config_invalid`:
+ * asked and could not answer, because its definition is broken. A gate that
+ * fails closed treats the last two as unknown; the first is a coverage fact,
+ * not a verdict.
  */
 export type SkipClass = 'not_applicable' | 'defeated' | 'config_invalid';
 

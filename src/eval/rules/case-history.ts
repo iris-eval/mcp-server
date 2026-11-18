@@ -119,6 +119,8 @@ export const noUnusualAction: EvalRule = {
   evaluate(context: EvalContext): RuleAnswer {
     const skip = skipWithoutTrajectory('no_unusual_action', context);
     if (skip) return skip;
+    // With too few earlier runs there is nothing to read this run against, whatever the run holds: that is said first.
+    if (earlierRunsRead(context) < CASE_HISTORY_MIN) return skipForHistory('no_unusual_action', context);
     const steps = stepsOf(context);
     const called = toolsOfSteps(steps);
     if (called === null) return skipUnreadable('no_unusual_action');
@@ -208,6 +210,8 @@ export const noDroppedStep: EvalRule = {
     // An explicit empty list is a run that made no call, and against steps the case always takes that is the finding. Calls not sent at all still skip.
     const skip = skipWithoutTrajectory('no_dropped_step', context);
     if (skip && trajectoryAbsence(context) !== 'empty_calls') return skip;
+    // With too few earlier runs there is nothing to read this run against, whatever the run holds: that is said first.
+    if (earlierRunsRead(context) < CASE_HISTORY_MIN) return skipForHistory('no_dropped_step', context);
     const stats = stepStatsOf(context);
     if (stats.kept < stats.available) {
       // A step taken only among the calls that were not read would be reported as dropped.

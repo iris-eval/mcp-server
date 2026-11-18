@@ -276,7 +276,8 @@ export function stampRuleResult(
   /*
    * And who had asked for a rule that could not answer though there was
    * something to judge: it threw, was stopped at a limit, read a record
-   * that was cut, or its definition is broken (skipClassOf). Until 0.22.0
+   * that was cut, could not judge what it was sent, or its definition is
+   * broken (skipClassOf). Until 0.22.0
    * the stamp said who asked only on a rule that lacked an input, and a
    * policy the deployment or the call asked for that threw was read by
    * nothing: the verdict passed (compose.ts, the third layer).
