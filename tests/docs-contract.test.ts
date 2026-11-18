@@ -127,6 +127,7 @@ const FOREIGN_FLAGS = new Set([
   'iris-url', // pytest --iris-url (the Python client's plugin, packages/python)
   'iris-api-key', // pytest --iris-api-key (the same plugin)
   'no-maglev', // node --no-maglev (the compiler tier the server turns off itself on Node 24 and 26; a host that embeds the engine may start Node with it)
+  'jitless', // node --jitless (no compiler at all; a start with it needs no guard)
 ]);
 
 describe('docs contract — every --flag in prose is a flag the CLI parses', () => {
