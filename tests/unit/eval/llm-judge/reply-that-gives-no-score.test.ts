@@ -17,8 +17,11 @@
  * is what happened.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { evaluateWithLLMJudge } from '../../../../src/eval/llm-judge/evaluator.js';
-import { replyObject, shownValue, unitNumber } from '../../../../src/eval/llm-judge/reply.js';
+import { evaluateWithLLMJudge, SECOND_REQUEST, worstCaseJudgeCostUsd } from '../../../../src/eval/llm-judge/evaluator.js';
+import { estimateInputTokens } from '../../../../src/eval/llm-judge/client.js';
+import { estimateCostUsd } from '../../../../src/eval/llm-judge/pricing.js';
+import { getTemplate } from '../../../../src/eval/llm-judge/templates/index.js';
+import { replyObject, shownReply, shownValue, unitNumber } from '../../../../src/eval/llm-judge/reply.js';
 
 const originalFetch = global.fetch;
 afterEach(() => {
@@ -46,7 +49,7 @@ const reply = (score: string): string => `{"score":${score},"rationale":"as aske
 const GOOD = reply('0.6');
 
 // What a reply can put where the score belongs, as JSON text. Number() makes 0 of the first four, 1 of the fifth and 0.9 of the next two.
-// The last four are numbers outside the range: two that round to its ends, and one too large to hold.
+// The last seven are numbers outside the range: two that round to an end of it at two decimals, one a single step past 1, and two too large to hold.
 const NOT_A_SCORE = ['null', 'false', '""', '[]', 'true', '[0.9]', '"0.9"', '{}', '"high"', '{"value":0.9}', '-0.01', '1.01', '1.004', '-0.004', '1.0000000000000002', '1e400', '-1e400'];
 
 describe('unitNumber: the number a reply gives for a field from 0 to 1', () => {
@@ -82,21 +85,70 @@ describe('replyObject: the JSON object a reply is', () => {
     expect(replyObject('{}')).toEqual({});
   });
 
-  it('a fence is a fence whatever language it names, on one line or several, with three backticks or more', () => {
-    const fenced = [
-      `\`\`\`javascript\n${OBJECT}\n\`\`\``,
-      `\`\`\`json5\n${OBJECT}\n\`\`\``,
-      `\`\`\`jsonc\r\n${OBJECT}\r\n\`\`\``,
-      `\`\`\`\`json\n${OBJECT}\n\`\`\`\``,
-      `\`\`\`${OBJECT}\`\`\``,
-      `\`\`\`json ${OBJECT} \`\`\``,
-      // A fence that was opened and not closed, and one closed and not opened: the object is still alone.
-      `\`\`\`json\n${OBJECT}`,
-      `${OBJECT}\n\`\`\``,
+  it("a fence's opening line is the fence's own: whatever follows the backticks on it, the object on the next line is read", () => {
+    // What a model can put after the backticks: a language, with or without a space before it; one that is not made of letters; more than one word.
+    const onTheLine = ['', 'json', 'JSON', ' json', 'javascript', 'json5', 'jsonc', 'c#', 'f#', 'c++', 'objective-c', '.json', 'application/json', 'json:', 'json title="reply"', 'Here is my evaluation', '   '];
+    for (const info of onTheLine) {
+      for (const eol of ['\n', '\r\n']) {
+        const text = `\`\`\`${info}${eol}${OBJECT}${eol}\`\`\``;
+        expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
+      }
+    }
+  });
+
+  it('a fence is three backticks or more, at either end, and blank lines inside it are not the reply', () => {
+    for (const text of [`\`\`\`\`json\n${OBJECT}\n\`\`\`\``, `\`\`\`\`\`\n${OBJECT}\n\`\`\`\`\``, `\`\`\`\`json\n${OBJECT}\n\`\`\``, `\`\`\`json\n\n${OBJECT}\n\n\`\`\``, `\`\`\`json\n${OBJECT}\n\`\`\`  \n`]) {
+      expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
+    }
+    // One backtick, or two, is not a fence, at the start or at the end.
+    for (const text of [`\`${OBJECT}\``, `\`\`${OBJECT}\`\``, `\`\`json\n${OBJECT}\n\`\``, `\`\n${OBJECT}\n\``, `${OBJECT}\``, `${OBJECT}\n\`\``, `\`\`\n${OBJECT}`]) expect(replyObject(text), JSON.stringify(text)).toBeNull();
+  });
+
+  it('where the object starts on the same line as the backticks, one word at most may stand between them', () => {
+    for (const text of [`\`\`\`${OBJECT}\`\`\``, `\`\`\`json${OBJECT}\`\`\``, `\`\`\`json ${OBJECT} \`\`\``, `\`\`\` json ${OBJECT}\`\`\``, `\`\`\` ${OBJECT} \`\`\``, '```json {"score":0.7,\n"rationale":"ok"}\n```']) {
+      expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
+    }
+    // Two words are prose before the object, and so is a sentence.
+    for (const text of [`\`\`\`Here goes ${OBJECT}\`\`\``, `\`\`\`json json ${OBJECT}\`\`\``, `\`\`\`The text quotes the object ${OBJECT}\`\`\``, `\`\`\`json Here it is: ${OBJECT}\n\`\`\``]) expect(replyObject(text), JSON.stringify(text)).toBeNull();
+  });
+
+  it('a fence that is opened and not closed, or closed and not opened, is taken off: the object is still alone', () => {
+    for (const text of [`\`\`\`json\n${OBJECT}`, `${OBJECT}\n\`\`\``]) expect(replyObject(text), JSON.stringify(text)).toEqual({ score: 0.7, rationale: 'ok' });
+  });
+
+  it('what is inside a fence is still the whole of the reply, and a fence is taken off only at the two ends', () => {
+    const notAlone = [
+      `\`\`\`json\nHere it is: ${OBJECT}\n\`\`\``,
+      `\`\`\`json\nHere it is:\n${OBJECT}\n\`\`\``,
+      `\`\`\`json\n${OBJECT}\nDone.\n\`\`\``,
+      `\`\`\`json\n${OBJECT}\n\`\`\`\nDone.`,
+      `Here it is:\n\`\`\`json\n${OBJECT}\n\`\`\``,
+      `${OBJECT}\n\`\`\`json`,
+      `\`\`\`json\n${OBJECT}\n\`\`\`\n\`\`\`json\n${OBJECT}\n\`\`\``,
+      `\`\`\`\n[${OBJECT}]\n\`\`\``,
+      '```json\n```',
+      '``````',
+      '```',
     ];
-    for (const text of fenced) expect(replyObject(text), text).toEqual({ score: 0.7, rationale: 'ok' });
-    // What is inside the fence is still the whole of it: a word that is not a language tag is prose, and so is a line after the fence.
-    for (const text of [`\`\`\`json\nHere it is: ${OBJECT}\n\`\`\``, `\`\`\`json\n${OBJECT}\n\`\`\`\nDone.`, `\`\`\`\n[${OBJECT}]\n\`\`\``, '```json\n```', '``````']) expect(replyObject(text), text).toBeNull();
+    for (const text of notAlone) expect(replyObject(text), JSON.stringify(text)).toBeNull();
+  });
+
+  it('white space around a reply is not part of it, and neither is a character that has no width', () => {
+    for (const edge of [' ', '\n', '\t', '\r\n', '\u00a0', '\ufeff', '\u2028', '\u200b', '\u200c', '\u200d', '\u2060', ' \u200b \n']) {
+      expect(replyObject(`${edge}${OBJECT}${edge}`), JSON.stringify(edge)).toEqual({ score: 0.7, rationale: 'ok' });
+      expect(replyObject(`${edge}\`\`\`json\n${edge}${OBJECT}${edge}\n\`\`\`${edge}`), JSON.stringify(edge)).toEqual({ score: 0.7, rationale: 'ok' });
+    }
+    // Inside the object they are the reply's own: a rationale keeps its spaces, and a character of no width between two tokens is not JSON.
+    expect(replyObject('{"score":0.7,"rationale":" ok\u200b "}')).toEqual({ score: 0.7, rationale: ' ok\u200b ' });
+    expect(replyObject('{"score":\u200b0.7}')).toBeNull();
+  });
+
+  it('a value too deep to write out is shown by its kind, and a long reply by its start', () => {
+    let deep: unknown = 0.9;
+    for (let i = 0; i < 10_000; i++) deep = [deep];
+    expect(shownValue(deep)).toBe('object');
+    expect(shownReply('x'.repeat(500))).toBe('x'.repeat(200));
+    expect(shownReply(0.84)).toBe('a reply of type number');
   });
 
   it('is null when there is prose before or after the object, in a fence or out of one', () => {
@@ -161,13 +213,38 @@ describe('a judge reply that gives no score is not read as one', () => {
     expect(provider.systems).toHaveLength(2);
     const added = provider.systems[1].slice(provider.systems[0].length);
     expect(provider.systems[1].startsWith(provider.systems[0])).toBe(true);
-    expect(added).toContain('your previous response could not be read');
-    // The two things a reply can get wrong, each asked for: the object alone, and a score that is a number.
-    expect(added).toContain('ONLY the JSON object');
-    expect(added).toContain('nothing before or after it');
-    expect(added).toContain('"score" as a number, not in quotes');
-    // The reply WAS valid JSON: the request does not say otherwise.
-    expect(added).not.toContain('not valid JSON');
+    // The sentence, whole: it is what the model is told, and every character of it is priced (below). The reply WAS valid JSON, and the request does not say otherwise.
+    expect(added).toBe('\n\nIMPORTANT: your previous response could not be read. Respond with ONLY the JSON object: nothing before or after it, no code fences, and "score" as a number, not in quotes.');
+    expect(added).toBe(SECOND_REQUEST);
+  });
+
+  it('the worst case a call is priced at counts the second request, every character of it', () => {
+    const params = { template: 'accuracy' as const, model: 'claude-haiku-4-5', output: 'The sky is blue.' };
+    const template = getTemplate('accuracy');
+    const system = template.buildSystem();
+    const user = template.buildUser({ output: params.output });
+    // The first request at the full output cap, and the second, with its sentence, at its own.
+    const first = estimateCostUsd(params.model, estimateInputTokens(system, user), 512)!;
+    const second = estimateCostUsd(params.model, estimateInputTokens(system + SECOND_REQUEST, user), 256)!;
+    expect(worstCaseJudgeCostUsd(params)).toBe(first + second);
+    // 173 characters: 48 more than the sentence it replaced, which is twelve tokens in every call's worst case (a quarter of a token a character).
+    expect(SECOND_REQUEST).toHaveLength(173);
+    const withoutIt = estimateCostUsd(params.model, estimateInputTokens(system, user), 256)!;
+    expect(second).toBeGreaterThan(withoutIt);
+    expect(estimateInputTokens(system + SECOND_REQUEST, user) - estimateInputTokens(system + 'x'.repeat(125), user)).toBe(12);
+  });
+
+  it('a score too deep to write out, and a reply too long to show, are malformed replies like any other', async () => {
+    const provider = judgeReplies(reply(`${'['.repeat(10_000)}0.9${']'.repeat(10_000)}`));
+    await expect(ask()).rejects.toThrow('Judge score is not a number from 0 to 1: object');
+    expect(provider.calls()).toBe(2);
+    // A reply that is not the object is shown by its first 200 characters.
+    judgeReplies('x'.repeat(500));
+    const error = await ask().then(
+      () => null,
+      (e: Error) => e,
+    );
+    expect(error?.message).toBe(`Judge reply is not the JSON object it was asked for: ${'x'.repeat(200)}`);
   });
 
   it('a score of 0 and a score of 1 are scores: the ends of the range are read as given', async () => {

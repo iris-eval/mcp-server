@@ -17,6 +17,51 @@
  */
 
 /**
+ * A text with the white space at its two ends taken off: what `trim()`
+ * takes, and the characters that have no width (a zero-width space or
+ * joiner, a word joiner), which it does not. A reply that starts with one
+ * is still the reply, and an error could not show what was wrong with it.
+ * One pass from each end, so the work does not grow with what a model
+ * wrote in between.
+ */
+function bare(text: string): string {
+  const edge = /[\s\u200b-\u200d\u2060]/;
+  let start = 0;
+  let end = text.length;
+  while (start < end && edge.test(text[start])) start++;
+  while (end > start && edge.test(text[end - 1])) end--;
+  return text.slice(start, end);
+}
+
+/**
+ * A reply with its code fence taken off, when it has one: three or more
+ * backticks.
+ *
+ * The opening line of a fence is the fence's own. Whatever follows the
+ * backticks on it (the language, with or without a space before it, or
+ * anything else a model writes there) is not the reply, which starts on
+ * the next line. Where the object starts on the same line as the backticks,
+ * one word at most may stand between them: more than that is prose before
+ * the object.
+ *
+ * A fence that is opened and not closed, or closed and not opened, is taken
+ * off too: what is left is still the whole of what the model said.
+ */
+function withoutFence(text: string): string {
+  let open = 0;
+  while (text[open] === '`') open++;
+  let rest = text;
+  if (open >= 3) {
+    const lineEnd = text.indexOf('\n', open);
+    const onTheLine = lineEnd === -1 ? text.slice(open) : text.slice(open, lineEnd);
+    rest = lineEnd !== -1 && !onTheLine.includes('{') ? text.slice(lineEnd + 1) : text.slice(open).replace(/^[ \t]*[^\s`{]*[ \t]*/, '');
+  }
+  let close = rest.length;
+  while (close > 0 && rest[close - 1] === '`') close--;
+  return rest.length - close >= 3 ? rest.slice(0, close) : rest;
+}
+
+/**
  * The JSON object a reply IS, or null when the reply is anything else: the
  * whole text of the reply, or the whole of it inside a code fence. Prose
  * around an object, a list that holds one, and text that is not JSON are
@@ -24,12 +69,8 @@
  */
 export function replyObject(raw: unknown): Record<string, unknown> | null {
   if (typeof raw !== 'string') return null;
-  // A model that fences its answer still gave the answer alone: three or more backticks, with or without a language named on the opening line.
-  const text = raw
-    .trim()
-    .replace(/^`{3,}[\w+-]*\s*/, '')
-    .replace(/`{3,}$/, '')
-    .trim();
+  // A model that fences its answer still gave the answer alone.
+  const text = bare(withoutFence(bare(raw)));
   let parsed: unknown;
   try {
     // The whole text, so prose on either side of an object is text that does not parse.

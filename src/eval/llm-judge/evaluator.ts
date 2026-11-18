@@ -128,6 +128,21 @@ function parseJudgeResponse(raw: string): {
   };
 }
 
+/**
+ * What the second request adds to the system prompt, after a first reply
+ * that could not be read. It says what is true of every such reply (it used
+ * to say the reply "was not valid JSON", also to a model whose JSON was
+ * valid and whose score was in quotes), and asks for the two things a reply
+ * can get wrong: the object alone, and a score that is a number.
+ *
+ * Every character of it is priced: the worst case a call is checked at
+ * before it is made counts this request too. So it stands in one place, and
+ * whatever else prices a judge call (the proof runner) asks
+ * `worstCaseJudgeCostUsd` and keeps no copy.
+ */
+export const SECOND_REQUEST =
+  '\n\nIMPORTANT: your previous response could not be read. Respond with ONLY the JSON object: nothing before or after it, no code fences, and "score" as a number, not in quotes.';
+
 /** What one judge evaluation will send, and the most it can cost. */
 interface JudgePlan {
   systemPrompt: string;
@@ -154,13 +169,8 @@ function planJudgeCall(params: PlanParams): JudgePlan {
 
   // The retry prompt is fixed up front so the pre-flight estimate can
   // price it: a malformed first reply triggers ONE more call with this
-  // stricter system prompt and a smaller output cap. It says what is true
-  // of every malformed reply (it used to say the reply "was not valid JSON",
-  // also to a model whose JSON was valid and whose score was in quotes), and
-  // asks for the two things a reply can get wrong.
-  const strictSystem =
-    systemPrompt +
-    '\n\nIMPORTANT: your previous response could not be read. Respond with ONLY the JSON object: nothing before or after it, no code fences, and "score" as a number, not in quotes.';
+  // stricter system prompt and a smaller output cap.
+  const strictSystem = systemPrompt + SECOND_REQUEST;
   const retryMaxOutputTokens = Math.min(maxOutputTokens, 256);
 
   /*

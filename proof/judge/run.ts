@@ -46,11 +46,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
 
-import { evaluateWithLLMJudge } from '../../src/eval/llm-judge/evaluator.js';
+import { evaluateWithLLMJudge, worstCaseJudgeCostUsd } from '../../src/eval/llm-judge/evaluator.js';
 import { verifyCitations } from '../../src/eval/citation-verify/verifier.js';
-import { getTemplate } from '../../src/eval/llm-judge/templates/index.js';
-import { estimateCostUsd, findPricing } from '../../src/eval/llm-judge/pricing.js';
-import { estimateInputTokens, type LLMProvider } from '../../src/eval/llm-judge/client.js';
+import { findPricing } from '../../src/eval/llm-judge/pricing.js';
+import type { LLMProvider } from '../../src/eval/llm-judge/client.js';
 import { EvalEngine } from '../../src/eval/engine.js';
 import { createRelevanceJudge } from '../../src/eval/llm-judge/relevance-judge.js';
 import { answersTheAsk } from '../../src/eval/rules/relevance.js';
@@ -192,25 +191,15 @@ export function readConfig(
 }
 
 /**
- * The evaluator's own pessimistic pre-check, replicated so the runner can
- * refuse a call BEFORE it happens when it would breach the run-wide cap:
- * every input character billed, the full output cap billed, plus the same
- * for the one malformed-JSON retry. Matches evaluator.ts exactly so the
- * runner's ceiling and the tool's ceiling agree.
+ * The evaluator's own pessimistic pre-check, so the runner can refuse a call
+ * BEFORE it happens when it would breach the run-wide cap: every input
+ * character billed, the full output cap billed, and the same for the one
+ * request that follows a reply that cannot be read. It is the evaluator's
+ * function and not a copy of it, so the runner's ceiling and the tool's
+ * cannot drift apart.
  */
 function estimateJudgeCostUsd(model: string, c: JudgeCase, maxOutputTokens = 512): number {
-  const template = getTemplate(c.template);
-  const system = template.buildSystem();
-  const user = template.buildUser({
-    output: c.output,
-    expected: c.expected,
-    input: c.input,
-    sourceMaterial: c.sourceMaterial,
-  });
-  const strictSystem = system + '\n\nIMPORTANT: your previous response was not valid JSON. Respond with ONLY the JSON object, no prefatory text, no code fences.';
-  const first = estimateCostUsd(model, estimateInputTokens(system, user), maxOutputTokens) ?? 0;
-  const retry = estimateCostUsd(model, estimateInputTokens(strictSystem, user), Math.min(maxOutputTokens, 256)) ?? 0;
-  return first + retry;
+  return worstCaseJudgeCostUsd({ template: c.template, model, output: c.output, expected: c.expected, input: c.input, sourceMaterial: c.sourceMaterial, maxOutputTokens }) ?? 0;
 }
 
 class Budget {

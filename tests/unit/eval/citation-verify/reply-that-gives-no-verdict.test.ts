@@ -152,5 +152,11 @@ describe('a citation judge reply that is not the object alone is not read as one
     __clearCitationCacheForTests();
     sourceThenJudge(`\`\`\`json\n${OBJECT}\n\`\`\``);
     expect((await verify()).citations[0].judge).toMatchObject({ supported: true, confidence: 0.9 });
+    // Whatever the fence's opening line names, and however: the object on the next line is the reply.
+    for (const info of [' json', 'c#', 'application/json', 'json:']) {
+      __clearCitationCacheForTests();
+      sourceThenJudge(`\`\`\`${info}\n${OBJECT}\n\`\`\``);
+      expect((await verify()).citations[0].judge, info).toMatchObject({ supported: true, confidence: 0.9 });
+    }
   });
 });
