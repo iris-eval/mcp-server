@@ -3126,9 +3126,12 @@ export class SqliteAdapter implements IStorageAdapter {
      * a custom rule that carried the name of a rule Iris ships, and would
      * weigh that rule's fires. Whose row it was is kept on the label
      * (`row_origin`, migration 024), so it holds after the retention sweep
-     * deletes the evaluation; a label that does not say (one an earlier
-     * release wrote after the upgrade) is read from the stored evaluation
-     * while it is held (label-rows.ts), and is counted where neither says.
+     * deletes the evaluation. The column is empty for a label on the row of
+     * a rule Iris ships, and for one a release before 0.22.0 wrote after the
+     * upgrade (it names the columns it knows); such a label is read from the
+     * stored evaluation while it is held (label-rows.ts), and is counted
+     * where neither says, which leaves the second kind counted once its
+     * evaluation is gone (#1072).
      */
     const rows = this.db
       .prepare(

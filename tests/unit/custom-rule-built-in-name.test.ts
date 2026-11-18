@@ -25,7 +25,7 @@ import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { EvalEngine } from '../../src/eval/engine.js';
 import { builtInRuleNames, builtInRules } from '../../src/eval/criticality.js';
 import { builtInNameKept, builtInNameNotEnabled, builtInNameRefusal, isBuiltInRuleName } from '../../src/eval/built-in-names.js';
-import { refreshLocalLabels } from '../../src/eval/local-labels.js';
+import { buildLocalLabelSource, refreshLocalLabels } from '../../src/eval/local-labels.js';
 import { keepInStep } from '../../src/eval/shared-state.js';
 import { registerRuleRoutes } from '../../src/dashboard/routes/rules.js';
 import { registerLabelRoutes } from '../../src/dashboard/routes/labels.js';
@@ -372,7 +372,7 @@ describe("whose row a label stands on is kept with the label, and read where the
   }
   const deleteEvaluations = (store: SqliteAdapter): void => void raw(store).prepare("UPDATE eval_results SET created_at = '2020-01-01T00:00:00.000Z'").run();
 
-  it("a label written through the route keeps whose row it was, and the tally reads that after the retention sweep deletes the evaluation", async () => {
+  it("a label written through the route keeps whose row it was: none for the row of the rule Iris ships, custom for a custom rule of a name of its own; both are counted after the retention sweep deletes the evaluation", async () => {
     const { store, engine, app } = await labels();
     const both = await engine.evaluateAll({ ...STUB }, [{ name: 'no_stub_text', ...FIRES_ON_A_STUB }]);
     await store.insertEvalResult(LOCAL_TENANT, both);
@@ -410,7 +410,7 @@ describe("whose row a label stands on is kept with the label, and read where the
     expect(await store.labelTallies(LOCAL_TENANT, builtInRuleNames())).toEqual([]);
   });
 
-  it("a label that keeps no row (one a release older than this one wrote after the upgrade) is read from its evaluation while it is held, and counted once it is gone", async () => {
+  it("a label that keeps no row (one a release older than this one wrote after the upgrade) is read from its evaluation while it is held, and counted once it is gone (#1072)", async () => {
     const { store, engine } = await labels();
     const evalId = await customRow(store, engine);
     raw(store).prepare("INSERT INTO verdict_labels (id, tenant_id, eval_id, rule_name, label, note, labelled_at) VALUES ('older', 'local', ?, 'no_stub_output', 'wrong', NULL, datetime('now'))").run(evalId);
@@ -430,7 +430,7 @@ describe("whose row a label stands on is kept with the label, and read where the
     expect(await store.labelTallies(LOCAL_TENANT, builtInRuleNames())).toEqual([]);
   });
 
-  it("a quiet custom row under a shipped name is told it is a custom rule's, not that it did not fire; and where the rule Iris ships ran after it, the sentence says that fire cannot be labelled here", async () => {
+  it("a quiet custom row under a shipped name is told it is a custom rule's, not that it did not fire; and where the rule Iris ships has a row after it, the sentence says so", async () => {
     const { store, engine, app } = await labels();
     const quiet = await engine.evaluate('custom', { output: 'All done.' }, [{ name: 'no_stub_output', ...FIRES_ON_A_STUB }]);
     await store.insertEvalResult(LOCAL_TENANT, quiet);
@@ -445,8 +445,62 @@ describe("whose row a label stands on is kept with the label, and read where the
     expect(ranBoth.rule_results.filter((r) => r.ruleName === 'no_stub_output').map((r) => r.origin ?? 'built-in')).toEqual(['custom', 'built-in']);
     await store.insertEvalResult(LOCAL_TENANT, ranBoth);
     expect((await call(app, 'POST', '/api/v1/labels', { eval_id: ranBoth.id, rule: 'no_stub_output', label: 'right' })).body.error).toBe(
-      "The first row named no_stub_output on this evaluation is a custom rule's, and a label under the name of a rule Iris ships weighs that rule, so it cannot be written here. The rule Iris ships ran on this evaluation as well, after the custom rule, and its fire cannot be labelled on this evaluation.",
+      "The first row named no_stub_output on this evaluation is a custom rule's, and a label under the name of a rule Iris ships weighs that rule, so it cannot be written here. The rule Iris ships has a row of that name on this evaluation too, after the custom rule's, and a label for it cannot be written on this evaluation.",
     );
+  });
+
+  it("the refusal's second sentence is said where a row of the rule Iris ships follows the custom one, fired or not, and only there", async () => {
+    const { store, engine, app } = await labels();
+    const custom = { ruleName: 'no_stub_output', passed: false, score: 0, message: 'fired', origin: 'custom' };
+    const shipped = { ruleName: 'no_stub_output', passed: false, score: 0, message: 'fired' };
+    const first = "The first row named no_stub_output on this evaluation is a custom rule's, and a label under the name of a rule Iris ships weighs that rule, so it cannot be written here.";
+    const second = " The rule Iris ships has a row of that name on this evaluation too, after the custom rule's, and a label for it cannot be written on this evaluation.";
+    const cases: Array<[string, unknown[], string]> = [
+      ['a custom fire, then the shipped rule quiet', [custom, { ...shipped, passed: true, score: 1, message: 'ok' }], first + second],
+      ['a quiet custom row, then the shipped rule quiet', [{ ...custom, passed: true, score: 1 }, { ...shipped, passed: true, score: 1 }], first + second],
+      ['a custom fire, then the shipped rule not judged', [custom, { ...shipped, skipped: true, skipClass: 'not_applicable' }], first + second],
+      // A row older than origin that carries a deployed rule's id is a custom rule's too, not the shipped rule's.
+      ['a custom fire, then a custom row older than origin', [custom, { ruleName: 'no_stub_output', passed: false, score: 0, message: 'fired', ruleId: 'rule-0a1b2c' }], first],
+      ['a custom fire, and the shipped row of another name', [custom, { ...shipped, ruleName: 'no_pii' }], first],
+    ];
+    for (const [what, rows, error] of cases) {
+      const evalId = await customRow(store, engine, () => rows);
+      expect((await call(app, 'POST', '/api/v1/labels', { eval_id: evalId, rule: 'no_stub_output', label: 'right' })).body.error, what).toBe(error);
+    }
+  });
+
+  it('labels on a custom rule\'s row are left out under the name of every rule Iris ships, not one', async () => {
+    const { store, engine } = await labels();
+    const names = ['no_pii', 'answers_the_ask', 'max_steps', 'no_tool_loop'];
+    for (const [i, name] of names.entries()) {
+      const evalId = await customRow(store, engine, () => [{ ruleName: name, passed: false, score: 0, message: 'fired', origin: 'custom' }]);
+      raw(store).prepare("INSERT INTO verdict_labels (id, tenant_id, eval_id, rule_name, label, note, labelled_at) VALUES (?, 'local', ?, ?, 'wrong', NULL, datetime('now'))").run(`other-${i}`, evalId, name);
+    }
+    // Through the source the engine reads, as the server builds it.
+    const source = await buildLocalLabelSource(store, LOCAL_TENANT);
+    expect(names.filter((name) => source.precision.has(name))).toEqual([]);
+    // Counted with no shipped names, they would weigh each rule.
+    expect((await store.labelTallies(LOCAL_TENANT)).map((t) => t.ruleName)).toEqual([...names].sort());
+  });
+
+  it('the route and the store read a stored row alike: its name as the route reads it, and a ruleId that is null as no id', async () => {
+    const { store, engine, app } = await labels();
+    const shapes: Array<[string, unknown[], boolean]> = [
+      // ruleName that is not text: the row is named by `rule`, as the route's reader names it.
+      ['a name under rule beside a ruleName that is not text', [{ ruleName: 5, rule: 'no_stub_output', passed: false, score: 0, message: 'fired', origin: 'custom' }], true],
+      // A ruleId of null is no deployed rule's id.
+      ['a ruleId of null', [{ ruleName: 'no_stub_output', ruleId: null, passed: false, score: 0, message: 'fired' }], false],
+    ];
+    for (const [i, [what, rows, custom]] of shapes.entries()) {
+      const evalId = await customRow(store, engine, () => rows);
+      const answer = await call(app, 'POST', '/api/v1/labels', { eval_id: evalId, rule: 'no_stub_output', label: 'wrong' });
+      expect(answer.status === 400 && String(answer.body.error).startsWith('The first row named no_stub_output on this evaluation is a custom rule'), what).toBe(custom);
+      raw(store).prepare('DELETE FROM verdict_labels WHERE eval_id = ?').run(evalId);
+      raw(store).prepare("INSERT INTO verdict_labels (id, tenant_id, eval_id, rule_name, label, note, labelled_at) VALUES (?, 'local', ?, 'no_stub_output', 'wrong', NULL, datetime('now'))").run(`alike-${i}`, evalId);
+      const counted = (await store.labelTallies(LOCAL_TENANT, builtInRuleNames())).find((t) => t.ruleName === 'no_stub_output')?.wrong ?? 0;
+      expect(counted === 0, what).toBe(custom);
+      raw(store).prepare('DELETE FROM verdict_labels WHERE eval_id = ?').run(evalId);
+    }
   });
 
   it('the tally reads rows by their place, takes any stored shape without failing, and counts a label it cannot place', async () => {
@@ -461,7 +515,7 @@ describe("whose row a label stands on is kept with the label, and read where the
       ['not JSON', 'not json', 1],
       ['a JSON object, not a list', { no_stub_output: custom }, 1],
       ['a list with a string before the custom row', ['a string', custom], 0],
-      // A row named by `rule`, the earliest releases' key, is read by that name, as the route reads it.
+      // A row named by `rule` (a shape of rows written by hand; no release writes it) is read by that name, as the route reads it.
       ['a custom row named by rule', [{ rule: 'no_stub_output', passed: false, score: 0, message: 'fired', origin: 'custom' }], 0],
     ];
     for (const [i, [, rows]] of shapes.entries()) {

@@ -125,11 +125,12 @@ export function registerLabelRoutes(router: Router, storage: IStorageAdapter, op
        */
       const rowOrigin = rowOriginOf(row);
       if (rowOrigin === 'custom' && isBuiltInRuleName(body.rule)) {
-        const shippedRanToo = evaluation.rule_results.some((r) => r.ruleName === body.rule && rowOriginOf(r) !== 'custom');
+        // A row of the rule Iris ships after the custom one's, fired or not: a label for it would stand on the custom row too.
+        const shippedRowToo = evaluation.rule_results.some((r) => r.ruleName === body.rule && rowOriginOf(r) !== 'custom');
         res.status(400).json({
           error:
             `The first row named ${body.rule} on this evaluation is a custom rule's, and a label under the name of a rule Iris ships weighs that rule, so it cannot be written here.` +
-            (shippedRanToo ? ` The rule Iris ships ran on this evaluation as well, after the custom rule, and its fire cannot be labelled on this evaluation.` : ''),
+            (shippedRowToo ? ` The rule Iris ships has a row of that name on this evaluation too, after the custom rule's, and a label for it cannot be written on this evaluation.` : ''),
         });
         return;
       }

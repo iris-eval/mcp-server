@@ -500,7 +500,7 @@ export interface IStorageAdapter {
   getAgentFailureLog(tenantId: TenantId, agentName: string, limit?: number): Promise<AgentFailureLogEntry[]>;
   getEvalStatsRules(tenantId: TenantId, period: EvalStatsPeriod): Promise<EvalStatsRuleBreakdown[]>;
   getEvalStatsFailures(tenantId: TenantId, period: EvalStatsPeriod, limit: number): Promise<EvalStatsFailure[]>;
-  /** Write one label on a rule's fire. Labelling the same fire again REPLACES the earlier label — a reader changed their mind, and two opinions on one fire would count twice. `rowOrigin` is whose row the label stands on (storage/label-rows.ts), kept with it so the tally does not need the evaluation. */
+  /** Write one label on a rule's fire. Labelling the same fire again REPLACES the earlier label — a reader changed their mind, and two opinions on one fire would count twice. `rowOrigin` is whose row the label stands on (storage/label-rows.ts), kept with it so the tally can tell a custom rule's row once the evaluation is gone. */
   insertVerdictLabel(tenantId: TenantId, label: Omit<VerdictLabel, 'labelledAt'> & { labelledAt?: string; rowOrigin?: string | null }): Promise<VerdictLabel>;
   /** Every label on one evaluation. */
   getLabelsForEval(tenantId: TenantId, evalId: string): Promise<VerdictLabel[]>;
