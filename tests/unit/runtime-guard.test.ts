@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   applyRuntimeGuard,
   guardStateOf,
+  nodeVersionOf,
   runtimeGuardState,
   runtimeLine,
   runtimeReport,
@@ -74,10 +75,19 @@ describe('which engines can make two objects share their numbers', () => {
     for (const [v8Version, node, affected] of rows) expect(v8SharesNumbers(v8Version, node), `${v8Version} in Node ${node}`).toBe(affected);
   });
 
+  it('the Node release is read only where the runtime is Node itself', () => {
+    const V8_OF_26 = '14.6.202.34-node.32';
+    expect(nodeVersionOf({ node: '26.12.0', v8: V8_OF_26 })).toBe('26.12.0');
+    // Deno, Bun and Electron answer as a Node version over an engine of their own build.
+    for (const other of ['deno', 'bun', 'electron']) expect(nodeVersionOf({ node: '26.12.0', v8: V8_OF_26, [other]: '1.0.0' }), other).toBeNull();
+    expect(nodeVersionOf({ v8: V8_OF_26 })).toBeNull();
+    // So a runtime that answers as Node 26.12.0 is asked by its engine's line, and Node 26.12.0 itself by its release.
+    expect(v8SharesNumbers(V8_OF_26, nodeVersionOf({ node: '26.12.0', electron: '40.0.0' }))).toBe(true);
+    expect(v8SharesNumbers(V8_OF_26, nodeVersionOf({ node: '26.12.0' }))).toBe(false);
+  });
+
   it('asked of this process, it answers for this process', () => {
-    const versions: Readonly<Record<string, string | undefined>> = process.versions;
-    const nodeItself = versions['deno'] === undefined && versions['bun'] === undefined && versions['electron'] === undefined;
-    expect(v8SharesNumbers()).toBe(v8SharesNumbers(process.versions.v8, nodeItself ? process.versions.node : null));
+    expect(v8SharesNumbers()).toBe(v8SharesNumbers(process.versions.v8, nodeVersionOf(process.versions)));
   });
 });
 

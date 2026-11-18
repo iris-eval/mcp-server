@@ -50,13 +50,14 @@ export const TIER_OFF_FLAG = '--no-maglev';
 const FIXED_FROM: Readonly<Record<number, readonly [minor: number, patch: number]>> = { 26: [12, 0] };
 
 /**
- * The version of Node this process runs on, when the runtime is Node
- * itself. A runtime that only answers as Node (it reports a Node version
- * for the code it hosts, over an engine of its own build) is asked by its
- * engine's line alone.
+ * The Node release an engine came in, read off a process's `versions`: its
+ * `node` entry when the runtime is Node itself, and null for a runtime that
+ * only answers as Node. Deno, Bun and Electron report a Node version for
+ * the code they host, over an engine of their own build, so the release
+ * that carries the fix says nothing about theirs: such a runtime is asked
+ * by its engine's line alone.
  */
-function nodeOwnVersion(): string | null {
-  const versions: Readonly<Record<string, string | undefined>> = process.versions;
+export function nodeVersionOf(versions: Readonly<Record<string, string | undefined>> = process.versions): string | null {
   return versions['deno'] === undefined && versions['bun'] === undefined && versions['electron'] === undefined ? (versions['node'] ?? null) : null;
 }
 
@@ -70,7 +71,7 @@ function nodeOwnVersion(): string | null {
  * `nodeVersion` is the Node release the engine came in, and null for an
  * engine that is not Node's own build, which is asked by its line alone.
  */
-export function v8SharesNumbers(v8Version: string = process.versions.v8, nodeVersion: string | null = nodeOwnVersion()): boolean {
+export function v8SharesNumbers(v8Version: string = process.versions.v8, nodeVersion: string | null = nodeVersionOf()): boolean {
   const parts = /^(\d+)\.(\d+)/.exec(v8Version);
   if (!parts) return false;
   const major = Number(parts[1]);
