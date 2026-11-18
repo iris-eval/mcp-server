@@ -8,11 +8,13 @@
  *   node --trace-opt --import tsx hot.ts none            the loop alone
  *   node --trace-opt --import tsx hot.ts guard-worker    the guard, then the loop in a worker thread
  *   node --trace-opt --import tsx hot.ts none-worker     the loop in a worker thread, no guard
+ *   node --trace-opt --import tsx hot.ts library         the library imported, as a host imports it, then the loop
  */
 import { Worker } from 'node:worker_threads';
 
 const mode = process.argv[2] ?? 'none';
 if (mode.startsWith('guard')) await import('../../../src/apply-runtime-guard.js');
+if (mode === 'library') await import('../../../src/engine.js');
 
 /** The same loop, as the source of a worker thread: the server's own workers (the regex sandbox, the checkpointer, the search worker) are started after the guard, as this one is. */
 const WORKER_SOURCE = `

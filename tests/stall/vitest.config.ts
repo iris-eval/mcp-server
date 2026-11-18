@@ -7,7 +7,8 @@ export default defineConfig({
   test: {
     globals: true,
     include: ['tests/stall/**/*.test.ts'],
-    setupFiles: ['./tests/setup/iris-home.ts'],
+    // The runtime guard first, as in the root config: this suite evaluates in its own worker (src/runtime-guard.ts).
+    setupFiles: ['./tests/setup/runtime-guard.ts', './tests/setup/iris-home.ts'],
     fileParallelism: false,
     /*
      * One retry per case. A hosted runner now and then stalls a process on

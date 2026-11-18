@@ -35,6 +35,7 @@
  * stands down only for a Node release known to carry the fix.
  */
 import v8 from 'node:v8';
+import * as threads from 'node:worker_threads';
 
 /** The report of the defect, for a message or a page to point at. */
 export const SHARED_NUMBERS_REPORT = 'https://github.com/nodejs/node/issues/66457';
@@ -48,6 +49,11 @@ export const TIER_OFF_FLAG = '--no-maglev';
  * tag and not in 26.11.1). 24 has none yet.
  */
 const FIXED_FROM: Readonly<Record<number, readonly [minor: number, patch: number]>> = { 26: [12, 0] };
+
+/** Those releases, as a person writes them (`26.12.0`). */
+export function releasesWithTheFix(): string[] {
+  return Object.entries(FIXED_FROM).map(([major, [minor, patch]]) => `${major}.${minor}.${patch}`);
+}
 
 /**
  * The Node release an engine came in, read off a process's `versions`: its
@@ -78,39 +84,117 @@ export function v8SharesNumbers(v8Version: string = process.versions.v8, nodeVer
   const minor = Number(parts[2]);
   if (major < 12 || (major === 12 && minor < 5)) return false;
   if (major > 15 || (major === 15 && minor >= 2)) return false;
-  const node = /^v?(\d+)\.(\d+)\.(\d+)/.exec(nodeVersion ?? '');
+  const node = /^v?(\d+)\.(\d+)\.(\d+)(-[0-9A-Za-z.-]+)?/.exec(nodeVersion ?? '');
   if (!node) return true;
   const fixedFrom = FIXED_FROM[Number(node[1])];
   if (fixedFrom === undefined) return true;
   const [fixedMinor, fixedPatch] = fixedFrom;
   const nodeMinor = Number(node[2]);
-  return nodeMinor < fixedMinor || (nodeMinor === fixedMinor && Number(node[3]) < fixedPatch);
+  const nodePatch = Number(node[3]);
+  // A pre-release (26.12.0-pre, a build of the line before the release) comes before the release, and may not carry the fix.
+  const preRelease = node[4] !== undefined;
+  return nodeMinor < fixedMinor || (nodeMinor === fixedMinor && (nodePatch < fixedPatch || (nodePatch === fixedPatch && preRelease)));
 }
 
 /**
  * What stands between a process and the defect:
  *   not_needed  its engine does not have it;
+ *   started     the process was started with the tier off, or with no compiler at all;
  *   applied     the process turned the tier off (applyRuntimeGuard);
- *   started     the process was started with the tier off;
  *   unguarded   its engine has it and the tier is on.
  */
 export type RuntimeGuardState = 'not_needed' | 'applied' | 'started' | 'unguarded';
 
-/** The state, from the three facts it rests on: whether the engine has the defect, what the process was started with, and whether the guard was applied in it. */
-export function guardStateOf(affected: boolean, execArgv: readonly string[], applied: boolean): RuntimeGuardState {
-  if (!affected) return 'not_needed';
-  if (applied) return 'applied';
-  // Started with the tier off, or with every compiler off.
-  return execArgv.some((arg) => arg === TIER_OFF_FLAG || arg === '--jitless') ? 'started' : 'unguarded';
+/** Every state, in the order of the list above. */
+export const RUNTIME_GUARD_STATES: readonly RuntimeGuardState[] = ['not_needed', 'started', 'applied', 'unguarded'];
+
+/**
+ * The arguments of NODE_OPTIONS, split as Node splits them: at white space,
+ * except inside double quotes, where a backslash escapes the next character.
+ */
+function optionsOf(text: string): string[] {
+  const args: string[] = [];
+  let arg = '';
+  let open = false;
+  let quoted = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i];
+    if (quoted && c === '\\' && i + 1 < text.length) {
+      arg += text[(i += 1)];
+    } else if (c === '"') {
+      quoted = !quoted;
+      open = true;
+    } else if (!quoted && /\s/.test(c)) {
+      if (open) args.push(arg);
+      arg = '';
+      open = false;
+    } else {
+      arg += c;
+      open = true;
+    }
+  }
+  if (open) args.push(arg);
+  return args;
 }
 
-/** One mark for the whole process, so that two copies of this module (a bundle beside a package) agree. */
-const APPLIED = Symbol.for('@iris-eval/mcp-server/runtime-guard.applied');
-const WARNED = Symbol.for('@iris-eval/mcp-server/runtime-guard.warned');
-const marks = globalThis as unknown as Record<symbol, boolean | undefined>;
+/**
+ * Whether the process was started with the tier off, or with no compiler at
+ * all, read as the engine reads its flags: `--no-maglev`, `--no_maglev` and
+ * `--nomaglev` are one flag, so are `--jitless` and its negations, and of
+ * two that disagree the last one stands. Node hands the engine the flags in
+ * NODE_OPTIONS first and those on its command line after them.
+ */
+export function tierOffAtStart(execArgv: readonly string[], nodeOptions = ''): boolean {
+  const flags = new Map<string, boolean>();
+  for (const arg of [...optionsOf(nodeOptions), ...execArgv]) {
+    const name = /^--([A-Za-z0-9_-]+)$/.exec(arg)?.[1].replace(/_/g, '-');
+    for (const flag of ['maglev', 'jitless']) {
+      if (name === flag) flags.set(flag, true);
+      else if (name === `no-${flag}` || name === `no${flag}`) flags.set(flag, false);
+    }
+  }
+  return flags.get('jitless') === true || flags.get('maglev') === false;
+}
+
+/** The state, from the facts it rests on: whether the engine has the defect, what the process was started with (its command line and NODE_OPTIONS), and whether the guard was applied in it. */
+export function guardStateOf(affected: boolean, execArgv: readonly string[], applied: boolean, nodeOptions = ''): RuntimeGuardState {
+  if (!affected) return 'not_needed';
+  if (tierOffAtStart(execArgv, nodeOptions)) return 'started';
+  return applied ? 'applied' : 'unguarded';
+}
+
+/**
+ * The guard's marks, one for the whole process. The engine's flags are the
+ * process's, but a thread's globals are its own: so a mark is kept on the
+ * thread (where two copies of this module, a bundle beside a package, read
+ * one), and in the data every worker thread started after it is handed
+ * (worker_threads' environment data), where the worker's own copy reads it.
+ */
+const APPLIED = '@iris-eval/mcp-server/runtime-guard.applied';
+const WARNED = '@iris-eval/mcp-server/runtime-guard.warned';
+const onThread = globalThis as unknown as Record<symbol, boolean | undefined>;
+
+function marked(key: string): boolean {
+  if (onThread[Symbol.for(key)] === true) return true;
+  try {
+    return threads.getEnvironmentData(key) === true;
+  } catch {
+    // A runtime without it keeps the mark to the thread.
+    return false;
+  }
+}
+
+function mark(key: string): void {
+  onThread[Symbol.for(key)] = true;
+  try {
+    threads.setEnvironmentData(key, true);
+  } catch {
+    // A runtime without it keeps the mark to the thread.
+  }
+}
 
 export function runtimeGuardState(): RuntimeGuardState {
-  return guardStateOf(v8SharesNumbers(), process.execArgv, marks[APPLIED] === true);
+  return guardStateOf(v8SharesNumbers(), process.execArgv, marked(APPLIED), process.env['NODE_OPTIONS'] ?? '');
 }
 
 /**
@@ -118,15 +202,17 @@ export function runtimeGuardState(): RuntimeGuardState {
  * a process Iris owns it is the first thing done (apply-runtime-guard.ts,
  * imported first by the entry point); a host that evaluates through the
  * library calls it once, before its first evaluation. Safe to call again.
+ * The flag is set whatever the process was started with: where the tier is
+ * already off it changes nothing, and where it was turned off and on again,
+ * or by a spelling the reading above does not know, it is off after this.
  * The engine's flags are the process's, so a worker thread started after
- * this runs with the tier off as well.
+ * this runs with the tier off as well, and reads the guard as applied.
  */
 export function applyRuntimeGuard(): RuntimeGuardState {
-  const state = runtimeGuardState();
-  if (state !== 'unguarded') return state;
+  if (!v8SharesNumbers()) return 'not_needed';
   try {
     v8.setFlagsFromString(TIER_OFF_FLAG);
-    marks[APPLIED] = true;
+    mark(APPLIED);
   } catch {
     // An engine that will not take the flag stays as it was, and the state says so.
   }
@@ -150,8 +236,8 @@ export function unguardedWarning(node: string = process.version, v8Version: stri
  * engine: it says what the host can do.
  */
 export function warnIfUnguarded(state: RuntimeGuardState = runtimeGuardState()): void {
-  if (state !== 'unguarded' || marks[WARNED] === true) return;
-  marks[WARNED] = true;
+  if (state !== 'unguarded' || marked(WARNED)) return;
+  mark(WARNED);
   process.emitWarning(unguardedWarning(), { type: 'IrisRuntimeWarning', code: SHARED_NUMBERS_WARNING });
 }
 
