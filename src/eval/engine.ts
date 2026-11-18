@@ -27,6 +27,7 @@ import { agentModelOf } from './llm-judge/family.js';
 import type { RelevanceJudge } from './llm-judge/relevance-judge.js';
 import type { JudgeBudget } from './llm-judge/budget.js';
 import { PKG_VERSION } from '../config/defaults.js';
+import { warnIfUnguarded } from '../runtime-guard.js';
 import { generateEvalId } from '../utils/ids.js';
 import { InputTooDeepError, MAX_EVALUATED_DEPTH, nestsDeeperThanEvaluated } from '../utils/element-count.js';
 
@@ -369,6 +370,8 @@ export class EvalEngine {
     ruleThresholds?: Record<string, unknown>,
     criticalityOverrides?: CriticalityOverrides,
   ) {
+    // An engine built in a host's own process, on a runtime that can make two results share their numbers, says so once (runtime-guard.ts). A process Iris owns has turned that off by now.
+    warnIfUnguarded();
     this.threshold = threshold;
     this.ruleThresholds = ruleThresholds;
     this.criticalityOverrides = criticalityOverrides;
@@ -694,6 +697,18 @@ export class EvalEngine {
      * rule it carries.
      */
     const evalContext: EvalContext = { ...context, regexBudget: { breaches: 0 }, steps: toSteps(context) };
+    // What the call carried, worked out once for the evaluation from the list just made: every rule's row and the coverage read it (stamp.ts).
+    const present = inputsPresent(evalContext);
+    /*
+     * The record of what the call carried and who recorded it, taken here,
+     * before any rule runs, from the same context as the reading above: the
+     * record and the rows cannot say two things of one call. Every rule is
+     * handed this context and a deployment's own rule can write to it (a
+     * measurement that defaults a missing cost for its own arithmetic). What
+     * a rule writes is not what the call carried, so nothing a rule does can
+     * make evidence that was not sent read as sent.
+     */
+    const evidence = evidenceOf(evalContext);
     /*
      * An output written as JSON, read as the text it carries (0.20.0). The
      * built-in text rules used to read a structured answer in its escaped
@@ -780,18 +795,40 @@ export class EvalEngine {
       const { critical, source } = effective;
       // ruleId / category sit right after the name so a reader scanning
       // rule_results sees WHICH deployed rule (and which bundle) spoke.
-      const { ruleName, advisoryWhy: ownReason, ...rest } = raw;
+      const { ruleName, advisoryWhy: answeredReason, ...rest } = raw;
       /*
        * What a result found is the rule's to say. Its standing is not:
        * whether it took part in the verdict, whether it vetoes and who
        * decided that, what kind of claim it is, what the composer did with
-       * it and what state it is in are stamped here from the rule's
-       * declaration and the deployment's configuration. A field of that kind
-       * that a rule set on its own result is not carried: carried, a result
-       * that said `critical: true` vetoed while its row read advisory, and
-       * one that said `critical: false` lost the veto its rule declares.
+       * it, what state it is in, whose number it stood at when it could not
+       * answer, who asked for it and what it lacked are stamped here from
+       * the rule's declaration and the deployment's configuration. A field
+       * of that kind that a rule set on its own result is not carried:
+       * carried, a result that said `critical: true` vetoed while its row
+       * read advisory, one that said `critical: false` lost the veto its
+       * rule declares, and one that said `asked: "config"` would make its
+       * own silence count as a check the deployment had asked for.
        */
-      for (const standing of ['advisory', 'critical', 'criticalSource', 'kind', 'role', 'state'] as const) delete rest[standing];
+      for (const standing of ['advisory', 'critical', 'criticalSource', 'kind', 'role', 'state', 'thresholdSource', 'asked', 'lacked'] as const) delete rest[standing];
+      /*
+       * The stamp (0.9.0): what kind of claim this is, which question it
+       * answers, what it saw, why it skipped, and how wrong it tends to be —
+       * from the rule's declaration, the inputs this call carried, and the
+       * published accuracy that ships in the package. Computed here, on the
+       * one path every evaluation takes, so no surface can show a result
+       * without its receipt. It changes no verdict: summarize() below still
+       * decides passed exactly as before.
+       */
+      const stamp = stampRuleResult(rule, raw, context, effective, {
+        present,
+        prior: this.effectivePrior(),
+        local: this.localLabels?.precision.get(rule.name),
+        deployed: ruleId !== undefined,
+        // The judge is installed for one rule, and that is asked of the rule in hand: a rule a request sends may carry the name.
+        judgeInForce: this.relevanceJudge !== null && rule === answersTheAsk,
+      });
+      // There was something to judge and the rule gave no answer: it threw, was stopped at a limit, read a record that was cut, or its definition is broken.
+      const couldNotAnswer = stamp.skipClass !== undefined && stamp.skipClass !== 'not_applicable';
       /*
        * A result that reports and takes no part in the verdict. Stamped on
        * the row, like `critical`, so a stored row re-composes as it was
@@ -809,21 +846,34 @@ export class EvalEngine {
        * a deployment that made the rule critical, which has said every fire
        * of it decides. The reason has to be one: words, not an empty string
        * or a value that is not text.
+       *
+       * Where the reason comes from depends on whether there is an answer.
+       * A rule that answered gives it with its result. A rule that could
+       * not answer has no result to carry it, so its DECLARATION is asked
+       * (EvalRule.reportsOnly): read off the result alone, no_unusual_action
+       * with four earlier runs reported and took no part when it fired, and
+       * left the verdict unknown when it threw.
        */
       const byConfig = effective.advisory === true;
       const weighed = rule.kind === 'detection' || rule.kind === 'inference';
+      const ownReason = couldNotAnswer ? declaredReasonOf(rule, evalContext) : answeredReason;
       const reasoned = typeof ownReason === 'string' && ownReason.trim() !== '';
       const byRule = !byConfig && reasoned && weighed && !critical;
-      const advisory = (byConfig || byRule) && raw.skipped !== true;
       /*
-       * The stamp (0.9.0): what kind of claim this is, what the composer
-       * did with it, which question it answers, what it saw, why it skipped,
-       * and how wrong it tends to be — from the rule's declaration, the
-       * inputs this call carried, and the published accuracy that ships in
-       * the package. Computed here, on the one path every evaluation takes,
-       * so no surface can show a result without its receipt. It changes no
-       * verdict: summarize() below still decides passed exactly as before.
+       * Which rows carry the mark. A rule the deployment set to report
+       * carries it on every row, whatever became of the rule on this call:
+       * that is a fact about the rule here, and `role` reads it. A rule's
+       * own reason marks the result it came with, and a result that could
+       * not answer though there was something to judge; a result that had
+       * nothing to judge gave no reason and carries none.
+       *
+       * The row that could not answer is the one that matters: a rule that
+       * could not answer where its finding would have counted leaves the
+       * verdict unknown (compose.ts, the third layer), and the mark is what
+       * says that this one's finding would have changed nothing. Until
+       * 0.22.0 no skipped row carried it.
        */
+      const advisory = byConfig || (byRule && (raw.skipped !== true || couldNotAnswer));
       ruleResults.push({
         ruleName,
         ...(ruleId !== undefined ? { ruleId } : {}),
@@ -834,12 +884,7 @@ export class EvalEngine {
         ...(advisory && byRule ? { advisoryWhy: ownReason } : {}),
         state: ruleStateOf(raw),
         ...rest,
-        ...stampRuleResult(rule, raw, context, effective, {
-          prior: this.effectivePrior(),
-          local: this.localLabels?.precision.get(rule.name),
-          deployed: ruleId !== undefined,
-          judgeInForce: this.relevanceJudge !== null,
-        }),
+        ...stamp,
       });
     }
 
@@ -861,11 +906,11 @@ export class EvalEngine {
       threshold: this.threshold,
       ruleThresholds: this.ruleThresholds,
       composer: this.composerFacts(),
-      // What the call carried and who recorded it: the composer reads it, now and on every read of the stored row.
-      evidence: evidenceOf(context),
+      // What the call carried and who recorded it, as taken before the rules ran: the composer reads it, now and on every read of the stored row.
+      evidence,
       judgedAt: new Date().toISOString(),
     });
-    const coverage = deriveCoverage(ruleResults, inputsPresent(context), provenance.evidence);
+    const coverage = deriveCoverage(ruleResults, present, provenance.evidence);
 
     // Handle "all rules skipped" — insufficient data
     if (overall.rulesEvaluated === 0) {
@@ -1109,6 +1154,22 @@ function evaluateGuarded(rule: EvalRule, context: EvalContext): EvalRuleResult {
       skipReason: 'the rule threw on this input',
       threw: true,
     };
+  }
+}
+
+/**
+ * A rule's own reason its result only reports on this call, asked of its
+ * declaration (EvalRule.reportsOnly) for a run the rule could not answer
+ * for. A declaration that throws, or that gives anything but words, gives no
+ * reason: the row is then read as the rule's kind is read, which is the
+ * reading that leaves a verdict unknown and never the one that passes it.
+ */
+function declaredReasonOf(rule: EvalRule, context: EvalContext): string | undefined {
+  try {
+    const reason = rule.reportsOnly?.(context);
+    return typeof reason === 'string' && reason.trim() !== '' ? reason : undefined;
+  } catch {
+    return undefined;
   }
 }
 

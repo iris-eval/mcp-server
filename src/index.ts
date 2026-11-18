@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+// Stays first: what it does on load has to happen before any other module runs (apply-runtime-guard.ts).
+import './apply-runtime-guard.js';
 import type { Server } from 'node:http';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';

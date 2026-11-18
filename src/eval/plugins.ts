@@ -34,7 +34,7 @@ import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
 import type { ClaimKind, EvalContext, EvalRule, EvalRuleResult, EvalType, FailureClass, Mechanism, Need, QuestionId } from '../types/eval.js';
 import type { IrisConfig } from '../types/config.js';
-import { builtInRules } from './criticality.js';
+import { isBuiltInRuleName } from './built-in-names.js';
 import { irisHome } from '../utils/iris-home.js';
 
 const CLAIM_KINDS = ['measurement', 'detection', 'inference', 'judgment', 'policy', 'verification'] as const satisfies readonly ClaimKind[];
@@ -126,7 +126,6 @@ function guardedEvaluate(name: string, evaluate: (ctx: EvalContext) => EvalRuleR
 export async function loadPlugins(entries: readonly PluginEntry[] | undefined, options: { home?: string } = {}): Promise<LoadedPlugin[]> {
   const loaded: LoadedPlugin[] = [];
   if (!entries || entries.length === 0) return loaded;
-  const builtInNames = new Set(builtInRules().map((r) => r.name));
   const seen = new Set<string>();
   for (const entry of entries) {
     const resolvedPath = resolvePluginPath(entry.path, options.home);
@@ -155,7 +154,7 @@ export async function loadPlugins(entries: readonly PluginEntry[] | undefined, o
       throw refusal(entry, resolvedPath, `does not export the plugin contract { name, kind, mechanism, version, needs, evaluate } as its default: ${issues}`);
     }
     const p = parsed.data;
-    if (builtInNames.has(p.name)) throw refusal(entry, resolvedPath, `is named "${p.name}", which is a built-in rule; choose another name`);
+    if (isBuiltInRuleName(p.name)) throw refusal(entry, resolvedPath, `is named "${p.name}", which is a built-in rule; choose another name`);
     if (seen.has(p.name)) throw refusal(entry, resolvedPath, `is named "${p.name}", which an earlier plugin already uses`);
     seen.add(p.name);
     const evalType: EvalType = p.evalType ?? 'custom';

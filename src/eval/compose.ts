@@ -17,11 +17,14 @@
  *   2. VETOES    — an effectively-critical detection or inference. High
  *                  precision on a must-not-ship condition, so one fire is
  *                  the answer.
- *   3. UNKNOWN   — a critical rule that was ASKED and could not answer:
- *                  defeated by the output, or configured invalidly. Not the
- *                  same as never asked, which is coverage. This is the
- *                  fail-open seam the audit found, and closing it is why the
- *                  verdict has three states.
+ *   3. UNKNOWN   — a check whose answer would have counted and that could
+ *                  not answer: it threw, was stopped at a limit, read a
+ *                  record that was cut, or its definition is broken. A
+ *                  critical rule; and from 0.22.0 a rule somebody asked
+ *                  for, a gate, and a weighed rule that threw (hadToAnswer).
+ *                  Not the same as never asked, which is coverage. This is
+ *                  the fail-open seam the audit found, and closing it is
+ *                  why the verdict has three states.
  *   4. RISK      — everything else that carries a published error rate,
  *                  combined into one probability that the output is bad
  *                  (./risk.ts) and compared against the threshold the
@@ -38,11 +41,11 @@
  * shows a default says it is a recommendation.
  */
 import type { EvalResult, EvalRuleResult, EvidenceRecord, Interpretation, Need, Role, Verdict, VerdictLayer, VerdictNode } from '../types/eval.js';
-import { riskEstimate, detectorsOf, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
+import { riskEstimate, detectorsOf, weighedByTheEstimate, DEFAULT_PRIOR, DEFAULT_PRIOR_MODE, DEFAULT_FALSE_PASS_COST, type PriorMode } from './risk.js';
 import { publishedAccuracyFor } from './accuracy.js';
 import { verdictConfidence, MIN_BIN_N, MIN_BIN_PATTERNS, type ConfidenceCall } from './confidence.js';
 import { PUBLISHED_CALIBRATION } from './published-calibration.js';
-import { decides, isCritical } from './gate.js';
+import { couldNotAnswer, decides, isCritical } from './gate.js';
 import { LOCAL_LABEL_MIN } from './labels.js';
 import { RELEVANCE_JUDGE_MODEL_VAR } from './llm-judge/relevance-judge.js';
 import { sameFamilyWarning } from './llm-judge/family.js';
@@ -66,7 +69,7 @@ export interface ComposeConfig {
   composer: 'risk';
   /** How many wrongly blocked builds one shipped failure is worth. τ = 1 / (1 + c). */
   falsePassCost: number;
-  /** What a critical rule that could not answer does to the verdict. */
+  /** What a check the third layer names does to the verdict: a rule whose answer would have counted and that could not answer. The key keeps the name it had when that layer read critical rules alone. */
   onCriticalSkipped: 'unknown' | 'fail' | 'pass';
   /** Inputs the deployment insists every evaluation carries; absent ones make the verdict unknown. */
   requiredEvidence: readonly Need[];
@@ -102,12 +105,21 @@ export interface ComposeConfig {
  *      say, in the order the layers are asked.
  *   2  from 0.20.0: a layer that fails outranks one that could not check
  *      (primaryOf).
+ *   3  from 0.22.0: a check that could not answer leaves the verdict unknown
+ *      wherever its answer would have counted, by the role it plays (walk,
+ *      the third layer), and a verdict the risk estimate failed names the
+ *      class that carried it (carriedBy). A row stored under 2, or under no
+ *      number, holds results that would compose otherwise under 3: a rule
+ *      that threw (no release stored one, and a build since #1012 did), a
+ *      gate that could not answer and was not critical, a risk failure in
+ *      which no class is more likely than not. Each reads back as given.
  *
  * Moved only when the same stored rule results would compose to a different
- * verdict. A new rule, a new stamp or a new layer input does not move it:
- * an old row does not carry them and reads as it did.
+ * verdict: another state, another basis, or other names in it. A new rule,
+ * a new stamp or a new layer input does not move it: an old row does not
+ * carry them and reads as it did.
  */
-export const COMPOSER_RULES = 2;
+export const COMPOSER_RULES = 3;
 
 export const DEFAULT_COMPOSE: ComposeConfig = {
   composer: 'risk',
@@ -130,7 +142,22 @@ const fired = (r: EvalRuleResult): boolean => !r.skipped && r.passed === false;
 /**
  * The role a result plays under this configuration — resolved from the SAME
  * predicates compose() decides with, so the stamp and the verdict cannot
- * disagree. A skipped rule played no role and keeps none.
+ * disagree.
+ *
+ * On a result that answered it is what the composer did with it. On one
+ * that could not answer it is the part its answer could have played, read
+ * from the same row by the same lines: the engine writes on such a row the
+ * facts an answer would have carried (that it only reports, and why; whose
+ * number a rule with a threshold stood at), so a fire and a silence are
+ * read by one predicate over one kind of input. Where a rule's answered
+ * role turns on what the answer found (answers_the_ask is a gate by the
+ * measurement that fired), the silent row has the strongest of them: a
+ * gate when somebody set one of the rule's numbers. A policy that could not
+ * answer and whose row carries no such fact is read as a gate: a rule that
+ * declares no threshold has no shipped number to advise at.
+ *
+ * A result that had nothing to judge took no part in anything; its role
+ * says what its rule's kind is weighed as.
  */
 export function roleOf(r: EvalRuleResult, cfg: ComposeConfig): Role {
   // The result reports only: the deployment named the rule in eval.advisoryRules, or the rule gave its own reason (advisoryWhy). It is in no layer below.
@@ -141,6 +168,48 @@ export function roleOf(r: EvalRuleResult, cfg: ComposeConfig): Role {
   // A detection or an inference is weighed by its published accuracy. One with none (a plugin's) is read by no layer: it reports.
   if (r.kind === 'detection' || r.kind === 'inference') return publishedAccuracyFor(r.ruleName) !== null ? 'risk' : 'advisory';
   return 'advisory';
+}
+
+/**
+ * Whether a result that could not answer is one whose answer would have
+ * counted. The third layer reads this, and the sentences about that layer
+ * are written from it, so a layer and its sentence cannot name different
+ * rows.
+ *
+ * A critical rule, always. Until 0.22.0 nothing else was read, so a gate
+ * that was not critical, or a detection the estimate weighs, could fail a
+ * verdict by firing and pass it by throwing: a run that repeated one call
+ * six times failed, and the same run with that call's input nested 2,000
+ * levels deep passed clean, the loop check having thrown (#1040). A row
+ * stored under the earlier rules reads back as it was given.
+ *
+ * From composer rules 3:
+ *   - a rule somebody asked for (stamp.ts, askedOf) counts whatever its
+ *     kind, as it does in the layer below when it lacked an input;
+ *   - a gate or a veto decides alone, so one that could not answer, however
+ *     it came to that, counts: a policy the deployment set or installed, a
+ *     judgment, a critical rule. What gates is read off the role (roleOf),
+ *     the one predicate the layers above and below decide by;
+ *   - a detection or an inference the estimate weighs is one voice among
+ *     several. It counts when it THREW, which no natural run does and an
+ *     input built for it can. Stopped at a limit of work, by a record that
+ *     was cut or by a definition that is broken, it takes no part, as
+ *     before (#1038 is where those are decided);
+ *   - a rule that only reports and that nobody asked for takes no part by
+ *     its fire, and none by its silence. Its row says that it reports, on
+ *     an answer and on a silence alike (engine.ts).
+ */
+function hadToAnswer(r: EvalRuleResult, cfg: ComposeConfig): boolean {
+  if (isCritical(r)) return true;
+  if ((cfg.rules ?? COMPOSER_RULES) < 3) return false;
+  if (r.asked !== undefined) return true;
+  const role = roleOf(r, cfg);
+  return role === 'gate' || role === 'veto' || (role === 'risk' && r.threw === true);
+}
+
+/** The results the third layer names, in the order they stand in the evaluation. */
+function unansweredRows(rows: readonly EvalRuleResult[], cfg: ComposeConfig): EvalRuleResult[] {
+  return rows.filter((r) => couldNotAnswer(r) && hadToAnswer(r, cfg));
 }
 
 /**
@@ -286,8 +355,12 @@ function walk(
    * than the fail-open it replaces. A deployment that set
    * `onCriticalSkipped: "pass"` still sees the node — it accepted this
    * risk, which is not the same as there being none.
+   *
+   * A check that could not answer counts here where its answer would have
+   * counted: which rows those are is hadToAnswer, above.
    */
-  const unknown = rows.filter((r) => isCritical(r) && r.skipped === true && r.skipClass !== undefined && r.skipClass !== 'not_applicable');
+  const fromRules3 = (cfg.rules ?? COMPOSER_RULES) >= 3;
+  const unknown = unansweredRows(rows, cfg);
   path.push({ node: 'unknown', by: unknown.map((r) => r.ruleName), decided: unknown.length > 0 && cfg.onCriticalSkipped !== 'pass' });
   if (stopAtDecision && path.some((n) => n.decided)) return path;
 
@@ -322,13 +395,16 @@ function walk(
    */
   const risk = riskEstimate(result as EvalResult, cfg.prior, cfg.priorMode);
   const t = tau(cfg.falsePassCost);
-  const by =
-    risk === null
-      ? []
-      : Object.entries(risk.perClass)
-          .filter(([, q]) => q !== null && q !== undefined && q > 0.5)
-          .map(([cls]) => cls);
-  path.push({ node: 'risk', by: risk !== null && risk.pBad > t ? by : [], decided: risk !== null && risk.pBad > t, risk });
+  // The classes a weighed rule fired in: what an estimate that no class carries alone can be put down to. Weighed as the estimate weighs (risk.ts, detectorsOf): a fire with no published accuracy behind it, a plugin's, moved nothing and is named for nothing.
+  // From rules 3. A row stored under the earlier rules named a class only when it was more likely than not by itself, and reads back naming what it named: with no class to fall back on, carriedBy says exactly that.
+  const firedIn = new Set<string>(
+    fromRules3
+      ? detectorsOf(result as EvalResult)
+          .filter((d) => d.fired)
+          .flatMap((d) => d.classes)
+      : [],
+  );
+  path.push({ node: 'risk', by: risk !== null && risk.pBad > t ? carriedBy(risk.perClass, firedIn) : [], decided: risk !== null && risk.pBad > t, risk });
   return path;
 }
 
@@ -367,16 +443,37 @@ export function confidenceCall(
   return verdictConfidence(risk, tau(cfg.falsePassCost), { prior: cfg.prior, priorMode: cfg.priorMode, localLabels });
 }
 
+/**
+ * The failure classes that carried a risk estimate: each one that is more
+ * likely than not by itself. When none is, a fire may still have carried
+ * it: a lone fire worth 0.49 beside four classes that found nothing is a
+ * risk of 0.53 (an unfilled template, at the shipped settings), and the
+ * verdict failed naming no class at all. Named then
+ * is the class with the highest estimate among those a weighed rule fired
+ * in (`firedIn`). With no weighed fire nobody is named: under a loss ratio
+ * strict enough, the risk of an output nothing flagged is over the line by
+ * itself.
+ */
+export function carriedBy(perClass: Readonly<Record<string, number | null | undefined>>, firedIn: ReadonlySet<string>): string[] {
+  const estimates = Object.entries(perClass).filter((entry): entry is [string, number] => typeof entry[1] === 'number');
+  const overHalf = estimates.filter(([, q]) => q > 0.5).map(([cls]) => cls);
+  if (overHalf.length > 0) return overHalf;
+  const fired = estimates.filter(([cls]) => firedIn.has(cls));
+  const most = fired.reduce((max, [, q]) => Math.max(max, q), 0);
+  return most === 0 ? [] : fired.filter(([, q]) => q === most).map(([cls]) => cls);
+}
+
 const pct = (x: number): string => `${Math.round(x * 100)}%`;
 
-/** One later layer, as a clause. */
-function layerText(l: VerdictLayer): string {
+/** One later layer, as a clause. `beyondCritical`: the third layer names a rule that is not critical, which it can from composer rules 3. */
+function layerText(l: VerdictLayer, beyondCritical: boolean): string {
   const by = l.by.join(', ');
   switch (l.basis) {
     case 'detector_veto':
       return `a critical rule fired (${by})`;
     case 'critical_unknown':
-      return `a critical check was asked and could not answer (${by})`;
+      // Of critical rules alone the clause is the one it always was, which is also what a verdict given under the earlier rules was told. Where the layer names another rule (asked for, a gate here, or weighed and thrown), the clause is the one true of each.
+      return beyondCritical ? `a check whose answer would have counted could not answer (${by})` : `a critical check was asked and could not answer (${by})`;
     case 'required_evidence_missing':
       return `evidence that was asked for or promised is not in the record (${by})`;
     default:
@@ -646,7 +743,16 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
    */
   const laterRules = new Set((verdict.also ?? []).filter((l) => l.basis !== 'risk_over_loss').flatMap((l) => l.by));
   const vetoed = verdict.basis === 'detector_veto' || (verdict.also ?? []).some((l) => l.basis === 'detector_veto');
-  const said = (verdict.also ?? []).filter((l) => !(l.basis === 'risk_over_loss' && vetoed)).map(layerText);
+  /*
+   * The rows the third layer named, from the layer's own list (hadToAnswer)
+   * and never by looking a name up among the rows: two rules can carry one
+   * name (a custom rule may be called `cost_under_threshold`), and found by
+   * name a critical custom rule was told by the built-in's row, which skipped
+   * beside it.
+   */
+  const couldNot = unansweredRows(result.rule_results, cfg);
+  const beyondCritical = couldNot.some((r) => !isCritical(r));
+  const said = (verdict.also ?? []).filter((l) => !(l.basis === 'risk_over_loss' && vetoed)).map((l) => layerText(l, beyondCritical));
   // Nothing judged is not a layer anything could clear; the evidence beside it has its own sentence below.
   if (said.length > 0 && verdict.basis !== 'no_rules') {
     out.push({
@@ -800,7 +906,21 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
    */
   const weighedAtLabelsPrior = result.provenance?.composer?.priorSource === 'estimated';
   if (verdict.basis === 'risk_over_loss') {
-    const weighedFires = result.rule_results.filter((r) => fired(r) && r.advisory !== true && !isCritical(r) && (r.kind === 'detection' || r.kind === 'inference')).map((r) => r.ruleName);
+    /*
+     * The rows the estimate weighed and that fired, asked of each ROW by the
+     * estimate's own predicate (risk.ts, weighedByTheEstimate): a plugin's
+     * detection has no published accuracy, and the estimate does not rest on
+     * it. Asked by NAME, a custom rule that carries a weighed rule's name
+     * would be named beside it, though it is a policy the estimate does not
+     * read, and though it may have passed.
+     *
+     * From rules 3. A verdict given under the earlier rules was told every
+     * detection and inference that fired, weighed or not, and is told the
+     * same on a later read.
+     */
+    const named = (r: EvalRuleResult): boolean =>
+      (cfg.rules ?? COMPOSER_RULES) >= 3 ? fired(r) && weighedByTheEstimate(r) : fired(r) && r.advisory !== true && (r.kind === 'detection' || r.kind === 'inference');
+    const weighedFires = result.rule_results.filter((r) => named(r) && !isCritical(r)).map((r) => r.ruleName);
     if (weighedFires.length > 0) {
       out.push({
         severity: 'note',
@@ -819,13 +939,42 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
   }
   const unanswered = verdict.basis === 'critical_unknown' ? verdict : (verdict.also ?? []).find((l) => l.basis === 'critical_unknown');
   if (unanswered !== undefined) {
+    /*
+     * A rule that is not critical is here because somebody asked for it
+     * (stamp.ts, askedOf), because it threw where its finding is weighed, or
+     * because it gates here and could not answer: the sentence says which,
+     * of the row the layer named. A verdict handed in with a layer these
+     * rows do not make (it was not composed from them) is told by its names.
+     */
+    const fromRows = couldNot.length === unanswered.by.length && couldNot.every((r, i) => r.ruleName === unanswered.by[i]);
+    const tells = fromRows
+      ? couldNot.map((r) => {
+          if (isCritical(r)) return r.ruleName;
+          if (r.asked !== undefined) return `${r.ruleName}, which this ${r.asked === 'config' ? 'deployment' : 'call'} asked for`;
+          return r.threw === true ? `${r.ruleName}, which failed while it judged this run` : `${r.ruleName}, which gates here`;
+        })
+      : unanswered.by;
+    // Of critical rules alone the sentence is the one it always was, which is also what a verdict given under the earlier rules was told.
+    const allCritical = !fromRows || !beyondCritical;
+    const could = allCritical ? 'A critical check was asked and could not answer' : 'A check that had to answer could not';
+    const names = tells.join(allCritical ? ', ' : '; ');
+    /*
+     * Three endings. The verdict is unknown; or it failed on other grounds
+     * and this is beside it; or, from composer rules 3, the deployment set
+     * eval.onCriticalSkipped to "fail" and the verdict failed for this. That
+     * last one was told "this verdict is unknown rather than clean", of a
+     * verdict whose state is `fail`; a verdict given under the earlier rules
+     * keeps the sentence it was given.
+     */
+    const failedForThis = verdict.basis === 'critical_unknown' && verdict.state === 'fail' && (cfg.rules ?? COMPOSER_RULES) >= 3;
     out.push({
       severity: 'block',
       addressee: 'operator',
-      text:
-        verdict.basis === 'critical_unknown'
-          ? `A critical check was asked and could not answer (${unanswered.by.join(', ')}), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.`
-          : `A critical check was asked and could not answer (${unanswered.by.join(', ')}). The verdict failed on other grounds; that check is still not answered. Set eval.onCriticalSkipped to "pass" to accept that risk.`,
+      text: failedForThis
+        ? `${could} (${names}), and this deployment treats that as a failure: eval.onCriticalSkipped is "fail". Set it to "unknown" to have such a verdict read as not checked, or to "pass" to accept that risk.`
+        : verdict.basis === 'critical_unknown'
+          ? `${could} (${names}), so this verdict is unknown rather than clean. Set eval.onCriticalSkipped to "pass" to accept that risk, or to "fail" to treat it as a failure.`
+          : `${could} (${names}). The verdict failed on other grounds; that check is still not answered. Set eval.onCriticalSkipped to "pass" to accept that risk.`,
       configKey: 'eval.onCriticalSkipped',
     });
   }

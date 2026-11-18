@@ -22,6 +22,7 @@ import {
   publishedRuleNames,
   resetAccuracyMemo,
 } from '../../../src/eval/accuracy.js';
+import { EvalEngine } from '../../../src/eval/engine.js';
 import { beta, fnv1a, gamma, missRate, mulberry32, percentile95, ppv } from '../../../src/eval/stats.js';
 
 const root = resolve(__dirname, '..', '..', '..');
@@ -104,7 +105,9 @@ describe('accuracy — the published numbers and their intervals', () => {
     resetAccuracyMemo();
     const second = ppvInterval('no_stub_output', 0.2);
     expect(first).toEqual(second);
-    expect(ppvInterval('no_stub_output', 0.2)).toBe(ppvInterval('no_stub_output', 0.2)); // memoised
+    // Remembered as numbers and handed out as a new object each time (tests/unit/eval/accuracy-memo.test.ts holds that nothing is worked out twice).
+    expect(ppvInterval('no_stub_output', 0.2)).toEqual(first);
+    expect(ppvInterval('no_stub_output', 0.2)).not.toBe(ppvInterval('no_stub_output', 0.2));
   });
 
   /*
@@ -168,5 +171,48 @@ describe('accuracy — the published numbers and their intervals', () => {
     expect(Object.keys(table)).toEqual(['0.01', '0.05', '0.20', '0.50']);
     expect(table['0.01']!).toBeLessThan(table['0.50']!);
     expect(ppvAt('no_such_rule')['0.50']).toBeNull();
+  });
+});
+
+describe('accuracy — an interval is handed out, never shared', () => {
+  it('each caller gets an object of its own, with the same numbers', () => {
+    for (const ask of [() => missRateInterval('no_stub_output'), () => ppvInterval('no_pii', 0.2)]) {
+      const first = ask();
+      const second = ask();
+      expect(first).not.toBeNull();
+      expect(second).toEqual(first);
+      expect(second).not.toBe(first);
+    }
+  });
+
+  it('a caller that changes its interval changes nothing the next caller reads', () => {
+    const published = { ...missRateInterval('no_stub_output')! };
+    const mine = missRateInterval('no_stub_output')!;
+    mine.point = 0.999;
+    mine.lo = 0;
+    mine.hi = 1;
+    expect(missRateInterval('no_stub_output')).toEqual(published);
+  });
+
+  it('through the engine: a result changed by its caller does not change the next result', async () => {
+    const engine = new EvalEngine(0.7);
+    const quiet = (r: Awaited<ReturnType<EvalEngine['evaluateAll']>>) => r.rule_results.find((row) => row.ruleName === 'no_stub_output')!.uncertainty as { missRate: { point: number; lo: number; hi: number } };
+    const output = 'The weather in San Francisco is currently 62 degrees Fahrenheit with partly cloudy skies.';
+    const first = await engine.evaluateAll({ output });
+    const published = { ...quiet(first).missRate };
+    quiet(first).missRate.point = 0.999;
+    const second = await engine.evaluateAll({ output });
+    expect(quiet(second).missRate).toEqual(published);
+    expect(quiet(second).missRate).not.toBe(quiet(first).missRate);
+  });
+
+  it('two rules that stand next to each other keep their own numbers on one result', async () => {
+    // Seen on Node 24 before the runtime guard: in a process that started on a busy machine, the first of these rows carried the second's interval.
+    const engine = new EvalEngine(0.7);
+    const result = await engine.evaluateAll({ output: 'The weather in San Francisco is currently 62 degrees Fahrenheit with partly cloudy skies.' });
+    const interval = (name: string) => (result.rule_results.find((row) => row.ruleName === name)!.uncertainty as { missRate: unknown }).missRate;
+    expect(interval('no_stub_output')).toEqual(missRateInterval('no_stub_output'));
+    expect(interval('no_hallucination_markers')).toEqual(missRateInterval('no_hallucination_markers'));
+    expect(interval('no_stub_output')).not.toEqual(interval('no_hallucination_markers'));
   });
 });

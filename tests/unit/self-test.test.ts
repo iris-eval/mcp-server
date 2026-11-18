@@ -10,6 +10,7 @@ import {
   SELF_TEST_FAIL_VERDICT,
 } from '../../src/self-test.js';
 import { PKG_VERSION } from '../../src/config/defaults.js';
+import { runtimeLine } from '../../src/runtime-guard.js';
 import { SqliteAdapter } from '../../src/storage/sqlite-adapter.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
 import { CELL_DRIVER, SEARCH_DRIVER, driverHasFts5 } from './storage/fts5-here.js';
@@ -88,6 +89,9 @@ describe('runSelfTest', { timeout: 90_000 }, () => {
     // before the scrub.
     expect(out).toContain(`home      ${decoyHome}`);
     expect(out).toContain(`storage   ${join(decoyHome, 'decoy.db')}`);
+    // The runtime line: the Node and V8 it ran on, and what stands between them and the engine's shared-numbers defect.
+    expect(out).toContain(`runtime   ${runtimeLine()}`);
+    expect(out).toContain(`runtime   Node ${process.versions.node} (V8 ${process.versions.v8})`);
     // The configured home was probed (not merely reported) and found writable.
     expect(out).toContain(`✓ ${SELF_TEST_STEPS.configuredHome} — ${decoyHome} (database ${join(decoyHome, 'decoy.db')} will be created on first run)`);
 

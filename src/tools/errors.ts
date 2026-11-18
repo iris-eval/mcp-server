@@ -170,7 +170,7 @@ export function toIrisError(err: unknown): IrisError {
       bad_request: ['The provider rejected the request. Check the model name and the template inputs.'],
       server_error: ['The provider failed on its side. Retry later.'],
       timeout: ['The provider did not answer within timeout_ms. Retry, or raise timeout_ms.'],
-      malformed_response: ['The judge did not return valid JSON on two attempts. Retry; if it recurs, pick another model.'],
+      malformed_response: ['The judge answered, and not with the JSON object it was asked for: the message shows what stood in its place, or the start of it. Retry; if it recurs, pick another model.'],
       unknown: ['Retry once; if it recurs, report the message with the provider and model.'],
     };
     return irisError('IRIS_PROVIDER_ERROR', message, {

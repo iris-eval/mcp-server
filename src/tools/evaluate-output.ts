@@ -15,6 +15,7 @@ import { toolCallSchema, toolsCatalogueSchema } from './log-trace.js';
 import { getTraceOrThrow, insertLinkedEvalResult } from './trace-link.js';
 import { differsFromRecord } from '../eval/of-record.js';
 import { irisError } from './errors.js';
+import { builtInNameRefusal, isBuiltInRuleName } from '../eval/built-in-names.js';
 import { carriesFence, FENCE_RECOVERY } from './untrusted.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { advertisedOutput, NESTED_SHAPES_NOTE } from './advertise.js';
@@ -35,7 +36,7 @@ export const MAX_INLINE_CUSTOM_RULES = 10;
  */
 const CustomRuleSchema = strictNested(
   {
-    name: z.string().min(1).describe('Rule name as it will appear in rule_results'),
+    name: z.string().min(1).describe('Rule name as it will appear in rule_results; not the name of a rule Iris ships'),
     type: z.enum([
       'regex_match', 'regex_no_match', 'min_length', 'max_length',
       'contains_keywords', 'excludes_keywords', 'json_schema', 'cost_threshold', 'action_policy',
@@ -250,6 +251,15 @@ export function registerEvaluateOutputTool(
         throw irisError('IRIS_INVALID_ARGUMENT', 'A custom_rules entry carries an <untrusted_…> tag, which marks stored text on a read and is not part of it. Nothing was evaluated.', {
           field: 'custom_rules',
           recovery: [FENCE_RECOVERY],
+          retryable: false,
+        });
+      }
+      // A custom rule may not take the name of a rule Iris ships (eval/built-in-names.ts): the two would carry one name in every result.
+      const taken = [...new Set((customRules ?? []).map((r) => r.name).filter(isBuiltInRuleName))];
+      if (taken.length > 0) {
+        throw irisError('IRIS_INVALID_ARGUMENT', `${builtInNameRefusal(taken)} Nothing was evaluated.`, {
+          field: 'custom_rules',
+          recovery: ['Send each custom_rules entry under a name of its own: list_rules lists the rules Iris ships under built_in.'],
           retryable: false,
         });
       }

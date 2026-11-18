@@ -696,7 +696,9 @@
       "provenance": "real-transcript",
       "risk": {
         "basis": "risk_over_loss",
-        "by": [],
+        "by": [
+          "stub"
+        ],
         "confidence": "marginal",
         "hi": 0.7534,
         "lo": 0.3858,
@@ -5322,7 +5324,7 @@
       "split": "dev"
     }
   ],
-  "commit": "1efc74a0",
+  "commit": "bba11172",
   "compositeVersion": "caa13e5c9488",
   "confidence": {
     "changed": {
@@ -5610,7 +5612,7 @@
       }
     }
   },
-  "generatedAt": "2026-11-12T03:40:28.413Z",
+  "generatedAt": "2026-11-17T06:53:45.446Z",
   "legacy": {
     "dev": {
       "accuracy": {

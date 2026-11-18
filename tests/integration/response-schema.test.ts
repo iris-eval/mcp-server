@@ -9,6 +9,12 @@
  * renders. The judge tools run with the environment scrubbed, so what
  * they return here is the enablement error — validated as an envelope —
  * and their output schemas are still advertised.
+ *
+ * The client lists the tools before every test, as a client does: from then
+ * on the SDK checks the structured content of each result against the
+ * tool's output schema. So every success here is one that check passed,
+ * and an error carries its envelope as text and no structured content,
+ * which is the only form of it that check lets through.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -67,6 +73,7 @@ describe('the agent-native contract', () => {
     await server.mcpServer.connect(serverTransport);
     client = new Client({ name: 'contract', version: '0.1.0' });
     await client.connect(clientTransport);
+    await client.listTools();
   });
 
   afterEach(async () => {
@@ -184,7 +191,8 @@ describe('the agent-native contract', () => {
       expect(parsed.data.error.field).toBe('IRIS_ANTHROPIC_API_KEY');
       expect(parsed.data.error.recovery.join(' ')).toMatch(/Restart the MCP session/);
       expect(parsed.data.error.recovery.join(' ')).toMatch(/"env" block/);
-      expect(r.structuredContent).toEqual(JSON.parse(text(r)));
+      // The envelope is the text. As structured content it would have to match the tool's output schema, which describes an answer.
+      expect(r.structuredContent).toBeUndefined();
       expect(links(r).map((l) => l.uri)).toEqual(['iris://capabilities']);
     }
   });

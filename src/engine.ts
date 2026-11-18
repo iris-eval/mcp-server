@@ -27,6 +27,14 @@ export { toEvaluationResponse } from './eval/response.js';
 export { LOCAL_LABEL_MIN, localPrecision, estimatedPrior } from './eval/labels.js';
 export { defaultConfig, PKG_VERSION } from './config/defaults.js';
 /*
+ * On Node 24 and 26 the engine's compiler can make a number in one result
+ * read as another result's (runtime-guard.ts). The server and the CLI turn
+ * that off at start. A host that evaluates in its own process calls
+ * applyRuntimeGuard() once, before its first evaluation, or starts Node
+ * with --no-maglev; an engine built without either says so once.
+ */
+export { applyRuntimeGuard, runtimeGuardState, runtimeReport, v8SharesNumbers, SHARED_NUMBERS_REPORT, type RuntimeGuardState, type RuntimeReport } from './runtime-guard.js';
+/*
  * The relevance judge is opt-in here as on the server: an engine calls no
  * model until an embedder installs one with engine.setRelevanceJudge(
  * createRelevanceJudge({ model, apiKey })), after which answers_the_ask

@@ -21,6 +21,7 @@ import { createStorage } from '../storage/index.js';
 import { announceUpgrade } from './upgrade-notice.js';
 import { createCustomRuleStore } from '../custom-rule-store.js';
 import { createCustomRule } from '../eval/rules/custom.js';
+import { builtInNameKept, isBuiltInRuleName } from '../eval/built-in-names.js';
 import { EvalEngine } from '../eval/engine.js';
 import { relevanceJudgeFromEnv, relevanceJudgeStartupWarnings } from '../eval/llm-judge/relevance-judge.js';
 import { evaluateStoredTrace, type IngestEvalType } from '../eval/ingest.js';
@@ -182,6 +183,7 @@ export async function runIngest(o: IngestOptions): Promise<number> {
     for (const line of relevanceJudgeStartupWarnings(engine.relevanceJudgeInForce())) o.stderr.write(`${line}\n`);
     for (const rule of customRuleStore.enabledRules(LOCAL_TENANT)) {
       engine.registerRule(rule.evalType, createCustomRule(rule.definition, rule.severity), rule.id);
+      if (isBuiltInRuleName(rule.name)) o.stderr.write(`${builtInNameKept(rule)}\n`);
     }
     // Plugin rules: the same loader the server boots with; a
     // file Iris cannot verify is a usage error before any trace is read.

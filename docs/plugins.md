@@ -29,6 +29,10 @@ export default {
 
 `evaluate` returns the same shape a built-in returns: `passed` (boolean), `score` (0–1), `message` (string), and optionally `evidence`, `skipped` with `skipReason`. It is synchronous — the engine keeps every deterministic rule synchronous on purpose, so a rule cannot reach the network by construction.
 
+Read `ctx`, and do not write to it: it is the evaluation's own, and the rules that run after yours are handed the same object and read what you wrote. A cost a plugin defaults for its own arithmetic is the cost a cost check after it judges. What the call carried is recorded before any rule runs, so nothing a plugin writes there is evidence that the call sent it, and what each rule lacked is read from that record.
+
+Nine fields of a row are the engine's to write: `critical`, `criticalSource`, `kind`, `role`, `state`, `advisory`, `thresholdSource`, `asked` and `lacked`. It writes them from the plugin's declaration, the deployment's configuration and what the call carried, and two things a result returns are read too: a result that carries a judge's record (`judge`) is read as a judgment, and its fire gates as a judgment's does; and a policy's fire whose count evidence stands against a threshold that names no source (`thresholdSource`) advises, where one with no such evidence gates. A returned result that sets one of the nine does not keep it. A deployment that wants a missing input to leave the verdict not checked names the input in `eval.requiredEvidence`.
+
 ## Naming it
 
 ```bash
