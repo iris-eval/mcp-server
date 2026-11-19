@@ -141,11 +141,12 @@ async function postBeforeDeadline(
 }
 
 /**
- * Whether the runtime can carry these headers, built as fetch builds them:
- * it refuses a value with a line break inside it or a character past one
- * byte. The key is the one header that is not a constant, so a refusal is
- * the operator's key, to be fixed where it is set; it is never shown, and
- * no request is made.
+ * Whether the runtime's `Headers` accepts these headers: it refuses a value
+ * with a line break inside it or a character past one byte. The key is the
+ * one header that is not a constant, so a refusal is the operator's key, to
+ * be fixed where it is set; it is never shown, and no request is made.
+ * fetch refuses a few control characters `Headers` accepts, and such a key
+ * is read as a request that could not be made (#1080).
  */
 function headersCanBeSent(headers: RequestInit['headers']): boolean {
   try {
