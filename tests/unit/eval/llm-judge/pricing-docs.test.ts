@@ -108,6 +108,22 @@ describe('the one table', () => {
     }
   });
 
+  it('the guide and the cost page state the two lines the table prices by, and the changelog names every model added on the day', () => {
+    const cost = readFileSync(resolve(__dirname, '..', '..', '..', '..', 'docs', 'cost.md'), 'utf8');
+    const changelog = readFileSync(resolve(__dirname, '..', '..', '..', '..', 'CHANGELOG.md'), 'utf8');
+    const lines = [...new Set(MODEL_PRICING.flatMap((p) => (p.longContext ? [p.longContext.aboveInputTokens] : [])))].sort((a, b) => a - b);
+    expect(lines).toEqual([100_000, 272_000]);
+    expect(guide).toContain('Anthropic bills a request to Claude Haiku 5.5 whose prompt is over 100,000 tokens at higher rates, and OpenAI bills a request over 272,000 input tokens to GPT-5.4, GPT-5.5, GPT-5.6 or GPT-6 at twice the input and cache rates and 1.5 times the output');
+    expect(cost).toContain('Claude Haiku 5.5 over 100,000 prompt tokens, and OpenAI\'s GPT-5.4, GPT-5.5, GPT-5.6 and GPT-6 over 272,000 input tokens (twice the input and cache rates, 1.5 times the output)');
+    const entry = changelog.split('- **The judge and a trace\'s estimated cost price both providers\' current models, and a request by its size.**')[1]?.split('\n- **')[0];
+    expect(entry, 'the changelog entry').toBeDefined();
+    const added = ['claude-fable-5-2', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-fable-5', 'gpt-6.2-astra', 'gpt-6.2-sol', 'gpt-6.1-terra', 'gpt-6-luna', 'gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano', 'gpt-5.2', 'gpt-5.1', 'gpt-5-nano', 'gpt-4.1', 'o3'];
+    for (const model of added) {
+      expect(findPricing(model), model).not.toBeNull();
+      expect(entry!, model).toContain(`\`${model}\``);
+    }
+  });
+
   it("the guide's row for a model priced by size gives its rates over the line, and no other row speaks of a size", () => {
     const rows = guideRows();
     // Two decimals, as the table writes a price, unless that would round it (0.625 stays 0.625).
