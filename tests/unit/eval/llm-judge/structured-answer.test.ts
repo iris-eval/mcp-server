@@ -8,6 +8,8 @@
  * request a call sends is read as the provider would read it, and the reply
  * is a stand-in in the provider's own shape.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CITATION_ANSWER, verdictAnswer } from '../../../../src/eval/llm-judge/answer.js';
 import { callLLMJudge, estimateInputTokens, OPENAI_MODELS, STRUCTURED_ANSWER_ALLOWANCE_TOKENS, type LLMJudgeRequest } from '../../../../src/eval/llm-judge/client.js';
@@ -183,6 +185,22 @@ describe('an OpenAI reply with no answer says why', () => {
     await expect(callLLMJudge(request({ provider: 'openai', model: 'gpt-4o-mini', answer }))).rejects.toMatchObject({ kind: 'malformed_response', message: 'OpenAI response had no message content' });
     provider(openAIReply({ content: null, refusal: `${'x'.repeat(200)}${'y'.repeat(100)}` }));
     await expect(callLLMJudge(request({ provider: 'openai', model: 'gpt-4o-mini', answer }))).rejects.toMatchObject({ kind: 'malformed_response', message: `OpenAI's model declined to answer: ${'x'.repeat(200)}` });
+  });
+});
+
+describe('what the documents say of each road', () => {
+  const read = (path: string): string => readFileSync(resolve(__dirname, '..', '..', '..', '..', path), 'utf8');
+
+  it('o1-mini, asked in text, is sent no reasoning effort and its answer is not held to the schema; each message a caller can meet has its row', () => {
+    const doc = read('docs/llm-as-judge.md');
+    const log = read('CHANGELOG.md');
+    expect(doc).toContain('and a low reasoning effort where the model takes one (`o1-mini` takes none)');
+    expect(log).toContain('and `reasoning_effort: "low"` where the model takes one (`o1-mini` takes none)');
+    expect(log).toContain("Asked for as structured output, the answer names each template's three dimensions, and no others; from `o1-mini`, asked in text, the dimensions are read as before.");
+    for (const row of ['| `Judge reply is not the JSON object it was asked for`', "| `OpenAI's model declined to answer: ...`", '| `OpenAI response had no message content: it ended at its output limit (max_completion_tokens ...)`']) {
+      expect(doc, row).toContain(row);
+    }
+    expect(doc).toContain('which the second request, whose cap is no larger (256 at most), seldom does. An OpenAI model that declines, or whose reply reaches its cap before any answer, is not asked again');
   });
 });
 
