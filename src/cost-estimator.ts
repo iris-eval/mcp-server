@@ -68,10 +68,12 @@ export function estimateCost(input: EstimateInput): CostEstimate | null {
   const providerTable = PRICING[input.provider];
   if (!providerTable) return null;
 
-  if (!providerTable[input.model]) return null;
+  // The provider's own entry for the model: every object answers to an id such as 'constructor' or 'toString'.
+  const pricing = Object.prototype.hasOwnProperty.call(providerTable, input.model) ? findPricing(input.model) : null;
+  if (!pricing) return null;
 
   // One call: its size picks its rates, where the provider prices a long request higher (pricing.ts, ratesFor).
-  const rates = ratesFor(findPricing(input.model)!, input.tokensIn);
+  const rates = ratesFor(pricing, input.tokensIn);
   const inputUsd = (input.tokensIn / 1_000_000) * rates.inputUsdPer1M;
   const outputUsd = (input.tokensOut / 1_000_000) * rates.outputUsdPer1M;
   return {

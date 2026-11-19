@@ -17,9 +17,9 @@ import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { ANTHROPIC_MODELS, callLLMJudge, takesTemperature, type LLMJudgeRequest, type LLMProvider } from '../../../../src/eval/llm-judge/client.js';
+import { ANTHROPIC_MODELS, callLLMJudge, OPENAI_MODELS, takesTemperature, type LLMJudgeRequest, type LLMProvider } from '../../../../src/eval/llm-judge/client.js';
 import { verdictAnswer } from '../../../../src/eval/llm-judge/answer.js';
-import { pricedModels } from '../../../../src/eval/llm-judge/pricing.js';
+import { MODEL_PRICING, pricedModels } from '../../../../src/eval/llm-judge/pricing.js';
 import { createRelevanceJudge } from '../../../../src/eval/llm-judge/relevance-judge.js';
 import { EvalEngine } from '../../../../src/eval/engine.js';
 import { verifyCitations } from '../../../../src/eval/citation-verify/verifier.js';
@@ -237,6 +237,30 @@ describe('evaluate_with_llm_judge: a temperature set for a model that takes none
     expect(zero.bodies[0].temperature).toBe(0);
     expect(effortOf(zero.bodies[0])).toBeUndefined();
     expect(zero.out.warnings).toBeUndefined();
+  });
+});
+
+describe('an OpenAI model that charges for a cache write is asked for no caching', () => {
+  it('the models asked are exactly those whose cache write costs more than their input: GPT-5.6 and later', () => {
+    const charged = MODEL_PRICING.filter((p) => p.provider === 'openai' && p.cacheWriteUsdPer1M > p.inputUsdPer1M).map((p) => p.model).sort();
+    const asked = Object.entries(OPENAI_MODELS).filter(([, how]) => how.uncached === true).map(([model]) => model).sort();
+    expect(asked).toEqual(charged);
+    expect(charged).toEqual(['gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-6-astra', 'gpt-6-luna', 'gpt-6-sol', 'gpt-6.1-sol', 'gpt-6.1-terra', 'gpt-6.2-astra', 'gpt-6.2-sol']);
+  });
+
+  it.each(pricedModels('openai'))('%s: prompt_cache_options with mode "explicit", and no breakpoint, only where a write is charged', async (model) => {
+    const bodies = provider(VERDICT);
+    await callLLMJudge(request('openai', model, 0));
+    if (OPENAI_MODELS[model]?.uncached === true) expect(bodies[0].prompt_cache_options).toEqual({ mode: 'explicit' });
+    else expect(bodies[0]).not.toHaveProperty('prompt_cache_options');
+    expect(JSON.stringify(bodies[0])).not.toContain('prompt_cache_breakpoint');
+  });
+
+  it('a Claude model is never sent it: Anthropic caches only what a request marks, and the judge marks nothing', async () => {
+    const bodies = provider(VERDICT);
+    await callLLMJudge(request('anthropic', 'claude-haiku-5-5', 0));
+    expect(bodies[0]).not.toHaveProperty('prompt_cache_options');
+    expect(JSON.stringify(bodies[0])).not.toContain('cache_control');
   });
 });
 

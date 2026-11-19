@@ -5,7 +5,7 @@ import {
   type LLMProvider,
 } from '../llm-judge/client.js';
 import { CITATION_ANSWER } from '../llm-judge/answer.js';
-import { estimateCostUsd, findPricing } from '../llm-judge/pricing.js';
+import { estimateCostUsd, findPricing, worstCaseRequestUsd } from '../llm-judge/pricing.js';
 import { answerObject, shownReply, shownValue, unitNumber } from '../llm-judge/reply.js';
 import {
   makeNonce,
@@ -274,7 +274,7 @@ export async function verifyCitations(
      */
     const prompts = buildCitationJudgePrompts(citation.contextWindow, source.text);
     const pessimistic =
-      estimateCostUsd(
+      worstCaseRequestUsd(
         params.model,
         estimateInputTokens(prompts.system, prompts.user, CITATION_ANSWER),
         JUDGE_MAX_OUTPUT_TOKENS,
@@ -348,7 +348,10 @@ export async function verifyCitations(
       continue;
     }
 
-    const cost = estimateCostUsd(params.model, judgeResponse.inputTokens, judgeResponse.outputTokens);
+    const cost = estimateCostUsd(params.model, judgeResponse.inputTokens, judgeResponse.outputTokens, {
+      readTokens: judgeResponse.cacheReadTokens,
+      writeTokens: judgeResponse.cacheWriteTokens,
+    });
     totalCost += cost ?? 0;
     if (hold?.ok) hold.settle(cost);
 

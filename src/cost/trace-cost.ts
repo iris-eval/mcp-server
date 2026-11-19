@@ -21,8 +21,12 @@
  *     call's model is the one its span names (response model first, then
  *     the request model), else its nearest ancestor's, else the trace's.
  *     If they all price as one model, the trace's own token_usage is priced
- *     at it — the numbers the trace shows are the numbers priced. If they
- *     price as several, each call is priced at its own model and summed.
+ *     at it — the numbers the trace shows are the numbers priced — unless a
+ *     call is over the size its provider prices higher (pricing.ts,
+ *     longContext): a total cannot carry a call's size, so each call is then
+ *     priced by its own, and what token_usage records beyond the calls is
+ *     priced as one more total, at the base rates. If they price as several,
+ *     each call is priced at its own model and summed.
  *   - Otherwise the trace's token_usage is priced at the model its metadata
  *     names (`metadata.model`, the key the OTLP door writes).
  *   - A model no table prices, or no model, or no token counts: the cost
@@ -31,7 +35,8 @@
  *     that is too low passes a budget it should fail.
  *
  * What an estimate is: the provider's list price for the tokens the trace
- * recorded. Reasoning tokens are counted in the output tokens by both
+ * recorded, each call at the rates its own size picks where its provider
+ * prices a long request higher. Reasoning tokens are counted in the output tokens by both
  * providers and are priced at the output rate, which is how they are
  * billed. Cached input is priced as the provider bills it when the trace
  * says how much there was (`gen_ai.usage.cache_read.input_tokens` /
@@ -278,6 +283,22 @@ function cachedOf(usage: TokenUsage | undefined): { cacheRead: number; cacheWrit
   };
 }
 
+/**
+ * What a total records beyond the calls listed: each of its counts less
+ * the calls' sum, never below 0, the cached part no larger than the input
+ * left. Undefined when nothing is left beyond them.
+ */
+function remainderOf(total: Tokens, calls: readonly Tokens[]): Tokens | undefined {
+  const sum = (pick: (t: Tokens) => number): number => calls.reduce((s, c) => s + pick(c), 0);
+  const prompt = Math.max(0, sizeOf(total) - sum(sizeOf));
+  const completion = Math.max(0, total.completion - sum((c) => c.completion));
+  if (prompt === 0 && completion === 0) return undefined;
+  const cacheRead = Math.min(prompt, Math.max(0, total.cacheRead - sum((c) => c.cacheRead)));
+  const cacheWrite = Math.min(prompt - cacheRead, Math.max(0, total.cacheWrite - sum((c) => c.cacheWrite)));
+  const cacheWrite1h = total.cacheWrite1h === undefined ? undefined : Math.min(cacheWrite, Math.max(0, total.cacheWrite1h - sum((c) => c.cacheWrite1h ?? 0)));
+  return { prompt, completion, cacheRead, cacheWrite, ...(cacheWrite1h !== undefined ? { cacheWrite1h } : {}) };
+}
+
 function estimated(basis: 'token_usage' | 'calls', calls: CostEstimateCall[], notes: string[]): { cost_usd: number; estimate: CostEstimate } {
   const unique = [...new Set(notes)];
   return {
@@ -327,13 +348,21 @@ export function estimateTraceCost(trace: Trace, using: PricingSettings = pricing
     const notes: string[] = [];
     // A call over the size its provider prices higher is priced by its own size, which the run's total cannot carry: the calls are then priced one by one.
     const sized = found.some((m, i) => m.longContext !== null && calls[i].oneRequest && sizeOf(calls[i]) > m.longContext.aboveInputTokens);
-    if (oneModel && !sized && count(usage?.prompt_tokens) !== undefined && count(usage?.completion_tokens) !== undefined) {
-      const total: Tokens = { prompt: usage!.prompt_tokens!, completion: usage!.completion_tokens!, ...cachedOf(usage) };
+    const total: Tokens | undefined =
+      count(usage?.prompt_tokens) !== undefined && count(usage?.completion_tokens) !== undefined ? { prompt: usage!.prompt_tokens!, completion: usage!.completion_tokens!, ...cachedOf(usage) } : undefined;
+    if (oneModel && !sized && total !== undefined) {
       // Calls that account for the whole total, none over the line, price it as exactly as they would one by one.
       const covered = calls.every((c) => c.oneRequest) && calls.reduce((sum, c) => sum + sizeOf(c), 0) >= sizeOf(total);
       return estimated('token_usage', [priced(found[0], total, notes, covered ? 'within' : 'total')], notes);
     }
-    return estimated('calls', found.map((m, i) => priced(m, calls[i], notes, calls[i].oneRequest ? 'one' : 'total')), notes);
+    const perCall = found.map((m, i) => priced(m, calls[i], notes, calls[i].oneRequest ? 'one' : 'total'));
+    // Of one model, the trace's token_usage is its whole: what it records beyond the calls on its spans is priced too, as one more total.
+    const rest = oneModel && total !== undefined ? remainderOf(total, calls) : undefined;
+    if (rest !== undefined) {
+      notes.push(`${found[0].model}: token_usage records ${fmt(rest.prompt)} input and ${fmt(rest.completion)} output tokens beyond the calls on the spans; they are priced as one more total.`);
+      perCall.push(priced(found[0], rest, notes, 'total'));
+    }
+    return estimated('calls', perCall, notes);
   }
 
   const usage = trace.token_usage;

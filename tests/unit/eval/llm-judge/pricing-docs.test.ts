@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PRICING } from '../../../../src/cost-estimator.js';
-import { MODEL_PRICING, PRICING_SOURCED_ON, findPricing, pricedModels, supportedModelsSummary } from '../../../../src/eval/llm-judge/pricing.js';
+import { MODEL_PRICING, PRICING_SOURCED_ON, PRICING_SOURCES, findPricing, pricedModels, supportedModelsSummary } from '../../../../src/eval/llm-judge/pricing.js';
 
 const guide = readFileSync(resolve(__dirname, '..', '..', '..', '..', 'docs', 'llm-as-judge.md'), 'utf8');
 
@@ -46,14 +46,60 @@ describe('the guide’s price table is the code’s', () => {
     }
   });
 
-  it('a retired model says so in its row, and the guide names the day the table was read', () => {
+  it('a retired model says so in its row, with the day it was found absent, and the guide names the day the table was read', () => {
     const rows = guideRows();
     for (const p of MODEL_PRICING) {
       const row = rows.find((r) => r.model === p.model)!;
-      if (p.retired) expect(row.notes.toLowerCase(), p.model).toContain('retired');
+      if (p.retired) expect(row.notes, p.model).toContain(`Retired ${p.retired}:`);
       else expect(row.notes.toLowerCase(), p.model).not.toContain('retired');
     }
-    expect(guide).toContain(PRICING_SOURCED_ON);
+    // The sentence that says when, not only a date somewhere in the page.
+    expect(guide).toContain(`Read from the providers' own pages on ${PRICING_SOURCED_ON}: Anthropic's pricing page (platform.claude.com/docs/en/about-claude/pricing), OpenAI's (developers.openai.com/api/docs/pricing),`);
+    expect(PRICING_SOURCES).toEqual({ anthropic: 'https://platform.claude.com/docs/en/about-claude/pricing', openai: 'https://developers.openai.com/api/docs/pricing' });
+  });
+
+  it('the two models OpenAI shut down on 2026-10-23 say so, and that a judge named on one fails there', () => {
+    const rows = guideRows();
+    for (const model of ['o4-mini', 'o3-mini']) {
+      expect(findPricing(model)?.retired, model).toBe('2026-11-18');
+      expect(rows.find((r) => r.model === model)!.notes, model).toBe("Retired 2026-11-18: absent from the provider's pricing page; OpenAI's deprecations page lists it shut down on 2026-10-23, so a judge named on it fails at OpenAI");
+    }
+  });
+
+  it('the guide, the cost page, the reference and the changelog say, word for word, how a request is priced and when the pages were read', () => {
+    const read = (path: string): string => readFileSync(resolve(__dirname, '..', '..', '..', '..', path), 'utf8').replace(/\r\n/g, '\n');
+    const cost = read('docs/cost.md');
+    const reference = read('docs/api-reference.md');
+    const changelog = read('CHANGELOG.md');
+    // The guide: the judge's caching, its sizes and its cap, a 12-hour write, the models not priced, a retirement date.
+    expect(guide).toContain('The judge asks for no caching: Anthropic caches only what a request marks, and the judge marks nothing; GPT-5.6 and later, which write a request\'s prompt to the cache unasked and charge 1.25 times the input for it, are sent `prompt_cache_options` with `mode: "explicit"` and no breakpoint, which OpenAI\'s Chat Completions reference says uses no prompt caching.');
+    expect(guide).toContain('Each request of a judge call is priced by its own size, and a call that asks twice costs the two requests priced one by one and added. Its cost cap prices a request at the higher rates wherever its input estimate (four characters a token), raised by 30%, is over the line');
+    expect(guide).toContain('so it is priced at the base rates, and says so when the total is over it and its calls do not account for it.');
+    expect(guide).toContain('a 12-hour write (2.5 times) is not priced, since nothing a trace carries that Iris reads splits the two.');
+    expect(guide).toContain("Not priced: OpenAI's pro models (`gpt-5.5-pro`, `gpt-5.4-pro`, `gpt-5.2-pro`, `gpt-5-pro`, `o3-pro`), whose pages say they do not take Chat Completions, the endpoint the judge calls; `gpt-5.6-sol`, whose page gives a promotional price until 2026-11-30");
+    expect(guideRows().find((r) => r.model === 'claude-sonnet-4-5')!.notes).toBe('Retires on the Claude API on 2026-11-30');
+    // The cost page: a total's note and its condition, the one-model exception, a 12-hour write, the wrappers' writes, one rate from config.json.
+    expect(cost).toContain('It is priced at the base rates, and when the total is over the line and the calls on the spans do not account for it, each under the line, `cost_estimate.notes` says the estimate may be low.');
+    expect(cost).toContain('so each call is then priced on its own, and what `token_usage` records beyond those calls is priced as one more total, at the base rates, with a note that says so.');
+    expect(cost).toContain('- **A 12-hour cache write** on OpenAI is priced as a 30-minute write (1.25 times the input price, where OpenAI charges 2.5 times): no field Iris reads splits the two.');
+    expect(cost).toContain('The `@iris-eval/sdk` and Python wrappers record OpenAI\'s cache reads, not its writes (`cache_write_tokens`), so on GPT-5.6 and later, where a write costs 1.25 times the input, a trace they send prices its written tokens as input, and the notes do not say so.');
+    expect(cost).toContain('- **A price from `config.json`** is one rate at every size.');
+    // The reference names the day the table was read.
+    expect(reference).toContain(`Any model in the pricing table (\`docs/llm-as-judge.md\`, read from both providers on ${PRICING_SOURCED_ON}); an unknown id is refused with the full list`);
+    // The changelog: the lines, a request priced by its own size, the cap, the remainder, caching, the retired models and the lead.
+    expect(changelog).toContain('Claude Haiku 5.5 over 100,000 prompt tokens, and OpenAI\'s models from GPT-5.4 over 272,000 input tokens, cost more, for the whole request.');
+    expect(changelog).toContain('Each request of a judge call is priced by its own size, and a call that asks twice costs the two requests priced one by one and added; its cost cap prices a request at the higher rates wherever its input estimate, raised by 30%, is over the line');
+    expect(changelog).toContain('a trace of one model with a call over the line is priced call by call, and what its `token_usage` records beyond those calls as one more total, with a note.');
+    expect(changelog).toContain('The judge asks GPT-5.6 and later for no prompt caching (`prompt_cache_options` with `mode: "explicit"` and no breakpoint), so its requests write nothing to the cache');
+    expect(changelog).toContain('a 12-hour write is priced as one, since nothing a trace carries that Iris reads splits the two.');
+    expect(changelog).toContain('`gpt-5.6-sol`, whose price is a promotion until 2026-11-30');
+    expect(changelog).toContain('`o4-mini` and `o3-mini`, gone from OpenAI\'s pricing page and shut down on 2026-10-23, are marked retired: a trace that recorded one is still priced at its last price, and a judge named on one fails at OpenAI.');
+    expect(changelog).toContain("The judge tools' description now leads with each provider's four latest models: `claude-fable-5-2`, `claude-opus-5-5`, `claude-sonnet-5-5` and `claude-haiku-5-5`, and `gpt-6.2-astra`, `gpt-6.2-sol`, `gpt-6.1-terra` and `gpt-6-luna`.");
+  });
+
+  it("the cost page's example of a rule's message carries the table's date, as the message does", () => {
+    const cost = readFileSync(resolve(__dirname, '..', '..', '..', '..', 'docs', 'cost.md'), 'utf8');
+    expect(cost).toContain(`(estimated by Iris: 150,000 input and 10,000 output tokens at gpt-4o-mini list price as of ${PRICING_SOURCED_ON}; the trace reported no cost)`);
   });
 });
 
@@ -149,15 +195,17 @@ describe('the one table', () => {
     expect(claims.llmJudgeTemplates.supportedModels).toEqual(MODEL_PRICING.filter((p) => !p.retired).map((p) => p.model));
   });
 
-  it('the tools’ model sentence leads with current models per provider and never a retired one', () => {
+  it('the tools’ model sentence leads with each provider’s four latest models and never offers a retired one', () => {
     const s = supportedModelsSummary();
     for (const provider of ['anthropic', 'openai'] as const) {
-      const lead = MODEL_PRICING.filter((p) => p.provider === provider && !p.retired).slice(0, 3).map((p) => p.model);
+      const lead = MODEL_PRICING.filter((p) => p.provider === provider && !p.retired).slice(0, 4).map((p) => p.model);
       expect(s).toContain(lead.join(' | '));
     }
-    expect(s).toContain('claude-fable-5-2 | claude-opus-5-5 | claude-sonnet-5-5');
-    expect(s).toContain('gpt-6.2-astra | gpt-6.2-sol | gpt-6.1-terra');
+    expect(s).toBe(
+      'anthropic = claude-fable-5-2 | claude-opus-5-5 | claude-sonnet-5-5 | claude-haiku-5-5 (and earlier Claude models); openai = gpt-6.2-astra | gpt-6.2-sol | gpt-6.1-terra | gpt-6-luna (and earlier GPT models, and o3)',
+    );
     for (const p of MODEL_PRICING.filter((m) => m.retired)) expect(s).not.toContain(p.model);
+    expect(s).not.toContain('retired');
     expect(s.split(/\s+/).length).toBeLessThan(40);
   });
 });

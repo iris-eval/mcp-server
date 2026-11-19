@@ -9,9 +9,10 @@
  *
  * Read from the providers' own pricing pages on PRICING_SOURCED_ON; the two
  * URLs are PRICING_SOURCES. A model the provider no longer prices is kept
- * with `retired` set to the date it was found absent, so an existing
- * configuration keeps working at the last known price and the response can
- * say so — it is never silently deleted.
+ * with `retired` set to the date it was found absent, so a trace that
+ * recorded it keeps its cost at the last known price — it is never silently
+ * deleted. A judge named on a model the provider has shut down fails at the
+ * provider.
  *
  * Unknown models fall through to null — callers must handle that explicitly
  * (see estimateCostUsd) rather than assume zero cost for a mis-typed name.
@@ -25,8 +26,9 @@ export interface ModelPricing {
   inputUsdPer1M: number;
   outputUsdPer1M: number;
   /**
-   * USD per 1M input tokens read from the prompt cache. Used only to price a
-   * trace's cost (src/cost/trace-cost.ts); the judge sends no cached prompt.
+   * USD per 1M input tokens read from the prompt cache. It prices a trace's
+   * cost (src/cost/trace-cost.ts), and the input of a judge request that its
+   * reply says was read from the cache; the judge asks for no caching.
    */
   cacheReadUsdPer1M: number;
   /**
@@ -142,7 +144,7 @@ export const MODEL_PRICING: readonly ModelPricing[] = [
   { provider: 'openai', model: 'gpt-4o-mini', inputUsdPer1M: 0.15, outputUsdPer1M: 0.6, cacheReadUsdPer1M: 0.075, cacheWriteUsdPer1M: 0.15 },
   { provider: 'openai', model: 'o3', inputUsdPer1M: 2, outputUsdPer1M: 8, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 2 },
   /*
-   * OpenAI — retired from the provider's pricing page; kept so a configuration naming it still works.
+   * OpenAI — retired from the provider's pricing page; kept so a trace that recorded one still has a cost.
    * o1-mini was carried at $3 / $12, its launch price. OpenAI's own model
    * page (https://developers.openai.com/api/docs/models/o1-mini, read
    * 2026-09-28) lists $1.10 / $4.40 and $0.55 cached, the same as
@@ -200,24 +202,24 @@ export function findPricing(model: string): ModelPricing | null {
   return MODEL_PRICING.find((p) => p.model === model) ?? null;
 }
 
-/** Every priced model id, retired ones included (they still work), in table order. */
+/** Every priced model id, retired ones included (a trace that recorded one is still priced), in table order. */
 export function pricedModels(provider?: PricingProvider): string[] {
   return MODEL_PRICING.filter((p) => provider === undefined || p.provider === provider).map((p) => p.model);
 }
 
 /**
- * The short form a tool description carries: the first three current
- * models per provider, in table order. The full list rides
- * IRIS_JUDGE_UNKNOWN_MODEL's `valid`, so a wrong guess is answered with
- * every id — the description stays inside the word cap.
+ * The short form a tool description carries: the first four current
+ * models per provider, in table order (each provider's four latest). The
+ * full list rides IRIS_JUDGE_UNKNOWN_MODEL's `valid`, so a wrong guess is
+ * answered with every id — the description stays inside the word cap.
  */
 export function supportedModelsSummary(): string {
   const lead = (provider: PricingProvider): string =>
     MODEL_PRICING.filter((p) => p.provider === provider && !p.retired)
-      .slice(0, 3)
+      .slice(0, 4)
       .map((p) => p.model)
       .join(' | ');
-  return `anthropic = ${lead('anthropic')} (and earlier Claude models); openai = ${lead('openai')} (and earlier GPT models, o3, and retired o-series ids)`;
+  return `anthropic = ${lead('anthropic')} (and earlier Claude models); openai = ${lead('openai')} (and earlier GPT models, and o3)`;
 }
 
 /** The rates one request is priced at: the row's own, or its long-context rates when its input tokens are over the line. */
@@ -228,17 +230,59 @@ export function ratesFor(pricing: ModelPricing, inputTokens: number): RequestRat
   return long !== undefined && inputTokens > long.aboveInputTokens ? long : pricing;
 }
 
+/** Of a request's input tokens, those its provider read from its cache and those it wrote to it (OpenAI counts both within the input). */
+export interface CachedInput {
+  readTokens?: number;
+  writeTokens?: number;
+}
+
+/**
+ * What ONE request cost: its size picks the rates every token of it is
+ * priced at, so two requests are priced one by one and added, never as one
+ * request of their summed size. Input the provider reports it read from its
+ * cache is priced at the cache-read rate, and input it wrote at the write
+ * rate; the rest at the input rate.
+ */
 export function estimateCostUsd(
   model: string,
   inputTokens: number,
   outputTokens: number,
+  cached: CachedInput = {},
 ): number | null {
   const pricing = findPricing(model);
   if (!pricing) return null;
-  // One request: its size picks the rates every token of it is priced at.
   const rates = ratesFor(pricing, inputTokens);
-  const inputCost = (inputTokens / 1_000_000) * rates.inputUsdPer1M;
+  const read = Math.min(Math.max(cached.readTokens ?? 0, 0), inputTokens);
+  const written = Math.min(Math.max(cached.writeTokens ?? 0, 0), inputTokens - read);
+  const inputCost =
+    ((inputTokens - read - written) / 1_000_000) * rates.inputUsdPer1M +
+    (read / 1_000_000) * rates.cacheReadUsdPer1M +
+    (written / 1_000_000) * rates.cacheWriteUsdPer1M;
   const outputCost = (outputTokens / 1_000_000) * rates.outputUsdPer1M;
   // Round to 6 decimal places — sub-cent precision, avoids float drift.
   return Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000;
+}
+
+/**
+ * How far short of the real count a request's input estimate may fall where
+ * the rates turn on it. The estimate is four characters a token
+ * (client.ts, estimateInputTokens); Anthropic's newer tokenizer, Claude 4.7
+ * and later, makes about 30% more tokens of the same text than its earlier
+ * one did.
+ */
+export const INPUT_ESTIMATE_MARGIN = 1.3;
+
+/**
+ * The most ONE request can cost, for a cost cap: its estimated input and
+ * its whole output cap billed, at the higher rates of a long request
+ * wherever its estimate, raised by INPUT_ESTIMATE_MARGIN, is over the line.
+ * Near the line an estimate can fall short of it while the request is over
+ * it, and there the higher rates cost several times the base ones.
+ */
+export function worstCaseRequestUsd(model: string, inputTokensEstimate: number, maxOutputTokens: number): number | null {
+  const pricing = findPricing(model);
+  if (!pricing) return null;
+  const rates = ratesFor(pricing, Math.ceil(inputTokensEstimate * INPUT_ESTIMATE_MARGIN));
+  const cost = (inputTokensEstimate / 1_000_000) * rates.inputUsdPer1M + (maxOutputTokens / 1_000_000) * rates.outputUsdPer1M;
+  return Math.round(cost * 1_000_000) / 1_000_000;
 }
