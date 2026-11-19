@@ -35,6 +35,7 @@ import { Worker } from 'node:worker_threads';
 import type { MatchRequest, MatchResult } from './search-match.js';
 import type { SearchWorkerData } from './search-worker.js';
 import { sourceThread } from './source-thread.js';
+import { heldTimerMs } from '../utils/timer.js';
 
 /** How long past its budget a search may go unanswered before its thread is treated as stuck. Covers the thread's start. */
 export const WORKER_GRACE_MS = 10_000;
@@ -113,7 +114,7 @@ export class SearchWorkerClient {
        * read every match): it has no deadline to be late for, and setTimeout
        * reads Infinity as 1 ms, which would call every such search stuck.
        */
-      const timer = Number.isFinite(request.budgetMs) ? setTimeout(() => this.stuck(w), request.budgetMs + this.graceMs) : undefined;
+      const timer = Number.isFinite(request.budgetMs) ? setTimeout(() => this.stuck(w), heldTimerMs(request.budgetMs + this.graceMs)) : undefined;
       timer?.unref();
       this.pending.set(id, { resolve, reject, timer });
       w.ref();
@@ -198,7 +199,7 @@ export class SearchWorkerClient {
     w.postMessage({ type: 'close' });
     let timer: NodeJS.Timeout | undefined;
     const late = new Promise<'late'>((resolve) => {
-      timer = setTimeout(() => resolve('late'), this.closeTimeoutMs);
+      timer = setTimeout(() => resolve('late'), heldTimerMs(this.closeTimeoutMs));
     });
     if ((await Promise.race([exited, late])) === 'late') {
       const why = !this.ready

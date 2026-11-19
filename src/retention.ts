@@ -28,6 +28,7 @@ import type { IrisConfig } from './types/config.js';
 import type { IStorageAdapter } from './types/query.js';
 import { LOCAL_TENANT } from './types/tenant.js';
 import { pruneBackups } from './storage/backup.js';
+import { heldTimerMs } from './utils/timer.js';
 
 export interface RetentionLogger {
   info(msg: string): void;
@@ -98,9 +99,10 @@ export async function runRetentionSweep(storage: IStorageAdapter, config: IrisCo
 export function scheduleRetentionSweep(storage: IStorageAdapter, config: IrisConfig, logger: RetentionLogger): NodeJS.Timeout | null {
   const hours = config.retention.sweepIntervalHours;
   if (config.retention.days <= 0 || !(hours > 0)) return null;
+  // Held at the longest a timer waits (about 596 hours): past it the interval would be 1 ms, a sweep on every tick.
   const timer = setInterval(() => {
     void runRetentionSweep(storage, config, logger);
-  }, hours * 60 * 60 * 1000);
+  }, heldTimerMs(hours * 60 * 60 * 1000));
   timer.unref();
   return timer;
 }

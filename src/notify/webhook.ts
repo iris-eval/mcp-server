@@ -33,6 +33,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { WebhookEventName, WebhookFormat } from './event-names.js';
 import type { WebhookMoment } from './events.js';
+import { heldTimerMs } from '../utils/timer.js';
 
 export interface ResolvedWebhookConfig {
   url: string;
@@ -257,7 +258,7 @@ export class WebhookNotifier {
       status = null;
       error = null;
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
+      const timer = setTimeout(() => controller.abort(), heldTimerMs(this.config.timeoutMs));
       try {
         const res = await this.fetchImpl(this.config.url, { method: 'POST', headers, body, signal: controller.signal, redirect: 'manual' });
         status = res.status;

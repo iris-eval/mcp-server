@@ -26,6 +26,7 @@
 
 import type { JudgeAnswer } from './answer.js';
 import { DEFAULT_JUDGE_DEADLINE_MS } from './deadline.js';
+import { heldTimerMs } from '../../utils/timer.js';
 
 export type LLMProvider = 'anthropic' | 'openai';
 
@@ -239,7 +240,8 @@ async function postBeforeDeadline(
   const timedOut = (): LLMJudgeError => new LLMJudgeError(`${provider} did not answer within ${budgetMs} ms`, 'timeout');
   if (deadline - started <= 0) throw timedOut();
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), deadline - started);
+  // A deadline an embedder sets far off is held at the longest a timer waits, where past it the request would end at once.
+  const timer = setTimeout(() => controller.abort(), heldTimerMs(deadline - started));
   // The request is aborted by its timer alone; an abort, by that or by its name, is the deadline passing.
   const aborted = (err: unknown): boolean => controller.signal.aborted || (err instanceof Error && err.name === 'AbortError');
   try {
@@ -532,7 +534,7 @@ export async function callLLMJudge(req: LLMJudgeRequest): Promise<LLMJudgeRespon
     if (err instanceof LLMJudgeError && err.kind === 'rate_limit') {
       const waitMs = (err.retryAfterSeconds ?? 2) * 1000;
       if (!(Date.now() + waitMs < deadline)) throw err;
-      await new Promise((r) => setTimeout(r, waitMs));
+      await new Promise((r) => setTimeout(r, heldTimerMs(waitMs)));
       return await call(req, deadline, budgetMs);
     }
     throw err;
