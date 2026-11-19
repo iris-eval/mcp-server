@@ -158,8 +158,8 @@ export function toIrisError(err: unknown): IrisError {
   if (err instanceof LLMJudgeError) {
     const retryable = err.kind === 'rate_limit' || err.kind === 'timeout' || err.kind === 'server_error' || err.kind === 'unreachable';
     const recovery: Record<ProviderErrorKind, string[]> = {
-      auth: ['The provider refused the key. Check that the key in the env block of your MCP config is valid and live, then restart the session.'],
-      rate_limit: ['The provider rate-limited the call. Wait and retry; Iris already retried once.'],
+      auth: ['The key was refused: by the provider, or before any request where it holds a character a request header cannot carry. Check that the key in the env block of your MCP config is valid, live and copied whole, then restart the session.'],
+      rate_limit: ["The provider rate-limited the call. Wait (retryAfterMs, where the provider named a wait) and retry. Iris asks once more itself only where the provider's wait ends before the call's deadline."],
       bad_request: ['The provider rejected the request. Check the model name and the template inputs.'],
       server_error: ['The provider failed on its side. Retry later.'],
       timeout: ['The provider did not answer within timeout_ms, which every request, its reply and the wait after a rate limit share. Retry, or raise timeout_ms within your client\'s own request timeout.'],

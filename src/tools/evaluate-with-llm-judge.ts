@@ -8,6 +8,7 @@ import type { EvalEngine } from '../eval/engine.js';
 import { verdictSchema } from '../eval/response-schema.js';
 import { findPricing, MODEL_PRICING, supportedModelsSummary } from '../eval/llm-judge/pricing.js';
 import type { LLMProvider } from '../eval/llm-judge/client.js';
+import { DEFAULT_JUDGE_DEADLINE_MS } from '../eval/llm-judge/deadline.js';
 import type { TemplateName } from '../eval/llm-judge/templates/index.js';
 import { generateEvalId } from '../utils/ids.js';
 import { JUDGE_COST_CAP_VAR, JUDGE_DEFAULT_COST_CAP_USD, JUDGE_KEY_VARS, judgeRecovery } from '../judge-enablement.js';
@@ -52,7 +53,7 @@ const inputSchema = {
     .describe(`Cost cap in USD for this call, at most the operator's ${JUDGE_COST_CAP_VAR} (default ${JUDGE_DEFAULT_COST_CAP_USD}). The worst case (two attempts, full max_output_tokens) is computed before the call and refused if it exceeds the cap`),
   max_output_tokens: z.number().int().positive().max(4096).optional().describe('Judge output token cap; default 512'),
   temperature: z.number().min(0).max(2).optional().describe('Sampling temperature; default 0 (deterministic)'),
-  timeout_ms: z.number().int().positive().optional().describe("The call's deadline in ms, which every request to the provider, its reply and the wait after a rate limit share; default 50_000"),
+  timeout_ms: z.number().int().positive().optional().describe(`The call's deadline in ms, which every request to the provider, its reply and the wait after a rate limit share; default ${DEFAULT_JUDGE_DEADLINE_MS}`),
 };
 
 /** The models the pricing table knows, so an unknown one can be refused with the valid list. */

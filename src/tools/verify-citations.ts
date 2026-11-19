@@ -80,10 +80,10 @@ export function assertJudgeRan(result: {
     `verify_citations could not judge any of the ${result.totalResolved} resolved citation(s): the judge failed on every one (${kinds}). ` +
       `Nothing was verified and nothing was stored, so there is no verdict. ${shown}`,
     {
-      retryable: /timeout|rate_limit|server_error|daily_budget_reached/.test(kinds),
+      retryable: /timeout|rate_limit|server_error|unreachable|daily_budget_reached/.test(kinds),
       recovery: [
         'Check the key and the model: a refused key or an unknown model fails every citation the same way.',
-        'Retry when the kind is a timeout, a rate limit or a provider server error.',
+        'Retry when the kind is a timeout, a rate limit, a provider server error, or unreachable (the provider could not be reached, or its reply was cut off).',
         'When the kind is malformed_judge_response, the judge answered without a verdict that could be read (a JSON object with a boolean under "supported" and a number from 0 to 1 under "confidence"): the error of that kind shows the start of what stood in its place. Retry, and if it recurs pick another model.',
         'Raise max_cost_usd_total when the kind is cost_cap_reached.',
         `When the kind is daily_budget_reached, every judge call on this key has used the operator's ${DAILY_BUDGET_VAR} for today: retry after it resets, or the operator raises it.`,
