@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { estimateCostUsd, findPricing, INPUT_ESTIMATE_MARGIN, ratesFor, worstCaseRequestUsd } from '../../../src/eval/llm-judge/pricing.js';
 import { estimateBatch, estimateCost } from '../../../src/cost-estimator.js';
 import { estimateTraceCost } from '../../../src/cost/trace-cost.js';
+import { callLLMJudge } from '../../../src/eval/llm-judge/client.js';
 import { setPricingSettings } from '../../../src/cost/model-lookup.js';
 import type { CostEstimate, Span, Trace } from '../../../src/types/trace.js';
 
@@ -86,14 +87,18 @@ describe('one request: its size picks its rates', () => {
     expect(estimateCostUsd('gpt-6.2-astra', 1_000, 0, {})).toBe(estimateCostUsd('gpt-6.2-astra', 1_000, 0));
   });
 
-  it("a cost cap's worst case takes the higher rates wherever the input estimate, raised by the margin, is over the line", () => {
+  it("a cost cap's worst case counts the input at the margin times its estimate, rounded up, at the rates for that count, at each provider's line", () => {
     expect(INPUT_ESTIMATE_MARGIN).toBe(1.3);
-    // 76,923 × 1.3 is 99,999.9, at the line: 76,923 × 0.10 + 512 × 0.50 = $0.0079483 (to six places, 0.007948)
-    expect(worstCaseRequestUsd('claude-haiku-5-5', 76_923, 512)).toBe(0.007948);
-    // 76,924 × 1.3 is over it: 76,924 × 0.50 + 512 × 2.50 = $0.039742
-    expect(worstCaseRequestUsd('claude-haiku-5-5', 76_924, 512)).toBe(0.039742);
-    // A model with one rate prices its estimate as it is: 300,000 × 0.75 + 512 × 4.50 = $0.227304
-    expect(worstCaseRequestUsd('gpt-5.4-mini', 300_000, 512)).toBe(0.227304);
+    // 76,923 × 1.3 is 99,999.9, counted as 100,000, at Haiku 5.5's line: 100,000 × 0.10 + 512 × 0.50 = $0.010256
+    expect(worstCaseRequestUsd('claude-haiku-5-5', 76_923, 512)).toBe(0.010256);
+    // 76,924 × 1.3 is 100,001.2, counted as 100,002, over it: 100,002 × 0.50 + 512 × 2.50 = $0.051281
+    expect(worstCaseRequestUsd('claude-haiku-5-5', 76_924, 512)).toBe(0.051281);
+    // OpenAI's line: 209,230 × 1.3 is 271,999, under it: 271,999 × 2.50 + 512 × 15 = $0.687678
+    expect(worstCaseRequestUsd('gpt-5.4', 209_230, 512)).toBe(0.687678);
+    // 209,231 × 1.3 is 272,000.3, counted as 272,001, over it: 272,001 × 5 + 512 × 22.50 = $1.371525 (rounded down it would be at the line)
+    expect(worstCaseRequestUsd('gpt-5.4', 209_231, 512)).toBe(1.371525);
+    // A model with one rate prices the count at it: 390,000 × 0.75 + 512 × 4.50 = $0.294804
+    expect(worstCaseRequestUsd('gpt-5.4-mini', 300_000, 512)).toBe(0.294804);
     expect(worstCaseRequestUsd('not-a-model', 1_000, 512)).toBeNull();
   });
 });
@@ -246,6 +251,107 @@ describe('a total cannot say how large each call was', () => {
     );
     expect(e.calls[0]).toMatchObject({ input_usd_per_1m: 0.1, cost_usd: 0.0305 });
     expect(e.notes).toEqual([totalNote('300,000')]);
+  });
+});
+
+describe("a trace's remainder, in each shape its counts take", () => {
+  /** A trace of claude-haiku-5-5 calls with its token_usage: its cost, and the call it adds for what its total records beyond them. */
+  const priced = (token_usage: Trace['token_usage'], spans: Span[]) => {
+    const r = estimateTraceCost(base({ token_usage, spans }));
+    return { cost: r.cost_usd, calls: estimatedOf(r.estimate).calls };
+  };
+
+  it('cached counts beside an input: the remainder is the size left, and its reads are those left', () => {
+    // The total is 2,000 + 200,000 read; the call 1,000 + 150,000 read, over the line: 1,000 × 0.50 + 150,000 × 0.05 + 1,000 × 2.50 = $0.0105.
+    // Left: 51,000, of which 50,000 read: 1,000 × 0.10 + 50,000 × 0.01 + 1,000 × 0.50 = $0.0011.
+    const { cost, calls } = priced({ prompt_tokens: 2_000, completion_tokens: 2_000, cache_read_tokens: 200_000 }, [call('c1', 'claude-haiku-5-5', 1_000, 1_000, { 'gen_ai.usage.cache_read.input_tokens': 150_000 })]);
+    expect(calls[1]).toMatchObject({ prompt_tokens: 51_000, completion_tokens: 1_000, cache_read_tokens: 50_000, cost_usd: 0.0011 });
+    expect(cost).toBe(0.0116);
+  });
+
+  it('a total smaller than its calls adds nothing, never a negative remainder; one larger in input only adds its input; one larger in output only adds its output', () => {
+    const spans = () => [call('c1', 'claude-haiku-5-5', 200_000, 1_000), call('c2', 'claude-haiku-5-5', 10_000, 1_000)];
+    // The calls: 200,000 × 0.50 + 1,000 × 2.50 = $0.1025, and 10,000 × 0.10 + 1,000 × 0.50 = $0.0015.
+    const smaller = priced({ prompt_tokens: 150_000, completion_tokens: 500 }, spans());
+    expect(smaller.calls).toHaveLength(2);
+    expect(smaller.cost).toBe(0.104);
+    // 50,000 input left and less output than the calls: 50,000 × 0.10 = $0.005, no output.
+    const input = priced({ prompt_tokens: 260_000, completion_tokens: 500 }, spans());
+    expect(input.calls[2]).toMatchObject({ prompt_tokens: 50_000, completion_tokens: 0, cost_usd: 0.005 });
+    expect(input.cost).toBe(0.109);
+    // No input left and 3,000 output: 3,000 × 0.50 = $0.0015.
+    const output = priced({ prompt_tokens: 210_000, completion_tokens: 5_000 }, spans());
+    expect(output.calls[2]).toMatchObject({ prompt_tokens: 0, completion_tokens: 3_000, cost_usd: 0.0015 });
+    expect(output.cost).toBe(0.1055);
+  });
+
+  it("a total that counts its cache within its input: the remainder's reads are held to the size left, and its writes to what its reads leave", () => {
+    const one = () => [call('c1', 'claude-haiku-5-5', 200_000, 1_000)];
+    // 10,000 left, the total reading 95,000: the 10,000 are all reads, 10,000 × 0.01 + 1,000 × 0.50 = $0.0006.
+    const reads = priced({ prompt_tokens: 210_000, completion_tokens: 2_000, cache_read_tokens: 95_000 }, one());
+    expect(reads.calls[1]).toMatchObject({ prompt_tokens: 10_000, cache_read_tokens: 10_000, cache_creation_tokens: 0, cost_usd: 0.0006 });
+    expect(reads.cost).toBe(0.1031);
+    // 100,000 left, 80,000 read and 60,000 written: the writes are the 20,000 the reads leave, 80,000 × 0.01 + 20,000 × 0.125 + 1,000 × 0.50 = $0.0038.
+    const writes = priced({ prompt_tokens: 300_000, completion_tokens: 2_000, cache_read_tokens: 80_000, cache_creation_tokens: 60_000 }, one());
+    expect(writes.calls[1]).toMatchObject({ prompt_tokens: 100_000, cache_read_tokens: 80_000, cache_creation_tokens: 20_000, cost_usd: 0.0038 });
+    expect(writes.cost).toBe(0.1063);
+  });
+
+  it("the remainder's 1-hour writes are the total's less the calls', at the 1-hour rate", () => {
+    // The call: 200,000 with 10,000 written, 5,000 of them for an hour, over the line: 190,000 × 0.50 + 5,000 × 0.625 + 5,000 × 1 + 1,000 × 2.50 = $0.105625.
+    // Left: 100,000, of which 50,000 written and 15,000 of those for an hour: 50,000 × 0.10 + 35,000 × 0.125 + 15,000 × 0.20 + 1,000 × 0.50 = $0.012875.
+    const { cost, calls } = priced({ prompt_tokens: 300_000, completion_tokens: 2_000, cache_creation_tokens: 60_000, cache_creation_1h_tokens: 20_000 }, [
+      call('c1', 'claude-haiku-5-5', 200_000, 1_000, { 'gen_ai.usage.cache_creation.input_tokens': 10_000, 'iris.usage.cache_creation.ephemeral_1h_input_tokens': 5_000 }),
+    ]);
+    expect(calls[1]).toMatchObject({ prompt_tokens: 100_000, cache_creation_tokens: 50_000, cache_creation_1h_tokens: 15_000, cost_usd: 0.012875 });
+    expect(cost).toBe(0.1185);
+  });
+
+  it("OpenAI's reads within prompt_tokens: the remainder's reads are the total's less the call's", () => {
+    // gpt-6.2-astra. The call: 300,000 with 20,000 read, over the line: 280,000 × 16 + 20,000 × 0.80 + 1,000 × 60 = $4.556.
+    // Left: 100,000 with 30,000 read: 70,000 × 8 + 30,000 × 0.40 + 1,000 × 40 = $0.612.
+    const { cost, calls } = priced({ prompt_tokens: 400_000, completion_tokens: 2_000, prompt_tokens_details: { cached_tokens: 50_000 } }, [
+      call('c1', 'gpt-6.2-astra', 300_000, 1_000, { 'gen_ai.usage.cache_read.input_tokens': 20_000 }),
+    ]);
+    expect(calls[1]).toMatchObject({ prompt_tokens: 100_000, cache_read_tokens: 30_000, cost_usd: 0.612 });
+    expect(cost).toBe(5.168);
+  });
+
+  it('a trace of two models adds no remainder: what the total records beyond the calls cannot be given a model', () => {
+    // gpt-5.4 over its line: 300,000 × 5 + 1,000 × 22.50 = $1.5225; gpt-4o-mini: 10,000 × 0.15 + 1,000 × 0.60 = $0.0021.
+    const { cost, calls } = priced({ prompt_tokens: 600_000, completion_tokens: 3_000 }, [call('c1', 'gpt-5.4', 300_000, 1_000), call('c2', 'gpt-4o-mini', 10_000, 1_000)]);
+    expect(calls).toHaveLength(2);
+    expect(cost).toBe(1.5246);
+  });
+});
+
+describe("a request's own counts", () => {
+  it("a judge request's size counts the input read from the cache, which OpenAI counts within it", () => {
+    // gpt-5.4, 300,000 in with 100,000 read, over the line: 200,000 × 5 + 100,000 × 0.50 + 1,000 × 22.50 = $1.0725.
+    expect(estimateCostUsd('gpt-5.4', 300_000, 1_000, { readTokens: 100_000 })).toBe(1.0725);
+  });
+
+  it("a reply's cache count that is not a finite number is no count", async () => {
+    const saved = globalThis.fetch;
+    // JSON reads 1e400 as Infinity.
+    globalThis.fetch = (async () =>
+      new Response('{"id":"c","choices":[{"message":{"content":"{}"},"finish_reason":"stop"}],"usage":{"prompt_tokens":50000,"completion_tokens":10,"prompt_tokens_details":{"cached_tokens":1e400}}}', {
+        status: 200,
+      })) as typeof fetch;
+    try {
+      const r = await callLLMJudge({ provider: 'openai', model: 'gpt-4o', systemPrompt: 's', userPrompt: 'u', maxOutputTokens: 10, temperature: 0, apiKey: 'k' });
+      expect(r.cacheReadTokens).toBeUndefined();
+      // 50,000 × 2.50 + 10 × 10 = $0.1251, none of it read.
+      expect(estimateCostUsd('gpt-4o', r.inputTokens, r.outputTokens, { readTokens: r.cacheReadTokens })).toBe(0.1251);
+    } finally {
+      globalThis.fetch = saved;
+    }
+  });
+
+  it('the cost estimator prices a model only under its own provider', () => {
+    expect(estimateCost({ provider: 'anthropic', model: 'gpt-4o', tokensIn: 1_000, tokensOut: 100 })).toBeNull();
+    expect(estimateCost({ provider: 'openai', model: 'claude-haiku-5-5', tokensIn: 1_000, tokensOut: 100 })).toBeNull();
+    expect(estimateCost({ provider: 'openai', model: 'gpt-4o', tokensIn: 1_000, tokensOut: 100 })).toMatchObject({ totalUsd: 0.0035 });
   });
 });
 

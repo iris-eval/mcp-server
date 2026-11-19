@@ -264,25 +264,29 @@ export function estimateCostUsd(
 }
 
 /**
- * How far short of the real count a request's input estimate may fall where
- * the rates turn on it. The estimate is four characters a token
- * (client.ts, estimateInputTokens); Anthropic's newer tokenizer, Claude 4.7
- * and later, makes about 30% more tokens of the same text than its earlier
- * one did.
+ * How many times its estimate a request's input is counted in a cost cap's
+ * worst case. The estimate is four characters a token (client.ts,
+ * estimateInputTokens); Anthropic's newer tokenizer, Claude 4.7 and later,
+ * makes about 30% more tokens of the same text than its earlier one did.
+ * Text denser than prose (code, a script other than Latin) can make more
+ * tokens than this counts, on any model.
  */
 export const INPUT_ESTIMATE_MARGIN = 1.3;
 
 /**
- * The most ONE request can cost, for a cost cap: its estimated input and
- * its whole output cap billed, at the higher rates of a long request
- * wherever its estimate, raised by INPUT_ESTIMATE_MARGIN, is over the line.
- * Near the line an estimate can fall short of it while the request is over
- * it, and there the higher rates cost several times the base ones.
+ * The most ONE request can cost, for a cost cap, when its input makes no
+ * more than INPUT_ESTIMATE_MARGIN times the tokens its estimate counts: that
+ * many input tokens and its whole output cap, at the rates for a request of
+ * that size, so at the higher rates of a long request wherever that count is
+ * over the line. Near the line an estimate can fall short of it while the
+ * request is over it, and there the higher rates cost several times the
+ * base ones.
  */
 export function worstCaseRequestUsd(model: string, inputTokensEstimate: number, maxOutputTokens: number): number | null {
   const pricing = findPricing(model);
   if (!pricing) return null;
-  const rates = ratesFor(pricing, Math.ceil(inputTokensEstimate * INPUT_ESTIMATE_MARGIN));
-  const cost = (inputTokensEstimate / 1_000_000) * rates.inputUsdPer1M + (maxOutputTokens / 1_000_000) * rates.outputUsdPer1M;
+  const input = Math.ceil(inputTokensEstimate * INPUT_ESTIMATE_MARGIN);
+  const rates = ratesFor(pricing, input);
+  const cost = (input / 1_000_000) * rates.inputUsdPer1M + (maxOutputTokens / 1_000_000) * rates.outputUsdPer1M;
   return Math.round(cost * 1_000_000) / 1_000_000;
 }

@@ -211,6 +211,28 @@ describe('verifyCitations', () => {
     expect(res.totalCostUsd).toBe(0.368);
   });
 
+  it("a citation's worst case counts its input at the margin times its estimate, at the rates for that count: one near Haiku 5.5's line is held at the higher rates", async () => {
+    // A citation's prompt carries its claim, and a URL's fragment is never sent to the server, so a long fragment makes a prompt near the line.
+    const judged: number[] = [];
+    const verify = async (fragment: number) => {
+      __clearCitationCacheForTests();
+      let calls = 0;
+      global.fetch = vi.fn(async (url: string) => {
+        if (!String(url).includes('api.anthropic.com')) return new Response('The retry limit is five attempts.', { headers: { 'content-type': 'text/plain' } });
+        calls += 1;
+        return new Response(JSON.stringify({ id: 'm', content: [{ type: 'text', text: '{"supported":true,"confidence":0.9,"rationale":"five"}' }], usage: { input_tokens: 1_000, output_tokens: 50 } }));
+      }) as typeof fetch;
+      const res = await verifyCitations({ output: `The retry limit is five https://a.com/page#${'x'.repeat(fragment)} here.`, provider: 'anthropic', model: 'claude-haiku-5-5', apiKey: 'k', allowFetch: true, maxCostUsdTotal: 0.02 });
+      judged.push(calls);
+      return res.citations[0];
+    };
+    // A fragment of 300,000 characters: an estimate of about 76,500 tokens, under the line raised by 1.3 (about 99,500), so the worst case is at the base rates, about $0.010, and fits a cap of $0.02.
+    expect((await verify(300_000)).judgeError).toBeUndefined();
+    // 330,000: about 84,000 tokens, over the line raised (about 109,300), so at the higher rates, about $0.055: not judged.
+    expect((await verify(330_000)).judgeError?.kind).toBe('cost_cap_reached');
+    expect(judged).toEqual([1, 0]);
+  });
+
   it('stops calling judge when total cost cap would be exceeded', async () => {
     global.fetch = makeMockedFetch([
       // source 1 — tiny body

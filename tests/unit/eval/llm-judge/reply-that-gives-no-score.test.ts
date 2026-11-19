@@ -17,7 +17,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { evaluateWithLLMJudge, SECOND_REQUEST, worstCaseJudgeCostUsd } from '../../../../src/eval/llm-judge/evaluator.js';
 import { verdictAnswer } from '../../../../src/eval/llm-judge/answer.js';
 import { estimateInputTokens } from '../../../../src/eval/llm-judge/client.js';
-import { estimateCostUsd } from '../../../../src/eval/llm-judge/pricing.js';
+import { worstCaseRequestUsd } from '../../../../src/eval/llm-judge/pricing.js';
 import { getTemplate } from '../../../../src/eval/llm-judge/templates/index.js';
 import { replyObject, shownReply, shownValue, unitNumber } from '../../../../src/eval/llm-judge/reply.js';
 
@@ -189,13 +189,13 @@ describe('a judge reply that gives no score is not read as one', () => {
     const user = template.buildUser({ output: params.output });
     // Each request carries the answer's schema and the provider's instructions for it.
     const answer = verdictAnswer(template.dimensions);
-    // The first request at the full output cap, and the second, with its sentence, at its own.
-    const first = estimateCostUsd(params.model, estimateInputTokens(system, user, answer), 512)!;
-    const second = estimateCostUsd(params.model, estimateInputTokens(system + SECOND_REQUEST, user, answer), 256)!;
+    // The first request at the full output cap, and the second, with its sentence, at its own, each request's worst case on its own.
+    const first = worstCaseRequestUsd(params.model, estimateInputTokens(system, user, answer), 512)!;
+    const second = worstCaseRequestUsd(params.model, estimateInputTokens(system + SECOND_REQUEST, user, answer), 256)!;
     expect(worstCaseJudgeCostUsd(params)).toBe(first + second);
-    // 173 characters: 48 more than the sentence it replaced, which is twelve tokens in every call's worst case (a quarter of a token a character).
+    // 173 characters: 48 more than the sentence it replaced, which is twelve tokens in every call's estimate (a quarter of a token a character).
     expect(SECOND_REQUEST).toHaveLength(173);
-    const withoutIt = estimateCostUsd(params.model, estimateInputTokens(system, user, answer), 256)!;
+    const withoutIt = worstCaseRequestUsd(params.model, estimateInputTokens(system, user, answer), 256)!;
     expect(second).toBeGreaterThan(withoutIt);
     expect(estimateInputTokens(system + SECOND_REQUEST, user, answer) - estimateInputTokens(system + 'x'.repeat(125), user, answer)).toBe(12);
   });

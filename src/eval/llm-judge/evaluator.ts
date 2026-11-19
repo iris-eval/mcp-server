@@ -182,14 +182,14 @@ function planJudgeCall(params: PlanParams): JudgePlan {
 
   /*
    * Estimate worst-case cost and reject before the network call if it
-   * would exceed the cap. Intentionally pessimistic — every input
-   * character billed, the full output cap billed, AND the malformed-JSON
-   * retry billed on top — because the cap is meant to be a hard ceiling,
-   * not a soft hope. The estimate used to price a single call, so an eval
-   * that fit just under the cap could bill nearly twice the cap whenever
-   * the judge misformatted its first reply. Each request is priced on its
-   * own (worstCaseRequestUsd), at the higher rates of a long request where
-   * its estimate could fall short of the line.
+   * would exceed the cap. Intentionally pessimistic — the input counted at
+   * INPUT_ESTIMATE_MARGIN (pricing.ts) times its estimate, the full output cap billed,
+   * AND the malformed-JSON retry billed on top — because the cap is meant
+   * to be a ceiling, not a soft hope, for any text within that margin. The
+   * estimate used to price a single call, so an eval that fit just under
+   * the cap could bill nearly twice the cap whenever the judge misformatted
+   * its first reply. Each request is priced on its own
+   * (worstCaseRequestUsd), at the rates for its size.
    */
   const firstAttemptCost = worstCaseRequestUsd(
     params.model,
