@@ -14,10 +14,9 @@
  *   3. the validator does not mutate the instance it validates;
  *   4. the declared ajv range is the SDK's, so one copy resolves.
  */
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { setFlagsFromString } from 'node:v8';
-import { runInNewContext } from 'node:vm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import type { ValidateFunction } from 'ajv';
@@ -324,24 +323,16 @@ describe('the schema guard ladder', () => {
     const before = sharedInstanceHolds();
     for (let i = 0; i < 50; i += 1) compileToolSchema({ type: 'object', properties: { [`p${i}`]: { type: 'string' } }, required: [`p${i}`] });
     expect(sharedInstanceHolds()).toEqual(before);
-    // Three thousand schemas the cache of 256 cannot hold: kept by ajv, each would hold about 20 KB; let go, the heap stays where it was.
-    setFlagsFromString('--expose_gc');
-    const gc = runInNewContext('gc') as () => void;
-    const settled = async (): Promise<number> => {
-      await new Promise((r) => setTimeout(r, 0));
-      gc();
-      await new Promise((r) => setTimeout(r, 0));
-      gc();
-      return process.memoryUsage().heapUsed;
-    };
-    for (let i = 0; i < 300; i += 1) compileToolSchema({ type: 'object', properties: { [`w${i}`]: { type: 'string', maxLength: i + 1 } }, required: [`w${i}`] });
-    const start = await settled();
-    for (let i = 0; i < 3_000; i += 1) compileToolSchema({ type: 'object', properties: { [`g${i}`]: { type: 'string', maxLength: i + 1 }, [`h${i}`]: { type: 'integer', minimum: i } }, required: [`g${i}`] });
-    // Measured in the same job: what a list, or a WeakRef to the end of a job, would keep is still there to be counted.
-    gc();
-    const grown = process.memoryUsage().heapUsed - start;
-    expect(grown).toBeLessThan(6 * 1024 * 1024);
-  }, 30_000);
+    // Three thousand schemas the cache of 256 cannot hold, compiled in a process of their own (tests/fixtures/schema-heap.ts),
+    // where coverage, which keeps what it counts of every function compiled, does not run: kept by ajv, they held about
+    // 14 MB (about 4.8 KB each); let go, about 1.4 MB.
+    const env = { ...process.env };
+    delete env['NODE_V8_COVERAGE'];
+    const child = spawnSync(process.execPath, ['--expose-gc', '--import', 'tsx', resolve(root, 'tests', 'fixtures', 'schema-heap.ts')], { cwd: root, encoding: 'utf8', timeout: 60_000, env });
+    expect(child.status, child.stderr).toBe(0);
+    const { grownBytes } = JSON.parse(child.stdout) as { grownBytes: number };
+    expect(grownBytes).toBeLessThan(6 * 1024 * 1024);
+  }, 90_000);
 
   it('a refusal for $async or for $schema is remembered: the same schema sent again is answered from the cache', () => {
     for (const schema of [{ $async: true, type: 'object' }, { $schema: '#', type: 'object' }]) {
