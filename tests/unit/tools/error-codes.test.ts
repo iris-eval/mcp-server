@@ -226,6 +226,12 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
     expect(reference).toContain('`timeout_ms` on `evaluate_with_llm_judge` (default 60,000) bounds the wait for each reply to begin;');
   });
 
+  it('the changelog marks the envelope as text BREAKING, and says a held database is one to retry', () => {
+    const changelog = readFileSync(join(root, 'CHANGELOG.md'), 'utf8').replace(/\r\n/g, '\n');
+    expect(changelog).toContain('- **BREAKING — An error a tool answers carries its envelope as text only, and reaches a client that has listed the tools.**');
+    expect(changelog).toContain('and a database another connection holds is one to retry (`retryable: true`), where it was not.');
+  });
+
   it('IRIS_UNKNOWN_TRACE — nothing scored or written', async () => {
     const e = envelope((await client.callTool({ name: 'evaluate_output', arguments: { output: 'x', trace_id: 'f'.repeat(32) } })) as Result);
     expect(e.code).toBe('IRIS_UNKNOWN_TRACE');

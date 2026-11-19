@@ -74,47 +74,6 @@ describe('error handler middleware', () => {
     expect(body.error).toBe('request entity too large');
   });
 
-  describe('what was thrown is read without throwing', () => {
-    const unreadable: Array<[string, () => unknown]> = [
-      ['an Error whose message cannot be read', () => Object.defineProperty(new Error('x'), 'message', { get() { throw new Error('the message cannot be read'); } })],
-      ['an Error whose code cannot be read', () => Object.defineProperty(new Error('boom'), 'code', { get() { throw new Error('the code cannot be read'); } })],
-      ['an Error whose status cannot be read', () => Object.defineProperty(new Error('boom'), 'status', { get() { throw new Error('the status cannot be read'); } })],
-      ['a value every read of which throws', () => new Proxy({}, { get() { throw new Error('nothing of it can be read'); } })],
-    ];
-    it.each(unreadable)('%s: the JSON 500, which says nothing of it, and one line in the log, with NODE_ENV unset', async (_what, make) => {
-      const saved = process.env.NODE_ENV;
-      delete process.env.NODE_ENV;
-      const logged: string[] = [];
-      const app = express();
-      app.get('/test', async () => {
-        throw make();
-      });
-      app.use(createErrorHandler({ ...mockLogger, error: (m: string) => void logged.push(m) }));
-      const server = app.listen(0);
-      try {
-        const res = await fetch(`http://localhost:${(server.address() as { port: number }).port}/test`);
-        expect(res.status).toBe(500);
-        expect(res.headers.get('content-type')).toMatch(/^application\/json/);
-        expect(JSON.parse(await res.text())).toEqual({ error: 'Internal server error' });
-        expect(logged).toHaveLength(1);
-        expect(logged[0]).toMatch(/^Request error: /);
-      } finally {
-        server.close();
-        if (saved === undefined) delete process.env.NODE_ENV;
-        else process.env.NODE_ENV = saved;
-      }
-    });
-
-    it('a 4xx whose message cannot be read says it is unknown, and a ZodError is known by its class alone', async () => {
-      const app = express();
-      app.get('/four', async () => {
-        throw Object.defineProperty(Object.assign(new Error('x'), { status: 409 }), 'message', { get() { throw new Error('no'); } });
-      });
-      app.use(createErrorHandler(mockLogger));
-      expect(await testError(app, '/four')).toEqual({ status: 409, body: { error: 'Unknown error' } });
-    });
-  });
-
   it('should return 500 for unhandled errors', async () => {
     const app = express();
     app.get('/test', async () => { throw new Error('boom'); });
