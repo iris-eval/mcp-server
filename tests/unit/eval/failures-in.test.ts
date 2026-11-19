@@ -256,6 +256,15 @@ describe('failuresIn — the same answers as the definition, read once', () => {
     const definition = counted(reported);
     expect(indices(byDefinition(definition.steps))).toEqual(indices(owned));
     expect(Math.min(...definition.outputs.slice(40))).toBeGreaterThanOrEqual(40);
+    // A passing verdict found once is kept for every failing run before it: a passing test run at the end is read as often
+    // after one failing run as after forty.
+    const passingRun = 'Test Files  4 passed (4)\n     Tests  42 passed (42)';
+    const endsGreen = (n: number) => counted([...Array.from({ length: n }, (_, i): ToolCallRecord => ({ tool_name: 'bash', input: { command: `npm test -- part${i}` }, output: failingRun })), { tool_name: 'bash', input: { command: 'npm test' }, output: passingRun }]);
+    const afterOne = endsGreen(1);
+    expect(failuresIn(afterOne.steps).recovered).toHaveLength(1);
+    const afterForty = endsGreen(40);
+    expect(failuresIn(afterForty.steps).recovered).toHaveLength(40);
+    expect(afterForty.outputs[40]).toBe(afterOne.outputs[1]);
     // And a step before every failing verdict is not read for a passing one: forty commands, then a test run that reports
     // failures, read each of the forty as often as the same forty with nothing after them.
     const quiet = Array.from({ length: 40 }, (_, i): ToolCallRecord => ({ tool_name: 'bash', input: { command: `ls dir${i}` }, output: `file${i}.ts` }));
@@ -357,7 +366,7 @@ describe('no_silent_tool_failure — the evidence and the names', () => {
   it('the changelog says what the rule reads and what a caller sees, word for word, under Security in the release to come', () => {
     const changelog = readFileSync(resolve(__dirname, '..', '..', '..', 'CHANGELOG.md'), 'utf8').replace(/\r\n/g, '\n');
     const entry =
-      "- **`no_silent_tool_failure` finds a run's failures without reading the calls after each one again, and gives evidence for each failure the answer has to own, wherever it stands.** It asked, for each failed call, every call after it whether it recovered the failure, reading each later call's output and input again every time, so a large run with many failures held the rule, and the server with it, for seconds: up to about 14 s for the dearest requests found that the server accepts. It now reads each call a fixed number of times, however many failures stand before it, and which failures are open and which were recovered is as it was, on 4,000 generated runs and on the dearest requests found, which now take at most about 150 ms; a run with no failure, or with its failures at its end, costs what it did.";
+      "- **`no_silent_tool_failure` finds a run's failures without reading the calls after each one again, and gives evidence for the first 25 failures the answer has to own, wherever they stand.** It asked, for each failed call, every call after it whether it recovered the failure, reading each later call's output and input again every time, so a large run with many failures held the rule, and the server with it, for seconds: up to about 10 s for the dearest requests found that the server accepts. It now reads each call a fixed number of times, however many failures stand before it, and which failures are open and which were recovered is as it was, on 4,000 generated runs and on the dearest requests found; no request found holds the rule past about 240 ms. A run with no failure, or with its failures at its end, costs what it did. One shape costs more: where a command's failing verdict is recovered by the same command's next call, which prints no passing verdict, beside hundreds of later calls, the rule takes about 2.4 times as long as it did (20 to 49 ms; 92 to 230 ms at the door's limits), since each later call is read for a passing verdict where the search stopped at the call that recovered it.";
     const sees =
       "  - What a caller sees after upgrading: the evidence lists the first 25 failures the answer has to own, wherever they stand, where one past the 25th call had none, and in `GET /issues` a failing result whose first such failure stands past the 25th call is grouped by that failure's tool and reason, as one with an earlier failure always was, where it was grouped by its message; and where the answer owns more than five calls that went wrong, the message names the first five tools and says how many more, where it named every one.";
     // The two lines together, the entry first, under the release to come's Security heading.

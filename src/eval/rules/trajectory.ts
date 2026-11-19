@@ -404,8 +404,9 @@ export function recoveredBy(failure: StepFailure, later: readonly Step[]): boole
  * it), a run of n calls with f failures read each later step again for every
  * failure before it: its output for a verdict, its input for a target, its
  * values. Here a step is read for a passing verdict once at most, and only
- * when a command's failing verdict stands before it; and a tool's targets
- * and values are listed once, from the first failure that needs them on. The
+ * when a command's failing verdict stands before it; the targets of every
+ * tool are listed once, from the first failure that names one on, and a
+ * tool's values once, from its first failure that names none on. The
  * answers are recoveredBy's; tests/unit/eval/failures-in.test.ts holds the
  * two together on generated runs.
  */
