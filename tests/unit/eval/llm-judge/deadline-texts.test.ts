@@ -71,9 +71,12 @@ describe('each sentence on a rate limit, a key, a provider that cannot be reache
   const one = (s: string): string => s.replace(/\r\n/g, '\n');
 
   it('a rate limit is asked again only where its wait ends before the deadline: the guide, its rendering, the judge doc and the citation doc', () => {
-    const asked = "a rate-limited call is asked again once, where the provider's wait ends before the call's deadline.";
-    expect(toolGuide().evaluate_with_llm_judge.does).toContain(asked);
-    expect(read('website/public/llms-full.txt')).toContain(asked);
+    // The sentence whole, whether it opens a sentence of its own or follows a semicolon.
+    const asked = "ate-limited call is asked again once, where the provider's wait ends before the call's deadline.";
+    for (const said of [toolGuide().evaluate_with_llm_judge.does, read('website/public/llms-full.txt')]) {
+      expect(said).toMatch(/[.;] [Aa] rate-limited call is asked again once, where the provider's wait ends before the call's deadline\./);
+      expect(said).toContain(asked);
+    }
     const judge = one(read('docs/llm-as-judge.md'));
     expect(judge).toContain("2. **Provider-side limits** — a rate limit (429) is asked again once, after the wait `Retry-After` names, where that wait ends before the call's deadline; otherwise, and on a second 429, the call fails as `rate_limit`.");
     expect(judge).toContain("| Retries once, after the wait `Retry-After` (or Anthropic's reset time) names, or 2 s where none is named, when that wait ends before the call's deadline; otherwise, and on a second 429, throws `LLMJudgeError kind=rate_limit`, with the provider's wait as `retryAfterMs` where it named one |");
