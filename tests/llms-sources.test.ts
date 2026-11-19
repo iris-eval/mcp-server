@@ -18,7 +18,7 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { compareEntries, manifestTools, toolGuides } from '../scripts/claims/render-llms.mjs';
+import { compareEntries, manifestTools, toolGuides, toolTable } from '../scripts/claims/render-llms.mjs';
 
 const root = resolve(__dirname, '..');
 const read = (rel: string): string => readFileSync(join(root, rel), 'utf8').replace(/\r\n/g, '\n');
@@ -85,6 +85,15 @@ describe('the tool list in llms-full.txt is the server\'s', () => {
       expect(llmsFull, t.name).toContain(`   - When another call is better: ${g.whenNot}`);
       expect(llmsFull, t.name).toContain(`   - Errors: ${g.errors}`);
     }
+  });
+
+  it('writes each tool as one row of the skill\'s table, whatever its description holds: a pipe, a backslash before one, a line break', () => {
+    const table = toolTable([{ name: 'a_tool', description: 'Reads a | b, and c \\| d\nover two lines.' }]);
+    const row = table.split('\n')[2];
+    expect(row).toBe('| `a_tool` | Reads a \\| b, and c \\\\\\| d over two lines. |');
+    // Read as a Markdown row: every pipe inside the cell is escaped, so the row has its two cells and no more.
+    const bare = row.replace(/\\\\/g, '').replace(/\\\|/g, '');
+    expect(bare.split('|').length - 2).toBe(2);
   });
 });
 

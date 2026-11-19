@@ -449,7 +449,8 @@ export function toolReference(tools, guides) {
  * nine (#1021).
  */
 export function toolTable(tools) {
-  const cell = (s) => String(s).replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ');
+  // A backslash is escaped before a pipe is, so a description's own backslash cannot leave the pipe after it bare.
+  const cell = (s) => String(s).replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ');
   return ['| Tool | What it does |', '|------|-------------|', ...tools.map((t) => `| \`${t.name}\` | ${cell(t.description)} |`)].join('\n');
 }
 
