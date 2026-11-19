@@ -20,7 +20,7 @@
  * a pattern would be.
  */
 
-import type { EvalContext, EvalRuleResult } from '../../types/eval.js';
+import type { EvalContext, RuleAnswer } from '../../types/eval.js';
 import type { Step, ToolCallRecord } from '../../types/trace.js';
 import { stepsOf, trajectoryAbsence } from '../steps.js';
 import { exitCodeStated, failingVerdict, passingVerdict } from './command-output.js';
@@ -58,7 +58,7 @@ export const SPANS_WITHOUT_TOOL_SKIP_REASON =
 export function skipWithoutTrajectory(
   ruleName: string,
   context: EvalContext,
-): EvalRuleResult | null {
+): RuleAnswer | null {
   /*
    * Asks the derived trajectory, not the raw field, so a trace captured as
    * OpenTelemetry TOOL spans is judged instead of reported as "not judged".
@@ -68,13 +68,14 @@ export function skipWithoutTrajectory(
    */
   if (stepsOf(context).length > 0) return null;
 
+  // Each is nothing to judge: no trajectory reached the rule.
   switch (trajectoryAbsence(context)) {
     case 'spans_without_tool':
-      return { ruleName, passed: false, score: 0, message: 'No tool calls found among the supplied spans', skipped: true, skipReason: SPANS_WITHOUT_TOOL_SKIP_REASON };
+      return { ruleName, passed: false, score: 0, message: 'No tool calls found among the supplied spans', skipped: true, skipClass: 'not_applicable', skipReason: SPANS_WITHOUT_TOOL_SKIP_REASON };
     case 'none':
-      return { ruleName, passed: false, score: 0, message: 'No tool calls provided', skipped: true, skipReason: NO_TRAJECTORY_SKIP_REASON };
+      return { ruleName, passed: false, score: 0, message: 'No tool calls provided', skipped: true, skipClass: 'not_applicable', skipReason: NO_TRAJECTORY_SKIP_REASON };
     default:
-      return { ruleName, passed: false, score: 0, message: 'No tool calls were made', skipped: true, skipReason: EMPTY_TRAJECTORY_SKIP_REASON };
+      return { ruleName, passed: false, score: 0, message: 'No tool calls were made', skipped: true, skipClass: 'not_applicable', skipReason: EMPTY_TRAJECTORY_SKIP_REASON };
   }
 }
 

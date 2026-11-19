@@ -16,9 +16,12 @@
  * new throw site cannot ship without a code.
  *
  * Two errors are not this module's: an argument the input schema rejects
- * is refused by the SDK before the handler runs (the text names
- * IRIS_INVALID_ARGUMENT and the valid arguments — see strict-input.ts), and
- * an HTTP rate limit answers 429 at the transport before any tool runs.
+ * is refused by the SDK before the handler runs, as plain text (for an
+ * unknown argument the text names IRIS_INVALID_ARGUMENT and the valid
+ * arguments — see strict-input.ts; for a wrong type or a missing argument
+ * it is the SDK's own sentence, with no code), and an HTTP rate limit
+ * answers 429 at the transport before any tool runs. The same code is also
+ * an envelope's, where a tool refuses an argument its schema let in.
  */
 import { ZodError } from 'zod';
 import { LLMJudgeError } from '../eval/llm-judge/client.js';
@@ -99,11 +102,51 @@ export function irisError(
 
 const CAPABILITIES = CAPABILITIES_RESOURCE_URI;
 
+/**
+ * What a thrown value says for itself, always as text. A promise can reject
+ * with anything: with nothing at all (null, undefined), with an object that
+ * cannot be made a string, with an error whose message is not text. Those
+ * say nothing, and a sentence of Iris's own stands for them: the store's
+ * where the value carries a SQLite code, the internal error's otherwise
+ * (toIrisError, below; an envelope always carries a message, respond.ts).
+ */
+function messageOf(err: unknown): string {
+  if (err === null || err === undefined) return '';
+  try {
+    const said: unknown = err instanceof Error ? err.message : String(err);
+    return typeof said === 'string' ? said : '';
+  } catch {
+    return '';
+  }
+}
+
+/** One field of a thrown value, or undefined where it has none or reading it throws. */
+function fieldOf(err: unknown, key: 'code' | 'errcode'): unknown {
+  try {
+    // Reading a field of null here threw inside the catch that was building the envelope, and the caller got that throw's one line.
+    return (err as Record<string, unknown> | null | undefined)?.[key];
+  } catch {
+    return undefined;
+  }
+}
+
+/** Node's built-in SQLite names a failure SQLite reports by a code of its own, with SQLite's number beside it (`errcode`); better-sqlite3 names it by SQLite's code. (A connection already closed is another code, the runtime's, and is not the store's failure under either.) */
+const NODE_SQLITE_CODE = 'ERR_SQLITE_ERROR';
+
 function isSqliteError(err: unknown): boolean {
-  const code = (err as { code?: unknown }).code;
+  const code = fieldOf(err, 'code');
   if (typeof code === 'string' && code.startsWith('SQLITE_')) return true;
-  const message = err instanceof Error ? err.message : '';
-  return /SQLITE|database is locked|disk I\/O error|readonly database/i.test(message);
+  if (code === NODE_SQLITE_CODE) return true;
+  // Only an error's own message is read for the driver's words, as before: a thrown string that happens to hold them is not the store's.
+  return /SQLITE|database is locked|disk I\/O error|readonly database/i.test(err instanceof Error ? messageOf(err) : '');
+}
+
+/** The store was busy or locked: SQLITE_BUSY and SQLITE_LOCKED, as better-sqlite3 names them and as Node's built-in SQLite numbers them (5 and 6). */
+function isSqliteBusy(err: unknown): boolean {
+  const code = fieldOf(err, 'code');
+  if (code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED') return true;
+  const errcode = fieldOf(err, 'errcode');
+  return code === NODE_SQLITE_CODE && (errcode === 5 || errcode === 6);
 }
 
 /**
@@ -117,7 +160,7 @@ export function toIrisError(err: unknown): IrisError {
   if (err instanceof IrisError) return err;
 
   const name = (err as { name?: unknown })?.name;
-  const message = err instanceof Error ? err.message : String(err);
+  const message = messageOf(err);
 
   if (name === 'DuplicateRuleNameError') {
     return irisError('IRIS_DUPLICATE_RULE', message, {
@@ -173,11 +216,18 @@ export function toIrisError(err: unknown): IrisError {
       malformed_response: ['The judge answered, and not with the JSON object it was asked for: the message shows what stood in its place, or the start of it. Retry; if it recurs, pick another model.'],
       unknown: ['Retry once; if it recurs, report the message with the provider and model.'],
     };
+    /*
+     * How long the provider asked the caller to wait, when that is a number
+     * JSON can carry. A provider's Retry-After can be any number above
+     * zero, and a thousand times a large enough one is not a number: the
+     * delay is then left out, and the rate limit is still told.
+     */
+    const retryAfterMs = typeof err.retryAfterSeconds === 'number' ? err.retryAfterSeconds * 1000 : Number.NaN;
     return irisError('IRIS_PROVIDER_ERROR', message, {
       kind: err.kind,
       retryable,
       recovery: recovery[err.kind],
-      ...(err.retryAfterSeconds !== undefined ? { retryAfterMs: err.retryAfterSeconds * 1000 } : {}),
+      ...(Number.isFinite(retryAfterMs) ? { retryAfterMs } : {}),
     });
   }
 
@@ -212,9 +262,8 @@ export function toIrisError(err: unknown): IrisError {
   }
 
   if (isSqliteError(err)) {
-    const code = (err as { code?: string }).code ?? '';
-    return irisError('IRIS_STORAGE_ERROR', `Iris storage failed: ${message}`, {
-      retryable: code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED',
+    return irisError('IRIS_STORAGE_ERROR', message === '' ? 'Iris storage failed.' : `Iris storage failed: ${message}`, {
+      retryable: isSqliteBusy(err),
       recovery: [
         'Retry once. If it recurs, check that the database path is writable and the disk is not full.',
         'Run `npx @iris-eval/mcp-server --self-test` to probe the configured home and database.',

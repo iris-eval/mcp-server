@@ -26,7 +26,7 @@
  * than two content terms is not judged. A detection with a heuristic behind
  * it, so it degrades the score and never vetoes.
  */
-import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type EvalRuleResult, type Evidence } from '../../types/eval.js';
+import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type RuleAnswer, type Evidence } from '../../types/eval.js';
 import type { ToolDescriptor } from '../../types/trace.js';
 import { catalogueIndex, catalogueMatch } from '../catalogue.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
@@ -74,9 +74,9 @@ export const toolChoice: EvalRule = {
   classes: ['wrong_tool'],
   // 2: a call named mcp__<server>__<tool> counts as a call to its tool's entry (catalogue.ts, catalogueMatch).
   version: 2,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     if (!context.input) {
-      return { ruleName: 'tool_choice', passed: false, score: 0, message: 'No input provided', skipped: true, skipReason: 'context.input not provided' };
+      return { ruleName: 'tool_choice', passed: false, score: 0, message: 'No input provided', skipped: true, skipClass: 'not_applicable', skipReason: 'context.input not provided' };
     }
     const skip = skipWithoutTrajectory('tool_choice', context);
     if (skip) return skip;
@@ -87,17 +87,18 @@ export const toolChoice: EvalRule = {
         passed: false,
         score: 0,
         skipped: true,
+        skipClass: 'not_applicable',
         skipReason: 'context.tools not provided — a choice cannot be judged against a catalogue nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)',
         message: 'No tools catalogue provided',
       };
     }
     const ask = new Set(contentTerms(context.input));
     if (ask.size < MIN_ASK_TERMS) {
-      return { ruleName: 'tool_choice', passed: false, score: 0, skipped: true, skipReason: `the ask has ${ask.size} content term${ask.size === 1 ? '' : 's'}; ${MIN_ASK_TERMS} are needed to judge a choice`, message: 'Ask too short to judge a tool choice' };
+      return { ruleName: 'tool_choice', passed: false, score: 0, skipped: true, skipClass: 'not_applicable', skipReason: `the ask has ${ask.size} content term${ask.size === 1 ? '' : 's'}; ${MIN_ASK_TERMS} are needed to judge a choice`, message: 'Ask too short to judge a tool choice' };
     }
     const actionable = actionableTerms(ask, catalogue.values());
     if (actionable.size === 0) {
-      return { ruleName: 'tool_choice', passed: false, score: 0, skipped: true, skipReason: 'no tool in the catalogue mentions any of the ask\'s content terms — there is nothing to choose between', message: 'No tool speaks to the ask' };
+      return { ruleName: 'tool_choice', passed: false, score: 0, skipped: true, skipClass: 'not_applicable', skipReason: 'no tool in the catalogue mentions any of the ask\'s content terms — there is nothing to choose between', message: 'No tool speaks to the ask' };
     }
     const steps = stepsOf(context);
     const called = new Set(steps.map((s) => s.name));

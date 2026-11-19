@@ -77,7 +77,7 @@ export function registerEvaluateRunsTool(
           'To score a new execution (log_trace, then evaluate_output).',
         returns: evaluateRunsOutputSchema,
         errors:
-          'IRIS_INVALID_ARGUMENT (empty run id, or the target run holds verdicts); IRIS_UNKNOWN_TRACE (source run empty); IRIS_STORAGE_ERROR. Unscorable traces are listed in failed. ' + ERROR_ENVELOPE_SENTENCE,
+          'IRIS_INVALID_ARGUMENT (into names the run being re-evaluated); IRIS_UNKNOWN_TRACE (source run empty); IRIS_STORAGE_ERROR. Unscorable traces are listed in failed. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
           compare_runs: 'compare the two runs after',
           evaluate_output: 're-score one trace',

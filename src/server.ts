@@ -17,8 +17,8 @@ import { judgeState } from './judge-enablement.js';
 import { relevanceJudgeFromEnv, relevanceJudgeStartupWarnings, relevanceJudgeState } from './eval/llm-judge/relevance-judge.js';
 import { judgeBudgetFromEnv } from './eval/llm-judge/budget.js';
 import type { StoreGate } from './storage/ready.js';
-import { errorResult } from './tools/respond.js';
-import { irisError, toIrisError } from './tools/errors.js';
+import { errorResult, failureResult } from './tools/respond.js';
+import { irisError } from './tools/errors.js';
 import { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { maxInputDepthOf, maxInputElementsOf } from './config/defaults.js';
 import { countElements, MAX_EVALUATED_DEPTH, nestingDepth, tooDeepMessage } from './utils/element-count.js';
@@ -65,7 +65,7 @@ function gateRequests(server: McpServer, gate: StoreGate): void {
         try {
           await gate.wait();
         } catch (err) {
-          return errorResult(toIrisError(err));
+          return failureResult(err);
         }
       }
       return handler(...args);

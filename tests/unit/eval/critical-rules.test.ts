@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { EvalEngine } from '../../../src/eval/engine.js';
 import { createCustomRule } from '../../../src/eval/rules/index.js';
-import type { CustomRuleDefinition, EvalContext, EvalRule } from '../../../src/types/eval.js';
+import type { CustomRuleDefinition, EvalContext, EvalRule, RuleAnswer } from '../../../src/types/eval.js';
 import { piiContext, injectionContext, hallucinatingContext } from '../../fixtures/sample-evals.js';
 
 /*
@@ -48,13 +48,11 @@ function stubRule(opts: {
     evalType: 'custom',
     weight: opts.weight ?? 1,
     ...(opts.critical === undefined ? {} : { critical: opts.critical }),
-    evaluate: () => ({
-      ruleName: opts.name,
-      passed: opts.passed,
-      score: opts.passed ? 1 : 0,
-      message: opts.passed ? 'OK' : 'violation found',
-      ...(opts.skipped ? { skipped: true, skipReason: 'missing context' } : {}),
-    }),
+    evaluate: (): RuleAnswer => {
+      const answer = { ruleName: opts.name, passed: opts.passed, score: opts.passed ? 1 : 0, message: opts.passed ? 'OK' : 'violation found' };
+      // A missing input: nothing to judge.
+      return opts.skipped ? { ...answer, skipped: true, skipClass: 'not_applicable', skipReason: 'missing context' } : answer;
+    },
   };
 }
 

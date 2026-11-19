@@ -1,4 +1,4 @@
-import { MAX_EVIDENCE_ITEMS, type EvalRule, type EvalContext, type EvalRuleResult, type Evidence } from '../../types/eval.js';
+import { MAX_EVIDENCE_ITEMS, type EvalRule, type EvalContext, type RuleAnswer, type Evidence } from '../../types/eval.js';
 import { thresholdSourceOf } from '../thresholds.js';
 import { describeInput, longestCycle, looksLikePolling, skipWithoutTrajectory, stepKey, targetKey } from './trajectory.js';
 import { stepScopeNote, stepsOf } from '../steps.js';
@@ -21,9 +21,9 @@ export const costUnderThreshold: EvalRule = {
   question: 'within_budget',
   classes: ['over_budget'],
   version: 1,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     if (context.costUsd === undefined || context.costUsd === null) {
-      return { ruleName: 'cost_under_threshold', passed: false, score: 0, message: 'Cost data not provided', skipped: true, skipReason: 'context.costUsd not provided' };
+      return { ruleName: 'cost_under_threshold', passed: false, score: 0, message: 'Cost data not provided', skipped: true, skipClass: 'not_applicable', skipReason: 'context.costUsd not provided' };
     }
     const threshold = (context.customConfig?.cost_threshold as number) ?? 0.10;
     const cost = context.costUsd;
@@ -54,11 +54,11 @@ export const verbosityRatio: EvalRule = {
   question: 'within_budget',
   classes: ['over_budget'],
   version: 1,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     const prompt = context.tokenUsage?.prompt_tokens;
     const completion = context.tokenUsage?.completion_tokens;
     if (prompt === undefined || completion === undefined || prompt === 0) {
-      return { ruleName: 'verbosity_ratio', passed: false, score: 0, message: 'Token usage not provided', skipped: true, skipReason: 'context.tokenUsage not provided' };
+      return { ruleName: 'verbosity_ratio', passed: false, score: 0, message: 'Token usage not provided', skipped: true, skipClass: 'not_applicable', skipReason: 'context.tokenUsage not provided' };
     }
     const ratio = completion / prompt;
     const maxRatio = (context.customConfig?.max_token_ratio as number) ?? 5;
@@ -219,7 +219,7 @@ export const noToolLoop: EvalRule = {
   question: 'tool_use_correct',
   classes: ['tool_loop'],
   version: 1,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     const skip = skipWithoutTrajectory('no_tool_loop', context);
     if (skip) return skip;
 
@@ -379,7 +379,7 @@ export const maxSteps: EvalRule = {
   question: 'within_budget',
   classes: ['over_budget'],
   version: 1,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     const skip = skipWithoutTrajectory('max_steps', context);
     if (skip) return skip;
 
@@ -444,9 +444,9 @@ export const costAnomaly: EvalRule = {
   question: 'within_budget',
   classes: ['over_budget'],
   version: 1,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     if (context.costUsd === undefined || context.costUsd === null) {
-      return { ruleName: 'cost_anomaly', passed: false, score: 0, message: 'Cost data not provided', skipped: true, skipReason: 'context.costUsd not provided' };
+      return { ruleName: 'cost_anomaly', passed: false, score: 0, message: 'Cost data not provided', skipped: true, skipClass: 'not_applicable', skipReason: 'context.costUsd not provided' };
     }
     const history = context.costHistory ?? [];
     const anomaly = anomalyOf(context.costUsd, history);
@@ -458,6 +458,7 @@ export const costAnomaly: EvalRule = {
         score: 0,
         message: `Not judged: ${n} prior costed trace${n === 1 ? '' : 's'} for this agent, ${COST_ANOMALY_MIN_HISTORY} needed before a cost can be read against its own history`,
         skipped: true,
+        skipClass: 'not_applicable',
         skipReason: `insufficient_history: ${n} prior costed traces, ${COST_ANOMALY_MIN_HISTORY} needed`,
       };
     }

@@ -10,7 +10,7 @@ import type { EvalRuleResult } from '../types/eval.js';
 
 export const isCritical = (r: EvalRuleResult): boolean => r.critical === true;
 
-/** A result that gave no answer though there was something to judge: the rule threw, was stopped at a limit, read cut evidence, or its definition is broken. */
+/** A result that gave no answer though there was something to judge: the rule threw, was stopped at a limit, read cut evidence, could not judge what it was sent, or its definition is broken. */
 export const couldNotAnswer = (r: EvalRuleResult): boolean => r.skipped === true && r.skipClass !== undefined && r.skipClass !== 'not_applicable';
 
 /**

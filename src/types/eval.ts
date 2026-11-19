@@ -159,8 +159,19 @@ export interface EvalRule {
    * which is what every custom rule does.
    */
   outputView?: 'values' | 'labelled';
-  evaluate(context: EvalContext): EvalRuleResult;
+  evaluate(context: EvalContext): RuleAnswer;
 }
+
+/**
+ * What a rule's `evaluate` returns. A result that skipped says which kind of
+ * skip it is (`skipClass`): `not_applicable` where there was nothing to
+ * judge, `defeated` or `config_invalid` where the rule could not judge. The
+ * type requires it, so every place a rule skips says which, and none is read
+ * as having had nothing to judge by default. A skip that says nothing (a
+ * plugin's, which no compiler checks) is read as a check that could not
+ * judge (stamp.ts, skipClassOf).
+ */
+export type RuleAnswer = (EvalRuleResult & { skipped?: false }) | (EvalRuleResult & { skipped: true; skipClass: SkipClass });
 
 /**
  * What the caller expected the agent to DO — the trajectory
@@ -388,13 +399,16 @@ export interface EvalContext {
 export type Role = 'gate' | 'veto' | 'risk' | 'advisory';
 
 /**
- * Why a rule skipped. `not_applicable`: the evidence it needs was not
- * supplied (never asked — coverage). `defeated`: asked and could not answer
- * on this input: the output stalled its pattern past the sandbox budget, the
- * evidence it reads was cut, or the rule threw. `config_invalid`: asked and
- * could not answer, because its definition is broken. A gate that fails
- * closed treats the last two as unknown; the first is a coverage fact, not a
- * verdict.
+ * Why a rule skipped. `not_applicable`: there was nothing to judge, because
+ * the evidence it needs was not supplied or its question does not apply to
+ * what was (coverage). `defeated`: asked and could not answer on this input:
+ * the output stalled its pattern past the sandbox budget, the evidence it
+ * reads was cut, the rule threw, it could not judge what it was sent, or a
+ * plugin's skip said neither that there was nothing to judge nor that its
+ * definition is broken. `config_invalid`:
+ * asked and could not answer, because its definition is broken. A gate that
+ * fails closed treats the last two as unknown; the first is a coverage fact,
+ * not a verdict.
  */
 export type SkipClass = 'not_applicable' | 'defeated' | 'config_invalid';
 
