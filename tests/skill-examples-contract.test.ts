@@ -15,10 +15,11 @@
  * and read again, and one that makes a sentence of a page untrue fails with
  * the sentence.
  */
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
-import { EXAMPLES, renderSkillExamples } from '../scripts/claims/render-skill-examples.js';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { describe, expect, it, vi } from 'vitest';
+import { EXAMPLES, renderSkillExamples, textBlock } from '../scripts/claims/render-skill-examples.js';
 
 const root = resolve(__dirname, '..');
 const read = (path: string): string => readFileSync(resolve(root, path), 'utf-8').replace(/\r\n/g, '\n');
@@ -41,10 +42,46 @@ describe('the skill\'s examples are the server\'s answers', () => {
     }
   });
 
+  it('each scenario block holds what the page\'s calls send: the ask, the outputs, the run', () => {
+    for (const example of EXAMPLES) {
+      const text = read(example.file);
+      expect(example.texts.length, example.file).toBeGreaterThan(0);
+      for (const t of example.texts) {
+        const start = `<!-- iris:${t.block}:start -->\n`;
+        const from = text.indexOf(start);
+        const to = text.indexOf(`\n<!-- iris:${t.block}:end -->`);
+        expect(from, `${example.file}: ${t.block}`).toBeGreaterThan(-1);
+        expect(text.slice(from + start.length, to), `${example.file}: ${t.block}`).toBe(textBlock(t.text));
+      }
+    }
+  });
+
+  it('rendering leaves the caller\'s Iris home as it found it: one that is not there is not made', async () => {
+    const absent = join(tmpdir(), `iris-skill-examples-caller-${process.pid}-${Date.now()}`);
+    const saved = process.env.IRIS_HOME;
+    const savedDbPath = process.env.IRIS_DB_PATH;
+    process.env.IRIS_HOME = absent;
+    // The configuration takes its default store path from the home when it is first imported: import it again, here.
+    vi.resetModules();
+    try {
+      const fresh = (await import('../scripts/claims/render-skill-examples.js')) as typeof import('../scripts/claims/render-skill-examples.js');
+      await fresh.renderSkillExamples(root);
+      expect(existsSync(absent)).toBe(false);
+      // And the environment is put back as it was.
+      expect(process.env.IRIS_HOME).toBe(absent);
+      expect(process.env.IRIS_DB_PATH).toBe(savedDbPath);
+    } finally {
+      if (saved === undefined) delete process.env.IRIS_HOME;
+      else process.env.IRIS_HOME = saved;
+      rmSync(absent, { recursive: true, force: true });
+      vi.resetModules();
+    }
+  }, 120_000);
+
   it('every call a page lists has its blocks in the page, and no block is left without a call', () => {
     for (const example of EXAMPLES) {
       const text = read(example.file);
-      const expected = new Set<string>();
+      const expected = new Set<string>(example.texts.map((t) => t.block));
       for (const deployment of example.deployments) {
         if (deployment.config !== undefined) expected.add(deployment.config.block);
         for (const call of deployment.calls) for (const kind of call.blocks) expected.add(`${call.name}-${kind}`);

@@ -4,6 +4,7 @@
 An agent makes several tool calls to answer a complex query. You want to track what each run costs and stop the runs that go over your budget.
 
 ## Agent Execution
+<!-- iris:cost-run:start -->
 ```
 Query: "Analyze our top 10 customers and suggest retention strategies"
 
@@ -16,6 +17,7 @@ Tool calls:
 Token usage: 12,800 prompt + 4,100 completion = 16,900 total
 Cost: $0.47
 ```
+<!-- iris:cost-run:end -->
 
 ## Using Iris
 
@@ -101,7 +103,7 @@ The response. A `trace_id` is minted on every call, so yours will differ:
 ```
 <!-- iris:cost-evaluate-request:end -->
 
-The server's answer, cut to the verdict, the rules that ran, the notes and the counts. The full response also carries an `id`, each rule's evidence, and a row for every rule that skipped, with its reason. The blocks on this page are written by `npm run skill-examples:render` from the server in this repository and checked on every change, so they are what the current version answers.
+The server's answer, cut to the verdict, the rules that ran, the notes and the counts. The full response also carries an `id`, the evidence of each rule that has any, and a row for every rule that skipped, with its reason. The blocks on this page are written by `npm run skill-examples:render` from the server in this repository and checked on every change, so they are what that server answers.
 
 <!-- iris:cost-evaluate-response:start -->
 ```json

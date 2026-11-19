@@ -307,6 +307,7 @@ describe('every entry point Iris owns applies the guard before anything else', (
     ['scripts/cusum/render-thresholds.ts', '../../src/apply-runtime-guard.js'],
     ['scripts/seed-demo-data.ts', '../src/apply-runtime-guard.js'],
     ['scripts/read-sessions.ts', '../src/apply-runtime-guard.js'],
+    ['scripts/claims/render-skill-examples.ts', '../../src/apply-runtime-guard.js'],
     ['tests/setup/runtime-guard.ts', '../../src/apply-runtime-guard.js'],
   ];
 

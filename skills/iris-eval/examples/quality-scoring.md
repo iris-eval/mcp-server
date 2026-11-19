@@ -4,21 +4,27 @@
 You're comparing two agent prompts to see which produces the better answer to the same task. Run both answers through Iris and compare what comes back.
 
 The task both prompts were given:
+<!-- iris:quality-task:start -->
 ```
 Summarize the quarterly report's revenue results and what drove them.
 ```
+<!-- iris:quality-task:end -->
 
 ## Prompt A Output
+<!-- iris:quality-prompt-a:start -->
 ```
 The quarterly report shows revenue increased by 15% compared to Q3.
 Key drivers include the new enterprise tier and improved retention rates.
 Customer acquisition cost decreased by 8% due to organic growth.
 ```
+<!-- iris:quality-prompt-a:end -->
 
 ## Prompt B Output
+<!-- iris:quality-prompt-b:start -->
 ```
 Revenue went up.
 ```
+<!-- iris:quality-prompt-b:end -->
 
 ## Using Iris
 
@@ -42,7 +48,7 @@ Request for Prompt A, completeness bundle (Prompt B's is the same with its own `
 
 ## Results
 
-Each block below is the server's answer to the request on this page, cut to the verdict, the rules that ran, the notes and the counts. The full response also carries an `id`, each rule's evidence and measured accuracy, the risk estimate, and a row for every rule that skipped, with its reason. The blocks are written by `npm run skill-examples:render` from the server in this repository and checked on every change, so they are what the current version answers.
+Each block below is the server's answer to the request on this page, cut to the verdict, the rules that ran, the notes and the counts. The full response also carries an `id`, the evidence of each rule that has any, and a row for every rule that skipped, with its reason. The blocks are written by `npm run skill-examples:render` from the server in this repository and checked on every change, so they are what that server answers.
 
 ### Prompt A — `completeness`
 
@@ -195,7 +201,7 @@ Each block below is the server's answer to the request on this page, cut to the 
 
 ### Prompt A — `relevance`
 
-The request carries `output` and `input` only:
+The request carries no `expected` this time:
 
 <!-- iris:quality-a-relevance-request:start -->
 ```json
