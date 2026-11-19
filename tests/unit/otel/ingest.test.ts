@@ -399,11 +399,35 @@ describe('fromOtlp — the conventions beside GenAI', () => {
     expect(toolsOf(str('{"name":"search","unread":"","wanted":""}'))?.map((t) => t.name)).toEqual(['search']);
     // The changelog and the OpenTelemetry page say so.
     expect(readFileSync(resolve(__dirname, '..', '..', '..', 'CHANGELOG.md'), 'utf8')).toContain(
-      "- **An OpenInference tool sent as a map is read as the tool it is (#1082).** A model call's `llm.tools.N.tool.json_schema` written as a map rather than as JSON text (as a sender, or a Collector that turns JSON strings into maps, can write it) was passed over, so a call to that tool read as a call to a tool the model was not offered, and `valid_tool_arguments` and `tool_choice` failed it. Such a map is now read as the object it is, its own fields only. A value of another kind (a number, a list, nothing) still names no tool.",
+      "- **An OpenInference tool sent as a map is read as the tool it is (#1082).** A model call's `llm.tools.N.tool.json_schema` written as a map rather than as JSON text (as a sender, or a Collector that turns JSON strings into maps, can write it) was passed over. Where every tool a model call was offered came as a map there was no catalogue, and the rules that need one did not judge the run's calls; where another came as JSON text, a call to the map's tool read as a call to a tool the model was not offered, and `valid_tool_arguments` and `tool_choice` failed it. Such a map is now read as the object it is, its own fields only. A value of another kind (a number, a list, nothing) still names no tool.",
+    );
+    expect(readFileSync(resolve(__dirname, '..', '..', '..', 'CHANGELOG.md'), 'utf8')).toContain(
+      "  - What a caller sees after upgrading: a run whose tools come as maps has its calls judged against them, so a call its tool's schema refuses now fails. As for JSON text, the first model call that carries a tool gives the catalogue, now also where its tools came as maps: a call to a tool only a later model call was offered fails as not in the catalogue, and a first call whose only map names no tool leaves the run with no catalogue.",
     );
     expect(readFileSync(resolve(__dirname, '..', '..', '..', 'docs', 'otel-integration.md'), 'utf8')).toContain(
       'else OpenInference\'s `llm.tools.N.tool.json_schema` (OpenAI\'s `{ type: "function", function: {...} }` or a flat tool, 0.20.0; as JSON text, or from 0.22.0 as a map)',
     );
+  });
+
+  it("maps are read on any model call, as text is: below the agent's span, before a later call's text, naming nothing, and holding a field a text is measured by (#1082)", () => {
+    const LOOKUP = { name: 'lookup', parameters: { type: 'object' } };
+    /** An agent's span with no tools, and below it one model call for each list of tool values, in order. */
+    const callsTools = (...calls: unknown[][]) =>
+      one(request(undefined, [
+        span('0000000000000001', 'invoke_agent', [kv('gen_ai.operation.name', str('invoke_agent'))]),
+        ...calls.map((values, c) => span(`000000000000000${c + 2}`, 'chat', [kv('gen_ai.operation.name', str('chat')), ...values.map((v, i) => kv(`llm.tools.${i}.tool.json_schema`, v)), kv('gen_ai.output.messages', str('ok'))], '0000000000000001', 10 * (c + 1))),
+      ])).trace.tools?.map((t) => t.name);
+    // Below the agent's span, where instrumentors write a model call's tools.
+    expect(callsTools([anyOf(LOOKUP)])).toEqual(['lookup']);
+    expect(callsTools([str('{"name":"search"}'), anyOf(LOOKUP)])).toEqual(['search', 'lookup']);
+    // The first model call that carries a tool gives the catalogue, whether its tools came as maps or as text.
+    expect(callsTools([anyOf(LOOKUP)], [str('{"name":"search"}')])).toEqual(['lookup']);
+    // A first call whose only map names no tool leaves the run with no catalogue, as one whose text names none does.
+    expect(callsTools([anyOf({})], [str('{"name":"search"}')])).toBeUndefined();
+    expect(callsTools([anyOf({ type: 'web_search' })], [str('{"name":"search"}')])).toBeUndefined();
+    expect(callsTools([str('{}')], [str('{"name":"search"}')])).toBeUndefined();
+    // A map is not measured as a text is: its own `length` is a field like any other.
+    expect(callsTools([str('{"name":"search"}'), anyOf({ name: 'lookup', length: 3 })])).toEqual(['search', 'lookup']);
   });
 
   it("a tool's text is written out and read back as it always was: a number past the double range reads as null (#1082)", () => {

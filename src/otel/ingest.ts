@@ -619,7 +619,9 @@ const OI_TOOL_SCHEMA = /^llm\.tools\.(\d+)\.tool\.json_schema$/;
  * of flat tools, the shape `gen_ai.tool.definitions` carries. A map is read as
  * its own fields only: written out and read back, a key it only inherits is
  * not there. A value of another kind (a number, a list, nothing) names no
- * tool and is passed over, as it always was.
+ * tool and is passed over, as it always was. A map that names no tool is read
+ * as a text that names none always was: a model call whose tools all name
+ * none gives no catalogue.
  *
  * Each tool's text is held to the limit by itself (#1040). One that cannot be
  * read, nested deeper or not JSON (cut short, say, by an attribute's length
