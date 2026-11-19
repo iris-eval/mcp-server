@@ -33,6 +33,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { WebhookEventName, WebhookFormat } from './event-names.js';
 import type { WebhookMoment } from './events.js';
+import { heldTimerMs } from '../utils/timer.js';
 
 export interface ResolvedWebhookConfig {
   url: string;
@@ -232,7 +233,8 @@ export class WebhookNotifier {
 
   private backoff(attempt: number): number {
     const base = WEBHOOK_BACKOFF_MS[Math.min(attempt - 1, WEBHOOK_BACKOFF_MS.length - 1)];
-    return Math.round(base * (0.75 + 0.5 * this.random()));
+    // `random` is an option of the class: held, so one that answers past 1 cannot make a wait end at once (one that answers below 0, or NaN, makes a wait of 1 ms, as Node reads it, as before).
+    return heldTimerMs(Math.round(base * (0.75 + 0.5 * this.random())));
   }
 
   private async deliver(moment: WebhookMoment, key: string): Promise<DeliveryRecord> {
@@ -257,7 +259,7 @@ export class WebhookNotifier {
       status = null;
       error = null;
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
+      const timer = setTimeout(() => controller.abort(), heldTimerMs(this.config.timeoutMs));
       try {
         const res = await this.fetchImpl(this.config.url, { method: 'POST', headers, body, signal: controller.signal, redirect: 'manual' });
         status = res.status;

@@ -61,6 +61,7 @@ import { Worker } from 'node:worker_threads';
 import type { DriverName } from './driver.js';
 import type { CheckpointWorkerData } from './checkpoint-worker.js';
 import { sourceThread } from './source-thread.js';
+import { heldTimerMs } from '../utils/timer.js';
 
 /** How long after one copy of the log into the file the worker starts the next. */
 export const CHECKPOINT_INTERVAL_MS = 250;
@@ -293,7 +294,7 @@ export class Checkpointer {
     this.worker.postMessage({ type: 'close', id: this.nextId++ });
     let timer: NodeJS.Timeout | undefined;
     const late = new Promise<'late'>((resolve) => {
-      timer = setTimeout(() => resolve('late'), this.options.closeTimeoutMs ?? CLOSE_TIMEOUT_MS);
+      timer = setTimeout(() => resolve('late'), heldTimerMs(this.options.closeTimeoutMs ?? CLOSE_TIMEOUT_MS));
     });
     /*
      * Resolves only once the thread has ended, and its connection with it,

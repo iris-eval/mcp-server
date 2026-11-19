@@ -24,6 +24,7 @@
  */
 import { parentPort, workerData } from 'node:worker_threads';
 import { openDriver } from './driver.js';
+import { heldTimerMs } from '../utils/timer.js';
 
 export interface CheckpointWorkerData {
   path: string;
@@ -37,16 +38,18 @@ if (!port) throw new Error('checkpoint-worker.ts runs as a worker thread');
 const data = workerData as CheckpointWorkerData;
 
 const db = openDriver(data.path, { driver: data.driver, fileMustExist: true, timeout: data.busyMs, allowFallback: false });
+// The connection's busy timeout as the driver set it, held at the longest a timer waits: set back to it after a checkpoint that waits less.
+const busyMs = heldTimerMs(data.busyMs);
 
 /** A checkpoint in `mode`, waiting at most `waitMs` for the lock it needs: whether a reader or writer held it off, and the log's length in frames. */
 function checkpoint(mode: 'PASSIVE' | 'TRUNCATE', waitMs: number): { busy: number; log: number } {
-  if (waitMs !== data.busyMs) db.pragma(`busy_timeout = ${waitMs}`);
+  if (waitMs !== busyMs) db.pragma(`busy_timeout = ${waitMs}`);
   try {
     const out = db.pragma(`wal_checkpoint(${mode})`) as { busy?: number; log?: number } | Array<{ busy?: number; log?: number }> | undefined;
     const row = Array.isArray(out) ? out[0] : out;
     return { busy: Number(row?.busy ?? 0), log: Number(row?.log ?? 0) };
   } finally {
-    if (waitMs !== data.busyMs) db.pragma(`busy_timeout = ${data.busyMs}`);
+    if (waitMs !== busyMs) db.pragma(`busy_timeout = ${busyMs}`);
   }
 }
 
@@ -61,7 +64,7 @@ function checkpoint(mode: 'PASSIVE' | 'TRUNCATE', waitMs: number): { busy: numbe
 let timer: NodeJS.Timeout | undefined;
 const tick = () => {
   try {
-    checkpoint('PASSIVE', data.busyMs);
+    checkpoint('PASSIVE', busyMs);
   } catch {
     // A checkpoint that failed is tried again at the next tick.
   }

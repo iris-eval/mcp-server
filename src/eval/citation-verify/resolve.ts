@@ -28,6 +28,7 @@
 // Through the server, consent is IRIS_CITATION_ALLOW_FETCH=1 alone: a tool
 // argument can turn fetching off, never on (src/tools/operator-ceilings.ts).
 import { lookup as dnsLookupCb } from 'node:dns';
+import { heldTimerMs } from '../../utils/timer.js';
 import { promisify } from 'node:util';
 
 const dnsLookupAll = promisify(dnsLookupCb) as (
@@ -361,7 +362,7 @@ async function doFetch(url: string, opts: ResolveOptions, redirectsLeft: number)
   await resolveAndCheckHost(parsed.hostname);
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => controller.abort(), heldTimerMs(timeoutMs));
   let res;
   try {
     res = await fetch(url, {

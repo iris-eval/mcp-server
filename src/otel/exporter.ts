@@ -17,6 +17,7 @@
 
 import { buildExportPayload } from './mapper.js';
 import { trimTrailingSlashes } from '../utils/trim.js';
+import { heldTimerMs } from '../utils/timer.js';
 import { PUBLIC_ID } from '../identity.js';
 import type { Trace } from '../types/trace.js';
 
@@ -66,7 +67,7 @@ export class OtelExporter {
 
     const started = Date.now();
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timer = setTimeout(() => controller.abort(), heldTimerMs(this.timeoutMs));
 
     try {
       const res = await fetch(this.endpoint, {

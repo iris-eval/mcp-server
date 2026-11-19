@@ -24,6 +24,7 @@
  */
 import type { IStorageAdapter } from '../types/query.js';
 import type { StoreReadiness } from './sqlite-adapter.js';
+import { heldTimerMs } from '../utils/timer.js';
 
 /**
  * How long a request waits for an upgrade before it is refused. From
@@ -148,7 +149,7 @@ export function storeGate(raw: IStorageAdapter, options: { waitMs?: number } = {
     if (failure) throw refusedAfterFailure(failure);
     let timer: NodeJS.Timeout | undefined;
     const late = new Promise<'late'>((resolve) => {
-      timer = setTimeout(() => resolve('late'), waitMs);
+      timer = setTimeout(() => resolve('late'), heldTimerMs(waitMs));
       timer.unref();
     });
     try {

@@ -54,6 +54,7 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { basename, dirname, resolve } from 'node:path';
+import { heldTimerMs } from '../utils/timer.js';
 
 export type DriverName = 'better-sqlite3' | 'node';
 
@@ -234,7 +235,8 @@ const ERASE_ON_FREE = 'secure_delete = ON';
 
 function nativeDriver(Database: NativeModule, path: string, options: OpenOptions, reason: string): Driver {
   const db = new Database(path, {
-    ...(options.timeout !== undefined ? { timeout: options.timeout } : {}),
+    // Held at the longest a timer waits: past it better-sqlite3 refuses to open the file.
+    ...(options.timeout !== undefined ? { timeout: heldTimerMs(options.timeout) } : {}),
     ...(options.fileMustExist ? { fileMustExist: true } : {}),
     ...(options.readOnly ? { readonly: true } : {}),
   });
@@ -374,7 +376,8 @@ function nodeDriver(mod: NodeSqliteModule, path: string, options: OpenOptions, r
   }
   // No extension loading — a plugin-shaped .so is not something a trace store should ever load.
   const db = new mod.DatabaseSync(path, { allowExtension: false, ...(options.readOnly ? { readOnly: true } : {}) });
-  if (options.timeout !== undefined) db.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(options.timeout))}`);
+  // Held at the longest a timer waits: past it SQLite waits for no lock (it reads the busy timeout as 0, or as 1 from 1e21 on).
+  if (options.timeout !== undefined) db.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(heldTimerMs(options.timeout)))}`);
   // The hardening the built-in exposes: schema text is never trusted to run functions or virtual tables.
   db.exec('PRAGMA trusted_schema = OFF');
   if (!options.readOnly) db.exec(`PRAGMA ${ERASE_ON_FREE}`);
