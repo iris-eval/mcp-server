@@ -455,7 +455,9 @@ The guard ladder is in `src/eval/schema-validator.ts` and every rung has a test 
 2. `$ref` must start with `#`. A remote reference is refused by the walk, and `loadSchema` is never
    configured, so nothing can be fetched even if the walk were bypassed. `$id`, `$dynamicRef`,
    `$dynamicAnchor`, `$recursiveRef` and `$vocabulary` are refused: their validation depth cannot be
-   bounded from the schema alone.
+   bounded from the schema alone. A schema whose root carries `$async` (any value but `false`) is refused
+   once compiled: its validator answers with a promise, which a check that answers at once would read as
+   a pass, and whose rejection nothing would catch. ajv refuses `$async` below the root itself.
 3. Every `pattern` and every `patternProperties` KEY: length cap, then syntax, then safe-regex2 star
    height, then the empirical probe behind the sandbox worker’s hard deadline. Star height sits ahead of
    the probe because the probe has to guess an igniting payload and cannot in general — an exponential

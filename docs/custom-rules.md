@@ -284,7 +284,7 @@ Output must be valid JSON, and — when you supply one — must match the schema
 
 **Scoring:** Binary. 1 when the output parses and (if a schema is configured) matches it; 0 otherwise. The message names the JSON Pointer and the keyword that rejected the output, never the value.
 
-**A schema Iris will not compile is refused when you deploy the rule**, not silently ignored while it runs. Schemas go through the same guard ladder a tools catalogue does: size, depth and node caps, local `$ref` only, star height and a backtracking probe on every `pattern`. `format` is treated as an annotation and is not enforced, so `format: "email"` documents the field without deciding the verdict.
+**A schema Iris will not compile is refused when you deploy the rule**, not silently ignored while it runs. Schemas go through the same guard ladder a tools catalogue does: size, depth and node caps, local `$ref` only, star height and a backtracking probe on every `pattern`, and no `$async`, since a check here answers at once. `format` is treated as an annotation and is not enforced, so `format: "email"` documents the field without deciding the verdict.
 
 ```json
 {

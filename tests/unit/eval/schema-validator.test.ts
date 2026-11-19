@@ -118,6 +118,59 @@ describe('the schema guard ladder', () => {
     }
   });
 
+  it('a schema marked $async is refused: its validator answers with a promise, which read every value as valid and, rejected, ended the process', async () => {
+    const unhandled: unknown[] = [];
+    const listen = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on('unhandledRejection', listen);
+    try {
+      const shape = { type: 'object', properties: { q: { type: 'string' } }, required: ['q'] };
+      // Any value but false at the root makes ajv's validator answer with a promise.
+      for (const marked of [true, 'yes', 1]) {
+        const compiled = compileToolSchema({ $async: marked, ...shape });
+        expect(compiled.ok, String(marked)).toBe(false);
+        if (!compiled.ok) expect(compiled.reason).toBe('the inputSchema is marked $async, which makes its check answer later; Iris checks arguments at once, so it is not compiled');
+        expect(checkArguments(compiled, { q: 1 })).toMatchObject({ state: 'unchecked' });
+        expect(checkArguments(compiled, { q: 'x' })).toMatchObject({ state: 'unchecked' });
+      }
+      // false is a schema like any other; below the root, ajv refuses the keyword itself.
+      expect(checkArguments(compileToolSchema({ $async: false, ...shape }), { q: 1 })).toEqual({ state: 'invalid', instancePath: '/q', keyword: 'type' });
+      const below = compileToolSchema({ ...shape, properties: { q: { $async: true, type: 'string' } } });
+      expect(below.ok).toBe(false);
+      if (!below.ok) expect(below.reason).toBe('the inputSchema did not compile: async schema in sync schema');
+      // A turn of the event loop: no promise was left rejected with nobody to catch it.
+      await new Promise((r) => setTimeout(r, 50));
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', listen);
+    }
+  });
+
+  it('valid_tool_arguments and a json_schema rule say a schema marked $async was not compiled, where every call and every output passed', () => {
+    const schema = { $async: true, type: 'object', properties: { q: { type: 'string' } }, required: ['q'] };
+    const valid = validToolArguments.evaluate({ output: 'done', toolCalls: [{ tool_name: 't', input: { q: 1 } }], tools: [{ name: 't', inputSchema: schema }] } as EvalContext);
+    expect(valid).toMatchObject({ passed: false, skipped: true, skipClass: 'config_invalid' });
+    expect(valid.message).toContain('t (the inputSchema is marked $async');
+    const rule = createCustomRule({ name: 'j', type: 'json_schema', config: { schema } });
+    const answer = rule.evaluate({ output: '{"q":1}' } as EvalContext);
+    expect(answer.passed).toBe(false);
+    expect(answer.message).toContain('the inputSchema is marked $async');
+  });
+
+  it('the changelog and the security record say a schema marked $async is refused, and why', () => {
+    const flat = (rel: string): string => readFileSync(resolve(root, rel), 'utf-8').replace(/\r?\n\s*/g, ' ');
+    expect(flat('CHANGELOG.md')).toContain(
+      "- **A tool schema marked `$async` is refused: it passed every call it checked, and could stop the server.** ajv compiles a schema whose root carries `$async` (any value but `false`) into a validator that answers later, with a promise, and `valid_tool_arguments` and a custom `json_schema` rule read that answer as a pass whatever the value held; an invalid value could end the process. Such a schema is now refused with the reason, as any schema Iris will not compile is: a call is not checked against it, a `json_schema` rule that carries one is refused at deploy, and one deployed before is kept on disk and not run (`list_rules` lists it among the quarantined entries). Below the root, ajv refuses `$async` itself.",
+    );
+    expect(flat('SECURITY-EXPOSURE.md')).toContain(
+      'A schema whose root carries `$async` (any value but `false`) is refused once compiled: its validator answers with a promise, which a check that answers at once would read as a pass, and whose rejection nothing would catch. ajv refuses `$async` below the root itself.',
+    );
+    expect(flat('docs/custom-rules.md')).toContain(
+      'Schemas go through the same guard ladder a tools catalogue does: size, depth and node caps, local `$ref` only, star height and a backtracking probe on every `pattern`, and no `$async`, since a check here answers at once.',
+    );
+  });
+
   it('a schema past the depth or byte cap is refused', () => {
     const deep = compileToolSchema(nest(MAX_TOOL_SCHEMA_DEPTH + 4));
     expect(deep.ok).toBe(false);

@@ -36,6 +36,7 @@ describe('createCustomRuleStore (single-tenant / OSS)', () => {
       ['regex_match', {}, /requires config.pattern/],
       ['regex_match', { pattern: '(' }, /Invalid regex syntax/],
       ['regex_match', { pattern: '(a+)+$' }, /catastrophic backtracking/],
+      ['json_schema', { schema: { $async: true, type: 'object' } }, /config\.schema was not compiled: the inputSchema is marked \$async/],
     ];
 
     for (const [type, config, expected] of cases) {
@@ -276,6 +277,14 @@ describe('lenient load — one bad rule must not destroy the file', () => {
     const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
     const listed = store.list(LOCAL_TENANT);
     expect(listed.map((r) => r.id)).toEqual(['rule-keepme']);
+  });
+
+  it('a json_schema rule stored with a schema marked $async is quarantined: kept on disk, never run', () => {
+    const asyncRule = { ...validRule, id: 'rule-async', name: 'async-shape', definition: { name: 'async-shape', type: 'json_schema', config: { schema: { $async: true, type: 'object' } } } };
+    writeFileSync(rulesPath, JSON.stringify({ version: 1, rules: [validRule, asyncRule] }));
+    const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+    expect(store.list(LOCAL_TENANT).map((r) => r.id)).toEqual(['rule-keepme']);
+    expect(store.quarantined(LOCAL_TENANT)).toEqual([asyncRule]);
   });
 
   it('a later deploy does NOT delete the valid rule or the quarantined one', () => {

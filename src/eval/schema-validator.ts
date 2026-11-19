@@ -307,6 +307,17 @@ export function compileToolSchema(schema: unknown): CompiledSchema {
      */
     return remember(key, { ok: false, reason: `the inputSchema took ${took}ms to compile; the ceiling is ${SCHEMA_COMPILE_BUDGET_MS}ms` });
   }
+  /*
+   * A schema whose root carries `$async` (any value but false) compiles to a
+   * validator that answers with a promise. Every value would read as valid,
+   * since a promise is truthy, and the promise an invalid value rejects would
+   * have nobody to catch it, which ends the process. A check here answers at
+   * once, so such a schema is refused. Below the root, ajv refuses `$async`
+   * itself ("async schema in sync schema").
+   */
+  if ((validate as { $async?: unknown }).$async === true) {
+    return remember(key, { ok: false, reason: 'the inputSchema is marked $async, which makes its check answer later; Iris checks arguments at once, so it is not compiled' });
+  }
   return remember(key, { ok: true, validate });
 }
 
