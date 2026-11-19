@@ -302,7 +302,9 @@ describe('a judge call answers inside its deadline', () => {
   });
 
   it('a deadline already past, or one that is now, makes no request: the call is a timeout at once', async () => {
-    for (const deadline of [Date.now() - 1, Date.now()]) {
+    // Each deadline is taken when its call is made: the clock moves between the two calls.
+    for (const before of [1, 0]) {
+      const deadline = Date.now() - before;
       global.fetch = vi.fn(async () => new Response(JUDGMENT, { status: 200 })) as typeof fetch;
       const r = await settle(callLLMJudge({ ...REQUEST, timeoutMs: 1_000, deadline }), 10);
       expect(r.error).toMatchObject({ kind: 'timeout', message: 'Anthropic did not answer within 1000 ms' });
