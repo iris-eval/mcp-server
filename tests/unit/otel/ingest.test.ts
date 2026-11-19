@@ -326,37 +326,98 @@ describe('fromOtlp — the conventions beside GenAI', () => {
     expect(toolsOf(flat('search', 3), '{"type":"web_search"}')?.map((t) => t.name)).toEqual(['search']);
   });
 
-  it('a call to an OpenInference tool nested past the limit is not judged as a call to a tool the model was not offered (#1082)', () => {
+  it('a call to an OpenInference tool nested past the limit is not judged as a call to a tool the model was not offered, by either rule (#1082)', () => {
     const nested = (levels: number): string => `${'{"a":'.repeat(levels)}1${'}'.repeat(levels)}`;
-    const flat = (name: string, levels: number): string => `{"name":"${name}","parameters":${nested(levels)}}`;
+    const ask = 'Search the order database for order 42 and say where it is.';
     const judged = (lookupLevels: number) => {
       const { trace } = one(request(undefined, [
         span('0000000000000001', 'chat', [
           kv('gen_ai.operation.name', str('chat')),
-          kv('llm.tools.0.tool.json_schema', str(flat('search', 3))),
-          kv('llm.tools.1.tool.json_schema', str(flat('lookup', lookupLevels))),
-          kv('gen_ai.input.messages', str('Look up the order and say where it is.')),
+          kv('llm.tools.0.tool.json_schema', str(`{"name":"search","description":"Search the order database for an order","parameters":${nested(3)}}`)),
+          kv('llm.tools.1.tool.json_schema', str(`{"name":"lookup","parameters":${nested(lookupLevels)}}`)),
+          kv('gen_ai.input.messages', str(ask)),
           kv('gen_ai.output.messages', str('It is in the warehouse.')),
         ]),
       ]));
-      const context = { input: 'Look up the order and say where it is.', output: 'It is in the warehouse.', toolCalls: [{ tool_name: 'lookup', input: { a: 1 } }], tools: trace.tools } as EvalContext;
+      const context = { input: ask, output: 'It is in the warehouse.', toolCalls: [{ tool_name: 'lookup', input: { a: 1 } }], tools: trace.tools } as EvalContext;
       return { valid: validToolArguments.evaluate(context), choice: toolChoice.evaluate(context) };
     };
-    // At the limit the tool is in the catalogue (its schema, past the validator's own depth cap, leaves the call unchecked), and past it there
-    // is no catalogue: either way the call is never failed as one to a tool the model was not offered.
-    for (const levels of [MAX_JSON_TEXT_DEPTH - 1, MAX_JSON_TEXT_DEPTH]) {
-      const { valid } = judged(levels);
-      expect(valid.passed || valid.skipped, `${levels} levels`).toBe(true);
-      expect(valid.message, `${levels} levels`).not.toContain('not in the catalogue');
-    }
-    // Past it, both rules say the call was not judged against a catalogue.
+    // At the limit both tools are in the catalogue: the call is not failed as one to a tool the model was not offered (its schema, past the
+    // validator's own depth cap, leaves it unchecked), and tool_choice weighs it against search.
+    const at = judged(MAX_JSON_TEXT_DEPTH - 1);
+    expect(at.valid.passed || at.valid.skipped).toBe(true);
+    expect(at.valid.message).not.toContain('not in the catalogue');
+    expect(at.choice.skipped).toBeFalsy();
+    expect(at.choice.message).toContain('search fits');
+    // Past it there is no catalogue, and both rules say so.
     const past = judged(MAX_JSON_TEXT_DEPTH);
-    expect(past.valid).toMatchObject({ skipped: true });
-    expect(past.choice).toMatchObject({ skipped: true });
+    expect(past.valid).toMatchObject({ skipped: true, message: 'No tools catalogue provided' });
+    expect(past.choice).toMatchObject({ skipped: true, message: 'No tools catalogue provided' });
     // And the changelog says so.
     expect(readFileSync(resolve(__dirname, '..', '..', '..', 'CHANGELOG.md'), 'utf8')).toContain(
       "each tool's own text held to 256 by itself; a list in which one cannot be read, nested deeper or not JSON, is not read, as a `gen_ai.tool.definitions` list that cannot be read is not, so the rules that need a catalogue say the call was not judged against one, where a call to the tool passed over read as a call to a tool not offered (#1082))",
     );
+  });
+
+  // An OTLP AnyValue for a plain value, as a sender writes structured attributes: an object is a map, a list an array value.
+  const anyOf = (v: unknown): unknown =>
+    typeof v === 'string' ? str(v)
+    : typeof v === 'number' ? (Number.isInteger(v) ? int(v) : dbl(v))
+    : typeof v === 'boolean' ? { boolValue: v }
+    : Array.isArray(v) ? { arrayValue: { values: v.map(anyOf) } }
+    : { kvlistValue: { values: Object.entries(v as Record<string, unknown>).map(([k, x]) => kv(k, anyOf(x))) } };
+
+  it('an OpenInference tool sent as a map is read as the object it is, in either form, and a value of another kind names no tool (#1082)', () => {
+    const toolsOf = (...values: unknown[]) =>
+      one(request(undefined, [span('0000000000000001', 'chat', [kv('gen_ai.operation.name', str('chat')), ...values.map((v, i) => kv(`llm.tools.${i}.tool.json_schema`, v)), kv('gen_ai.output.messages', str('ok'))])])).trace.tools;
+    const LOOKUP = { name: 'lookup', description: 'Look up an order', parameters: { type: 'object', properties: { order_id: { type: 'integer' } }, required: ['order_id'] } };
+    const lookup = { name: 'lookup', description: 'Look up an order', inputSchema: LOOKUP.parameters };
+    for (const sent of [anyOf(LOOKUP), anyOf({ type: 'function', function: LOOKUP })]) {
+      expect(toolsOf(str('{"name":"search"}'), sent)).toEqual([{ name: 'search' }, lookup]);
+    }
+    // A model call whose only tool is a map has a catalogue: the map is its tool.
+    expect(toolsOf(anyOf(LOOKUP))).toEqual([lookup]);
+    // A value of another kind names no tool, and the others are read: a number, a truth value, a list, an AnyValue with no value.
+    for (const other of [int(5), { boolValue: true }, anyOf(['x']), {}]) {
+      expect(toolsOf(str('{"name":"search"}'), other, str('{"name":"lookup"}'))?.map((t) => t.name), JSON.stringify(other)).toEqual(['search', 'lookup']);
+    }
+    // What is read of a map is its own fields: a name it only inherits names no tool, at its top or in its function.
+    const inherited = { kvlistValue: { values: [kv('__proto__', anyOf({ name: 'ghost' }))] } };
+    expect(toolsOf(str('{"name":"search"}'), inherited)?.map((t) => t.name)).toEqual(['search']);
+    const inheritedFunction = { kvlistValue: { values: [kv('type', str('function')), kv('function', { kvlistValue: { values: [kv('__proto__', anyOf({ name: 'ghost' }))] } })] } };
+    expect(toolsOf(str('{"name":"search"}'), inheritedFunction)?.map((t) => t.name)).toEqual(['search']);
+    // Nor does a function the map only inherits.
+    const functionInherited = { kvlistValue: { values: [kv('__proto__', anyOf({ function: { name: 'ghost' } }))] } };
+    expect(toolsOf(str('{"name":"search"}'), functionInherited)?.map((t) => t.name)).toEqual(['search']);
+    // A model call whose only tool value names nothing (a list) is passed over for the next call's tools, as before.
+    const twoCalls = one(request(undefined, [
+      span('0000000000000001', 'chat', [kv('gen_ai.operation.name', str('chat')), kv('llm.tools.0.tool.json_schema', anyOf(['x'])), kv('gen_ai.output.messages', str('ok'))]),
+      span('0000000000000002', 'chat', [kv('gen_ai.operation.name', str('chat')), kv('llm.tools.0.tool.json_schema', str('{"name":"search"}'))], '0000000000000001', 10),
+    ]));
+    expect(twoCalls.trace.tools?.map((t) => t.name)).toEqual(['search']);
+    // A tool whose fields happen to be named like anything Iris keeps is read as a tool all the same.
+    expect(toolsOf(str('{"name":"search","unread":"","wanted":""}'))?.map((t) => t.name)).toEqual(['search']);
+    // The changelog and the OpenTelemetry page say so.
+    expect(readFileSync(resolve(__dirname, '..', '..', '..', 'CHANGELOG.md'), 'utf8')).toContain(
+      "- **An OpenInference tool sent as a map is read as the tool it is (#1082).** A model call's `llm.tools.N.tool.json_schema` written as a map rather than as JSON text (as a sender, or a Collector that turns JSON strings into maps, can write it) was passed over, so a call to that tool read as a call to a tool the model was not offered, and `valid_tool_arguments` and `tool_choice` failed it. Such a map is now read as the object it is, its own fields only. A value of another kind (a number, a list, nothing) still names no tool.",
+    );
+    expect(readFileSync(resolve(__dirname, '..', '..', '..', 'docs', 'otel-integration.md'), 'utf8')).toContain(
+      'else OpenInference\'s `llm.tools.N.tool.json_schema` (OpenAI\'s `{ type: "function", function: {...} }` or a flat tool, 0.20.0; as JSON text, or from 0.22.0 as a map)',
+    );
+  });
+
+  it("a tool's text is written out and read back as it always was: a number past the double range reads as null (#1082)", () => {
+    const { trace } = one(request(undefined, [
+      span('0000000000000001', 'chat', [kv('gen_ai.operation.name', str('chat')), kv('llm.tools.0.tool.json_schema', str('{"name":"lookup","parameters":{"type":"object","properties":{"order":{"enum":[1e400]}},"required":["order"]}}')), kv('gen_ai.output.messages', str('ok'))]),
+    ]));
+    expect(trace.tools).toEqual([{ name: 'lookup', inputSchema: { type: 'object', properties: { order: { enum: [null] } }, required: ['order'] } }]);
+  });
+
+  it("a model call's OpenInference tools are read in the order of their index, whatever order their attributes came in", () => {
+    const { trace } = one(request(undefined, [
+      span('0000000000000001', 'chat', [kv('gen_ai.operation.name', str('chat')), kv('llm.tools.7.tool.json_schema', str('{"name":"lookup"}')), kv('llm.tools.2.tool.json_schema', anyOf({ name: 'search' })), kv('gen_ai.output.messages', str('ok'))]),
+    ]));
+    expect(trace.tools?.map((t) => t.name)).toEqual(['search', 'lookup']);
   });
 
   it('a message list whose text nests deeper than a JSON text is read to stays the text it is, and one at the limit is read down to its words (#1040)', () => {
