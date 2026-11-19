@@ -455,7 +455,16 @@ The guard ladder is in `src/eval/schema-validator.ts` and every rung has a test 
 2. `$ref` must start with `#`. A remote reference is refused by the walk, and `loadSchema` is never
    configured, so nothing can be fetched even if the walk were bypassed. `$id`, `$dynamicRef`,
    `$dynamicAnchor`, `$recursiveRef` and `$vocabulary` are refused: their validation depth cannot be
-   bounded from the schema alone.
+   bounded from the schema alone. A root `$schema` other than `http://json-schema.org/draft-07/schema`
+   or `http://json-schema.org/schema` (with `#`, `#/` or neither after it) or empty is refused before
+   ajv sees it: ajv reads `$schema` as a reference, and on an instance that held the schema it checked,
+   a pointer named the schema itself or a part of it, which ajv compiled in its check, past the rung
+   that reads a compiled validator; and the instance that checks every schema here keeps whatever a
+   reference resolves to, of which ajv resolves an endless family of spellings into the meta-schema.
+   A schema whose root
+   carries `$async` with a value that reads as true is refused once compiled: its validator answers with
+   a promise, which a check that answers at once would read as a pass, and whose rejection nothing would
+   catch. Below the root, ajv refuses `$async` wherever it would compile it into the check.
 3. Every `pattern` and every `patternProperties` KEY: length cap, then syntax, then safe-regex2 star
    height, then the empirical probe behind the sandbox worker’s hard deadline. Star height sits ahead of
    the probe because the probe has to guess an igniting payload and cannot in general — an exponential
@@ -464,7 +473,12 @@ The guard ladder is in `src/eval/schema-validator.ts` and every rung has a test 
    false`, `$data: false`, and `coerceTypes` / `useDefaults` / `removeAdditional` all false — a validator
    that mutated the instance would change what the repeat detector hashes.
 5. Rejections are cached alongside acceptances, so a hostile catalogue resent a thousand times pays its
-   probe cost once per process.
+   probe cost once per process. Each schema is compiled on an ajv instance of its own, after one shared
+   instance that compiles nothing a caller sends checks it against its meta-schema: an instance keeps
+   every schema it compiles for as long as it lives, so what ajv keeps of a schema goes when the cache of
+   256 lets its validator go, and nothing one schema leaves in ajv reaches another. What is checked and
+   compiled is the schema the cache key describes, its JSON text read back, so two schemas filed under
+   one key answer alike whoever sent them, and an object built in code is read once.
 6. A rung that trips rejects the WHOLE tool’s schema. A partially applied schema reporting a call valid
    is a false all-clear about a security-relevant class.
 7. A local `$ref` may refer to itself, and the validator generated for it calls itself: once for each
