@@ -457,10 +457,11 @@ The guard ladder is in `src/eval/schema-validator.ts` and every rung has a test 
    `$dynamicAnchor`, `$recursiveRef` and `$vocabulary` are refused: their validation depth cannot be
    bounded from the schema alone. A root `$schema` other than `http://json-schema.org/draft-07/schema`
    or `http://json-schema.org/schema` (with `#`, `#/` or neither after it) or empty is refused before
-   ajv sees it: ajv reads `$schema` as a reference; a pointer names the schema itself or a part of it,
-   which ajv would compile in its check of the schema, past the rung that reads a compiled validator;
-   and the instance that checks every schema keeps whatever a reference resolves to, of which ajv
-   resolves an endless family of spellings into the meta-schema. A schema whose root
+   ajv sees it: ajv reads `$schema` as a reference, and on an instance that held the schema it checked,
+   a pointer named the schema itself or a part of it, which ajv compiled in its check, past the rung
+   that reads a compiled validator; and the instance that checks every schema here keeps whatever a
+   reference resolves to, of which ajv resolves an endless family of spellings into the meta-schema.
+   A schema whose root
    carries `$async` with a value that reads as true is refused once compiled: its validator answers with
    a promise, which a check that answers at once would read as a pass, and whose rejection nothing would
    catch. Below the root, ajv refuses `$async` wherever it would compile it into the check.

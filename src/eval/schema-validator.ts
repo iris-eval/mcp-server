@@ -186,13 +186,15 @@ const META_SCHEMA_IDS: ReadonlySet<string> = new Set(['http://json-schema.org/dr
 /**
  * Whether a schema's `$schema` names a meta-schema an ajv instance carries,
  * or nothing. ajv reads `$schema` as a reference before it compiles the
- * schema, and checks the schema against what the reference names. A pointer
- * (`#`, `#/definitions/x`) names the schema itself or a part of it, which ajv
- * would compile in that check, past the one rung here that reads a compiled
- * validator; and the shared instance that checks every schema keeps whatever
- * a reference resolves to, of which ajv resolves an endless family of
- * spellings into the meta-schema. So nothing but the meta-schema's own id
- * reaches it.
+ * schema, and checks the schema against what the reference names. On an
+ * instance that held the schema it checked, a pointer (`#`,
+ * `#/definitions/x`) named the schema itself or a part of it, which ajv
+ * compiled in that check, past the one rung here that reads a compiled
+ * validator; and the shared instance that checks every schema keeps
+ * whatever a reference resolves to, of which ajv resolves an endless family
+ * of spellings into the meta-schema. So only the spellings of an id it
+ * carries reach it (the id with `#`, `#/` or neither after it, or none),
+ * and none of them adds anything to it.
  */
 function namesMetaSchema(value: string): boolean {
   return value === '' || META_SCHEMA_IDS.has(value.replace(/#\/?$/, ''));
@@ -247,10 +249,10 @@ export function compileToolSchema(schema: unknown): CompiledSchema {
   try {
     serialised = JSON.stringify(schema);
   } catch {
-    return { ok: false, reason: 'the inputSchema is not serialisable (a cycle, or a value JSON cannot carry)' };
+    return { ok: false, reason: 'the inputSchema is not serialisable (a cycle, a BigInt, a field that throws as it is read, or a toJSON that answers nothing)' };
   }
   // An object whose toJSON answers nothing has no text to file it under.
-  if (typeof serialised !== 'string') return { ok: false, reason: 'the inputSchema is not serialisable (a cycle, or a value JSON cannot carry)' };
+  if (typeof serialised !== 'string') return { ok: false, reason: 'the inputSchema is not serialisable (a cycle, a BigInt, a field that throws as it is read, or a toJSON that answers nothing)' };
   const key = createHash('sha256').update(serialised).digest('hex');
   const cached = cache.get(key);
   if (cached !== undefined) return cached;
