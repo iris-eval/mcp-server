@@ -4,8 +4,9 @@ import {
   LLMJudgeError,
   type LLMProvider,
 } from '../llm-judge/client.js';
+import { CITATION_ANSWER } from '../llm-judge/answer.js';
 import { estimateCostUsd, findPricing } from '../llm-judge/pricing.js';
-import { replyObject, shownReply, shownValue, unitNumber } from '../llm-judge/reply.js';
+import { answerObject, shownReply, shownValue, unitNumber } from '../llm-judge/reply.js';
 import {
   makeNonce,
   wrapUntrusted,
@@ -173,15 +174,20 @@ export function buildCitationJudgePrompts(
   return { system: SYSTEM, user };
 }
 
-function parseJudgeResult(raw: string): {
+function parseJudgeResult(raw: string, structured: boolean | undefined): {
   supported: boolean;
   confidence: number;
   rationale: string;
 } {
-  // The object the reply holds, from its first brace to its last (../llm-judge/reply.ts, replyObject), as it always was.
-  const obj = replyObject(raw);
+  // The answer object (../llm-judge/reply.ts, answerObject): the whole reply where it was asked for as structured output, else from its first brace to its last.
+  const obj = answerObject(raw, structured);
   if (obj === null) {
-    throw new LLMJudgeError(`Citation judge reply holds no JSON object: ${shownReply(raw)}`, 'malformed_response');
+    throw new LLMJudgeError(
+      structured === true
+        ? `Citation judge reply is not the JSON object it was asked for: ${shownReply(raw)}`
+        : `Citation judge reply holds no JSON object: ${shownReply(raw)}`,
+      'malformed_response',
+    );
   }
   /*
    * The verdict and the confidence are read only when the reply gives them:
@@ -270,7 +276,7 @@ export async function verifyCitations(
     const pessimistic =
       estimateCostUsd(
         params.model,
-        estimateInputTokens(prompts.system, prompts.user),
+        estimateInputTokens(prompts.system, prompts.user, CITATION_ANSWER),
         JUDGE_MAX_OUTPUT_TOKENS,
       ) ?? 0;
     if (totalCost + pessimistic > maxCostTotal) {
@@ -318,6 +324,7 @@ export async function verifyCitations(
         maxOutputTokens: JUDGE_MAX_OUTPUT_TOKENS,
         temperature: 0,
         apiKey: params.apiKey,
+        answer: CITATION_ANSWER,
       });
     } catch (err) {
       // The provider may have billed a call that failed: its worst case stays counted.
@@ -347,7 +354,7 @@ export async function verifyCitations(
 
     let parsed;
     try {
-      parsed = parseJudgeResult(judgeResponse.content);
+      parsed = parseJudgeResult(judgeResponse.content, judgeResponse.structured);
     } catch (err) {
       const e = err as Error;
       out.push({

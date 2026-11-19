@@ -1,7 +1,8 @@
+import { verdictAnswer, type JudgeAnswer } from './answer.js';
 import { callLLMJudge, estimateInputTokens, LLMJudgeError, type LLMProvider } from './client.js';
 import { DEFAULT_JUDGE_DEADLINE_MS } from './deadline.js';
 import { estimateCostUsd, findPricing } from './pricing.js';
-import { replyObject, shownReply, shownValue, unitNumber } from './reply.js';
+import { answerObject, shownReply, shownValue, unitNumber } from './reply.js';
 import { getTemplate, type TemplateName } from './templates/index.js';
 
 /**
@@ -78,20 +79,25 @@ export interface LLMJudgeEvaluationResult {
 
 // Malformed judge response — retried once by `evaluate`, surfaced as
 // LLMJudgeError('malformed_response') if the retry also fails.
-function parseJudgeResponse(raw: string): {
+function parseJudgeResponse(raw: string, structured: boolean | undefined): {
   score: number;
   passed?: boolean;
   rationale: string;
   dimensions: Record<string, number>;
 } {
   /*
-   * The object the reply holds, from its first brace to its last (reply.ts,
-   * replyObject), as it always was: a model that writes "Here is the
-   * evaluation:" first, or fences the object, still gave it.
+   * The answer object (reply.ts, answerObject): the whole reply where it was
+   * asked for as structured output, which is the object alone; else, from a
+   * model that offers none, the object from the reply's first brace to its
+   * last, so a model that writes "Here is the evaluation:" first, or fences
+   * the object, still gave it.
    */
-  const obj = replyObject(raw);
+  const obj = answerObject(raw, structured);
   if (obj === null) {
-    throw new LLMJudgeError(`Judge reply holds no JSON object: ${shownReply(raw)}`, 'malformed_response');
+    throw new LLMJudgeError(
+      structured === true ? `Judge reply is not the JSON object it was asked for: ${shownReply(raw)}` : `Judge reply holds no JSON object: ${shownReply(raw)}`,
+      'malformed_response',
+    );
   }
 
   /*
@@ -147,6 +153,8 @@ interface JudgePlan {
   strictSystem: string;
   maxOutputTokens: number;
   retryMaxOutputTokens: number;
+  /** The object both requests ask for: the template's answer (answer.ts). */
+  answer: JudgeAnswer;
   /** The pessimistic worst case of both attempts; null when the model is unpriced. */
   estimatedCost: number | null;
 }
@@ -169,6 +177,8 @@ function planJudgeCall(params: PlanParams): JudgePlan {
   // stricter system prompt and a smaller output cap.
   const strictSystem = systemPrompt + SECOND_REQUEST;
   const retryMaxOutputTokens = Math.min(maxOutputTokens, 256);
+  // Both requests ask for the template's answer, and each carries its schema and the provider's instructions for it.
+  const answer = verdictAnswer(template.dimensions);
 
   /*
    * Estimate worst-case cost and reject before the network call if it
@@ -181,17 +191,17 @@ function planJudgeCall(params: PlanParams): JudgePlan {
    */
   const firstAttemptCost = estimateCostUsd(
     params.model,
-    estimateInputTokens(systemPrompt, userPrompt),
+    estimateInputTokens(systemPrompt, userPrompt, answer),
     maxOutputTokens,
   );
   const retryCost = estimateCostUsd(
     params.model,
-    estimateInputTokens(strictSystem, userPrompt),
+    estimateInputTokens(strictSystem, userPrompt, answer),
     retryMaxOutputTokens,
   );
   const estimatedCost =
     firstAttemptCost === null || retryCost === null ? null : firstAttemptCost + retryCost;
-  return { systemPrompt, userPrompt, strictSystem, maxOutputTokens, retryMaxOutputTokens, estimatedCost };
+  return { systemPrompt, userPrompt, strictSystem, maxOutputTokens, retryMaxOutputTokens, answer, estimatedCost };
 }
 
 /**
@@ -219,7 +229,7 @@ export async function evaluateWithLLMJudge(
     );
   }
 
-  const { systemPrompt, userPrompt, strictSystem, maxOutputTokens, retryMaxOutputTokens, estimatedCost } = planJudgeCall(params);
+  const { systemPrompt, userPrompt, strictSystem, maxOutputTokens, retryMaxOutputTokens, answer, estimatedCost } = planJudgeCall(params);
   if (estimatedCost !== null && estimatedCost > maxCost) {
     throw new CostCapError(estimatedCost, maxCost);
   }
@@ -240,6 +250,7 @@ export async function evaluateWithLLMJudge(
     timeoutMs,
     deadline,
     maxInputTokensEstimate: params.maxInputTokensEstimate,
+    answer,
   });
 
   /*
@@ -255,7 +266,7 @@ export async function evaluateWithLLMJudge(
 
   let parsed;
   try {
-    parsed = parseJudgeResponse(raw.content);
+    parsed = parseJudgeResponse(raw.content, raw.structured);
   } catch (err) {
     if (!(err instanceof LLMJudgeError) || err.kind !== 'malformed_response') throw err;
     // Retry once with the stricter prompt priced above.
@@ -270,11 +281,12 @@ export async function evaluateWithLLMJudge(
       timeoutMs,
       deadline,
       maxInputTokensEstimate: params.maxInputTokensEstimate,
+      answer,
     });
     inputTokens += raw.inputTokens;
     outputTokens += raw.outputTokens;
     latencyMs += raw.latencyMs;
-    parsed = parseJudgeResponse(raw.content);
+    parsed = parseJudgeResponse(raw.content, raw.structured);
   }
 
   /*

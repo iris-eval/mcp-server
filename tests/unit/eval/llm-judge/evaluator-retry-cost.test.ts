@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { evaluateWithLLMJudge } from '../../../../src/eval/llm-judge/evaluator.js';
+import { verdictAnswer } from '../../../../src/eval/llm-judge/answer.js';
 import { estimateInputTokens } from '../../../../src/eval/llm-judge/client.js';
 import { estimateCostUsd } from '../../../../src/eval/llm-judge/pricing.js';
 import { getTemplate } from '../../../../src/eval/llm-judge/templates/index.js';
@@ -87,7 +88,8 @@ describe('pre-flight cap — prices the retry too', () => {
     const template = getTemplate('accuracy');
     const system = template.buildSystem();
     const user = template.buildUser({ output });
-    return estimateCostUsd(model, estimateInputTokens(system, user), maxOutputTokens)!;
+    // The request carries the template's answer schema and the provider's instructions for it.
+    return estimateCostUsd(model, estimateInputTokens(system, user, verdictAnswer(template.dimensions)), maxOutputTokens)!;
   }
 
   it('refuses a cap that covers one attempt but not the retry', async () => {
