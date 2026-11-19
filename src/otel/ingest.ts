@@ -614,27 +614,44 @@ const OI_TOOL_SCHEMA = /^llm\.tools\.(\d+)\.tool\.json_schema$/;
  * offered to a model call (the LlamaIndex and OpenAI Agents SDK instrumentors
  * write it), each the
  * provider's own tool object — OpenAI's `{ type: 'function', function: {...} }`
- * or a flat `{ name, description, parameters }`. Returned as one JSON array
- * of flat tools, the shape `gen_ai.tool.definitions` carries.
+ * or a flat `{ name, description, parameters }` — as JSON text, or as the
+ * object itself where a sender writes it as a map. Returned as one JSON array
+ * of flat tools, the shape `gen_ai.tool.definitions` carries. A map is read as
+ * its own fields only: written out and read back, a key it only inherits is
+ * not there. A value of another kind (a number, a list, nothing) names no
+ * tool and is passed over, as it always was. A map that names no tool is read
+ * as a text that names none always was: a model call whose tools all name
+ * none gives no catalogue.
+ *
+ * Each tool's text is held to the limit by itself (#1040). One that cannot be
+ * read, nested deeper or not JSON (cut short, say, by an attribute's length
+ * limit), leaves the catalogue not whole: a call to that tool would read as a
+ * call to a tool the model was not offered. So the catalogue is not read at
+ * all, as a `gen_ai.tool.definitions` list that cannot be read is not, and
+ * the rules that need one say it was not judged.
  */
 function openInferenceTools(spans: readonly MappedSpan[]): string | undefined {
   for (const s of spans) {
     const entries = Object.entries(s.attrs)
       .map(([key, value]) => [OI_TOOL_SCHEMA.exec(key), value] as const)
-      .filter((e): e is readonly [RegExpExecArray, string] => e[0] !== null && typeof e[1] === 'string')
+      .filter((e): e is readonly [RegExpExecArray, string | Record<string, unknown>] => e[0] !== null && (typeof e[1] === 'string' || (e[1] !== null && typeof e[1] === 'object' && !Array.isArray(e[1]))))
       .sort((a, b) => Number(a[0][1]) - Number(b[0][1]));
     if (entries.length === 0) continue;
+    if (entries.some(([, value]) => typeof value === 'string' && jsonTextDepth(value, MAX_JSON_TEXT_DEPTH) > MAX_JSON_TEXT_DEPTH)) return undefined;
     const tools: unknown[] = [];
     for (const [, value] of entries) {
-      // Each tool's text is held to the limit by itself (#1040): one nested deeper is one that cannot be read, and the others are kept.
-      if (jsonTextDepth(value, MAX_JSON_TEXT_DEPTH) > MAX_JSON_TEXT_DEPTH) continue;
-      try {
-        const parsed = JSON.parse(value) as Record<string, unknown>;
-        const fn = parsed && typeof parsed === 'object' && parsed.function && typeof parsed.function === 'object' ? parsed.function : parsed;
-        tools.push(fn);
-      } catch {
-        // one unreadable schema does not lose the others
+      let parsed: Record<string, unknown> | null;
+      if (typeof value === 'string') {
+        try {
+          parsed = JSON.parse(value) as Record<string, unknown> | null;
+        } catch {
+          return undefined;
+        }
+      } else {
+        // A map: its own fields, written out and read back. (It was measured with the body it came in.)
+        parsed = JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
       }
+      tools.push(parsed && typeof parsed === 'object' && parsed.function && typeof parsed.function === 'object' ? parsed.function : parsed);
     }
     if (tools.length > 0) return JSON.stringify(tools);
   }
