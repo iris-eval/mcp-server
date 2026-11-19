@@ -8,10 +8,15 @@
  * carried and a list of what it lacked. Ids, kinds, statuses and times are
  * decoded the way the OTLP JSON encoding writes them.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fromOtlp, fromAnyValue, attributesToRecord, otlpTraceRequestSchema, wordsOf } from '../../../src/otel/ingest.js';
 import { toSteps } from '../../../src/eval/steps.js';
 import { jsonTextDepth, MAX_JSON_TEXT_DEPTH, nestingDepth } from '../../../src/utils/element-count.js';
+import { validToolArguments } from '../../../src/eval/rules/completeness.js';
+import { toolChoice } from '../../../src/eval/rules/tool-choice.js';
+import type { EvalContext } from '../../../src/types/eval.js';
 
 const kv = (key: string, value: unknown) => ({ key, value });
 const str = (s: string) => ({ stringValue: s });
@@ -294,7 +299,7 @@ describe('fromOtlp — the conventions beside GenAI', () => {
     for (const levels of [MAX_JSON_TEXT_DEPTH - 1, 3_000, 50_000]) expect(mapped(catalogue(levels)).tools, `${levels} levels`).toBeUndefined();
   });
 
-  it('of the OpenInference schemas of a model call, one nested too deep to read is passed over and the others are kept (#1040)', () => {
+  it("a model call's OpenInference schemas are read whole when each is at the limit or under it, and not at all when one is nested past it, as a catalogue in one attribute is not (#1040, #1082)", () => {
     const nested = (levels: number): string => `${'{"a":'.repeat(levels)}1${'}'.repeat(levels)}`;
     // The two forms an instrumentor writes: the tool flat, one level around its schema, or OpenAI's, two levels around it.
     const flat = (name: string, levels: number): string => `{"name":"${name}","parameters":${nested(levels)}}`;
@@ -302,22 +307,56 @@ describe('fromOtlp — the conventions beside GenAI', () => {
     // Each tool's own text is what is held to the limit: exactly at it a tool is read, and one level past it is not.
     expect(jsonTextDepth(flat('x', MAX_JSON_TEXT_DEPTH - 1), Infinity)).toBe(MAX_JSON_TEXT_DEPTH);
     expect(jsonTextDepth(openai('x', MAX_JSON_TEXT_DEPTH - 2), Infinity)).toBe(MAX_JSON_TEXT_DEPTH);
-    const { trace } = one(request(undefined, [
-      span('0000000000000001', 'chat', [
-        kv('gen_ai.operation.name', str('chat')),
-        kv('llm.tools.0.tool.json_schema', str(flat('search', 3))),
-        kv('llm.tools.1.tool.json_schema', str(flat('deep', 20_000))),
-        kv('llm.tools.2.tool.json_schema', str(flat('flat_at', MAX_JSON_TEXT_DEPTH - 1))),
-        kv('llm.tools.3.tool.json_schema', str(flat('flat_past', MAX_JSON_TEXT_DEPTH))),
-        kv('llm.tools.4.tool.json_schema', str(openai('openai_at', MAX_JSON_TEXT_DEPTH - 2))),
-        kv('llm.tools.5.tool.json_schema', str(openai('openai_past', MAX_JSON_TEXT_DEPTH - 1))),
-        kv('gen_ai.output.messages', str('ok')),
-      ]),
-    ]));
-    expect(trace.tools?.map((t) => t.name)).toEqual(['search', 'flat_at', 'openai_at']);
+    const toolsOf = (...schemas: string[]) =>
+      one(request(undefined, [
+        span('0000000000000001', 'chat', [kv('gen_ai.operation.name', str('chat')), ...schemas.map((s, i) => kv(`llm.tools.${i}.tool.json_schema`, str(s))), kv('gen_ai.output.messages', str('ok'))]),
+      ])).trace.tools;
+    const read = toolsOf(flat('search', 3), flat('flat_at', MAX_JSON_TEXT_DEPTH - 1), openai('openai_at', MAX_JSON_TEXT_DEPTH - 2));
+    expect(read?.map((t) => t.name)).toEqual(['search', 'flat_at', 'openai_at']);
     // The schema of a tool read at the limit is the value its text encodes, whole.
-    expect(nestingDepth(trace.tools?.[1]?.inputSchema, Infinity)).toBe(MAX_JSON_TEXT_DEPTH - 1);
-    expect(nestingDepth(trace.tools?.[2]?.inputSchema, Infinity)).toBe(MAX_JSON_TEXT_DEPTH - 2);
+    expect(nestingDepth(read?.[1]?.inputSchema, Infinity)).toBe(MAX_JSON_TEXT_DEPTH - 1);
+    expect(nestingDepth(read?.[2]?.inputSchema, Infinity)).toBe(MAX_JSON_TEXT_DEPTH - 2);
+    // One past it, in either form, or one whose text is not JSON (cut short), at any place in the list: the catalogue would not be whole, and
+    // none of it is read.
+    for (const unread of [flat('flat_past', MAX_JSON_TEXT_DEPTH), openai('openai_past', MAX_JSON_TEXT_DEPTH - 1), flat('deep', 20_000), flat('cut', 3).slice(0, 30)]) {
+      expect(toolsOf(unread, flat('search', 3)), unread.slice(0, 40)).toBeUndefined();
+      expect(toolsOf(flat('search', 3), unread), unread.slice(0, 40)).toBeUndefined();
+    }
+    // A tool read whole that names nothing is no tool, and the others are read, as in a list in one attribute.
+    expect(toolsOf(flat('search', 3), '{"type":"web_search"}')?.map((t) => t.name)).toEqual(['search']);
+  });
+
+  it('a call to an OpenInference tool nested past the limit is not judged as a call to a tool the model was not offered (#1082)', () => {
+    const nested = (levels: number): string => `${'{"a":'.repeat(levels)}1${'}'.repeat(levels)}`;
+    const flat = (name: string, levels: number): string => `{"name":"${name}","parameters":${nested(levels)}}`;
+    const judged = (lookupLevels: number) => {
+      const { trace } = one(request(undefined, [
+        span('0000000000000001', 'chat', [
+          kv('gen_ai.operation.name', str('chat')),
+          kv('llm.tools.0.tool.json_schema', str(flat('search', 3))),
+          kv('llm.tools.1.tool.json_schema', str(flat('lookup', lookupLevels))),
+          kv('gen_ai.input.messages', str('Look up the order and say where it is.')),
+          kv('gen_ai.output.messages', str('It is in the warehouse.')),
+        ]),
+      ]));
+      const context = { input: 'Look up the order and say where it is.', output: 'It is in the warehouse.', toolCalls: [{ tool_name: 'lookup', input: { a: 1 } }], tools: trace.tools } as EvalContext;
+      return { valid: validToolArguments.evaluate(context), choice: toolChoice.evaluate(context) };
+    };
+    // At the limit the tool is in the catalogue (its schema, past the validator's own depth cap, leaves the call unchecked), and past it there
+    // is no catalogue: either way the call is never failed as one to a tool the model was not offered.
+    for (const levels of [MAX_JSON_TEXT_DEPTH - 1, MAX_JSON_TEXT_DEPTH]) {
+      const { valid } = judged(levels);
+      expect(valid.passed || valid.skipped, `${levels} levels`).toBe(true);
+      expect(valid.message, `${levels} levels`).not.toContain('not in the catalogue');
+    }
+    // Past it, both rules say the call was not judged against a catalogue.
+    const past = judged(MAX_JSON_TEXT_DEPTH);
+    expect(past.valid).toMatchObject({ skipped: true });
+    expect(past.choice).toMatchObject({ skipped: true });
+    // And the changelog says so.
+    expect(readFileSync(resolve(__dirname, '..', '..', '..', 'CHANGELOG.md'), 'utf8')).toContain(
+      "each tool's own text held to 256 by itself; a list in which one cannot be read, nested deeper or not JSON, is not read, as a `gen_ai.tool.definitions` list that cannot be read is not, so the rules that need a catalogue say the call was not judged against one, where a call to the tool passed over read as a call to a tool not offered (#1082))",
+    );
   });
 
   it('a message list whose text nests deeper than a JSON text is read to stays the text it is, and one at the limit is read down to its words (#1040)', () => {

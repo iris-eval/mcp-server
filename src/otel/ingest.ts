@@ -616,6 +616,13 @@ const OI_TOOL_SCHEMA = /^llm\.tools\.(\d+)\.tool\.json_schema$/;
  * provider's own tool object — OpenAI's `{ type: 'function', function: {...} }`
  * or a flat `{ name, description, parameters }`. Returned as one JSON array
  * of flat tools, the shape `gen_ai.tool.definitions` carries.
+ *
+ * Each tool's text is held to the limit by itself (#1040). One that cannot be
+ * read, nested deeper or not JSON (cut short, say, by an attribute's length
+ * limit), leaves the catalogue not whole: a call to that tool would read as a
+ * call to a tool the model was not offered. So the catalogue is not read at
+ * all, as a `gen_ai.tool.definitions` list that cannot be read is not, and
+ * the rules that need one say it was not judged.
  */
 function openInferenceTools(spans: readonly MappedSpan[]): string | undefined {
   for (const s of spans) {
@@ -624,17 +631,16 @@ function openInferenceTools(spans: readonly MappedSpan[]): string | undefined {
       .filter((e): e is readonly [RegExpExecArray, string] => e[0] !== null && typeof e[1] === 'string')
       .sort((a, b) => Number(a[0][1]) - Number(b[0][1]));
     if (entries.length === 0) continue;
+    if (entries.some(([, value]) => jsonTextDepth(value, MAX_JSON_TEXT_DEPTH) > MAX_JSON_TEXT_DEPTH)) return undefined;
     const tools: unknown[] = [];
     for (const [, value] of entries) {
-      // Each tool's text is held to the limit by itself (#1040): one nested deeper is one that cannot be read, and the others are kept.
-      if (jsonTextDepth(value, MAX_JSON_TEXT_DEPTH) > MAX_JSON_TEXT_DEPTH) continue;
+      let parsed: Record<string, unknown> | null;
       try {
-        const parsed = JSON.parse(value) as Record<string, unknown>;
-        const fn = parsed && typeof parsed === 'object' && parsed.function && typeof parsed.function === 'object' ? parsed.function : parsed;
-        tools.push(fn);
+        parsed = JSON.parse(value) as Record<string, unknown> | null;
       } catch {
-        // one unreadable schema does not lose the others
+        return undefined;
       }
+      tools.push(parsed && typeof parsed === 'object' && parsed.function && typeof parsed.function === 'object' ? parsed.function : parsed);
     }
     if (tools.length > 0) return JSON.stringify(tools);
   }
