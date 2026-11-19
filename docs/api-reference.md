@@ -817,6 +817,7 @@ Score output using an LLM as the judge (Anthropic or OpenAI). Seven templates. C
 | `trace_id` | `string` | No | Keep the judgment beside a stored trace: the response carries `reference_trace_id`, and a judgment is never the trace's verdict |
 | `agent_model` | `string` | No | The model that produced the output, when no linked trace records it (a trace carries it as `metadata.model` or a span's `gen_ai.request.model`). Used only for the same-family warning |
 | `temperature` | `number` | No | 0 to 2; default 0. Sent only to a model that takes one: Claude 4.7 and later and OpenAI's reasoning models are sent none and judge at their own default, and a value set for one of them is answered with an `IRIS_ARGUMENT_NOT_SENT` warning |
+| `timeout_ms` | `number` | No | The call's deadline in ms, which every request to the provider, its reply and the wait after a rate limit share; default 50000, at most 2147483647 |
 
 #### Response (summary)
 
@@ -860,7 +861,7 @@ Extract citations from output, fetch sources behind an SSRF-guarded resolver, ru
 | `domain_allowlist` | `string[]` | No | Fetch only from these hostnames (suffix match). With `IRIS_CITATION_DOMAINS` set, it narrows that list and never adds to it |
 | `max_cost_usd_total` | `number` | No | Total cost cap across all citations, at most the operator's `IRIS_CITATION_MAX_COST_USD_TOTAL` (default $1.00) |
 | `max_citations` | `number` | No | Cap extraction count (default 20, max 50) |
-| `per_source_timeout_ms` | `number` | No | Per-URL timeout (default 10000) |
+| `per_source_timeout_ms` | `number` | No | Per-URL timeout (default 10000, at most 2147483647) |
 | `per_source_max_bytes` | `number` | No | Per-URL body cap (default 5MB) |
 | `trace_id` | `string` | No | Keep the result beside a stored trace: the response carries `reference_trace_id`, and it is never the trace's verdict |
 

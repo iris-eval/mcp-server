@@ -138,17 +138,28 @@ const NODE_SQLITE_CODE = 'ERR_SQLITE_ERROR';
 function isSqliteError(err: unknown): boolean {
   const code = fieldOf(err, 'code');
   if (typeof code === 'string' && code.startsWith('SQLITE_')) return true;
+  // A code better-sqlite3 has no name for, as it throws it.
+  if (typeof code === 'string' && /^UNKNOWN_SQLITE_ERROR_\d+$/.test(code)) return true;
   if (code === NODE_SQLITE_CODE) return true;
   // Only an error's own message is read for the driver's words, as before: a thrown string that happens to hold them is not the store's.
   return /SQLITE|database is locked|disk I\/O error|readonly database/i.test(err instanceof Error ? messageOf(err) : '');
 }
 
-/** The store was busy or locked: SQLITE_BUSY and SQLITE_LOCKED, as better-sqlite3 names them and as Node's built-in SQLite numbers them (5 and 6). */
+/**
+ * The store was busy or locked: SQLITE_BUSY and SQLITE_LOCKED and their
+ * extended codes (a busy snapshot, a lock on a shared cache), as better-sqlite3
+ * names them (`SQLITE_BUSY_SNAPSHOT`, or `UNKNOWN_SQLITE_ERROR_773` for the one
+ * it has no name for) and as Node's built-in SQLite numbers them (the extended
+ * code, whose low byte is the primary one: 517 is 5).
+ */
 function isSqliteBusy(err: unknown): boolean {
   const code = fieldOf(err, 'code');
-  if (code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED') return true;
+  if (typeof code === 'string' && /^SQLITE_(BUSY|LOCKED)(_|$)/.test(code)) return true;
+  // A code better-sqlite3 has no name for (773, a busy timeout) it throws as UNKNOWN_SQLITE_ERROR_<n>.
+  const unnamed = typeof code === 'string' ? /^UNKNOWN_SQLITE_ERROR_(\d+)$/.exec(code) : null;
+  if (unnamed !== null && ((Number(unnamed[1]) & 0xff) === 5 || (Number(unnamed[1]) & 0xff) === 6)) return true;
   const errcode = fieldOf(err, 'errcode');
-  return code === NODE_SQLITE_CODE && (errcode === 5 || errcode === 6);
+  return code === NODE_SQLITE_CODE && typeof errcode === 'number' && ((errcode & 0xff) === 5 || (errcode & 0xff) === 6);
 }
 
 /**

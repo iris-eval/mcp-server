@@ -271,7 +271,103 @@ describe('the upgrade after the start', () => {
     const refused = await serve(1);
     expect(refused.status).toBe(503);
     expect(refused.headers.get('retry-after')).toBe('5');
-    expect(await refused.json()).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: true });
+    const said = (await refused.json()) as { code: string; retryable: boolean; error: string };
+    expect(said).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: true });
+    // The gate's own sentence of what the store is doing, not the words for a wait that said nothing.
+    expect(said.error).toMatch(/\S/);
+    expect(said.error).not.toBe('The store is not ready.');
+  });
+
+  it('an HTTP request at a gate that fails with any value at all is answered 503, with the words the value says and the retryable it carries, its retryable and its words each read once', async () => {
+    const unreadable: unknown = new Proxy(
+      {},
+      {
+        getPrototypeOf() {
+          throw new Error('this value will not say what it is');
+        },
+        get() {
+          throw new Error('this value will not say what it holds');
+        },
+      },
+    );
+    // Words that change between reads: the first read is what is said.
+    let reads = 0;
+    const shifting = Object.defineProperty(new Error('placeholder'), 'message', { get: () => (++reads <= 1 ? 'the store is busy' : 10n) });
+    const wordless = Object.defineProperty(Object.assign(new Error('placeholder'), { retryable: true }), 'message', {
+      get() {
+        throw new Error('these words will not be read');
+      },
+    });
+    function fn(): void {}
+    (fn as unknown as { retryable: boolean }).retryable = true;
+    // A value that counts how often its retryable is read, and one that counts how often it is written as text.
+    let retryableReads = 0;
+    const countsRetryable = Object.defineProperty(new Error('the store is busy'), 'retryable', {
+      get: () => {
+        retryableReads += 1;
+        return true;
+      },
+    });
+    let textReads = 0;
+    const countsText = {
+      toString: () => {
+        textReads += 1;
+        return 'the store is migrating';
+      },
+    };
+    const NOT_READY = 'The store is not ready.';
+    const cases: Array<[string, unknown, string, boolean]> = [
+      ['nothing (null)', null, NOT_READY, false],
+      ['nothing (undefined)', undefined, NOT_READY, false],
+      ['a value that will not be read', unreadable, NOT_READY, false],
+      ['a string', 'database is locked', 'database is locked', false],
+      ['a number', 42, '42', false],
+      ['a big integer', 5n, '5', false],
+      ['a symbol', Symbol('x'), 'Symbol(x)', false],
+      ['a list of words', ['the store is migrating'], 'the store is migrating', false],
+      ['an object with words of its own', { toString: () => 'the store is migrating' }, 'the store is migrating', false],
+      ['an object that says only what kind it is, and that it may be retried', { retryable: true }, NOT_READY, true],
+      ['an object whose prototype says it may be retried', Object.create({ retryable: true }) as object, NOT_READY, true],
+      ['a function that says it may be retried', fn, String(fn), true],
+      ['an Error', new Error('the store is migrating'), 'the store is migrating', false],
+      ['an Error with no words', new Error(''), NOT_READY, false],
+      ['an Error whose words are a number', Object.assign(new Error('placeholder'), { message: 42 }), '42', false],
+      ['an Error whose words change between reads', shifting, 'the store is busy', false],
+      ['an Error that may be retried and whose words will not be read', wordless, NOT_READY, true],
+      ['an Error whose words were set to nothing, written as text', Object.assign(new Error('placeholder'), { message: undefined }), 'undefined', false],
+      ['an Error whose retryable is read as it goes', countsRetryable, 'the store is busy', true],
+      ['an object written as text as it goes', countsText, 'the store is migrating', false],
+      // The text that names a kind is the whole of the words, whichever kind: a map, or an object that names its own kind.
+      ['a map', new Map([['a', 1]]), NOT_READY, false],
+      ['an object that names its own kind', { [Symbol.toStringTag]: 'Lock' }, NOT_READY, false],
+      ['an Error whose words hold the text of a kind among others', new Error('step [object Object] of the upgrade failed'), 'step [object Object] of the upgrade failed', false],
+      // Retried only where it says so with true itself; a plain object's own message is not its words.
+      ['an Error whose retryable is 1', Object.assign(new Error('the store is busy'), { retryable: 1 }), 'the store is busy', false],
+      ['a frozen object with a message, that may be retried', Object.freeze({ retryable: true, message: 'the store is migrating' }), NOT_READY, true],
+    ];
+    for (const [label, value, error, retryable] of cases) {
+      reads = 0;
+      retryableReads = 0;
+      textReads = 0;
+      const gate = { storage: undefined as unknown as SqliteAdapter, ready: Promise.resolve(), hold: () => undefined, wait: () => Promise.reject(value), open: false };
+      const app = express();
+      app.use(storeReadyMiddleware(gate as unknown as Parameters<typeof storeReadyMiddleware>[0]));
+      app.get('/api/v1/traces', (_req, res) => res.json({ reached: true }));
+      const server = app.listen(0, '127.0.0.1');
+      await new Promise((r) => server.once('listening', r));
+      try {
+        const refused = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/api/v1/traces`);
+        expect(refused.status, label).toBe(503);
+        const body = (await refused.json()) as { code: string; retryable: boolean; error: unknown };
+        expect(body, label).toEqual({ code: 'IRIS_STORAGE_ERROR', retryable, error });
+        expect(refused.headers.get('retry-after'), label).toBe(retryable ? '5' : null);
+        if (value === shifting) expect(reads, label).toBe(1);
+        if (value === countsRetryable) expect(retryableReads, label).toBe(1);
+        if (value === countsText) expect(textReads, label).toBe(1);
+      } finally {
+        server.close();
+      }
+    }
   });
 
   it('a store closed mid-upgrade leaves a file the next start migrates', async () => {

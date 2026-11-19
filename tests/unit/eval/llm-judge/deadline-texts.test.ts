@@ -14,7 +14,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { LLMJudgeError } from '../../../../src/eval/llm-judge/client.js';
-import { DEFAULT_JUDGE_DEADLINE_MS } from '../../../../src/eval/llm-judge/deadline.js';
+import { DEFAULT_JUDGE_DEADLINE_MS, MAX_TIMER_MS } from '../../../../src/eval/llm-judge/deadline.js';
 import { SqliteAdapter } from '../../../../src/storage/sqlite-adapter.js';
 import { createIrisServer } from '../../../../src/server.js';
 import { defaultConfig } from '../../../../src/config/defaults.js';
@@ -159,11 +159,35 @@ describe("the deadline's default is the one every text names", () => {
     const { tools } = await client.listTools();
     const judge = tools.find((t) => t.name === 'evaluate_with_llm_judge');
     const timeout = (judge?.inputSchema as { properties?: Record<string, { description?: string }> }).properties?.timeout_ms?.description;
-    expect(timeout).toBe(`The call's deadline in ms, which every request to the provider, its reply and the wait after a rate limit share; default ${DEFAULT_JUDGE_DEADLINE_MS}`);
+    expect(timeout).toBe(`The call's deadline in ms, which every request to the provider, its reply and the wait after a rate limit share; default ${DEFAULT_JUDGE_DEADLINE_MS}, at most ${MAX_TIMER_MS}`);
     const ms = DEFAULT_JUDGE_DEADLINE_MS.toLocaleString('en-US');
     expect(read('docs/llm-as-judge.md')).toContain(`the call's deadline (\`timeout_ms\`, default ${ms}) passed`);
     expect(read('docs/llm-as-judge.md')).toContain(`| \`Anthropic did not answer within ${DEFAULT_JUDGE_DEADLINE_MS} ms\``);
     expect(read('docs/semantic-citation-verify.md')).toContain(`The judge call did not answer within its deadline (${DEFAULT_JUDGE_DEADLINE_MS / 1000} seconds)`);
     expect(read('CHANGELOG.md')).toContain(`the evaluator's second request has what the first left, and the default is ${ms} ms.`);
+  });
+
+  it("a timeout a Node timer cannot hold is refused, where the timer would have fired after 1 ms: the judge's timeout_ms and verify_citations' per_source_timeout_ms", async () => {
+    expect(MAX_TIMER_MS).toBe(2 ** 31 - 1);
+    const { tools } = await client.listTools();
+    const property = (tool: string, name: string) =>
+      (tools.find((t) => t.name === tool)?.inputSchema as { properties?: Record<string, { maximum?: number; description?: string }> }).properties?.[name];
+    expect(property('evaluate_with_llm_judge', 'timeout_ms')?.maximum).toBe(MAX_TIMER_MS);
+    expect(property('verify_citations', 'per_source_timeout_ms')).toMatchObject({ maximum: MAX_TIMER_MS, description: `Per-URL fetch timeout; default 10_000, at most ${MAX_TIMER_MS}` });
+    for (const [name, args] of [
+      ['evaluate_with_llm_judge', { output: 'x', template: 'accuracy', model: 'claude-haiku-4-5', timeout_ms: MAX_TIMER_MS + 1 }],
+      ['verify_citations', { output: 'See https://a.example/x.', model: 'claude-haiku-4-5', per_source_timeout_ms: MAX_TIMER_MS + 1 }],
+    ] as const) {
+      const r = (await client.callTool({ name, arguments: args })) as { isError?: boolean; content: Array<{ text: string }> };
+      expect(r.isError, name).toBe(true);
+      expect(r.content[0]?.text, name).toMatch(/2147483647/);
+    }
+    // The docs and the changelog name the same maximum.
+    expect(read('docs/api-reference.md')).toContain(`| \`timeout_ms\` | \`number\` | No | The call's deadline in ms, which every request to the provider, its reply and the wait after a rate limit share; default ${DEFAULT_JUDGE_DEADLINE_MS}, at most ${MAX_TIMER_MS} |`);
+    expect(read('docs/api-reference.md')).toContain(`| \`per_source_timeout_ms\` | \`number\` | No | Per-URL timeout (default 10000, at most ${MAX_TIMER_MS}) |`);
+    expect(read('docs/semantic-citation-verify.md')).toContain(`| Per-URL fetch timeout, at most ${MAX_TIMER_MS}`);
+    expect(read('CHANGELOG.md')).toContain(
+      `  - \`timeout_ms\` on \`evaluate_with_llm_judge\` and \`per_source_timeout_ms\` on \`verify_citations\` take at most ${MAX_TIMER_MS.toLocaleString('en-US')} ms, the longest a Node timer waits. A larger value is refused before the tool runs, with a message that names the maximum, where it set a timer that fired after 1 ms and the call ended at once.`,
+    );
   });
 });

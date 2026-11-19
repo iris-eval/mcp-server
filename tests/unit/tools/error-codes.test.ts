@@ -643,6 +643,40 @@ describe('toIrisError maps what the runtime throws', () => {
     for (const [code, retryable] of [['SQLITE_BUSY', true], ['SQLITE_LOCKED', true], ['SQLITE_CONSTRAINT', false], ['SQLITE_FULL', false]] as const) {
       expect(toIrisError(Object.assign(new Error('the store says no'), { code })).envelope, code).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable });
     }
+    // The extended codes of a busy or locked store, as Node's built-in SQLite numbers them (the low byte is the primary code) and as
+    // better-sqlite3 names them: a busy recovery (261), a busy snapshot (517), a locked shared cache (262), and the one it has no
+    // name for, a busy timeout (773), which it throws as UNKNOWN_SQLITE_ERROR_773.
+    for (const errcode of [261, 517, 773, 262]) {
+      expect(toIrisError(nodeSqlite(errcode, 'database is locked')).envelope, String(errcode)).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: true });
+    }
+    // (An unnamed code whose primary code is a lock is read as a lock: better-sqlite3 names every such code it can throw, so 262 stands in.)
+    for (const code of ['SQLITE_BUSY_RECOVERY', 'SQLITE_BUSY_SNAPSHOT', 'SQLITE_LOCKED_SHAREDCACHE', 'UNKNOWN_SQLITE_ERROR_773', 'UNKNOWN_SQLITE_ERROR_262']) {
+      expect(toIrisError(Object.assign(new Error('database is locked'), { code })).envelope, code).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: true });
+      expect(toIrisError(Object.assign(new Error('the store says no'), { code })).envelope, `${code}, other words`).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: true });
+    }
+    // Read by its low byte, as SQLite builds every extended code: a busy code it may add (1029, 4 << 8 | 5) is one to retry as well.
+    expect(toIrisError(Object.assign(new Error('the store says no'), { code: 'UNKNOWN_SQLITE_ERROR_1029' })).envelope).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: true });
+    // A code better-sqlite3 has no name for whose primary code is not busy or locked (1555, a primary key) is the store's and not one to
+    // retry, nor a number that is not one, nor a number beside a code that is not node:sqlite's.
+    expect(toIrisError(Object.assign(new Error('the store says no'), { code: 'UNKNOWN_SQLITE_ERROR_1555' })).envelope).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: false });
+    expect(toIrisError(Object.assign(new Error('the store says no'), { code: 'ERR_SQLITE_ERROR', errcode: '517' })).envelope.retryable).toBe(false);
+    expect(toIrisError(Object.assign(new Error('disk I/O error'), { code: 'EBUSY', errcode: 5 })).envelope).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: false });
+    // Other extended codes are not: a unique constraint (2067), a foreign key (787), a read-only database (8 and 264), and a code whose name begins as one does.
+    for (const errcode of [2067, 787, 8, 264]) {
+      expect(toIrisError(nodeSqlite(errcode, 'the store says no')).envelope, String(errcode)).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: false });
+    }
+    expect(toIrisError(Object.assign(new Error('the store says no'), { code: 'SQLITE_BUSYNESS' })).envelope).toMatchObject({ code: 'IRIS_STORAGE_ERROR', retryable: false });
+    // The changelog says so, and says what the gate answers, word for word.
+    const changelog = readFileSync(resolve(__dirname, '..', '..', '..', 'CHANGELOG.md'), 'utf8');
+    expect(changelog).toContain(
+      "A store busy or locked under one of SQLite's extended codes (a busy snapshot, a busy recovery, a busy timeout, a lock on a shared cache) is `IRIS_STORAGE_ERROR` with `retryable: true`, as a plain busy store is: Node's built-in SQLite numbers them with the primary code in the low byte (517 for a busy snapshot), and better-sqlite3 names them (`SQLITE_BUSY_SNAPSHOT`), or numbers the one it has no name for (`UNKNOWN_SQLITE_ERROR_773`, a busy timeout). The switch of a new database file to WAL, which knew a busy store by SQLite's words for it, reads these codes too.",
+    );
+    expect(changelog).toContain(
+      'The HTTP gate that holds a dashboard or API request while the store is upgraded after the start answers `503` whatever its wait ends with, and its `error` is always text. A wait that ended with nothing, or with a value that throws when read, left the request unanswered.',
+    );
+    expect(changelog).toContain(
+      "- **A tool's timeout is limited to what a timer can wait, a store busy in any of SQLite's ways is one to retry, and the dashboard's gate answers whatever its wait ends with.**",
+    );
   });
   it("the mapping reads a value's code and its number without throwing, where reading them throws", () => {
     const throwingOn = (key: 'code' | 'errcode', base: Error): Error =>

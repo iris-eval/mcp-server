@@ -8,7 +8,7 @@ import type { EvalEngine } from '../eval/engine.js';
 import { verdictSchema } from '../eval/response-schema.js';
 import { findPricing, MODEL_PRICING, supportedModelsSummary } from '../eval/llm-judge/pricing.js';
 import { takesTemperature, type LLMProvider } from '../eval/llm-judge/client.js';
-import { DEFAULT_JUDGE_DEADLINE_MS } from '../eval/llm-judge/deadline.js';
+import { DEFAULT_JUDGE_DEADLINE_MS, MAX_TIMER_MS } from '../eval/llm-judge/deadline.js';
 import type { TemplateName } from '../eval/llm-judge/templates/index.js';
 import { generateEvalId } from '../utils/ids.js';
 import { JUDGE_COST_CAP_VAR, JUDGE_DEFAULT_COST_CAP_USD, JUDGE_KEY_VARS, judgeRecovery } from '../judge-enablement.js';
@@ -58,7 +58,7 @@ const inputSchema = {
     .max(2)
     .optional()
     .describe('Sampling temperature, default 0, sent only to a model that takes one: Claude 4.7 and later and OpenAI\'s reasoning models are sent none and judge at their own default, with IRIS_ARGUMENT_NOT_SENT when one was set'),
-  timeout_ms: z.number().int().positive().optional().describe(`The call's deadline in ms, which every request to the provider, its reply and the wait after a rate limit share; default ${DEFAULT_JUDGE_DEADLINE_MS}`),
+  timeout_ms: z.number().int().positive().max(MAX_TIMER_MS).optional().describe(`The call's deadline in ms, which every request to the provider, its reply and the wait after a rate limit share; default ${DEFAULT_JUDGE_DEADLINE_MS}, at most ${MAX_TIMER_MS}`),
 };
 
 /** The models the pricing table knows, so an unknown one can be refused with the valid list. */

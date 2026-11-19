@@ -97,6 +97,17 @@ describe('the WAL switch on a cold file', () => {
     expect(isBusyError(nativeBusy())).toBe(true);
     expect(isBusyError(builtinBusy())).toBe(true);
     expect(isBusyError(Object.assign(new Error('database table is locked'), { code: 'SQLITE_LOCKED', errcode: 6 }))).toBe(false);
+    // A busy store's extended codes: Node's built-in SQLite gives the extended code as errcode (its low byte the primary one), better-sqlite3
+    // its name, or for a busy timeout, which it has no name for, UNKNOWN_SQLITE_ERROR_773.
+    for (const errcode of [261, 517, 773]) expect(isBusyError(Object.assign(new Error('database is busy'), { code: 'ERR_SQLITE_ERROR', errcode })), String(errcode)).toBe(true);
+    for (const code of ['SQLITE_BUSY_RECOVERY', 'SQLITE_BUSY_SNAPSHOT', 'UNKNOWN_SQLITE_ERROR_773']) expect(isBusyError(Object.assign(new Error('database is busy'), { code })), code).toBe(true);
+    // Read by its low byte, as SQLite builds every extended code: a busy code it may add (1029, 4 << 8 | 5) is busy as well.
+    expect(isBusyError(Object.assign(new Error('the store says no'), { code: 'UNKNOWN_SQLITE_ERROR_1029' }))).toBe(true);
+    // Not busy: an unnamed code whose primary code is a lock (262) or a constraint (1555), and a number that is not one.
+    for (const code of ['UNKNOWN_SQLITE_ERROR_262', 'UNKNOWN_SQLITE_ERROR_1555']) expect(isBusyError(Object.assign(new Error('the store says no'), { code })), code).toBe(false);
+    expect(isBusyError(Object.assign(new Error('the store says no'), { code: 'ERR_SQLITE_ERROR', errcode: '517' }))).toBe(false);
+    expect(isBusyError(Object.assign(new Error('database table is locked'), { code: 'ERR_SQLITE_ERROR', errcode: 262 }))).toBe(false);
+    expect(isBusyError(Object.assign(new Error('the store says no'), { code: 'SQLITE_BUSYNESS' }))).toBe(false);
     expect(isBusyError(new Error('disk I/O error'))).toBe(false);
     expect(isBusyError(null)).toBe(false);
     expect(isBusyError('database is locked')).toBe(false);
