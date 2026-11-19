@@ -753,6 +753,7 @@ export class EvalEngine {
               score: 0,
               message: 'Judgment rules are not run on this path: it may not call a paid provider.',
               skipped: true,
+              skipClass: 'not_applicable' as const,
               skipReason: 'this evaluation may not spend (context.allowPaid is not set)',
             }
           : readingAs(rule, evalContext, structured);
@@ -811,7 +812,7 @@ export class EvalEngine {
         // The judge is installed for one rule, and that is asked of the rule in hand: a rule a request sends may carry the name.
         judgeInForce: this.relevanceJudge !== null && rule === answersTheAsk,
       });
-      // There was something to judge and the rule gave no answer: it threw, was stopped at a limit, read a record that was cut, or its definition is broken.
+      // There was something to judge and the rule gave no answer: it threw, was stopped at a limit, read a record that was cut, could not judge what it was sent, or its definition is broken.
       const couldNotAnswer = stamp.skipClass !== undefined && stamp.skipClass !== 'not_applicable';
       /*
        * A result that reports and takes no part in the verdict. Stamped on
@@ -1135,6 +1136,7 @@ function evaluateGuarded(rule: EvalRule, context: EvalContext): EvalRuleResult {
       score: 0,
       message: `This rule failed while evaluating the output and gave no answer: ${reason.slice(0, 200)}`,
       skipped: true,
+      skipClass: 'defeated',
       skipReason: 'the rule threw on this input',
       threw: true,
     };

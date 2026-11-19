@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import isSafeRegex from 'safe-regex2';
-import type { EvalRule, EvalContext, EvalRuleResult, CustomRuleDefinition, CustomRuleType, Evidence, Mechanism, Need } from '../../types/eval.js';
+import type { EvalRule, EvalContext, RuleAnswer, CustomRuleDefinition, CustomRuleType, Evidence, Mechanism, Need } from '../../types/eval.js';
 import type { RuleSeverity } from '../../types/custom-rule.js';
 import { readNumericConfig, describeKeys } from './config-keys.js';
 import { sandboxedRegexTest, REGEX_MATCH_BUDGET_MS } from './regex-sandbox.js';
@@ -33,19 +33,20 @@ function quotedPart(name: string): string {
 // errors depend only on the definition, never the input, so a caller that
 // holds the whole definition (the rule-preview endpoint) can reject it
 // as a 422 instead of reporting every trace as "would skip".
-function configError(definition: CustomRuleDefinition, message: string): EvalRuleResult {
+function configError(definition: CustomRuleDefinition, message: string): RuleAnswer {
   return {
     ruleName: definition.name,
     passed: false,
     score: 0,
     message,
     skipped: true,
+    skipClass: 'config_invalid',
     skipReason: message,
     configInvalid: true,
   };
 }
 
-function safeRegexResult(definition: CustomRuleDefinition, message: string): EvalRuleResult {
+function safeRegexResult(definition: CustomRuleDefinition, message: string): RuleAnswer {
   return configError(definition, message);
 }
 
@@ -99,7 +100,7 @@ export function normalizeRegexSource(
  */
 function validateRegex(
   definition: CustomRuleDefinition,
-): { pattern: string; flags: string } | EvalRuleResult {
+): { pattern: string; flags: string } | RuleAnswer {
   /*
    * Runtime shape check, not just a compile-time cast. evaluate_output's
    * inline custom_rules schema accepts any config record, so
@@ -150,7 +151,7 @@ function validateRegex(
  * the eval on evidence it never gathered. The skipReason tells the author
  * exactly what to fix, and the engine surfaces it on the rule's own result.
  */
-function budgetExceededResult(definition: CustomRuleDefinition): EvalRuleResult {
+function budgetExceededResult(definition: CustomRuleDefinition): RuleAnswer {
   const message =
     `Regex evaluation terminated: pattern exceeded the ${REGEX_MATCH_BUDGET_MS}ms matching ` +
     `budget on this output (superlinear backtracking) and was killed in its sandbox worker. ` +
@@ -163,6 +164,7 @@ function budgetExceededResult(definition: CustomRuleDefinition): EvalRuleResult 
     score: 0,
     message,
     skipped: true,
+    skipClass: 'defeated',
     skipReason: message,
     budgetExceeded: true,
   };
@@ -179,7 +181,7 @@ function budgetExceededResult(definition: CustomRuleDefinition): EvalRuleResult 
  */
 const MAX_REGEX_BREACHES_PER_EVAL = 3;
 
-function circuitOpenResult(definition: CustomRuleDefinition): EvalRuleResult {
+function circuitOpenResult(definition: CustomRuleDefinition): RuleAnswer {
   const message =
     `Regex evaluation skipped: ${MAX_REGEX_BREACHES_PER_EVAL} earlier pattern(s) in this ` +
     `evaluation already exhausted the ${REGEX_MATCH_BUDGET_MS}ms matching budget, so the ` +
@@ -191,6 +193,7 @@ function circuitOpenResult(definition: CustomRuleDefinition): EvalRuleResult {
     score: 0,
     message,
     skipped: true,
+    skipClass: 'defeated',
     skipReason: message,
     budgetExceeded: true,
   };
@@ -203,7 +206,7 @@ function circuitOpenResult(definition: CustomRuleDefinition): EvalRuleResult {
  * to a terminated worker is a silent no-op). Accusing the pattern sends the
  * author hunting a performance problem they do not have.
  */
-function sandboxErrorResult(definition: CustomRuleDefinition): EvalRuleResult {
+function sandboxErrorResult(definition: CustomRuleDefinition): RuleAnswer {
   const message =
     'Regex evaluation skipped: internal sandbox error (the matching worker restarted). ' +
     'The rule did not judge this output; the pattern itself is fine — retry the evaluation.';
@@ -213,6 +216,7 @@ function sandboxErrorResult(definition: CustomRuleDefinition): EvalRuleResult {
     score: 0,
     message,
     skipped: true,
+    skipClass: 'defeated',
     skipReason: message,
   };
 }
@@ -226,7 +230,7 @@ function runSandboxed(
   pattern: string,
   flags: string,
   context: EvalContext,
-): { matched: boolean } | EvalRuleResult {
+): { matched: boolean } | RuleAnswer {
   const budget = context.regexBudget;
   if (budget && budget.breaches >= MAX_REGEX_BREACHES_PER_EVAL) {
     return circuitOpenResult(definition);
@@ -308,7 +312,7 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
     classes: [],
     // action_policy is at 2: its deny rules read the tool's own name inside mcp__<server>__<tool> (action-policy.ts), and it reads a run whole where it read the first 500 calls (#1011). Both since the last release, so one step. Every other custom type means what it meant.
     version: definition.type === 'action_policy' ? 2 : 1,
-    evaluate(context: EvalContext): EvalRuleResult {
+    evaluate(context: EvalContext): RuleAnswer {
       switch (definition.type) {
         case 'regex_match': {
           const validated = validateRegex(definition);
@@ -392,7 +396,7 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
           }
           const check = checkArguments(compiled, parsed);
           if (check.state === 'unchecked') {
-            return { ruleName: definition.name, passed: false, score: 0, skipped: true, skipReason: `the output could not be checked: ${check.reason ?? 'unknown'}`, message: 'Output shape not judged' };
+            return { ruleName: definition.name, passed: false, score: 0, skipped: true, skipClass: 'defeated', skipReason: `the output could not be checked: ${check.reason ?? 'unknown'}`, message: 'Output shape not judged' };
           }
           if (check.state === 'valid') {
             return { ruleName: definition.name, passed: true, score: 1, message: 'Output matches the configured JSON Schema' };
@@ -432,6 +436,7 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
               score: 0,
               message: 'Cost data not provided',
               skipped: true,
+              skipClass: 'not_applicable',
               skipReason: 'context.costUsd not provided',
             };
           }
@@ -485,6 +490,7 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
               passed: false,
               score: 0,
               skipped: true,
+              skipClass: 'not_applicable',
               skipReason:
                 stats.source === 'none'
                   ? 'context.toolCalls not provided — a policy over what the agent did needs the trajectory'
@@ -615,6 +621,7 @@ export function createCustomRule(definition: CustomRuleDefinition, severity?: Ru
               passed: false,
               score: 0,
               skipped: true,
+              skipClass: 'defeated',
               evidenceIncomplete: true,
               skipReason: `partial_trajectory: ${steps.length} of ${whole.available} tool calls read`,
               evidence,

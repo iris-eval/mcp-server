@@ -39,15 +39,15 @@
  * with no stored trace behind it has none and the rules say so; they never
  * invent one.
  */
-import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type EvalRuleResult, type Evidence } from '../../types/eval.js';
+import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type RuleAnswer, type Evidence } from '../../types/eval.js';
 import { CASE_HISTORY_MIN, CASE_HISTORY_WEIGH_MIN, CASE_HISTORY_WINDOW, caseHistoryOf, droppedSteps, earlierRunsRead, hasNoUsualWay, listNames, readOnlyWordsNotTaken, toolNameOf, toolsOfSteps, unusualActions } from '../case-history.js';
 import { stepScopeNote, stepStatsOf, stepsOf, trajectoryAbsence } from '../steps.js';
 import { skipWithoutTrajectory } from './trajectory.js';
 
 const runs = (n: number): string => `${n} earlier run${n === 1 ? '' : 's'}`;
 
-/** The skip a case-history rule gives when it has too little to read against, saying which way. */
-function skipForHistory(ruleName: string, context: EvalContext): EvalRuleResult {
+/** The skip a case-history rule gives when it has too little to read against, saying which way: nothing to judge against. */
+function skipForHistory(ruleName: string, context: EvalContext): RuleAnswer {
   const history = caseHistoryOf(context);
   if (history === undefined) {
     return {
@@ -56,6 +56,7 @@ function skipForHistory(ruleName: string, context: EvalContext): EvalRuleResult 
       score: 0,
       message: 'Not judged: this call has no stored case behind it, so there are no earlier runs to read it against',
       skipped: true,
+      skipClass: 'not_applicable',
       skipReason: 'insufficient_history: no stored case (evaluate a stored trace that has a case_key or an input, by its trace_id)',
     };
   }
@@ -66,17 +67,20 @@ function skipForHistory(ruleName: string, context: EvalContext): EvalRuleResult 
     score: 0,
     message: `Not judged: ${runs(m)} of this case by this agent with recorded tool calls, ${CASE_HISTORY_MIN} needed before a run can be read against them`,
     skipped: true,
+    skipClass: 'not_applicable',
     skipReason: `insufficient_history: ${runs(m)} of this case by this agent with recorded tool calls, ${CASE_HISTORY_MIN} needed`,
   };
 }
 
-function skipUnreadable(ruleName: string): EvalRuleResult {
+/** The run carried calls the rule could not read: it could not judge them. */
+function skipUnreadable(ruleName: string): RuleAnswer {
   return {
     ruleName,
     passed: false,
     score: 0,
     message: 'Not judged: the tools this run called cannot be listed whole (a call with no name, or too many distinct tools)',
     skipped: true,
+    skipClass: 'defeated',
     skipReason: 'unreadable_trajectory: a call with no name, or too many distinct tools to list',
   };
 }
@@ -112,9 +116,11 @@ export const noUnusualAction: EvalRule = {
   classes: ['wrong_trajectory'],
   version: 1,
   reportsOnly: belowItsMeasure,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     const skip = skipWithoutTrajectory('no_unusual_action', context);
     if (skip) return skip;
+    // With too few earlier runs there is nothing to read this run against, whatever the run holds: that is said first.
+    if (earlierRunsRead(context) < CASE_HISTORY_MIN) return skipForHistory('no_unusual_action', context);
     const steps = stepsOf(context);
     const called = toolsOfSteps(steps);
     if (called === null) return skipUnreadable('no_unusual_action');
@@ -128,6 +134,7 @@ export const noUnusualAction: EvalRule = {
         score: 0,
         message: `Not judged: ${reading.departing} of the ${runs(m)} of this case each took an action none of the others took, so the case has no usual way of going to read this run against`,
         skipped: true,
+        skipClass: 'not_applicable',
         skipReason: `no_usual_way: ${reading.departing} of the ${runs(m)} of this case each took an action none of the others took`,
       };
     }
@@ -199,10 +206,12 @@ export const noDroppedStep: EvalRule = {
   question: 'tool_use_correct',
   classes: ['wrong_trajectory'],
   version: 1,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     // An explicit empty list is a run that made no call, and against steps the case always takes that is the finding. Calls not sent at all still skip.
     const skip = skipWithoutTrajectory('no_dropped_step', context);
     if (skip && trajectoryAbsence(context) !== 'empty_calls') return skip;
+    // With too few earlier runs there is nothing to read this run against, whatever the run holds: that is said first.
+    if (earlierRunsRead(context) < CASE_HISTORY_MIN) return skipForHistory('no_dropped_step', context);
     const stats = stepStatsOf(context);
     if (stats.kept < stats.available) {
       // A step taken only among the calls that were not read would be reported as dropped.
@@ -211,7 +220,10 @@ export const noDroppedStep: EvalRule = {
         passed: false,
         score: 0,
         message: `Not judged: the first ${stats.kept} of this run's ${stats.available} calls were read, and a step may be among the rest`,
+        // The read was cut: the rule could not judge the run.
         skipped: true,
+        skipClass: 'defeated',
+        evidenceIncomplete: true,
         skipReason: `partial_trajectory: ${stats.kept} of ${stats.available} calls read`,
       };
     }
@@ -227,6 +239,7 @@ export const noDroppedStep: EvalRule = {
         score: 0,
         message: `Not judged: no tool was called by every one of the ${runs(m)} of this case, so there is nothing to hold this run to`,
         skipped: true,
+        skipClass: 'not_applicable',
         skipReason: `no_usual_step: no tool was called by every one of the ${runs(m)} of this case`,
       };
     }

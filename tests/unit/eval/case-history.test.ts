@@ -34,7 +34,7 @@ import { EvalEngine } from '../../../src/eval/engine.js';
 import { MAX_STEPS_DERIVED, toSteps } from '../../../src/eval/steps.js';
 import { mulberry32 } from '../../../src/eval/stats.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
-import type { CaseRun, EvalContext, EvalRuleResult } from '../../../src/types/eval.js';
+import type { CaseRun, EvalContext, RuleAnswer } from '../../../src/types/eval.js';
 import type { ToolCallRecord } from '../../../src/types/trace.js';
 
 const run = (tools: string[] | null): CaseRun => ({ tools });
@@ -599,7 +599,7 @@ describe('through the engine', () => {
         evalType: 'completeness',
         weight: 1,
         kind: 'detection',
-        evaluate: () => ({ ruleName: 'probe_unreasoned', passed: false, score: 0, message: 'fired', advisoryWhy }) as unknown as EvalRuleResult,
+        evaluate: () => ({ ruleName: 'probe_unreasoned', passed: false, score: 0, message: 'fired', advisoryWhy }) as unknown as RuleAnswer,
       });
       const fired = (await e.evaluateAll(ctx)).rule_results.find((r) => r.ruleName === 'probe_unreasoned')!;
       // Nothing was set aside: no `advisory`, no reason. Its role is the one any detection with no published accuracy has, since no layer reads it.
@@ -623,7 +623,7 @@ describe('through the engine', () => {
         evalType: 'completeness',
         weight: 1,
         ...declared,
-        evaluate: () => ({ ruleName: 'probe_standing', passed: false, score: 0, message: 'fired', ...returned }) as unknown as EvalRuleResult,
+        evaluate: () => ({ ruleName: 'probe_standing', passed: false, score: 0, message: 'fired', ...returned }) as unknown as RuleAnswer,
       });
       const result = await e.evaluateAll(ctx);
       return { row: result.rule_results.find((r) => r.ruleName === 'probe_standing')!, verdict: result.verdict! };

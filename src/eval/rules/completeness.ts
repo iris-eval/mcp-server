@@ -1,4 +1,4 @@
-import type { EvalRule, EvalContext, EvalRuleResult, Evidence } from '../../types/eval.js';
+import type { EvalRule, EvalContext, RuleAnswer, Evidence } from '../../types/eval.js';
 import { MAX_EVIDENCE_ITEMS } from '../../types/eval.js';
 import { countSentences } from '../text/sentences.js';
 import { withoutValueBreaks } from '../text/structured.js';
@@ -31,7 +31,7 @@ export const minOutputLength: EvalRule = {
   question: 'complete',
   classes: ['format'],
   version: 2,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     const minLen = (context.customConfig?.min_output_length as number)
       ?? (context.customConfig?.min_length as number)
       ?? 50;
@@ -61,7 +61,7 @@ export const nonEmptyOutput: EvalRule = {
   question: 'complete',
   classes: ['format'],
   version: 2,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     const passed = context.output.trim().length > 0;
     return {
       ruleName: 'non_empty_output',
@@ -85,7 +85,7 @@ export const sentenceCount: EvalRule = {
   question: 'complete',
   classes: ['format'],
   version: 2,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     const minSentences = (context.customConfig?.min_sentences as number) ?? 2;
     // One splitter, shared with topic_consistency (src/eval/text/sentences.ts).
     // Splitting on /[.!?]+/ counted "The latency is 3.5 seconds." as two
@@ -115,9 +115,9 @@ export const expectedCoverage: EvalRule = {
   question: 'complete',
   classes: ['incomplete_ask'],
   version: 2,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     if (!context.expected) {
-      return { ruleName: 'expected_coverage', passed: false, score: 0, message: 'No expected output provided', skipped: true, skipReason: 'context.expected not provided' };
+      return { ruleName: 'expected_coverage', passed: false, score: 0, message: 'No expected output provided', skipped: true, skipClass: 'not_applicable', skipReason: 'context.expected not provided' };
     }
     const expectedWords = new Set(
       context.expected.toLowerCase().split(/\W+/).filter((w) => w.length > 2),
@@ -196,7 +196,7 @@ export const validToolArguments: EvalRule = {
    * that keeps no_hallucination_markers and no_silent_tool_failure out of
    * the veto set.
    */
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     const skip = skipWithoutTrajectory('valid_tool_arguments', context);
     if (skip) return skip;
 
@@ -206,6 +206,7 @@ export const validToolArguments: EvalRule = {
         passed: false,
         score: 0,
         skipped: true,
+        skipClass: 'not_applicable',
         skipReason: 'eval.validateToolArguments is false — argument checking is turned off for this deployment',
         message: 'Argument checking is turned off (eval.validateToolArguments)',
       };
@@ -218,6 +219,7 @@ export const validToolArguments: EvalRule = {
         passed: false,
         score: 0,
         skipped: true,
+        skipClass: 'not_applicable',
         skipReason:
           'context.tools not provided — a call cannot be checked against a schema nobody supplied (pass `tools`, your MCP tools/list result, or a trace_id whose trace carries it)',
         message: 'No tools catalogue provided',
@@ -237,6 +239,13 @@ export const validToolArguments: EvalRule = {
      * the other does not.
      */
     let refusedSchema = false;
+    /**
+     * A call that had a schema to be checked against and was not checked: two
+     * called names lead to its entry, or its arguments are too large or cannot
+     * be written out. The rule could not judge it, where a call whose entry
+     * declares no schema had nothing to be judged against.
+     */
+    let couldNotCheck = false;
 
     /*
      * The catalogue names no server. An entry reached by a tool's own name
@@ -272,6 +281,7 @@ export const validToolArguments: EvalRule = {
         checks.push({ state: 'unchecked', reason: why });
         uncheckedReasons.set(step.name, why);
         sharedEntries.add(tool.name);
+        couldNotCheck = true;
         continue;
       }
       if (tool.inputSchema === undefined) {
@@ -283,6 +293,8 @@ export const validToolArguments: EvalRule = {
       if (!compiled.ok) refusedSchema = true;
       const check = checkArguments(compiled, step.input);
       if (check.state === 'unchecked' && check.reason !== undefined) uncheckedReasons.set(step.name, check.reason);
+      // A schema that compiled, and arguments it could not be applied to (schema-validator.ts, checkArguments).
+      if (check.state === 'unchecked' && compiled.ok) couldNotCheck = true;
       checks.push(check);
     }
 
@@ -308,6 +320,8 @@ export const validToolArguments: EvalRule = {
         score: 0,
         skipped: true,
         configInvalid: refusedSchema,
+        // A refused schema is a broken definition; a call it could not check, a check it could not make; calls whose entries declare no schema, nothing to judge.
+        skipClass: refusedSchema ? 'config_invalid' : couldNotCheck ? 'defeated' : 'not_applicable',
         skipReason: `no call could be checked: ${because}`,
         message: `Arguments not judged: ${because}${scope}`,
         evidence: [{ type: 'count', stat: 'calls_unchecked', unit: 'calls', value: unchecked }],
@@ -439,7 +453,7 @@ export const askCoverage: EvalRule = {
    * reads as uncovered — and a heuristic that can be wrong degrades the
    * score rather than vetoing the verdict.
    */
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     const input = context.input ?? '';
     if (input.trim().length === 0) {
       return {
@@ -447,6 +461,7 @@ export const askCoverage: EvalRule = {
         passed: false,
         score: 0,
         skipped: true,
+        skipClass: 'not_applicable',
         skipReason: 'context.input not provided — the parts of an ask cannot be counted without the ask',
         message: 'No input provided',
       };
@@ -461,6 +476,7 @@ export const askCoverage: EvalRule = {
         passed: false,
         score: 0,
         skipped: true,
+        skipClass: 'not_applicable',
         skipReason: 'the output is empty — non_empty_output judges that, and one output should not carry two failure classes',
         message: 'Empty output',
       };
@@ -471,6 +487,7 @@ export const askCoverage: EvalRule = {
         passed: false,
         score: 0,
         skipped: true,
+        skipClass: 'not_applicable',
         skipReason: `the input is ${input.length} characters; above ${MAX_ASK_CHARS} it usually carries source material rather than an ask, and splitting a pasted document into "parts" would fire on every summarisation`,
         message: 'Input too long to read as an ask',
       };
@@ -484,6 +501,7 @@ export const askCoverage: EvalRule = {
         passed: false,
         score: 0,
         skipped: true,
+        skipClass: 'not_applicable',
         skipReason:
           parts.length < 2
             ? 'the input asks for one thing — this rule judges whether a MULTI-part ask was answered in every part'

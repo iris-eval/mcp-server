@@ -165,11 +165,18 @@ export function ruleStateOf(r: { passed: boolean; skipped?: boolean }): RuleStat
   return r.skipped === true ? 'not_checked' : r.passed ? 'pass' : 'fail';
 }
 
+/**
+ * Which kind of skip a result is: the flags the engine and the sandbox set
+ * first, then the class the rule said (RuleAnswer requires one of every rule
+ * Iris compiles). A skip that says none, or one it does not know, could not
+ * judge: until 0.22.0 such a skip was read as having had nothing to judge,
+ * and a rule that could not judge and said so in words alone read as a pass.
+ */
 export function skipClassOf(raw: EvalRuleResult): SkipClass | undefined {
   if (!raw.skipped) return undefined;
   if (raw.budgetExceeded || raw.evidenceIncomplete || raw.threw) return 'defeated';
   if (raw.configInvalid) return 'config_invalid';
-  return 'not_applicable';
+  return raw.skipClass === 'not_applicable' || raw.skipClass === 'config_invalid' ? raw.skipClass : 'defeated';
 }
 
 /**
@@ -269,7 +276,8 @@ export function stampRuleResult(
   /*
    * And who had asked for a rule that could not answer though there was
    * something to judge: it threw, was stopped at a limit, read a record
-   * that was cut, or its definition is broken (skipClassOf). Until 0.22.0
+   * that was cut, could not judge what it was sent, or its definition is
+   * broken (skipClassOf). Until 0.22.0
    * the stamp said who asked only on a rule that lacked an input, and a
    * policy the deployment or the call asked for that threw was read by
    * nothing: the verdict passed (compose.ts, the third layer).
