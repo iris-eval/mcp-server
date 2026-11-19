@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { get } from 'node:http';
 import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import express from 'express';
@@ -98,8 +99,9 @@ describe('error handler middleware', () => {
 
   /*
    * A failure is whatever was thrown, and a value built in code can carry a
-   * field that throws when it is read. The handler reads each field once,
-   * and answers as JSON with one line in the log whatever it finds (#1077).
+   * field that throws when it is read. The handler reads each field once and
+   * answers as JSON whatever it finds, with one line in the log for any
+   * failure but a validation error answered with its issues (#1077).
    */
   describe('a failure whose fields throw as they are read', () => {
     /** A failure with `fields`, each a value or 'throws'. */
@@ -148,11 +150,21 @@ describe('error handler middleware', () => {
       for (const fields of [{ code: 'throws', syscall: 'stat' }, { code: 'ENOENT', syscall: 'throws' }, { code: 'throws', syscall: 'throws' }]) {
         const err = failure({ ...fields, status: 404 });
         Object.defineProperty(err, 'message', { value: "ENOENT: no such file or directory, stat 'C:\\srv\\iris\\dist\\index.html'" });
-        const { status, body } = await answerTo(err);
+        const { status, body, lines } = await answerTo(err);
         expect(status, JSON.stringify(fields)).toBe(404);
         expect(body.error).toBe('Not found');
         expect(JSON.stringify(body)).not.toMatch(/ENOENT|srv/);
+        expect(lines).toHaveLength(1);
       }
+    });
+
+    it('a code with no syscall is no system error, so a 4xx message is echoed; a system error keeps its own 4xx', async () => {
+      const { status, body } = await answerTo(failure({ code: 'ERR_X', status: 400 }));
+      expect(status).toBe(400);
+      expect(body.error).toBe('the message');
+      const denied = await answerTo(failure({ code: 'EACCES', syscall: 'open', status: 403 }));
+      expect(denied.status).toBe(403);
+      expect(denied.body.error).toBe('Not found');
     });
 
     it('a name, a constructor or a stack that cannot be read: an ordinary 500', async () => {
@@ -184,9 +196,147 @@ describe('error handler middleware', () => {
 
     it('a status outside 400 to 599, or not a whole number, is a 500', async () => {
       for (const named of [302, 600, '404', 404.5, Number.NaN]) {
-        const { status, body } = await answerTo(failure({ status: named }));
+        const { status, body, lines } = await answerTo(failure({ status: named }));
         expect(status, String(named)).toBe(500);
         expect(body.error).toBe('Internal server error');
+        expect(lines).toHaveLength(1);
+      }
+    });
+
+    it('a status from 400 to 599 is kept at either end, and a null one gives way to statusCode', async () => {
+      for (const named of [400, 599]) expect((await answerTo(failure({ status: named }))).status, String(named)).toBe(named);
+      expect((await answerTo(failure({ status: null, statusCode: 404 }))).status).toBe(404);
+    });
+
+    it('a failure puts one line in the log, and a validation error answered with its issues none', async () => {
+      const zod = Object.assign(new Error('Validation failed'), { name: 'ZodError', issues: [{ path: ['limit'], message: 'Expected number' }] });
+      const cases: Array<[string, unknown, number]> = [
+        ['an audit log that could not be written', new AuditWriteError('/home/someone/.iris/audit.log', new Error('EACCES: permission denied')), 1],
+        ['a 4xx with text', Object.assign(new Error('request entity too large'), { status: 413 }), 1],
+        ['a plain Error', new Error('boom'), 1],
+        ['a validation error', zod, 0],
+      ];
+      for (const [label, err, count] of cases) expect((await answerTo(err)).lines, label).toHaveLength(count);
+    });
+
+    it('each field of a failure is read once', async () => {
+      const cases = [
+        Object.assign(new Error('not found here'), { status: 404 }),
+        Object.assign(new Error('the audit log'), { name: 'AuditWriteError' }),
+        Object.assign(new Error('no such file'), { code: 'ENOENT', syscall: 'stat', status: 404 }),
+        Object.assign(new Error('Validation failed'), { name: 'ZodError', issues: [{ path: ['limit'], message: 'Expected number' }] }),
+      ];
+      for (const target of cases) {
+        // The stack written out first, so that V8 does not read the name and message again to write it.
+        void target.stack;
+        const reads = new Map<PropertyKey, number>();
+        const counted = new Proxy(target, {
+          get: (t, key, receiver) => {
+            reads.set(key, (reads.get(key) ?? 0) + 1);
+            return Reflect.get(t, key, receiver) as unknown;
+          },
+        });
+        await answerTo(counted);
+        expect([...reads].filter(([, n]) => n > 1).map(([key]) => String(key)), target.message).toEqual([]);
+      }
+    });
+
+    it('a ZodError is known by its constructor\'s name as well, and its issues are read before its errors', async () => {
+      class ZodError extends Error {
+        issues = [{ path: ['limit'], message: 'Expected number' }];
+      }
+      const byClass = await answerTo(new ZodError('Validation failed'));
+      expect(byClass.status).toBe(400);
+      expect(JSON.stringify(byClass.body)).toContain('Expected number');
+      const both = failure({ name: 'ZodError', issues: [{ path: ['a'], message: 'from issues' }], errors: [{ path: ['b'], message: 'from errors' }] });
+      const { body } = await answerTo(both);
+      expect(JSON.stringify(body)).toContain('from issues');
+      expect(JSON.stringify(body)).not.toContain('from errors');
+    });
+
+    it('under development a stack in text is answered, and a stack that is not text, or a failure the steps could not answer, is answered with none', async () => {
+      const origEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+      try {
+        expect(typeof (await answerTo(new Error('boom'))).body.stack).toBe('string');
+        expect((await answerTo(failure({ stack: ['frame one', 'frame two'] }))).body.stack).toBeUndefined();
+        const walked = failure({ name: 'ZodError' });
+        Object.defineProperty(walked, 'issues', { value: new Proxy([], { get: () => { throw new Error('not walked'); } }) });
+        expect((await answerTo(walked)).body).toEqual({ error: 'Internal server error' });
+      } finally {
+        process.env.NODE_ENV = origEnv;
+      }
+    });
+
+    it("a failure whose answer cannot be written at all ends its connection, with one line in the log, where Express's page went out", async () => {
+      const lines: string[] = [];
+      const logger = { ...mockLogger, error: (written: string) => void lines.push(written) };
+      const app = express();
+      app.get('/test', (_req, res) => {
+        res.setHeader('Content-Type', 'not a type');
+        throw new Error('the route failed');
+      });
+      app.use(createErrorHandler(logger));
+      const server = app.listen(0);
+      const { port } = server.address() as { port: number };
+      try {
+        const ending = await new Promise<string>((done) => {
+          const timer = setTimeout(() => done('still open after 2 s'), 2_000);
+          const request = get(`http://localhost:${port}/test`, (response) => {
+            response.resume();
+            response.on('close', () => {
+              clearTimeout(timer);
+              done(response.complete ? `answered ${response.statusCode}` : 'cut off');
+            });
+          });
+          request.on('error', () => {
+            clearTimeout(timer);
+            done('cut off');
+          });
+        });
+        expect(ending).toBe('cut off');
+        expect(lines).toEqual(['Request error: the route failed']);
+      } finally {
+        server.closeAllConnections();
+        server.close();
+      }
+    });
+
+    it("a failure after part of the response was written ends its connection, as Express's own handler does, with one line in the log", async () => {
+      const zod = Object.assign(new Error('Validation failed'), { name: 'ZodError', issues: [{ path: ['limit'], message: 'Expected number' }] });
+      for (const [thrown, line] of [[new Error('the stream failed'), 'Request error: the stream failed'], [zod, 'Request error: Validation failed']] as const) {
+        const lines: string[] = [];
+        const logger = { ...mockLogger, error: (written: string) => void lines.push(written) };
+        const app = express();
+        app.get('/test', (_req, res) => {
+          res.writeHead(200, { 'content-type': 'text/event-stream' });
+          res.write('data: one\n\n');
+          throw thrown;
+        });
+        app.use(createErrorHandler(logger));
+        const server = app.listen(0);
+        const { port } = server.address() as { port: number };
+        try {
+          const ending = await new Promise<string>((done) => {
+            const timer = setTimeout(() => done('still open after 2 s'), 2_000);
+            const request = get(`http://localhost:${port}/test`, (response) => {
+              response.resume();
+              response.on('close', () => {
+                clearTimeout(timer);
+                done(response.complete ? 'ended' : 'cut off');
+              });
+            });
+            request.on('error', () => {
+              clearTimeout(timer);
+              done('cut off');
+            });
+          });
+          expect(ending, line).toBe('cut off');
+          expect(lines).toEqual([line]);
+        } finally {
+          server.closeAllConnections();
+          server.close();
+        }
       }
     });
 
@@ -195,15 +345,17 @@ describe('error handler middleware', () => {
       const unreleased = changelog.split('\n## [Unreleased]\n')[1]?.split('\n## [')[0] ?? '';
       const fixed = unreleased.split('\n### Fixed\n')[1]?.split('\n### ')[0] ?? '';
       expect(fixed).toContain(
-        '- **The HTTP error handler answers a failure whose fields cannot be read.** It read a failure\'s `name`, `code`, `syscall`, `status` and `message` directly, so a value built in code whose field throws as it is read made the handler itself throw, and Express answered with its own error page, which outside production holds the stack and its file paths. Each field is now read once, and one that cannot be read is taken as absent, or, for `code` and `syscall`, as a sign the failure may be a system error, whose message is never echoed; every failure is answered as JSON with one line in the server log. A status is kept where it is a whole number from 400 to 599, and any other is answered as 500; a message that is not text is answered as "Unknown error".',
+        '- **The HTTP error handler answers a failure whose fields cannot be read.** It read a failure\'s `name`, `code`, `syscall`, `status` and `message` directly, so a value built in code whose field throws as it is read made the handler itself throw, and Express answered with its own error page, which outside production holds the stack and its file paths. Each field is now read once, and one that cannot be read is taken as absent, or, for `code` and `syscall`, as a sign the failure may be a system error, whose message is never echoed. A failure is answered as JSON whatever its fields hold, and puts one line in the server log unless it is a validation error answered with its issues; one that comes after part of the response was written cannot be answered, and its connection is ended, as Express\'s own handler ends it, and so is one whose answer cannot be written at all. A status is kept where it is a whole number from 400 to 599, and any other is answered as 500; a message that is not text is answered as "Unknown error"; a stack that is not text is neither logged nor, under `NODE_ENV=development`, answered; and a validation error whose issues cannot be read through is answered as 500.',
       );
     });
 
-    it('a value thrown that is not an object is an ordinary 500', async () => {
-      for (const thrown of ['a string', 42, null, undefined]) {
-        const { status, body } = await answerTo(thrown);
+    // As it was answered before: a value with no fields at all reaches the handler as itself (null and undefined do not: Express hands on an Error in their place).
+    it('a value thrown that is not an object is an ordinary 500, with one line in the log', async () => {
+      for (const thrown of ['a string', 42, Symbol('thrown'), 10n, true]) {
+        const { status, body, lines } = await answerTo(thrown);
         expect(status, String(thrown)).toBe(500);
         expect(body.error).toBe('Internal server error');
+        expect(lines).toEqual(['Request error: Unknown error']);
       }
     });
   });

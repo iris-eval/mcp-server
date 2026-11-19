@@ -1,4 +1,4 @@
-import type { ErrorRequestHandler, Response } from 'express';
+import type { ErrorRequestHandler, Request } from 'express';
 import type { Logger } from '../utils/logger.js';
 import { validationErrorBody } from '../utils/validation-errors.js';
 
@@ -24,27 +24,70 @@ function either(a: unknown, b: unknown): unknown {
   return a === undefined || a === null || a === UNREADABLE ? b : a;
 }
 
+/** A failure's message where it is text, and "Unknown error" where it is not. */
+function messageOf(err: unknown): string {
+  const message = fieldOf(err, 'message');
+  return typeof message === 'string' ? message : 'Unknown error';
+}
+
+/** A failure's stack where it is text. */
+function stackOf(err: unknown): string | undefined {
+  const stack = fieldOf(err, 'stack');
+  return typeof stack === 'string' ? stack : undefined;
+}
+
+type Log = (line: string, meta: Record<string, unknown>) => void;
+
 export function createErrorHandler(logger: Logger): ErrorRequestHandler {
-  return (err, _req, res, _next) => {
+  return (err, req, res, _next) => {
+    let logged = false;
+    const log: Log = (line, meta) => {
+      logged = true;
+      logger.error(line, meta);
+    };
     try {
-      answer(err, res, logger);
+      const { status, body } = replyTo(err, log);
+      if (res.headersSent) {
+        // A validation error is logged here too: it is not answered with its issues.
+        if (!logged) log(`Request error: ${messageOf(err)}`, { status, stack: stackOf(err) });
+        endTheResponse(req);
+        return;
+      }
+      res.status(status).json(body);
     } catch {
       // A failure the steps above could not answer (a list of issues that throws as it is walked, say): answered as any other.
-      logger.error('Request error: a failure that could not be read', { status: 500 });
-      if (!res.headersSent) res.status(500).json({ error: 'Internal server error' });
+      if (!logged) log(`Request error: ${messageOf(err)}`, { status: 500, stack: stackOf(err) });
+      try {
+        if (res.headersSent) endTheResponse(req);
+        else res.status(500).json({ error: 'Internal server error' });
+      } catch {
+        // Not even that can be written (a Content-Type a route set that cannot be read, say): the connection is ended.
+        endTheResponse(req);
+      }
     }
   };
 }
 
-function answer(err: unknown, res: Response, logger: Logger): void {
+/*
+ * A failure after part of the response was written cannot be answered: its
+ * status and head are gone. The connection is ended, as Express's own
+ * handler ends it, so the client sees the response fail rather than wait
+ * for the rest of it.
+ */
+function endTheResponse(req: Request): void {
+  req.socket?.destroy();
+}
+
+/** The status and body that answer `err`, with its line in the log. */
+function replyTo(err: unknown, log: Log): { status: number; body: object } {
+  const name = fieldOf(err, 'name');
+
   // Handle Zod validation errors: at most 20 issues, and how many there were (utils/validation-errors.ts).
-  if (fieldOf(err, 'name') === 'ZodError' || fieldOf(fieldOf(err, 'constructor'), 'name') === 'ZodError') {
-    res.status(400).json(validationErrorBody('Validation error', either(fieldOf(err, 'issues'), fieldOf(err, 'errors'))));
-    return;
+  if (name === 'ZodError' || fieldOf(fieldOf(err, 'constructor'), 'name') === 'ZodError') {
+    return { status: 400, body: validationErrorBody('Validation error', either(fieldOf(err, 'issues'), fieldOf(err, 'errors'))) };
   }
 
-  const rawMessage = fieldOf(err, 'message');
-  const text = typeof rawMessage === 'string' ? rawMessage : 'Unknown error';
+  const text = messageOf(err);
 
   /*
    * A rule change or trace deletion refused because its audit entry could
@@ -52,13 +95,15 @@ function answer(err: unknown, res: Response, logger: Logger): void {
    * error's own message: that one names the audit log's path, which is
    * for the server log and the local MCP caller, not an HTTP client.
    */
-  if (fieldOf(err, 'name') === 'AuditWriteError') {
-    logger.error(`Request error: ${text}`, { status: 503 });
-    res.status(503).json({
-      error: 'The audit log could not be written, so the change was refused. Nothing was changed. The server log names the file and the cause.',
-      code: 'IRIS_STORAGE_ERROR',
-    });
-    return;
+  if (name === 'AuditWriteError') {
+    log(`Request error: ${text}`, { status: 503 });
+    return {
+      status: 503,
+      body: {
+        error: 'The audit log could not be written, so the change was refused. Nothing was changed. The server log names the file and the cause.',
+        code: 'IRIS_STORAGE_ERROR',
+      },
+    };
   }
 
   // A status a failure names is kept where it is one an error can carry (400 to 599); any other, or none, is 500.
@@ -84,12 +129,14 @@ function answer(err: unknown, res: Response, logger: Logger): void {
   const isSystemError = (typeof code === 'string' || code === UNREADABLE) && (typeof syscall === 'string' || syscall === UNREADABLE);
   const message = status >= 500 ? 'Internal server error' : isSystemError ? 'Not found' : text;
 
-  const rawStack = fieldOf(err, 'stack');
-  const stack = typeof rawStack === 'string' ? rawStack : undefined;
-  logger.error(`Request error: ${text}`, { status, stack });
+  const stack = stackOf(err);
+  log(`Request error: ${text}`, { status, stack });
 
-  res.status(status).json({
-    error: message,
-    ...(process.env.NODE_ENV === 'development' && stack !== undefined ? { stack } : {}),
-  });
+  return {
+    status,
+    body: {
+      error: message,
+      ...(process.env.NODE_ENV === 'development' && stack !== undefined ? { stack } : {}),
+    },
+  };
 }
