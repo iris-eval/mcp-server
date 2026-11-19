@@ -210,6 +210,7 @@ describe('what the documents say', () => {
     expect(WARNING_CODE_CATALOGUE).toContain('IRIS_ARGUMENT_NOT_SENT');
     const collapse = (s: string): string => s.replace(/\s+/g, ' ');
     expect(read('src/tools/evaluate-with-llm-judge.ts')).toContain("sent only to a model that takes one: Claude 4.7 and later and OpenAI\\'s reasoning models are sent none and judge at their own default, with IRIS_ARGUMENT_NOT_SENT when one was set");
+    expect(read('src/tools/evaluate-with-llm-judge.ts')).toContain('IRIS_ARGUMENT_NOT_SENT: temperature was set for a model that takes none, so none was sent');
     expect(collapse(read('src/tools/guide.ts'))).toContain("temperature (default 0) is sent only to a model that takes one: Claude 4.7 and later and OpenAI\\'s reasoning models judge at their own default, with an IRIS_ARGUMENT_NOT_SENT warning when one was set.");
     expect(read('docs/api-reference.md')).toContain("| `temperature` | `number` | No | 0 to 2; default 0. Sent only to a model that takes one: Claude 4.7 and later and OpenAI's reasoning models are sent none and judge at their own default, and a value set for one of them is answered with an `IRIS_ARGUMENT_NOT_SENT` warning |");
     expect(read('CHANGELOG.md')).toContain('- **A Claude model that takes no temperature is sent none (#1078).**');
