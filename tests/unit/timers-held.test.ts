@@ -177,8 +177,8 @@ describe('a wait set from outside is held at the longest a timer waits', () => {
     const every = vi.spyOn(globalThis, 'setInterval');
     const handed = (): unknown[] => set.mock.calls.map((call) => call[1]);
     try {
-      // Nothing answers in the window: each wait is set, and read off its timer.
-      global.fetch = answeredAfter(MAX_TIMER_MS, () => new Response('{}', { status: 200 }));
+      // Nothing answers, and the stand-in sets no timer of its own: each wait is set, and read off the timer the code sets.
+      global.fetch = vi.fn(() => new Promise<Response>(() => undefined)) as unknown as typeof fetch;
       const trace: Trace = { trace_id: '00000000000000000000000000000002', agent_name: 'test', timestamp: '2026-11-19T00:00:00Z' };
       void new OtelExporter({ endpoint: 'https://collector.example:4318', serviceName: 'iris', timeoutMs: PAST }).exportTraces([trace]);
       await vi.advanceTimersByTimeAsync(1);
