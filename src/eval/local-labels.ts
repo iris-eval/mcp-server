@@ -8,7 +8,7 @@ import type { IStorageAdapter } from '../types/query.js';
 import type { TenantId } from '../types/tenant.js';
 import type { EvalEngine } from './engine.js';
 import { publishedAccuracyFor } from './accuracy.js';
-import { builtInRules } from './criticality.js';
+import { builtInRuleNames, builtInRules } from './criticality.js';
 import { sensitivity } from './stats.js';
 import { LOCAL_LABEL_WINDOW, estimatedPrior, localPrecision, samplingSuggestion, type EstimatedPrior, type LocalPrecision, type SamplingSuggestion } from './labels.js';
 
@@ -65,7 +65,8 @@ function builtInClassesOf(ruleName: string): readonly string[] {
  * it weighs and that does not veto. With no engine it is the rule's kind.
  */
 export async function buildLocalLabelSource(storage: IStorageAdapter, tenantId: TenantId, decides: (ruleName: string) => boolean = isWeighedKind): Promise<LocalLabelSource> {
-  const [tallies, fires] = await Promise.all([storage.labelTallies(tenantId), storage.ruleFireStats(tenantId, LOCAL_LABEL_WINDOW)]);
+  // Under the name of a rule Iris ships, only that rule's own rows are counted (storage labelTallies, label-rows.ts).
+  const [tallies, fires] = await Promise.all([storage.labelTallies(tenantId, builtInRuleNames()), storage.ruleFireStats(tenantId, LOCAL_LABEL_WINDOW)]);
   const precision = new Map(tallies.map((t) => [t.ruleName, localPrecision(t)] as const));
   const fireRates = new Map(fires.map((f) => [f.ruleName, f.judged > 0 ? f.fired / f.judged : 0] as const));
 

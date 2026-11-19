@@ -25,6 +25,8 @@ import { LOCAL_LABEL_MIN, LOCAL_LABEL_WINDOW, localPrecision } from '../../eval/
 import { buildLocalLabelSource, builtInKindOf, isWeighedKind, refreshLocalLabels, type LocalLabelSource } from '../../eval/local-labels.js';
 import { publishedAccuracyFor } from '../../eval/accuracy.js';
 import { builtInRules } from '../../eval/criticality.js';
+import { isBuiltInRuleName } from '../../eval/built-in-names.js';
+import { rowOriginOf } from '../../storage/label-rows.js';
 import { caseHistoryFor, costHistoryFor } from '../../eval/ingest.js';
 import { toEvaluationResponse } from '../../eval/response.js';
 import { insertLinkedEvalResult } from '../../tools/trace-link.js';
@@ -112,6 +114,26 @@ export function registerLabelRoutes(router: Router, storage: IStorageAdapter, op
         res.status(400).json({ error: `${body.rule} did not run on this evaluation, so there is no result to label.` });
         return;
       }
+      /*
+       * A label is written on the first row of its name, and the labels under
+       * the name of a rule Iris ships weigh that rule's fires. Where that row
+       * is a custom rule's (one an earlier version deployed or evaluated
+       * under such a name: eval/built-in-names.ts; storage/label-rows.ts
+       * says how a row older than `origin` is read), the label would weigh
+       * the rule Iris ships by another rule's fire, and is not written. The
+       * tally leaves out a label stored on such a row (storage labelTallies).
+       */
+      const rowOrigin = rowOriginOf(row);
+      if (rowOrigin === 'custom' && isBuiltInRuleName(body.rule)) {
+        // A row of the rule Iris ships after the custom one's, fired or not: a label for it would stand on the custom row too.
+        const shippedRowToo = evaluation.rule_results.some((r) => r.ruleName === body.rule && rowOriginOf(r) !== 'custom');
+        res.status(400).json({
+          error:
+            `The first row named ${body.rule} on this evaluation is a custom rule's, and a label under the name of a rule Iris ships weighs that rule, so it cannot be written here.` +
+            (shippedRowToo ? ` The rule Iris ships has a row of that name on this evaluation too, after the custom rule's, and a label for it cannot be written on this evaluation.` : ''),
+        });
+        return;
+      }
       if (row.skipped === true || row.passed !== false) {
         res.status(400).json({
           error: `${body.rule} did not fire on this evaluation. Labels are written on fires, so they measure precision only — a quiet rule has nothing here to be right or wrong about.`,
@@ -124,6 +146,7 @@ export function registerLabelRoutes(router: Router, storage: IStorageAdapter, op
         ruleName: body.rule,
         label: body.label,
         note: body.note ?? null,
+        rowOrigin,
       });
       const source = await refresh(tenantId);
       const stats = statsOf(source, weighs);

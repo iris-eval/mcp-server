@@ -9,7 +9,7 @@
 //   - One deadline for a call: every request, its whole reply, and the wait
 //     after a rate limit end before it (DEFAULT_JUDGE_DEADLINE_MS)
 //   - Retry on 429 (single retry w/ RateLimit-* header or Retry-After),
-//     only where an answer can still come before the deadline
+//     only where its wait ends before the deadline
 //   - Structured error types (LLMJudgeError) — callers distinguish a
 //     transient rate-limit from a permanent auth failure, and a provider
 //     that could not be reached from one that answered
@@ -132,9 +132,12 @@ function reasonOf(err: unknown): string {
 
 /**
  * One request to the provider and its whole reply, before the deadline: the
- * timer covers the body as well as the wait for it to begin. A deadline that
- * passes is a timeout; a request that could not be made, or a reply cut off
- * before its end, is the provider's failure to be reached (`unreachable`).
+ * timer covers the body as well as the wait for it to begin, and the time
+ * taken (`latencyMs`) runs to the body's end. A deadline that passes is a
+ * timeout. A request that could not be made, and a reply with a success
+ * status whose body was cut off before its end, are the provider's failure
+ * to be reached (`unreachable`). An error status is the provider's answer: a
+ * body of one that is cut off reads as empty, and the status decides.
  */
 async function postBeforeDeadline(
   provider: string,
@@ -143,21 +146,53 @@ async function postBeforeDeadline(
   deadline: number,
   budgetMs: number,
 ): Promise<{ res: Response; body: string; latencyMs: number }> {
+  if (!headersCanBeSent(init.headers)) {
+    throw new LLMJudgeError(
+      `${provider} API key cannot be sent in a request header: it holds a line break, or a character such as a curly quote or a zero-width space copied with it. No request was made.`,
+      'auth',
+    );
+  }
   const started = Date.now();
   const timedOut = (): LLMJudgeError => new LLMJudgeError(`${provider} did not answer within ${budgetMs} ms`, 'timeout');
   if (deadline - started <= 0) throw timedOut();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), deadline - started);
+  // The request is aborted by its timer alone; an abort, by that or by its name, is the deadline passing.
+  const aborted = (err: unknown): boolean => controller.signal.aborted || (err instanceof Error && err.name === 'AbortError');
   try {
-    const res = await fetch(url, { ...init, signal: controller.signal });
-    const body = await res.text();
+    let res: Response;
+    try {
+      res = await fetch(url, { ...init, signal: controller.signal });
+    } catch (err) {
+      if (aborted(err)) throw timedOut();
+      throw new LLMJudgeError(`${provider} could not be reached: ${reasonOf(err)}`, 'unreachable');
+    }
+    let body: string;
+    try {
+      body = await res.text();
+    } catch (err) {
+      if (aborted(err)) throw timedOut();
+      if (res.ok) throw new LLMJudgeError(`${provider} reply was cut off before its end: ${reasonOf(err)}`, 'unreachable');
+      body = '';
+    }
     return { res, body, latencyMs: Date.now() - started };
-  } catch (err) {
-    // The request is aborted by its timer alone; an abort, by that or by its name, is the deadline passing.
-    if (controller.signal.aborted || (err instanceof Error && err.name === 'AbortError')) throw timedOut();
-    throw new LLMJudgeError(`${provider} could not be reached: ${reasonOf(err)}`, 'unreachable');
   } finally {
     clearTimeout(timer);
+  }
+}
+
+/**
+ * Whether the runtime can carry these headers, built as fetch builds them:
+ * it refuses a value with a line break inside it or a character past one
+ * byte. The key is the one header that is not a constant, so a refusal is
+ * the operator's key, to be fixed where it is set; it is never shown, and
+ * no request is made.
+ */
+function headersCanBeSent(headers: RequestInit['headers']): boolean {
+  try {
+    return new Headers(headers) instanceof Headers;
+  } catch {
+    return false;
   }
 }
 
@@ -249,8 +284,13 @@ async function callAnthropic(req: LLMJudgeRequest, deadline: number, budgetMs: n
     usage?: { input_tokens?: number; output_tokens?: number };
   };
 
-  const firstText = (Array.isArray(json.content) ? json.content : []).find((c) => c !== null && typeof c === 'object' && c.type === 'text')?.text;
-  if (!firstText) {
+  // The documented shape: `content` is a list of blocks, each an object. Anything else is a malformed reply, and no
+  // verdict is read from it.
+  if (!Array.isArray(json.content) || !json.content.every((c: unknown) => c !== null && typeof c === 'object' && !Array.isArray(c))) {
+    throw new LLMJudgeError('Anthropic response content was not a list of content blocks', 'malformed_response');
+  }
+  const firstText = json.content.find((c) => c.type === 'text')?.text;
+  if (typeof firstText !== 'string' || firstText === '') {
     throw new LLMJudgeError('Anthropic response had no text content block', 'malformed_response');
   }
 
@@ -319,9 +359,11 @@ async function callOpenAI(req: LLMJudgeRequest, deadline: number, budgetMs: numb
     usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
 
+  // The documented shape: `choices` is a list. An object keyed "0" in its place is a malformed reply, and no verdict
+  // is read from it.
   const choice = Array.isArray(json.choices) ? json.choices[0] : undefined;
   const firstText = choice?.message?.content;
-  if (!firstText) {
+  if (typeof firstText !== 'string' || firstText === '') {
     // A model that declines says so in `refusal`, and a reply that reached its cap before any answer ends at `length`.
     const refusal = choice?.message?.refusal;
     if (typeof refusal === 'string' && refusal !== '') {
@@ -350,10 +392,11 @@ async function callOpenAI(req: LLMJudgeRequest, deadline: number, budgetMs: numb
 // Single-retry-on-429 wrapper. Reads Retry-After/RateLimit-Reset header
 // when present; otherwise sleeps 2s. Deliberately one retry — repeated
 // retries burn cost on what is usually a provisioning problem, not a
-// transient spike. The wait is made only where an answer can still come
-// before the deadline after it; otherwise the rate limit is answered, with
-// the wait the provider asked for. Callers that want more aggressive retry
-// can compose.
+// transient spike. The wait is made only where it ends before the
+// deadline, and the second request has what is left of it; otherwise the
+// rate limit is answered at once, with the wait the provider named (none
+// where it named none). Callers that want more aggressive retry can
+// compose.
 export async function callLLMJudge(req: LLMJudgeRequest): Promise<LLMJudgeResponse> {
   const estimatedInput = estimateInputTokens(req.systemPrompt, req.userPrompt, req.answer);
   if (req.maxInputTokensEstimate && estimatedInput > req.maxInputTokensEstimate) {

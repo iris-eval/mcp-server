@@ -186,6 +186,26 @@ describe('verify_citations: judge failures under judge_error, source failures un
     expect((await storage.queryEvalResults(LOCAL_TENANT, {})).total).toBe(0);
   });
 
+  it('a judge that could not be reached for any citation is unreachable on each, and IRIS_JUDGE_FAILED is retryable and says so', async () => {
+    global.fetch = network({ 'a.example': page('Alpha is 42.') }, [
+      async () => {
+        throw new TypeError('fetch failed', { cause: Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' }) });
+      },
+    ]);
+    const failed = body(
+      (await client.callTool({
+        name: 'verify_citations',
+        arguments: { output: 'Alpha is 42 (https://a.example/alpha).', model: 'claude-haiku-4-5' },
+      })) as Result,
+    );
+    expect(failed.error).toMatchObject({ code: 'IRIS_JUDGE_FAILED', retryable: true });
+    expect(String((failed.error as { message: string }).message)).toContain('the judge failed on every one (unreachable)');
+    expect((failed.error as { recovery: string[] }).recovery).toContain(
+      'Retry when the kind is a timeout, a rate limit, a provider server error, or unreachable (the provider could not be reached, or its reply was cut off).',
+    );
+    expect((await storage.queryEvalResults(LOCAL_TENANT, {})).total).toBe(0);
+  });
+
   it('a cost cap after one verdict is reported on the citation it stopped on, as judge_error', async () => {
     global.fetch = network(
       { 'a.example': page('Alpha is 42.'), 'b.example': page('Beta is 7.') },

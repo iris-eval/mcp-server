@@ -74,7 +74,7 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
       `To screen inputs before they reach an agent: ${INJECTION_SCOPE_SENTENCE} ` +
       'For semantic judgment, evaluate_with_llm_judge and verify_citations need a key you supply.',
     errors:
-      'IRIS_UNKNOWN_TRACE when trace_id names no stored trace — checked first, nothing scored or written. IRIS_INVALID_ARGUMENT when output is omitted and no trace_id supplies one (the trace recorded no output, or none was named). IRIS_STORAGE_ERROR when the row cannot be written. ' +
+      'IRIS_UNKNOWN_TRACE when trace_id names no stored trace — checked first, nothing scored or written. IRIS_INVALID_ARGUMENT when output is omitted and no trace_id supplies one (the trace recorded no output, or none was named), and when a custom_rules entry takes the name of a rule Iris ships (field custom_rules, naming each; nothing evaluated or written). IRIS_STORAGE_ERROR when the row cannot be written. ' +
       'Unknown arguments or keys are refused before the handler runs, naming the valid ones; a regex rule over its budget or with a broken config reports skipped, not an error.',
     parameters: {
       eval_type:
@@ -179,11 +179,12 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
       'action_policy judges the TRAJECTORY: allow and deny rules name a tool by glob and its arguments by JSON Pointer, deny wins, and `allow` being present means a tool it does not name is DENIED. ' +
       'On a host that calls tools mcp__<server>__<tool>, a deny rule reads the tool\'s own name too, and an allow rule is held to the name the agent calls: write it mcp__<server>__<tool>. ' +
       'It ADVISES until you deploy it at severity high or critical — a deny list you deploy at the default severity does not block, and its own message says so on every result. ' +
-      'Any bundle and type combine. Names are unique: a taken name is refused unless replace is true, which retires the earlier rule(s) first and reports them. Argument names are snake_case; the camelCase aliases evalType and sourceMomentId are accepted — pass one spelling of each.',
+      'Any bundle and type combine. Names are unique: a taken name is refused unless replace is true, which retires the earlier rule(s) first and reports them. The name of a rule Iris ships is refused whatever replace says (list_rules lists them under built_in). Argument names are snake_case; the camelCase aliases evalType and sourceMomentId are accepted — pass one spelling of each.',
     whenNot:
       'To try a rule first: POST /api/v1/rules/custom/preview on the dashboard replays a definition against stored traces without deploying. For a one-off check on one call: the custom_rules argument of evaluate_output. To pause a rule: delete_rule with enabled: false.',
     errors:
       'IRIS_DUPLICATE_RULE when the name is deployed and replace is false (the message names the existing id). ' +
+      'IRIS_INVALID_ARGUMENT (field name) when the name is the name of a rule Iris ships, with replace true or false; a rule already deployed under it is kept, and nothing is deployed. ' +
       'IRIS_INVALID_RULE_CONFIG when the definition is rejected — a regex that fails the ReDoS check or exceeds 1000 characters, a missing config key — naming the field; nothing is deployed. ' +
       'IRIS_STORAGE_ERROR when the store cannot be written. An unknown key in definition, a name over 80 characters, a non-positive weight or both spellings of an alias are refused before the handler runs.',
     parameters: {
@@ -196,21 +197,21 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
       source_moment_id:
         'Optional Decision Moment ID the rule was derived from (preserves workflow-inversion provenance). Canonical snake_case — pass exactly one of source_moment_id / sourceMomentId',
       replace:
-        'When a rule with this name is already deployed: false (default) rejects the call; true deletes the existing same-named rule(s) and deploys this one in their place (fresh id; audit rows preserved)',
+        'When a rule with this name is already deployed: false (default) rejects the call; true deletes the existing same-named rule(s) and deploys this one in their place (fresh id; audit rows preserved). Neither deploys a rule under the name of a rule Iris ships',
     },
   },
   delete_rule: {
     does:
       "Without enabled: deletes the rule from ~/.iris/custom-rules.json, appends a rule.delete audit entry and unregisters it from the running engine; deleted is false when no rule has that id (already gone, or not this tenant's), and no audit row is written twice. " +
-      'With enabled: the rule stays with its history and provenance; false stops it firing at once and keeps it off across restarts, true brings it back under the same id; a rule.toggle audit entry is written unless the flag was already in that state. ' +
+      'With enabled: the rule stays with its history and provenance; false stops it firing at once and keeps it off across restarts, true brings it back under the same id; a rule.toggle audit entry is written unless the flag was already in that state. A paused rule stored under the name of a rule Iris ships (by an earlier version) is not brought back: deploy it again under a name of its own. ' +
       'Past evaluations that referenced the rule are untouched either way.',
     whenNot:
       'On built-in rules: they are not in the store and cannot be deleted or disabled. To delete a trace (delete_trace). To replace a rule: deploy_rule with the same name and replace: true.',
     errors:
-      'IRIS_STORAGE_ERROR when the store cannot be written. A malformed rule_id (not rule-<hex>) or an unknown argument is refused before the handler runs.',
+      'IRIS_INVALID_ARGUMENT (field enabled) for enabled: true on a paused rule stored under the name of a rule Iris ships; it stays paused. IRIS_STORAGE_ERROR when the store cannot be written. A malformed rule_id (not rule-<hex>) or an unknown argument is refused before the handler runs.',
     parameters: {
       enabled:
-        'When present the rule is NOT deleted: false DISABLES it (kept in the store, stops firing immediately, history and provenance preserved); true RE-ENABLES a disabled rule. Omit to delete',
+        'When present the rule is NOT deleted: false DISABLES it (kept in the store, stops firing immediately, history and provenance preserved); true RE-ENABLES a disabled rule, unless it carries the name of a rule Iris ships. Omit to delete',
     },
   },
   delete_trace: {
@@ -227,14 +228,14 @@ const TOOL_GUIDE: Record<ToolName, ToolGuide> = {
       'template picks the question: accuracy, helpfulness, safety, correctness (needs expected), faithfulness (needs source_material), task_completed (pass the trajectory as source_material when you have it) or relevance (needs input: does the output address this request, not another); input improves helpfulness and safety. model is required; provider is inferred from it. ' +
       `The worst-case spend — both attempts, full max_output_tokens — is computed BEFORE the call and refused if it exceeds max_cost_usd (default ${JUDGE_COST_CAP_VAR} or ${JUDGE_DEFAULT_COST_CAP_USD}); max_cost_usd can lower the operator's cap, never raise it, and a larger value is lowered with an IRIS_ARGUMENT_NARROWED warning. ` +
       `The same worst case must also fit in what is left of the day's ${DAILY_BUDGET_VAR}, which every judge call on the key shares. ` +
-      'temperature defaults to 0; a rate-limited call is retried once. One evaluation row is stored with the provider response id, tokens, cost and latency. With trace_id it is kept beside that trace (reference_trace_id) and listed with it; a judgment is never the trace\'s verdict and cannot replace it. ' +
+      'temperature defaults to 0; a rate-limited call is asked again once, where the provider\'s wait ends before the call\'s deadline. One evaluation row is stored with the provider response id, tokens, cost and latency. With trace_id it is kept beside that trace (reference_trace_id) and listed with it; a judgment is never the trace\'s verdict and cannot replace it. ' +
       'A judge from the same model family as the agent (agent_model, or the linked trace) is warned about, never refused. ' +
       "The judge's own accuracy is measurable on a key you supply and is not yet published (see iris://proof).",
     whenNot:
       'For length, keyword, PII, injection or cost checks: evaluate_output is free and deterministic. Without a key: the call returns IRIS_JUDGE_NOT_ENABLED with the enable steps — do not search for them. On very large outputs without raising max_cost_usd: the pre-check refuses.',
     errors:
       'IRIS_INVALID_ARGUMENT for relevance without input, before any spend. IRIS_JUDGE_NOT_ENABLED (no key for the provider reached this process; recovery carries the steps). IRIS_JUDGE_UNKNOWN_MODEL (valid lists the models). IRIS_UNKNOWN_TRACE, checked before any spend. ' +
-      `IRIS_BUDGET_EXCEEDED (nothing spent): over max_cost_usd, the message carries both numbers; over the daily budget, field is ${DAILY_BUDGET_VAR}, retryable is true and the message says when it resets. IRIS_PROVIDER_ERROR with kind auth, rate_limit, bad_request, server_error, timeout or malformed_response, and retryable set.`,
+      `IRIS_BUDGET_EXCEEDED (nothing spent): over max_cost_usd, the message carries both numbers; over the daily budget, field is ${DAILY_BUDGET_VAR}, retryable is true and the message says when it resets. IRIS_PROVIDER_ERROR with kind auth, rate_limit, bad_request, server_error, timeout, unreachable or malformed_response, and retryable set.`,
     parameters: {
       template:
         'Judge dimension: accuracy (factual correctness), helpfulness (does it address the ask), safety (harm potential), correctness (vs reference answer — requires `expected`), faithfulness (RAG grounding — requires `source_material`), task_completed (did the task actually complete — pass the trajectory as `source_material` when you have it), relevance (does it address THIS request rather than another — requires `input`; the judge answers_the_ask gates on when IRIS_RELEVANCE_JUDGE_MODEL is set).',
