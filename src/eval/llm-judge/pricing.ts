@@ -72,14 +72,21 @@ export interface LongContextPricing {
 /** The date the table was last read from PRICING_SOURCES. */
 export const PRICING_SOURCED_ON = '2026-11-18';
 
+/**
+ * Where each provider's prices were read. Anthropic's docs pricing page
+ * lists every column, the long-request rates of Claude Haiku 5.5 included;
+ * OpenAI's pricing page lists the short- and long-context rates, and each
+ * model's own page says whether it takes Chat Completions and structured
+ * output, which the judge needs.
+ */
 export const PRICING_SOURCES: Readonly<Record<PricingProvider, string>> = {
-  anthropic: 'https://claude.com/pricing',
+  anthropic: 'https://platform.claude.com/docs/en/about-claude/pricing',
   openai: 'https://developers.openai.com/api/docs/pricing',
 };
 
 /**
  * Where the cache prices were read, beside PRICING_SOURCES: Anthropic's
- * cache-write and cache-hit columns are on its docs pricing page, and
+ * cache-write and cache-hit columns are on the same docs pricing page, and
  * OpenAI's rule for cache writes is in its prompt-caching guide.
  */
 export const CACHE_PRICING_SOURCES: Readonly<Record<PricingProvider, readonly string[]>> = {
@@ -92,10 +99,7 @@ export const MODEL_PRICING: readonly ModelPricing[] = [
   { provider: 'anthropic', model: 'claude-fable-5-2', inputUsdPer1M: 8, outputUsdPer1M: 40, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 10, cacheWrite1hUsdPer1M: 16 },
   { provider: 'anthropic', model: 'claude-opus-5-5', inputUsdPer1M: 4, outputUsdPer1M: 20, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 5, cacheWrite1hUsdPer1M: 8 },
   { provider: 'anthropic', model: 'claude-sonnet-5-5', inputUsdPer1M: 2, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 2.5, cacheWrite1hUsdPer1M: 4 },
-  {
-    provider: 'anthropic', model: 'claude-haiku-5-5', inputUsdPer1M: 0.1, outputUsdPer1M: 0.5, cacheReadUsdPer1M: 0.01, cacheWriteUsdPer1M: 0.125, cacheWrite1hUsdPer1M: 0.2,
-    longContext: { aboveInputTokens: 100_000, inputUsdPer1M: 0.5, outputUsdPer1M: 2.5, cacheReadUsdPer1M: 0.05, cacheWriteUsdPer1M: 0.625, cacheWrite1hUsdPer1M: 1 },
-  },
+  { provider: 'anthropic', model: 'claude-haiku-5-5', inputUsdPer1M: 0.1, outputUsdPer1M: 0.5, cacheReadUsdPer1M: 0.01, cacheWriteUsdPer1M: 0.125, cacheWrite1hUsdPer1M: 0.2, longContext: { aboveInputTokens: 100_000, inputUsdPer1M: 0.5, outputUsdPer1M: 2.5, cacheReadUsdPer1M: 0.05, cacheWriteUsdPer1M: 0.625, cacheWrite1hUsdPer1M: 1 } },
   // Anthropic — earlier, still served and priced
   { provider: 'anthropic', model: 'claude-fable-5-1', inputUsdPer1M: 10, outputUsdPer1M: 50, cacheReadUsdPer1M: 0.25, cacheWriteUsdPer1M: 12.5, cacheWrite1hUsdPer1M: 20 },
   { provider: 'anthropic', model: 'claude-fable-5', inputUsdPer1M: 10, outputUsdPer1M: 50, cacheReadUsdPer1M: 1, cacheWriteUsdPer1M: 12.5, cacheWrite1hUsdPer1M: 20 },
@@ -113,51 +117,18 @@ export const MODEL_PRICING: readonly ModelPricing[] = [
   { provider: 'anthropic', model: 'claude-sonnet-4-5', inputUsdPer1M: 3, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.3, cacheWriteUsdPer1M: 3.75, cacheWrite1hUsdPer1M: 6 },
 
   // OpenAI — current: the four its models page features, then the rest of GPT-6 and GPT-5.6
-  {
-    provider: 'openai', model: 'gpt-6.2-astra', inputUsdPer1M: 8, outputUsdPer1M: 40, cacheReadUsdPer1M: 0.4, cacheWriteUsdPer1M: 10,
-    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 16, outputUsdPer1M: 60, cacheReadUsdPer1M: 0.8, cacheWriteUsdPer1M: 20 },
-  },
-  {
-    provider: 'openai', model: 'gpt-6.2-sol', inputUsdPer1M: 2, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 2.5,
-    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 4, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 5 },
-  },
-  {
-    provider: 'openai', model: 'gpt-6.1-terra', inputUsdPer1M: 1, outputUsdPer1M: 5, cacheReadUsdPer1M: 0.05, cacheWriteUsdPer1M: 1.25,
-    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 2, outputUsdPer1M: 7.5, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 2.5 },
-  },
-  {
-    provider: 'openai', model: 'gpt-6-luna', inputUsdPer1M: 0.1, outputUsdPer1M: 0.5, cacheReadUsdPer1M: 0.01, cacheWriteUsdPer1M: 0.125,
-    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 0.2, outputUsdPer1M: 0.75, cacheReadUsdPer1M: 0.02, cacheWriteUsdPer1M: 0.25 },
-  },
-  {
-    provider: 'openai', model: 'gpt-6.1-sol', inputUsdPer1M: 2, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 2.5,
-    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 4, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 5 },
-  },
-  {
-    provider: 'openai', model: 'gpt-6-astra', inputUsdPer1M: 10, outputUsdPer1M: 50, cacheReadUsdPer1M: 1, cacheWriteUsdPer1M: 12.5,
-    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 20, outputUsdPer1M: 75, cacheReadUsdPer1M: 2, cacheWriteUsdPer1M: 25 },
-  },
-  {
-    provider: 'openai', model: 'gpt-6-sol', inputUsdPer1M: 2, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 2.5,
-    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 4, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.4, cacheWriteUsdPer1M: 5 },
-  },
-  {
-    provider: 'openai', model: 'gpt-5.6-terra', inputUsdPer1M: 2, outputUsdPer1M: 12, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 2.5,
-    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 4, outputUsdPer1M: 18, cacheReadUsdPer1M: 0.4, cacheWriteUsdPer1M: 5 },
-  },
-  {
-    provider: 'openai', model: 'gpt-5.6-luna', inputUsdPer1M: 0.2, outputUsdPer1M: 1.2, cacheReadUsdPer1M: 0.02, cacheWriteUsdPer1M: 0.25,
-    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 0.4, outputUsdPer1M: 1.8, cacheReadUsdPer1M: 0.04, cacheWriteUsdPer1M: 0.5 },
-  },
+  { provider: 'openai', model: 'gpt-6.2-astra', inputUsdPer1M: 8, outputUsdPer1M: 40, cacheReadUsdPer1M: 0.4, cacheWriteUsdPer1M: 10, longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 16, outputUsdPer1M: 60, cacheReadUsdPer1M: 0.8, cacheWriteUsdPer1M: 20 } },
+  { provider: 'openai', model: 'gpt-6.2-sol', inputUsdPer1M: 2, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 2.5, longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 4, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 5 } },
+  { provider: 'openai', model: 'gpt-6.1-terra', inputUsdPer1M: 1, outputUsdPer1M: 5, cacheReadUsdPer1M: 0.05, cacheWriteUsdPer1M: 1.25, longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 2, outputUsdPer1M: 7.5, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 2.5 } },
+  { provider: 'openai', model: 'gpt-6-luna', inputUsdPer1M: 0.1, outputUsdPer1M: 0.5, cacheReadUsdPer1M: 0.01, cacheWriteUsdPer1M: 0.125, longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 0.2, outputUsdPer1M: 0.75, cacheReadUsdPer1M: 0.02, cacheWriteUsdPer1M: 0.25 } },
+  { provider: 'openai', model: 'gpt-6.1-sol', inputUsdPer1M: 2, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 2.5, longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 4, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 5 } },
+  { provider: 'openai', model: 'gpt-6-astra', inputUsdPer1M: 10, outputUsdPer1M: 50, cacheReadUsdPer1M: 1, cacheWriteUsdPer1M: 12.5, longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 20, outputUsdPer1M: 75, cacheReadUsdPer1M: 2, cacheWriteUsdPer1M: 25 } },
+  { provider: 'openai', model: 'gpt-6-sol', inputUsdPer1M: 2, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 2.5, longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 4, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.4, cacheWriteUsdPer1M: 5 } },
+  { provider: 'openai', model: 'gpt-5.6-terra', inputUsdPer1M: 2, outputUsdPer1M: 12, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 2.5, longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 4, outputUsdPer1M: 18, cacheReadUsdPer1M: 0.4, cacheWriteUsdPer1M: 5 } },
+  { provider: 'openai', model: 'gpt-5.6-luna', inputUsdPer1M: 0.2, outputUsdPer1M: 1.2, cacheReadUsdPer1M: 0.02, cacheWriteUsdPer1M: 0.25, longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 0.4, outputUsdPer1M: 1.8, cacheReadUsdPer1M: 0.04, cacheWriteUsdPer1M: 0.5 } },
   // OpenAI — earlier, still on its pricing page (some marked deprecated on their model pages)
-  {
-    provider: 'openai', model: 'gpt-5.5', inputUsdPer1M: 5, outputUsdPer1M: 30, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 5,
-    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 10, outputUsdPer1M: 45, cacheReadUsdPer1M: 1, cacheWriteUsdPer1M: 10 },
-  },
-  {
-    provider: 'openai', model: 'gpt-5.4', inputUsdPer1M: 2.5, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.25, cacheWriteUsdPer1M: 2.5,
-    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 5, outputUsdPer1M: 22.5, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 5 },
-  },
+  { provider: 'openai', model: 'gpt-5.5', inputUsdPer1M: 5, outputUsdPer1M: 30, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 5, longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 10, outputUsdPer1M: 45, cacheReadUsdPer1M: 1, cacheWriteUsdPer1M: 10 } },
+  { provider: 'openai', model: 'gpt-5.4', inputUsdPer1M: 2.5, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.25, cacheWriteUsdPer1M: 2.5, longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 5, outputUsdPer1M: 22.5, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 5 } },
   { provider: 'openai', model: 'gpt-5.4-mini', inputUsdPer1M: 0.75, outputUsdPer1M: 4.5, cacheReadUsdPer1M: 0.075, cacheWriteUsdPer1M: 0.75 },
   { provider: 'openai', model: 'gpt-5.4-nano', inputUsdPer1M: 0.2, outputUsdPer1M: 1.25, cacheReadUsdPer1M: 0.02, cacheWriteUsdPer1M: 0.2 },
   { provider: 'openai', model: 'gpt-5.2', inputUsdPer1M: 1.75, outputUsdPer1M: 14, cacheReadUsdPer1M: 0.175, cacheWriteUsdPer1M: 1.75 },

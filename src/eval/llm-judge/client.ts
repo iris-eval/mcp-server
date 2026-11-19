@@ -121,8 +121,12 @@ const AS_GPT_4O = { reasoning: false, structured: true } as const;
  * temperature, a low effort.
  */
 export const ANTHROPIC_MODELS: Readonly<Record<string, { temperature: boolean; thinks: boolean }>> = {
-  'claude-fable-5-1': { temperature: false, thinks: true },
+  'claude-fable-5-2': { temperature: false, thinks: true },
   'claude-opus-5-5': { temperature: false, thinks: true },
+  'claude-sonnet-5-5': { temperature: false, thinks: true },
+  'claude-haiku-5-5': { temperature: false, thinks: true },
+  'claude-fable-5-1': { temperature: false, thinks: true },
+  'claude-fable-5': { temperature: false, thinks: true },
   'claude-sonnet-5': { temperature: false, thinks: true },
   'claude-opus-5': { temperature: false, thinks: true },
   'claude-opus-4-8': { temperature: false, thinks: false },

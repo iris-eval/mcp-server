@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findPricing, estimateCostUsd, MODEL_PRICING } from '../../../../src/eval/llm-judge/pricing.js';
+import { findPricing, estimateCostUsd, MODEL_PRICING, ratesFor } from '../../../../src/eval/llm-judge/pricing.js';
 
 describe('LLM judge pricing', () => {
   it('returns null for unknown models', () => {
@@ -7,12 +7,15 @@ describe('LLM judge pricing', () => {
     expect(estimateCostUsd('gpt-77', 1000, 500)).toBeNull();
   });
 
-  it('computes cost from input+output tokens for every known model', () => {
+  it('computes cost from input+output tokens for every known model, at the rates a request of that size is billed', () => {
     for (const pricing of MODEL_PRICING) {
       const cost = estimateCostUsd(pricing.model, 1_000_000, 1_000_000);
+      // A million input tokens is over every line a provider prices higher (100,000 and 272,000): those models' long-context rates.
+      const rates = ratesFor(pricing, 1_000_000);
+      expect(rates.inputUsdPer1M, pricing.model).toBe(pricing.longContext?.inputUsdPer1M ?? pricing.inputUsdPer1M);
       // Exact arithmetic — no float precision issues below 1M tokens on cents.
       expect(cost).toBe(
-        Math.round((pricing.inputUsdPer1M + pricing.outputUsdPer1M) * 1_000_000) / 1_000_000,
+        Math.round((rates.inputUsdPer1M + rates.outputUsdPer1M) * 1_000_000) / 1_000_000,
       );
     }
   });

@@ -185,13 +185,14 @@ function usd(n: number): number {
 const fmt = (n: number): string => n.toLocaleString('en-US');
 
 /**
- * One call at its model's prices; `oneRequest` is false for a total over
- * several calls. Pushes onto `notes` anything priced other than as the
- * provider bills it: cached counts reported beside the input count, a cache
- * price the table does not have, or a total over the size above which the
- * provider prices a request higher.
+ * One call at its model's prices. `scope` says what the counts are: `one`, a
+ * single request; `within`, a total over requests each known to be within
+ * the size its provider prices higher; `total`, a total that cannot say how
+ * large each request was. Pushes onto `notes` anything priced other than as
+ * the provider bills it: cached counts reported beside the input count, a
+ * cache price the table does not have, or such a total over that size.
  */
-function priced(match: PriceMatch, t: Tokens, notes: string[], oneRequest: boolean): CostEstimateCall {
+function priced(match: PriceMatch, t: Tokens, notes: string[], scope: 'one' | 'within' | 'total'): CostEstimateCall {
   const cached = t.cacheRead + t.cacheWrite;
   // A part is never larger than its whole: more cached tokens than input tokens were counted beside the input (Anthropic's API shape).
   const beside = cached > t.prompt;
@@ -208,12 +209,12 @@ function priced(match: PriceMatch, t: Tokens, notes: string[], oneRequest: boole
    */
   const long = match.longContext;
   const over = long !== null && prompt > long.aboveInputTokens;
-  if (over && oneRequest) {
+  if (over && scope === 'one') {
     notes.push(`${match.model}: a call over ${fmt(long.aboveInputTokens)} input tokens is priced at the provider's rates for such a request, every token of it.`);
-  } else if (over) {
+  } else if (over && scope === 'total') {
     notes.push(`${match.model}: priced at the rates of a request of up to ${fmt(long.aboveInputTokens)} input tokens. The ${fmt(prompt)} counted are a total over calls, which cannot say whether a call was over that size; such a call costs more, so the estimate may be low.`);
   }
-  const rates = over && oneRequest
+  const rates = over && scope === 'one'
     ? { input: long.inputUsdPer1M, output: long.outputUsdPer1M, cacheRead: long.cacheReadUsdPer1M, cacheWrite: long.cacheWriteUsdPer1M, cacheWrite1h: long.cacheWrite1hUsdPer1M ?? null }
     : { input: match.inputUsdPer1M, output: match.outputUsdPer1M, cacheRead: match.cacheReadUsdPer1M, cacheWrite: match.cacheWriteUsdPer1M, cacheWrite1h: match.cacheWrite1hUsdPer1M };
   const readPrice = rates.cacheRead ?? rates.input;
@@ -327,10 +328,12 @@ export function estimateTraceCost(trace: Trace, using: PricingSettings = pricing
     // A call over the size its provider prices higher is priced by its own size, which the run's total cannot carry: the calls are then priced one by one.
     const sized = found.some((m, i) => m.longContext !== null && calls[i].oneRequest && sizeOf(calls[i]) > m.longContext.aboveInputTokens);
     if (oneModel && !sized && count(usage?.prompt_tokens) !== undefined && count(usage?.completion_tokens) !== undefined) {
-      const call = priced(found[0], { prompt: usage!.prompt_tokens!, completion: usage!.completion_tokens!, ...cachedOf(usage) }, notes, false);
-      return estimated('token_usage', [call], notes);
+      const total: Tokens = { prompt: usage!.prompt_tokens!, completion: usage!.completion_tokens!, ...cachedOf(usage) };
+      // Calls that account for the whole total, none over the line, price it as exactly as they would one by one.
+      const covered = calls.every((c) => c.oneRequest) && calls.reduce((sum, c) => sum + sizeOf(c), 0) >= sizeOf(total);
+      return estimated('token_usage', [priced(found[0], total, notes, covered ? 'within' : 'total')], notes);
     }
-    return estimated('calls', found.map((m, i) => priced(m, calls[i], notes, calls[i].oneRequest)), notes);
+    return estimated('calls', found.map((m, i) => priced(m, calls[i], notes, calls[i].oneRequest ? 'one' : 'total')), notes);
   }
 
   const usage = trace.token_usage;
@@ -354,7 +357,7 @@ export function estimateTraceCost(trace: Trace, using: PricingSettings = pricing
   const match = priceModel(traceModel, using);
   if (!match) return { estimate: unknownModel([traceModel]) };
   const notes: string[] = [];
-  return estimated('token_usage', [priced(match, { prompt, completion, ...cachedOf(usage) }, notes, false)], notes);
+  return estimated('token_usage', [priced(match, { prompt, completion, ...cachedOf(usage) }, notes, 'total')], notes);
 }
 
 /**

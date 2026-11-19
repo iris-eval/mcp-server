@@ -82,11 +82,45 @@ describe('the one table', () => {
     for (const p of MODEL_PRICING) {
       expect(p.cacheReadUsdPer1M, p.model).toBeLessThan(p.inputUsdPer1M);
       expect(p.cacheWriteUsdPer1M, p.model).toBeGreaterThanOrEqual(p.inputUsdPer1M);
-      // Anthropic's 5-minute write is 1.25x the input; OpenAI's pre-5.6 models charge no write premium.
-      expect(p.cacheWriteUsdPer1M, p.model).toBeCloseTo(p.provider === 'anthropic' ? p.inputUsdPer1M * 1.25 : p.inputUsdPer1M, 9);
-      // Anthropic's 1-hour write is 2x the input; OpenAI has no write lifetime.
+      // Anthropic's 5-minute write and OpenAI's 30-minute write (from GPT-5.6) are 1.25x the input; OpenAI's earlier models charge no write premium.
+      const writes = p.provider === 'anthropic' || /^gpt-(5\.6|6)/.test(p.model);
+      expect(p.cacheWriteUsdPer1M, p.model).toBeCloseTo(writes ? p.inputUsdPer1M * 1.25 : p.inputUsdPer1M, 9);
+      // Anthropic's 1-hour write is 2x the input; OpenAI's 12-hour write is not priced.
       if (p.provider === 'anthropic') expect(p.cacheWrite1hUsdPer1M, p.model).toBeCloseTo(p.inputUsdPer1M * 2, 9);
       else expect(p.cacheWrite1hUsdPer1M, p.model).toBeUndefined();
+    }
+  });
+
+  it("a request's size prices it as each provider says: Haiku 5.5 over 100,000 tokens, OpenAI from GPT-5.4 over 272,000", () => {
+    const sized = MODEL_PRICING.filter((p) => p.longContext !== undefined).map((p) => p.model);
+    expect(sized).toEqual(['claude-haiku-5-5', 'gpt-6.2-astra', 'gpt-6.2-sol', 'gpt-6.1-terra', 'gpt-6-luna', 'gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4']);
+    // Anthropic's pricing page: Claude Haiku 5.5 over 100,000 prompt tokens.
+    expect(findPricing('claude-haiku-5-5')!.longContext).toEqual({ aboveInputTokens: 100_000, inputUsdPer1M: 0.5, outputUsdPer1M: 2.5, cacheReadUsdPer1M: 0.05, cacheWriteUsdPer1M: 0.625, cacheWrite1hUsdPer1M: 1 });
+    // OpenAI's model pages: over 272K input tokens, 2x input and cache, 1.5x output, for the full request.
+    for (const p of MODEL_PRICING.filter((m) => m.provider === 'openai' && m.longContext !== undefined)) {
+      const long = p.longContext!;
+      expect(long.aboveInputTokens, p.model).toBe(272_000);
+      expect(long.inputUsdPer1M, p.model).toBeCloseTo(p.inputUsdPer1M * 2, 9);
+      expect(long.cacheReadUsdPer1M, p.model).toBeCloseTo(p.cacheReadUsdPer1M * 2, 9);
+      expect(long.cacheWriteUsdPer1M, p.model).toBeCloseTo(p.cacheWriteUsdPer1M * 2, 9);
+      expect(long.outputUsdPer1M, p.model).toBeCloseTo(p.outputUsdPer1M * 1.5, 9);
+      expect(long.cacheWrite1hUsdPer1M, p.model).toBeUndefined();
+    }
+  });
+
+  it("the guide's row for a model priced by size gives its rates over the line, and no other row speaks of a size", () => {
+    const rows = guideRows();
+    // Two decimals, as the table writes a price, unless that would round it (0.625 stays 0.625).
+    const two = (x: number): string => (Number(x.toFixed(2)) === x ? x.toFixed(2) : String(x));
+    for (const p of MODEL_PRICING) {
+      const notes = rows.find((r) => r.model === p.model)!.notes;
+      const long = p.longContext;
+      if (long === undefined) {
+        expect(notes, p.model).not.toMatch(/input tokens/);
+        continue;
+      }
+      const expected = `Over ${long.aboveInputTokens.toLocaleString('en-US')} input tokens, the whole request: ${two(long.inputUsdPer1M)} / ${two(long.outputUsdPer1M)}; cache read ${two(long.cacheReadUsdPer1M)}, write ${two(long.cacheWriteUsdPer1M)}${long.cacheWrite1hUsdPer1M !== undefined ? `, 1h write ${two(long.cacheWrite1hUsdPer1M)}` : ''}`;
+      expect(notes, p.model).toContain(expected);
     }
   });
 
@@ -101,9 +135,13 @@ describe('the one table', () => {
 
   it('the tools’ model sentence leads with current models per provider and never a retired one', () => {
     const s = supportedModelsSummary();
-    expect(s).toContain('claude-opus-5');
-    expect(s).toContain('gpt-5');
-    expect(s).not.toMatch(/o1-mini/);
+    for (const provider of ['anthropic', 'openai'] as const) {
+      const lead = MODEL_PRICING.filter((p) => p.provider === provider && !p.retired).slice(0, 3).map((p) => p.model);
+      expect(s).toContain(lead.join(' | '));
+    }
+    expect(s).toContain('claude-fable-5-2 | claude-opus-5-5 | claude-sonnet-5-5');
+    expect(s).toContain('gpt-6.2-astra | gpt-6.2-sol | gpt-6.1-terra');
+    for (const p of MODEL_PRICING.filter((m) => m.retired)) expect(s).not.toContain(p.model);
     expect(s.split(/\s+/).length).toBeLessThan(40);
   });
 });
