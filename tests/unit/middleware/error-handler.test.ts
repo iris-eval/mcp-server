@@ -318,6 +318,30 @@ describe('error handler middleware', () => {
       }
     });
 
+    it("a failure whose answer cannot be written at all is left to Express's own handler, as before, with the one line it put in the log", async () => {
+      const lines: string[] = [];
+      const logger = { ...mockLogger, error: (written: string) => void lines.push(written) };
+      const app = express();
+      // A Content-Type the media-type parser refuses: the handler's JSON cannot be sent under it, and neither can its 500.
+      app.get('/test', (_req, res) => {
+        res.setHeader('Content-Type', 'not a type');
+        throw new Error('the route failed');
+      });
+      app.use(createErrorHandler(logger));
+      const server = app.listen(0);
+      const { port } = server.address() as { port: number };
+      try {
+        const res = await fetch(`http://localhost:${port}/test`);
+        expect(res.status).toBe(500);
+        expect(res.headers.get('content-type') ?? '').toContain('text/html');
+        await res.text();
+        expect(lines).toEqual(['Request error: the route failed']);
+      } finally {
+        server.closeAllConnections();
+        server.close();
+      }
+    });
+
     it("a failure after part of the response is handed on to Express's own handler, which ends the connection once what was written has gone out, as before", async () => {
       const zod = Object.assign(new Error('Validation failed'), { name: 'ZodError', issues: [{ path: ['limit'], message: 'Expected number' }] });
       // An error puts its one line in the log; a validation error none, as one answered with its issues puts none.
