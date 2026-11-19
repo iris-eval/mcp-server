@@ -28,12 +28,236 @@ export const DEFAULT_ARGS_MODE: ExpectedArgsMode = 'subset';
 export const DEFAULT_STEP_TOLERANCE = 1.5;
 export const SEQUENCE_MODES: readonly ExpectedTrajectoryMode[] = ['strict', 'unordered', 'subset', 'superset', 'ordered_subset'];
 
-/** `want` is a subset of `have`: every key of an object present with a value that is itself a subset; arrays and scalars must be equal. */
+/** Whether stableStringify writes a value as `null`: null itself, a value that is absent, a number that is not finite, a symbol. */
+function writtenAsNull(value: unknown): boolean {
+  return value === null || value === undefined || typeof value === 'symbol' || (typeof value === 'number' && !Number.isFinite(value));
+}
+
+/**
+ * A function or a BigInt: JSON writes one by its toJSON when it has one, as
+ * null when a function has none, and not at all when a BigInt has none. A
+ * request carries neither. It can still bring a function here: a key an
+ * expectation names that the call's object only inherits (`toString`,
+ * `constructor`) is held by that object as a function.
+ */
+function leftToTheWriting(value: unknown): boolean {
+  return typeof value === 'function' || typeof value === 'bigint';
+}
+
+/**
+ * A value that is alike to itself without being read: a string, a number, a
+ * boolean, null, a symbol or an absent value that is the very same one on
+ * both sides. An array or an object that is the same one on both sides is
+ * still read, and a function or a BigInt still written, as each was when
+ * both sides were written out: what the writing met inside one, this meets.
+ */
+function sameWithoutReading(value: unknown): boolean {
+  return value === null || (typeof value !== 'object' && typeof value !== 'function' && typeof value !== 'bigint');
+}
+
+/**
+ * Whether two values are written alike when one of them is a function or a
+ * BigInt, by what JSON writes of it.
+ *
+ * JSON writes a function or a BigInt in one step. When both values are one,
+ * their two texts are compared, the first's written first, as they always
+ * were. When one is, its text is written, and the other value is not: a
+ * function with no toJSON is written as `null`, which is what every
+ * function a request can bring here is written as, and whether the other
+ * value is written as `null` too is asked of its kind. Only when a toJSON
+ * gave some other text, which no request can bring about, is the other
+ * value written out to be compared with it, as both always were.
+ */
+function alikeLeftToTheWriting(x: unknown, y: unknown): boolean {
+  const xLeft = leftToTheWriting(x);
+  if (xLeft && leftToTheWriting(y)) return (JSON.stringify(x) ?? 'null') === (JSON.stringify(y) ?? 'null');
+  const text = JSON.stringify(xLeft ? x : y) ?? 'null';
+  const other = xLeft ? y : x;
+  if (text === 'null') return writtenAsNull(other);
+  return stableStringify(other) === text;
+}
+
+/** What is known of two values before either is walked. */
+const UNLIKE = 0;
+const ALIKE = 1;
+const TWO_ARRAYS = 2;
+const TWO_OBJECTS = 3;
+type Pair = typeof UNLIKE | typeof ALIKE | typeof TWO_ARRAYS | typeof TWO_OBJECTS;
+
+/**
+ * Two values that are not the very same one, by their kinds. stableStringify
+ * writes a string in quotation marks, a finite number in digits, a boolean
+ * as a word, an array in square brackets, an object in braces and the rest
+ * as `null`, so two values of different kinds are never written alike, two
+ * different strings, numbers or booleans never are, and what is left to
+ * walk is two arrays or two objects.
+ */
+function pairOf(x: unknown, y: unknown): Pair {
+  if (leftToTheWriting(x) || leftToTheWriting(y)) return alikeLeftToTheWriting(x, y) ? ALIKE : UNLIKE;
+  if (x === null || typeof x !== 'object') return writtenAsNull(x) && writtenAsNull(y) ? ALIKE : UNLIKE;
+  if (y === null || typeof y !== 'object') return UNLIKE;
+  const array = Array.isArray(x);
+  if (array !== Array.isArray(y)) return UNLIKE;
+  return array ? TWO_ARRAYS : TWO_OBJECTS;
+}
+
+/**
+ * Whether stableStringify writes two values alike, asked without writing
+ * either out.
+ *
+ * Two arrays are written alike when they are of one length and each element
+ * is written as the one in its place. Two objects are, when each names the
+ * keys the other names (its own, set to something) and each value is
+ * written as the other's of that key. Writing both out to compare the texts
+ * read every element of both at every comparison, to the last one, and made
+ * two strings of them; this stops at the first difference it meets, and
+ * writes nothing a request can carry (a function or a BigInt, which none
+ * does, is left to the writing: pairOf).
+ *
+ * An object is read the way the writing read it, and in no other: its own
+ * keys and their values, listed once (Object.entries). The two lists are
+ * then paired place by place, which is all there is to do when both objects
+ * name their keys in one order; from the first key that is not in its place,
+ * the second object's remaining keys are found by name in a map made of its
+ * list. Neither object is asked for a key by its name. What that costs
+ * depends on the name, and on what the process has compared before: once a
+ * place in the code has read more than one key name, a key that is a whole
+ * number of eight digits or more is handed to the slow road at every read.
+ *
+ * An array or an object inside the two is compared where it is met, by a
+ * function calling itself once for each level, as the writing called itself
+ * for each level. How many levels a request may have is bounded where it
+ * comes in (security.maxInputDepth, and the engine's own limit).
+ */
+export function writtenAlike(a: unknown, b: unknown): boolean {
+  if (a === b && sameWithoutReading(a)) return true;
+  const pair = pairOf(a, b);
+  return pair === ALIKE || (pair !== UNLIKE && alikeInside(a, b, pair));
+}
+
+/** writtenAlike of two arrays, or of two objects: what each holds, in its place, to the first difference. */
+function alikeInside(a: unknown, b: unknown, pair: typeof TWO_ARRAYS | typeof TWO_OBJECTS): boolean {
+  if (pair === TWO_ARRAYS) {
+    const xs = a as unknown[];
+    const ys = b as unknown[];
+    const length = xs.length;
+    // A hole is written as nothing, so an array that is one hole is written as the empty array is. No other two lengths are written alike.
+    if (length !== ys.length) return length + ys.length === 1 && !(0 in (length === 1 ? xs : ys));
+    for (let i = 0; i < length; i += 1) {
+      const x = xs[i];
+      const y = ys[i];
+      if (x === y && x !== undefined && sameWithoutReading(x)) continue;
+      // A hole is written as nothing and an element that is undefined as null: a hole is alike only to a hole.
+      if ((x === undefined && !(i in xs)) !== (y === undefined && !(i in ys))) return false;
+      const inner = pairOf(x, y);
+      if (inner === UNLIKE) return false;
+      if (inner !== ALIKE && !alikeInside(x, y, inner)) return false;
+    }
+    return true;
+  }
+  const xe = Object.entries(a as Record<string, unknown>);
+  const ye = Object.entries(b as Record<string, unknown>);
+  /** The place in the second list where the first's next key is looked for. */
+  let place = 0;
+  /** Once a key was not in its place: what the second list holds from that place on, by key, and how many of them the first has named. */
+  let byKey: Map<string, unknown> | undefined;
+  let found = 0;
+  // Each key the first names, the second names too, with a value written alike. (A key set to undefined is written as if it were not there.)
+  for (let n = 0; n < xe.length; n += 1) {
+    const x = xe[n][1];
+    if (x === undefined) continue;
+    const k = xe[n][0];
+    let y: unknown;
+    if (byKey === undefined) {
+      while (place < ye.length && ye[place][1] === undefined) place += 1;
+      if (place === ye.length) return false;
+      if (ye[place][0] === k) {
+        y = ye[place][1];
+        place += 1;
+      } else {
+        byKey = new Map<string, unknown>();
+        for (let m = place; m < ye.length; m += 1) if (ye[m][1] !== undefined) byKey.set(ye[m][0], ye[m][1]);
+      }
+    }
+    if (byKey !== undefined) {
+      y = byKey.get(k);
+      if (y === undefined) return false;
+      found += 1;
+    }
+    if (x === y && sameWithoutReading(x)) continue;
+    const inner = pairOf(x, y);
+    if (inner === UNLIKE) return false;
+    if (inner !== ALIKE && !alikeInside(x, y, inner)) return false;
+  }
+  // And the second names no key the first does not.
+  if (byKey === undefined) {
+    for (; place < ye.length; place += 1) if (ye[place][1] !== undefined) return false;
+    return true;
+  }
+  return found === byKey.size;
+}
+
+/**
+ * `want` is a subset of `have`: every key of an object present with a value
+ * that is itself a subset; arrays and scalars must be equal, which is to say
+ * written alike by stableStringify (writtenAlike).
+ *
+ * Nothing a request can carry is written out to be compared. Every string,
+ * number and array used to be, on both sides, at every comparison, and that
+ * was most of what a comparison cost.
+ *
+ * The answers are the ones comparing the writings gave, for every input a
+ * request can carry. Of what none carries, where writing a value out threw,
+ * this can answer, as the writings would have had they been made: two
+ * values that differ before a BigInt in them is reached, or before one of
+ * them comes back to itself; and two values nested deeper than the writing
+ * could go (this goes deeper before the stack runs out).
+ *
+ * An object under an expected key is asked in its turn, key by key, and the
+ * first key that fails ends the comparison, as it always did: a call that
+ * differs from the expected one in its first key costs one key.
+ *
+ * Each object is read the way it always was, and in no other. The expected
+ * object: its own keys and their values, listed once (Object.entries). The
+ * step's object: asked whether it holds each expected key, and then for the
+ * value. What a question by a key's name costs depends on the name and on
+ * what the process has compared before (once a place in the code has read
+ * more than one key name, a key that is a whole number of eight digits or
+ * more goes the engine's slow road at every read), so no object is asked a
+ * question by name that it was not asked before, and none is walked with
+ * for-in, which has a slow road of its own for as long as the process lives
+ * once it has walked an object whose keys are whole numbers.
+ */
 export function isSubset(want: unknown, have: unknown): boolean {
-  if (want === null || typeof want !== 'object' || Array.isArray(want)) return stableStringify(want) === stableStringify(have);
+  if (want === null || typeof want !== 'object' || Array.isArray(want)) return writtenAlike(want, have);
   if (have === null || typeof have !== 'object' || Array.isArray(have)) return false;
-  const h = have as Record<string, unknown>;
-  return Object.entries(want as Record<string, unknown>).every(([k, v]) => v === undefined || (k in h && isSubset(v, h[k])));
+  return holdsEach(Object.entries(want as Record<string, unknown>), have as Record<string, unknown>);
+}
+
+/**
+ * Whether the step's object holds what each entry of an expected object
+ * asks: the key, with a value the expected one is a subset of. The entries
+ * are the expected object's own keys and their values (a key it inherits is
+ * not one it names), and an entry set to undefined asks for nothing. An
+ * object under a key is asked by this function calling itself, as isSubset
+ * always called itself for one.
+ */
+function holdsEach(entries: ReadonlyArray<[string, unknown]>, h: Record<string, unknown>): boolean {
+  for (let n = 0; n < entries.length; n += 1) {
+    const entry = entries[n];
+    const v = entry[1];
+    if (v === undefined) continue;
+    const k = entry[0];
+    if (!(k in h)) return false;
+    const x = h[k];
+    if (v === x && sameWithoutReading(v)) continue;
+    if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+      // An expected object is a subset of nothing but an object.
+      if (x === null || typeof x !== 'object' || Array.isArray(x)) return false;
+      if (!holdsEach(Object.entries(v as Record<string, unknown>), x as Record<string, unknown>)) return false;
+    } else if (!writtenAlike(v, x)) return false;
+  }
+  return true;
 }
 
 /** Does an actual step satisfy an expected call? The name must match; the input only when the expectation carries one. */
