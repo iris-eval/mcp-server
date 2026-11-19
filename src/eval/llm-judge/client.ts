@@ -179,8 +179,9 @@ function reasonOf(err: unknown): string {
  * taken (`latencyMs`) runs to the body's end. A deadline that passes is a
  * timeout. A request that could not be made, and a reply with a success
  * status whose body was cut off before its end, are the provider's failure
- * to be reached (`unreachable`). An error status is the provider's answer: a
- * body of one that is cut off reads as empty, and the status decides.
+ * to be reached (`unreachable`); one whose body arrived and could not be
+ * decoded is a malformed reply. An error status is the provider's answer: a
+ * body of one that cannot be read reads as empty, and the status decides.
  */
 async function postBeforeDeadline(
   provider: string,
@@ -191,7 +192,7 @@ async function postBeforeDeadline(
 ): Promise<{ res: Response; body: string; latencyMs: number }> {
   if (!headersCanBeSent(init.headers)) {
     throw new LLMJudgeError(
-      `${provider} API key cannot be sent in a request header: it holds a line break, or a character such as a curly quote or a zero-width space copied with it. No request was made.`,
+      `${provider} API key cannot be sent in a request header: it holds an ASCII control character other than a tab, such as a line break, or a character above U+00FF, such as a curly quote or a zero-width space copied with it. No request was made.`,
       'auth',
     );
   }
@@ -215,6 +216,7 @@ async function postBeforeDeadline(
       body = await res.text();
     } catch (err) {
       if (aborted(err)) throw timedOut();
+      if (res.ok && undecodable(err)) throw new LLMJudgeError(`${provider} reply could not be decoded: ${reasonOf(err)}`, 'malformed_response');
       if (res.ok) throw new LLMJudgeError(`${provider} reply was cut off before its end: ${reasonOf(err)}`, 'unreachable');
       body = '';
     }
@@ -225,16 +227,29 @@ async function postBeforeDeadline(
 }
 
 /**
- * Whether the runtime's `Headers` accepts these headers: it refuses a value
- * with a line break inside it or a character past one byte. The key is the
- * one header that is not a constant, so a refusal is the operator's key, to
- * be fixed where it is set; it is never shown, and no request is made.
- * fetch refuses a few control characters `Headers` accepts, and such a key
- * is read as a request that could not be made (#1080).
+ * Whether fetch can send these headers. The runtime's `Headers` drops a tab,
+ * a line break, a carriage return or a space at either end of a value, and
+ * refuses one holding a NUL, a line break or a carriage return, or a
+ * character above U+00FF; fetch's dispatcher also refuses one holding any
+ * other ASCII control character but a tab (its own test of a header value,
+ * run here on the value `Headers` keeps). The key is the one header that is
+ * not a constant, so a refusal is the operator's key, to be fixed where it is
+ * set; it is never shown, and no request is made.
  */
 function headersCanBeSent(headers: RequestInit['headers']): boolean {
   try {
-    return new Headers(headers) instanceof Headers;
+    for (const [, value] of new Headers(headers)) if (/[^\t\x20-\x7e\x80-\xff]/.test(value)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** A body that arrived and could not be decoded: zlib's, brotli's or zstd's own code on the cause fetch gives, where a body cut off carries its socket's. */
+function undecodable(err: unknown): boolean {
+  try {
+    const code = (err as { cause?: { code?: unknown } } | null)?.cause?.code;
+    return typeof code === 'string' && /^(Z_|ERR__ERROR_|ZSTD_error_)/.test(code);
   } catch {
     return false;
   }

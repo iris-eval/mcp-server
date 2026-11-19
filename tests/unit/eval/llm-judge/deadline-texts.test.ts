@@ -31,10 +31,18 @@ type Unlisted = Exclude<LLMJudgeError['kind'], (typeof KINDS)[number] | 'unknown
 const everyKindListed: [Unlisted] extends [never] ? true : false = true;
 
 describe('what a caller is told of a judge call that fails', () => {
-  it('the recovery of each kind this change wrote (auth, rate_limit, timeout, unreachable) says what happened and what to do', () => {
+  it('the recovery of each kind this change wrote (auth, rate_limit, timeout, unreachable, malformed_response) says what happened and what to do', () => {
     const recovery = (kind: LLMJudgeError['kind']): unknown => toIrisError(new LLMJudgeError('m', kind)).envelope.recovery;
     expect(recovery('auth')).toEqual([
-      'The key was refused: by the provider, or before any request where it holds a line break, or a character past one byte such as a curly quote or a zero-width space. Check that the key in the env block of your MCP config is valid, live and copied whole, then restart the session.',
+      'The key was refused: by the provider, or before any request where it holds an ASCII control character other than a tab inside it, such as a line break, or a character above U+00FF, such as a curly quote or a zero-width space. Check that the key in the env block of your MCP config is valid, live and copied whole, then restart the session.',
+    ]);
+    // True of each reply of the kind, and its advice the one each row of the judge doc gives: a reply that could not be decoded, a response that is
+    // not JSON, one that ended at its output limit, a model that declined, and a judge's text that held no verdict.
+    expect(recovery('malformed_response')).toEqual([
+      "The provider answered, and its reply could not be read as a judgment: the message says why, and where the judge's text held no verdict, it shows what stood where the verdict belongs, or the start of it.",
+      'Where the message says the reply could not be decoded, or the response was not JSON or not a JSON object, retry; if it recurs, check what stands between this server and the provider (a proxy can alter a reply).',
+      'Where it says the reply ended at its output limit, raise max_output_tokens; where it says the model declined to answer, retry with another input or another model.',
+      'Otherwise, retry; if it recurs, pick another model.',
     ]);
     expect(recovery('rate_limit')).toEqual([
       "The provider rate-limited the call. Wait (retryAfterMs, where the provider named a wait) and retry. Iris asks once more itself only where the provider's wait ends before the call's deadline.",
@@ -85,12 +93,18 @@ describe('each sentence on a rate limit, a key, a provider that cannot be reache
 
   it('a key, a provider that cannot be reached, and the deadline: the rows of both docs', () => {
     const judge = one(read('docs/llm-as-judge.md'));
-    expect(judge).toContain('| `Anthropic API key cannot be sent in a request header` | Throws `LLMJudgeError kind=auth` before any request: the key holds a line break, or a character such as a curly quote or a zero-width space. The key is not shown |');
-    expect(judge).toContain('| `Anthropic could not be reached: fetch failed (ECONNREFUSED)` | `LLMJudgeError kind=unreachable`: the request could not be made, or a reply with a success status was cut off before its end (a reply with an error status is read by its status). A key holding a control character other than a line break, which the runtime refuses to send, is read so too (#1080), and so is a reply whose compressed body cannot be decoded, told as cut off (#1081) |');
+    expect(judge).toContain('| `Anthropic API key cannot be sent in a request header` | Throws `LLMJudgeError kind=auth` before any request where the key holds an ASCII control character other than a tab inside it, such as a line break, or a character above U+00FF, such as a curly quote or a zero-width space. The key is not shown |');
+    expect(judge).toContain('| `Anthropic could not be reached: fetch failed (ECONNREFUSED)` | `LLMJudgeError kind=unreachable`: the request could not be made, or a reply with a success status was cut off before its end (a reply with an error status is read by its status) |');
+    expect(judge).toContain('| `Anthropic reply could not be decoded: terminated (Z_DATA_ERROR)` | `LLMJudgeError kind=malformed_response` at once; not asked again: a reply with a success status whose compressed body arrived and could not be decoded | Retry; if it recurs, check what stands between this server and the provider (a proxy can alter a reply) |');
     expect(judge).toContain("Every request, its whole reply and the wait after a rate limit share it, so the call answers before an MCP client's own 60-second timeout");
     const cite = one(read('docs/semantic-citation-verify.md'));
-    expect(cite).toContain('| The key was refused: by the provider, or before any request where it holds a line break, or a character past one byte such as a curly quote or a zero-width space |');
-    expect(cite).toContain('| The provider could not be reached, or a reply with a success status was cut off before its end; so, too, a key holding another control character, which the runtime refuses to send (#1080), and a reply whose compressed body cannot be decoded (#1081) |');
+    expect(cite).toContain('| The key was refused: by the provider, or before any request where it holds an ASCII control character other than a tab inside it, such as a line break, or a character above U+00FF, such as a curly quote or a zero-width space |');
+    // A tab and the controls from 0x80 to 0x9f are sent: no sentence on a key says "another control character", or counts a character's bytes.
+    for (const [file, text] of [['docs/llm-as-judge.md', judge], ['docs/semantic-citation-verify.md', cite], ['src/tools/errors.ts', read('src/tools/errors.ts')], ['src/eval/llm-judge/client.ts', read('src/eval/llm-judge/client.ts')]]) {
+      expect(text, file).not.toMatch(/another control character|past one byte/);
+    }
+    expect(cite).toContain('| The provider could not be reached, or a reply with a success status was cut off before its end |');
+    expect(cite).toContain("| The provider's reply was not of the shape its API documents, its compressed body could not be decoded, or it held no answer: an OpenAI model declined (its `refusal`), or its reply reached its output limit before any answer (`finish_reason: \"length\"`). The message says which |");
     expect(read('src/eval/llm-judge/deadline.ts')).toContain('client built on the TypeScript SDK gives up on a request after 60 seconds');
   });
 
@@ -100,9 +114,9 @@ describe('each sentence on a rate limit, a key, a provider that cannot be reache
     for (const sentence of [
       'is `IRIS_PROVIDER_ERROR` with `kind: "unreachable"`, which is retryable,',
       'when the judge could not be reached for any citation, `IRIS_JUDGE_FAILED` is retryable.',
-      'is `IRIS_PROVIDER_ERROR` with `kind: "auth"` and no request is made, where it was the internal error with the runtime\'s sentence, which quoted the key when a line break, a carriage return or a NUL was inside it.',
-      'A key holding another control character passes that check, and the runtime then refuses to send it: it is answered `unreachable`, where it was the internal error (#1080).',
-      'So, too, is a reply whose compressed body arrives whole and cannot be decoded, told as cut off, where it was `malformed_response` (#1081).',
+      'An API key the runtime cannot send in a request header (one holding an ASCII control character other than a tab inside it, such as a line break, or a character above U+00FF, such as a curly quote or a zero-width space copied with it) is `IRIS_PROVIDER_ERROR` with `kind: "auth"` and no request is made, where it was the internal error with the runtime\'s sentence, which quoted the key when a line break, a carriage return or a NUL was inside it (#1080).',
+      'A reply whose compressed body arrives whole and cannot be decoded is `malformed_response`, as it was, and now says it could not be decoded (#1081).',
+      'The advice of that kind now follows what its message names: for such a reply, or a response that is not JSON or not a JSON object, what stands between this server and the provider; for a reply that ended at its output limit, a higher `max_output_tokens`; for a model that declined, another input or another model; otherwise another model, which it named for every reply. `verify_citations` names that kind in its advice when it fails every citation.',
       'A rate limit is asked again once only where its wait ends before the deadline; otherwise it is answered at once, with the wait the provider named in `retryAfterMs` (none where it named none).',
       "`latency_ms` runs to the end of the reply's body, where it ended when the reply began.",
       '(of eleven such shapes tried, five gave the verdict of a text block among the entries, three were already a malformed reply, and three were the internal error)',
@@ -110,6 +124,15 @@ describe('each sentence on a rate limit, a key, a provider that cannot be reache
       'gives up at 50 seconds, where each request had 60;',
     ]) {
       expect(entry, sentence).toContain(sentence);
+    }
+    // What the entry said of a key and a reply before, which is not so: it is not said beside what is.
+    for (const gone of [
+      'A key holding another control character passes that check, and the runtime then refuses to send it',
+      'told as cut off, where it was `malformed_response` (#1081)',
+      'another control character',
+      'past one byte',
+    ]) {
+      expect(entry, gone).not.toContain(gone);
     }
   });
 });
