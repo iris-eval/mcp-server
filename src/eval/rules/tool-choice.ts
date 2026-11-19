@@ -40,8 +40,13 @@ export const MIN_ASK_TERMS = 2;
 
 /** The ask's terms that some tool in the catalogue mentions — the only ones a choice can be judged on. */
 export function actionableTerms(ask: ReadonlySet<string>, tools: Iterable<ToolDescriptor>): Set<string> {
+  return actionableAmong(ask, Array.from(tools, toolTerms));
+}
+
+/** actionableTerms, of tools whose words have been taken already: each tool's terms, in any order. */
+function actionableAmong(ask: ReadonlySet<string>, termsOfEach: Iterable<ReadonlySet<string>>): Set<string> {
   const spoken = new Set<string>();
-  for (const tool of tools) for (const t of toolTerms(tool)) spoken.add(t);
+  for (const terms of termsOfEach) for (const t of terms) spoken.add(t);
   return new Set([...ask].filter((t) => spoken.has(t)));
 }
 
@@ -96,7 +101,15 @@ export const toolChoice: EvalRule = {
     if (ask.size < MIN_ASK_TERMS) {
       return { ruleName: 'tool_choice', passed: false, score: 0, skipped: true, skipClass: 'not_applicable', skipReason: `the ask has ${ask.size} content term${ask.size === 1 ? '' : 's'}; ${MIN_ASK_TERMS} are needed to judge a choice`, message: 'Ask too short to judge a tool choice' };
     }
-    const actionable = actionableTerms(ask, catalogue.values());
+    /*
+     * Each catalogue entry's terms are taken once an evaluation, and kept in
+     * the catalogue's order for the pass below: they were taken once to say
+     * what the ask can be judged on, again for every called name that led to
+     * the entry, and again for every entry not called.
+     */
+    const entryTerms: Set<string>[] = [];
+    for (const tool of catalogue.values()) entryTerms.push(toolTerms(tool));
+    const actionable = actionableAmong(ask, entryTerms);
     if (actionable.size === 0) {
       return { ruleName: 'tool_choice', passed: false, score: 0, skipped: true, skipClass: 'not_applicable', skipReason: 'no tool in the catalogue mentions any of the ask\'s content terms — there is nothing to choose between', message: 'No tool speaks to the ask' };
     }
@@ -112,22 +125,27 @@ export const toolChoice: EvalRule = {
      * the entry beside the call, so the reader can see which was taken.
      */
     const calledEntries = new Set<string>();
-    const calledTerms = new Set<string>();
     const calledAs: string[] = [];
     for (const name of called) {
       const match = catalogueMatch(catalogue, name);
       calledAs.push(match?.by === 'own' ? `${name}, read as the catalogue's ${match.tool.name}` : name);
-      if (!match) continue;
-      calledEntries.add(match.tool.name);
-      for (const t of toolTerms(match.tool)) calledTerms.add(t);
+      if (match) calledEntries.add(match.tool.name);
     }
-    const calledFit = fitOf(actionable, calledTerms);
+    // One pass over the catalogue, in the order its terms were kept: the called entries' terms together, and the best entry not called.
+    const calledTerms = new Set<string>();
     let best: { tool: ToolDescriptor; fit: number } | null = null;
+    let at = 0;
     for (const tool of catalogue.values()) {
-      if (calledEntries.has(tool.name)) continue;
-      const fit = fitOf(actionable, toolTerms(tool));
+      const terms = entryTerms[at];
+      at += 1;
+      if (calledEntries.has(tool.name)) {
+        for (const t of terms) calledTerms.add(t);
+        continue;
+      }
+      const fit = fitOf(actionable, terms);
       if (best === null || fit > best.fit || (fit === best.fit && tool.name < best.tool.name)) best = { tool, fit };
     }
+    const calledFit = fitOf(actionable, calledTerms);
     const margin = typeof context.customConfig?.tool_choice_margin === 'number' ? (context.customConfig.tool_choice_margin as number) : DEFAULT_TOOL_CHOICE_MARGIN;
     const minFit = typeof context.customConfig?.tool_choice_min_fit === 'number' ? (context.customConfig.tool_choice_min_fit as number) : DEFAULT_TOOL_CHOICE_MIN_FIT;
     const fired = best !== null && best.fit >= minFit && best.fit - calledFit >= margin;
