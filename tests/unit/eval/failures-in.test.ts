@@ -10,6 +10,8 @@
  * the definition. This file holds the two together on generated runs, and
  * counts what failuresIn reads.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { noSilentToolFailure } from '../../../src/eval/rules/safety.js';
 import { failureOf, failuresIn, recoveredBy, type StepFailure } from '../../../src/eval/rules/trajectory.js';
@@ -284,5 +286,15 @@ describe('no_silent_tool_failure — the evidence and the names', () => {
     // Five or fewer are named as they were.
     const few = judge(tools.slice(0, 5).map((tool, i) => failed(i, tool)), 'Several calls failed with errors, so nothing could be verified.');
     expect(few.message).toContain('5 tool calls went wrong (read_file, stat_file, list_dir, search_code, http_get) and the output acknowledges it');
+  });
+
+  it('the changelog says what the rule reads and what a caller sees, word for word', () => {
+    const changelog = readFileSync(resolve(__dirname, '..', '..', '..', 'CHANGELOG.md'), 'utf8');
+    expect(changelog).toContain(
+      "- **`no_silent_tool_failure` reads a run once to find its failures, and gives evidence for a failed call wherever it stands.** It asked, for each failed call, every call after it whether it recovered the failure, reading each later call's output and input again every time, so a large run with many failures held the rule, and the server with it, for seconds: about 7 s for the dearest request found that the server accepts. It now reads each call once, and which failures are open and which were recovered is as it was, on 4,000 generated runs and on the dearest requests found, which now take under 50 ms.",
+    );
+    expect(changelog).toContain(
+      "  - What a caller sees after upgrading: the evidence lists the run's first 25 failures wherever they stand, where a failure past the 25th call had none; and where the answer owns more than five calls that went wrong, the message names the first five tools and says how many more, where it named every one.",
+    );
   });
 });
