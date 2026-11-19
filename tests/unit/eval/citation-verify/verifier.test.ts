@@ -193,6 +193,24 @@ describe('verifyCitations', () => {
     expect(res.passed).toBe(false);
   });
 
+  it("a citation's input the judge's reply says was read from the cache or written to it is priced at those rates", async () => {
+    global.fetch = makeMockedFetch([
+      async () => new Response('The retry limit is five attempts.', { headers: { 'content-type': 'text/plain' } }),
+      async () =>
+        new Response(
+          JSON.stringify({
+            id: 'c',
+            choices: [{ message: { content: '{"supported":true,"confidence":0.9,"rationale":"It says five."}' }, finish_reason: 'stop' }],
+            usage: { prompt_tokens: 50_000, completion_tokens: 100, prompt_tokens_details: { cached_tokens: 10_000, cache_write_tokens: 20_000 } },
+          }),
+        ),
+    ]);
+    const res = await verifyCitations({ output: 'The retry limit is five attempts https://a.com/retry.', provider: 'openai', model: 'gpt-6.2-astra', apiKey: 'k', allowFetch: true, maxCostUsdTotal: 10 });
+    expect(res.totalJudged).toBe(1);
+    // 20,000 plain × 8 + 10,000 read × 0.40 + 20,000 written × 10, and 100 out × 40 = $0.368
+    expect(res.totalCostUsd).toBe(0.368);
+  });
+
   it('stops calling judge when total cost cap would be exceeded', async () => {
     global.fetch = makeMockedFetch([
       // source 1 — tiny body
