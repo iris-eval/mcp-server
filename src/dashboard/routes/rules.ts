@@ -390,9 +390,13 @@ async function previewRule(
     };
     /*
      * The rule is called here without an evaluation, so the measure the
-     * engine takes before its first rule is taken here (#1040): a stored
-     * trace nested deeper than an evaluation reads is one the deployed rule
-     * would never be handed, and the preview does not hand it over either.
+     * engine takes before its first rule is taken here, of what the rule is
+     * handed (#1040): a trace whose output, input, calls, spans or catalogue
+     * nest deeper than an evaluation reads is counted as one the rule would
+     * not judge, and is not handed to it. A stored trace's metadata is not
+     * handed to the rule, so it is not measured: a trace nested that deep
+     * only there is previewed as the rule would judge it, though an
+     * evaluation of it is refused.
      */
     if (nestsDeeperThanEvaluated(context)) {
       wouldSkip++;

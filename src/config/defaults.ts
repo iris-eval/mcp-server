@@ -83,11 +83,11 @@ export function maxInputElementsOf(security: { maxInputElements?: number; maxToo
  * The bytes and the elements were bounded; the levels were not, and 3,000
  * levels of `{"a":{"a":…}}` are 18 KB and 3,000 elements. Several rules
  * write an input out with a function that calls itself once for each level,
- * and when the stack runs out the rule gives no answer and takes no part in
- * the verdict, so a run nested deep enough was judged by fewer rules than
- * the caller asked for (#1040): as the first request a process answered, a
- * run that made one call six times failed the verdict with its input nested
- * 1,750 levels deep and passed it at 2,000. How deep that begins is not one
+ * and when the stack runs out the rule gives no answer, so a run nested
+ * deep enough was judged by fewer rules than the caller asked for (#1040):
+ * as the first request a process answered, every rule judged a run that
+ * made one call six times with its input nested 1,750 levels deep, and at
+ * 2,000 two of them gave no answer. How deep that begins is not one
  * number: it moves with the rule, the shape of the input and what the
  * process has run before.
  *

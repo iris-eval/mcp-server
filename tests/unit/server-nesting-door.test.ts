@@ -27,7 +27,7 @@ describe('the nesting limit and the handler it stands in front of', () => {
     await storage.initialize();
     try {
       expect(() => createIrisServer(defaultConfig, storage, undefined, { warn: () => {} })).toThrow(
-        'The nesting limit (security.maxInputDepth) could not be put in front of tool calls: the MCP SDK set no tools/call handler on this server.',
+        'The nesting limit (security.maxInputDepth) could not be put in front of tool calls: the MCP SDK did not set its tools/call handler where the limit stands.',
       );
     } finally {
       await storage.close();

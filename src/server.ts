@@ -212,7 +212,7 @@ export function createIrisServer(
     registerAllResources(server, storage, capabilities, ruleStore.auditPath);
     registerPrompts(server, config.server.version);
     // A server that could not put the limit in front of its tool calls does not start: the SDK did not set the handler where this stands.
-    if (!doorStands()) throw new Error('The nesting limit (security.maxInputDepth) could not be put in front of tool calls: the MCP SDK set no tools/call handler on this server.');
+    if (!doorStands()) throw new Error('The nesting limit (security.maxInputDepth) could not be put in front of tool calls: the MCP SDK did not set its tools/call handler where the limit stands.');
     return server;
   };
 

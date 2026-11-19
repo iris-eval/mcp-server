@@ -611,15 +611,15 @@ export class EvalEngine {
      * No rule reads an input nested deeper than MAX_EVALUATED_DEPTH, by any
      * road (#1040). Several rules write an input out with a function that
      * calls itself once for each level; past a few thousand levels such a
-     * rule gives no answer and takes no part in the verdict, so a run nested
-     * deep enough was judged by fewer rules than were asked. The doors hold
-     * every request to security.maxInputDepth, which is never more than
-     * this. This is for what no door stands in front of: a trace stored
-     * before the limit existed, a file the command line reads, an embedder's
-     * own call. The context is measured whole, once, before the first rule,
-     * and one nested deeper is refused, not half-judged. The one caller that
-     * hands a rule a stored trace without an evaluation, the dashboard's
-     * rule preview, takes the same measure (nestsDeeperThanEvaluated).
+     * rule gives no answer, so a run nested deep enough was judged by fewer
+     * rules than were asked. The doors hold every request to
+     * security.maxInputDepth, which is never more than this. This is for
+     * what no door stands in front of: a trace stored before the limit
+     * existed, and an embedder's own call. The context is measured whole,
+     * once, before the first rule, and one nested deeper is refused, not
+     * half-judged. The one caller that hands a rule a stored trace without
+     * an evaluation, the dashboard's rule preview, takes the same measure of
+     * what it hands the rule (nestsDeeperThanEvaluated).
      */
     if (nestsDeeperThanEvaluated(context)) throw new InputTooDeepError(MAX_EVALUATED_DEPTH);
     const started = performance.now();

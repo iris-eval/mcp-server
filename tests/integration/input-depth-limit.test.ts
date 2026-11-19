@@ -2,8 +2,8 @@
  * The nesting limit (security.maxInputDepth, #1040).
  *
  * Several rules write an input out with a function that calls itself once
- * for each level, and past a few thousand levels the stack runs out: the
- * rule gives no answer and takes no part in the verdict. The bytes and the
+ * for each level, and past a few thousand levels the stack runs out and the
+ * rule gives no answer. The bytes and the
  * elements of a request were bounded; the levels were not. So an input
  * nested deeper than the limit is refused at every door, before any rule
  * reads it.
@@ -34,7 +34,7 @@ import { createStdioTransport } from '../../src/transport/stdio.js';
 import { createHttpTransport } from '../../src/transport/http.js';
 import { DEFAULT_MAX_INPUT_DEPTH, DEFAULT_MAX_INPUT_ELEMENTS, defaultConfig, maxInputDepthOf } from '../../src/config/defaults.js';
 import { decodeExportTraceServiceRequest, OtlpTooDeepError } from '../../src/otel/protobuf.js';
-import { InputTooDeepError, jsonTextDepth, MAX_EVALUATED_DEPTH, MAX_JSON_TEXT_DEPTH, nestingDepth, tooDeepMessage } from '../../src/utils/element-count.js';
+import { countElements, InputTooDeepError, jsonTextDepth, MAX_EVALUATED_DEPTH, MAX_JSON_TEXT_DEPTH, nestingDepth, tooDeepMessage } from '../../src/utils/element-count.js';
 import { jsonByteLength, requestSizeLimitBytes } from '../../src/utils/size-limit.js';
 import { toIrisError } from '../../src/tools/errors.js';
 import { EvalEngine } from '../../src/eval/engine.js';
@@ -370,14 +370,33 @@ describe('a tool call nested deeper than the limit', () => {
     const deep = (await client.callTool({ name: 'evaluate_output', arguments: calls(1) })) as ToolResult;
     expect(deep.isError).toBe(true);
     expect(textOf(deep)).toContain(tooDeep("This call's arguments nest", 6));
+    // At the count's edge: arguments of exactly fifty elements are within it, so their levels are measured; fifty-one are the count's.
+    const padded = (total: number): Record<string, unknown> => {
+      const args = { output: 'x', tool_calls: [{ tool_name: 't', input: objects(4) }], metadata: {} as Record<string, number> };
+      for (let n = 0, pad = total - countElements(args, Infinity); n < pad; n += 1) args.metadata[`k${n}`] = n;
+      return args;
+    };
+    expect(countElements(padded(50), Infinity)).toBe(50);
+    expect(nestingDepth(padded(50), Infinity)).toBe(7);
+    expect(textOf((await client.callTool({ name: 'evaluate_output', arguments: padded(50) })) as ToolResult)).toContain(tooDeep("This call's arguments nest", 6));
+    expect(textOf((await client.callTool({ name: 'evaluate_output', arguments: padded(51) })) as ToolResult)).toMatch(/arguments contain more than the maximum of 50 elements/);
   });
 
   it('says to raise the limit only where it can be raised', async () => {
     // Below the most the setting can be, the answer says so and names how high it goes.
     const low = (await (await mcp(withDepth(6))).client.callTool({ name: 'evaluate_output', arguments: call(objects(4)) })) as ToolResult;
     const lowBody = JSON.parse(textOf(low)) as { error: { message: string; recovery: string[] } };
+    expect(lowBody.error.message).toContain('Nothing was read or stored.');
     expect(lowBody.error.message).toContain('or raise the limit.');
     expect(lowBody.error.recovery.join(' ')).toContain(`can be set as high as ${MAX_EVALUATED_DEPTH}`);
+    // So it does from the default up to one below the most.
+    for (const limit of [DEFAULT_MAX_INPUT_DEPTH, MAX_EVALUATED_DEPTH - 1]) {
+      const between = (await (await mcp(withDepth(limit))).client.callTool({ name: 'evaluate_output', arguments: call(objects(limit - 2)) })) as ToolResult;
+      const body = JSON.parse(textOf(between)) as { error: { message: string; recovery: string[] } };
+      expect(body.error.message, String(limit)).toContain(tooDeep("This call's arguments nest", limit));
+      expect(body.error.message, String(limit)).toContain('or raise the limit.');
+      expect(body.error.recovery.join(' '), String(limit)).toContain(`can be set as high as ${MAX_EVALUATED_DEPTH}`);
+    }
     // At the most, raising it is not on offer.
     const top = (await (await mcp(withDepth(MAX_EVALUATED_DEPTH))).client.callTool({ name: 'evaluate_output', arguments: call(objects(MAX_EVALUATED_DEPTH - 2)) })) as ToolResult;
     expect(top.isError).toBe(true);
@@ -392,7 +411,7 @@ describe('a tool call nested deeper than the limit', () => {
 
   it('holds a config that did not come through the loader to the setting\'s range: the door never lets in what the engine refuses', async () => {
     // An embedder's own config object: never deeper than an evaluation reads, and the default for what is not a whole number of at least 1.
-    const HELD: Array<[set: unknown, held: number]> = [[5_000, MAX_EVALUATED_DEPTH], [MAX_EVALUATED_DEPTH + 1, MAX_EVALUATED_DEPTH], [Infinity, MAX_EVALUATED_DEPTH], [NaN, DEFAULT_MAX_INPUT_DEPTH], [1.5, DEFAULT_MAX_INPUT_DEPTH], [0, DEFAULT_MAX_INPUT_DEPTH], [-5, DEFAULT_MAX_INPUT_DEPTH], ['300', DEFAULT_MAX_INPUT_DEPTH], [null, DEFAULT_MAX_INPUT_DEPTH]];
+    const HELD: Array<[set: unknown, held: number]> = [[5_000, MAX_EVALUATED_DEPTH], [MAX_EVALUATED_DEPTH + 1, MAX_EVALUATED_DEPTH], [Infinity, MAX_EVALUATED_DEPTH], [NaN, DEFAULT_MAX_INPUT_DEPTH], [1.5, DEFAULT_MAX_INPUT_DEPTH], [MAX_EVALUATED_DEPTH + 0.5, DEFAULT_MAX_INPUT_DEPTH], [0, DEFAULT_MAX_INPUT_DEPTH], [-5, DEFAULT_MAX_INPUT_DEPTH], ['300', DEFAULT_MAX_INPUT_DEPTH], [null, DEFAULT_MAX_INPUT_DEPTH]];
     for (const [set, held] of HELD) expect(maxInputDepthOf({ maxInputDepth: set as number }), String(set)).toBe(held);
     for (const within of [1, 6, DEFAULT_MAX_INPUT_DEPTH, 300, MAX_EVALUATED_DEPTH]) expect(maxInputDepthOf({ maxInputDepth: within })).toBe(within);
     for (const set of [5_000, Infinity, NaN]) {
@@ -652,7 +671,7 @@ describe('a protobuf body nested deeper than the limit', () => {
 describe('a string that holds JSON, which is no level to a door', () => {
   const text = (levels: number): string => `${'{"a":'.repeat(levels)}1${'}'.repeat(levels)}`;
 
-  it('where an object writes one key twice the text nests deeper than the value it parses to, and never the other way', () => {
+  it('where an object writes one key twice the text nests deeper than the value it parses to; over two thousand texts built at random, never the other way', () => {
     // JSON.parse keeps the last value of a key written twice, so the text's brackets can outnumber the value's levels. The scan errs to the side of reading such a text as the text it is.
     const TWICE: Array<[text: string, textDepth: number, valueDepth: number]> = [
       [`{"a":${text(300)},"a":1}`, 301, 1],
@@ -665,6 +684,26 @@ describe('a string that holds JSON, which is no level to a door', () => {
       expect(nestingDepth(JSON.parse(written), Infinity), written.slice(0, 40)).toBe(valueDepth);
       expect(jsonTextDepth(written, Infinity)).toBeGreaterThanOrEqual(nestingDepth(JSON.parse(written), Infinity));
     }
+    // Texts built at random from a fixed seed, their objects drawing each key from two, so most write one key twice.
+    let seed = 7;
+    const next = (n: number): number => {
+      seed = (Math.imul(seed, 1_103_515_245) + 12_345) >>> 0;
+      return (seed >>> 16) % n;
+    };
+    const build = (levels: number): string => {
+      if (levels === 0 || next(4) === 0) return String(next(10));
+      const items = Array.from({ length: 1 + next(3) }, () => build(levels - 1));
+      return next(2) === 0 ? `[${items.join(',')}]` : `{${items.map((item) => `"${'ab'[next(2)]}":${item}`).join(',')}}`;
+    };
+    let twice = 0;
+    for (let n = 0; n < 2_000; n += 1) {
+      const written = build(8);
+      const valueDepth = nestingDepth(JSON.parse(written), Infinity);
+      expect(jsonTextDepth(written, Infinity), written).toBeGreaterThanOrEqual(valueDepth);
+      if (jsonTextDepth(written, Infinity) > valueDepth) twice += 1;
+    }
+    // The texts reach the case the scan errs on, not only the one it reads exactly.
+    expect(twice).toBeGreaterThan(100);
   });
 
   it('its depth is read off the text: for a text that writes no key twice, what the value it parses to would measure, whatever its strings hold', () => {
@@ -801,11 +840,12 @@ describe('an input no door stood in front of', () => {
   it('the engine\'s refusal names its own limit, which no setting moves, and sends its reader to no setting', () => {
     const refusal = new InputTooDeepError(MAX_EVALUATED_DEPTH);
     expect(refusal.message).toContain(`nests more than ${MAX_EVALUATED_DEPTH} levels deep, the deepest an evaluation reads`);
+    expect(refusal.message).toContain('so no rule read it');
     expect(refusal.message).toContain('No setting raises this limit');
     expect(refusal.message).not.toMatch(/maxInputDepth|IRIS_MAX_INPUT_DEPTH/);
     const answered = toIrisError(refusal).envelope;
     expect(answered.code).toBe('IRIS_INVALID_ARGUMENT');
-    expect(answered.recovery.join(' ')).toContain('Send the nested value flatter, or as text');
+    expect(answered.recovery.join(' ')).toContain('Send the nested value flatter, or as text; a trace stored with a value this deep can be logged again without it.');
     expect(answered.recovery.join(' ')).not.toMatch(/maxInputDepth|IRIS_MAX_INPUT_DEPTH|raise/);
   });
 

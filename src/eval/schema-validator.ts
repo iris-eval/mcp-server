@@ -354,9 +354,8 @@ export function checkArguments(compiled: CompiledSchema, input: unknown): Argume
    * (measured: at 4,400 levels under a schema that is its own `items`, at 256
    * under a ring of 32 definitions, at 64 under a ring of 100, and on
    * `{"a":1}` under a definition that is only itself). Thrown out of here it
-   * would leave the rule with no answer, and a rule with no answer takes no
-   * part in the verdict (#1040). So it is answered as a value too large to
-   * check is: unchecked, with the reason.
+   * would leave the rule with no answer (#1040). So it is answered as a
+   * value too large to check is: unchecked, with the reason.
    */
   let ok: boolean;
   try {

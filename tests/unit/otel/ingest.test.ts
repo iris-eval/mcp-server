@@ -333,6 +333,11 @@ describe('fromOtlp — the conventions beside GenAI', () => {
       expect(wordsOf(text, 'input'), `${arrays} arrays`).toBe(text);
       expect(wordsOf(text, 'output'), `${arrays} arrays`).toBe(text);
     }
+    // A list in OpenAI's shape is held to the same limit: `[{"role":...,"content":...}]` is two levels around what its message holds.
+    const openai = (arrays: number): string => `[{"role":"user","content":"What is the refund window?","extra":${'['.repeat(arrays)}0${']'.repeat(arrays)}}]`;
+    expect(jsonTextDepth(openai(MAX_JSON_TEXT_DEPTH - 2), Infinity)).toBe(MAX_JSON_TEXT_DEPTH);
+    expect(wordsOf(openai(MAX_JSON_TEXT_DEPTH - 2), 'input')).toBe('What is the refund window?');
+    for (const arrays of [MAX_JSON_TEXT_DEPTH - 1, 3_000, 100_000]) expect(wordsOf(openai(arrays), 'input'), `${arrays} arrays`).toBe(openai(arrays));
   });
 
   it('one span whose input is such a text does not lose the request: every trace in it is mapped (#1040)', () => {

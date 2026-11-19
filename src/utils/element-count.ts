@@ -44,8 +44,8 @@ export function countElements(value: unknown, max: number): number {
  * typed array) are not a level, as they are not elements.
  *
  * Several rules write an input out with a function that calls itself once
- * for each level, and past a few thousand levels the stack runs out: the
- * rule gives no answer and takes no part in the verdict (#1040). So an
+ * for each level, and past a few thousand levels the stack runs out and the
+ * rule gives no answer (#1040). So an
  * input is measured before any rule reads it, and refused when it nests
  * deeper than the limit (security.maxInputDepth). The walk keeps a list of
  * its own, so an input nested deeper than the stack holds is measured like
@@ -91,8 +91,8 @@ export function nestingDepth(value: unknown, max: number): number {
  * The engine measures every evaluation's input before the first rule and
  * refuses one nested deeper (src/eval/engine.ts). The doors stand in front
  * of every request; this stands in front of what no door does: a trace
- * stored before the limit existed, a file the command line reads, an
- * embedder's own call. It is a constant and not a setting, and it is the
+ * stored before the limit existed, and an embedder's own call. It is a
+ * constant and not a setting, and it is the
  * most security.maxInputDepth can be set to: so nothing a door lets in is
  * refused here, and nothing let in here is deep enough for a rule to give
  * no answer on it.
@@ -103,8 +103,8 @@ export const MAX_EVALUATED_DEPTH = 512;
  * Whether what a rule is about to be handed nests deeper than any rule is
  * asked to read. One measure for every caller of a rule: the engine takes it
  * before the first rule of an evaluation, and the dashboard's rule preview,
- * which hands a rule a stored trace without an evaluation, takes it for
- * each trace.
+ * which hands a rule a stored trace without an evaluation, takes it of what
+ * it hands the rule from each trace.
  */
 export function nestsDeeperThanEvaluated(context: unknown): boolean {
   return nestingDepth(context, MAX_EVALUATED_DEPTH) > MAX_EVALUATED_DEPTH;
@@ -176,8 +176,8 @@ export function tooDeepBody(limit: number): { error: string; limit: number } {
 
 /**
  * An evaluation was handed an input nested deeper than the engine reads, by
- * a road no door stands on: a trace stored before the limit existed, a file
- * read by the command line, an embedder's own call. The engine measures
+ * a road no door stands on: a trace stored before the limit existed, or an
+ * embedder's own call. The engine measures
  * every context before a rule reads it and refuses with this, so that no
  * rule is left to give no answer on it. `status` is what the dashboard
  * answers with.
