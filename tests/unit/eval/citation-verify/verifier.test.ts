@@ -218,7 +218,7 @@ describe('verifyCitations', () => {
       __clearCitationCacheForTests();
       let calls = 0;
       global.fetch = vi.fn(async (url: string) => {
-        if (!String(url).includes('api.anthropic.com')) return new Response('The retry limit is five attempts.', { headers: { 'content-type': 'text/plain' } });
+        if (new URL(String(url)).hostname !== 'api.anthropic.com') return new Response('The retry limit is five attempts.', { headers: { 'content-type': 'text/plain' } });
         calls += 1;
         return new Response(JSON.stringify({ id: 'm', content: [{ type: 'text', text: '{"supported":true,"confidence":0.9,"rationale":"five"}' }], usage: { input_tokens: 1_000, output_tokens: 50 } }));
       }) as typeof fetch;
