@@ -248,6 +248,8 @@ As structured output, wherever the provider and the model offer it: Anthropic's 
 
 Every OpenAI model is sent `max_completion_tokens` for the output cap. A reasoning model (`gpt-5`, `gpt-5-mini` and the o-series) is sent no `temperature`, which those models do not take, and a low reasoning effort where the model takes one (`o1-mini` takes none), since its reasoning counts against the same cap as its answer.
 
+A Claude model before 4.7 (`claude-opus-4-6`, `claude-sonnet-4-6`, `claude-opus-4-5`, `claude-sonnet-4-5` and `claude-haiku-4-5`) is sent the call's `temperature`, 0 unless the call sets one. Claude 4.7 and later models take no `temperature` but the default, and Anthropic answers any other value with a 400, so they are sent none and judge at their own default. A call that sets `temperature` for a model that takes none, of either provider, is still made, and its response carries the warning `IRIS_ARGUMENT_NOT_SENT`.
+
 **What counts as malformed?**
 Two things.
 

@@ -78,6 +78,27 @@ export const OPENAI_MODELS: Readonly<Record<string, { reasoning: boolean; effort
 const AS_GPT_4O = { reasoning: false, structured: true } as const;
 
 /**
+ * The Claude models Iris prices that take a `temperature` other than the
+ * default (1). Anthropic's model deprecations page: a non-default
+ * `temperature` returns a 400 on Claude 4.7 and later models, under API
+ * version 2023-06-01 as well, so those are sent none and sample at their
+ * default. A Claude model not listed is sent none.
+ */
+export const ANTHROPIC_TEMPERATURE_MODELS: ReadonlySet<string> = new Set([
+  'claude-opus-4-6',
+  'claude-sonnet-4-6',
+  'claude-opus-4-5',
+  'claude-sonnet-4-5',
+  'claude-haiku-4-5',
+  'claude-haiku-4-5-20251001',
+]);
+
+/** Whether a model is sent the call's `temperature`: a Claude model before 4.7, or an OpenAI model that does not reason. */
+export function takesTemperature(provider: LLMProvider, model: string): boolean {
+  return provider === 'anthropic' ? ANTHROPIC_TEMPERATURE_MODELS.has(model) : !(OPENAI_MODELS[model] ?? AS_GPT_4O).reasoning;
+}
+
+/**
  * An allowance, in tokens, for the instructions a provider adds to a request
  * that asks for structured output. Neither provider publishes their size; it
  * is above the largest tool-use system prompt Anthropic publishes (804
@@ -249,7 +270,7 @@ async function callAnthropic(req: LLMJudgeRequest, deadline: number, budgetMs: n
       body: JSON.stringify({
         model: req.model,
         max_tokens: req.maxOutputTokens,
-        temperature: req.temperature,
+        ...(takesTemperature('anthropic', req.model) ? { temperature: req.temperature } : {}),
         system: req.systemPrompt,
         messages: [{ role: 'user', content: req.userPrompt }],
         ...(req.answer !== undefined ? { output_config: { format: { type: 'json_schema', schema: req.answer.schema } } } : {}),
