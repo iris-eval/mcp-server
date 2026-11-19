@@ -317,7 +317,8 @@ describe('waits a store sets in code, held, where a thread of its own answers (r
     // A TRUNCATE waits for no reader, and the busy timeout is set back after it: held, as the driver set it. The thread's own connection writes down what it is.
     await checkpointer.truncate();
     await checkpointer.exec('CREATE TABLE busy_after (ms INTEGER); INSERT INTO busy_after SELECT timeout FROM pragma_busy_timeout');
-    const holder = new DatabaseSync(path);
+    // The lock is held through the driver the thread uses: where the system keeps file locks per process (Linux, macOS), two copies of SQLite in one process do not see each other's.
+    const holder = openDriver(path, { driver: SEARCH_DRIVER, allowFallback: false });
     holder.exec('BEGIN IMMEDIATE');
     const started = Date.now();
     let released = false;
