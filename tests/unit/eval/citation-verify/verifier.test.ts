@@ -284,6 +284,19 @@ describe('verifyCitations', () => {
     expect(res.citations[1].resolveError).toBeUndefined();
   });
 
+  it("a judge whose request fails with nothing at all is the provider failing to be reached, named on the citation", async () => {
+    global.fetch = makeMockedFetch([
+      async () => new Response('supporting source', { headers: { 'content-type': 'text/plain' } }),
+      async () => {
+        throw null;
+      },
+    ]);
+    const res = await verifyCitations({ output: 'Claim one https://a.com.', provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k', allowFetch: true });
+    expect(res.totalResolved).toBe(1);
+    expect(res.totalJudged).toBe(0);
+    expect(res.citations[0].judgeError).toMatchObject({ kind: 'unreachable', message: 'Anthropic could not be reached: no reason given' });
+  });
+
   it('scores null (not zero) when every judge call fails', async () => {
     global.fetch = makeMockedFetch([
       // source fetch succeeds
@@ -304,7 +317,7 @@ describe('verifyCitations', () => {
     expect(res.totalJudged).toBe(0);
     expect(res.totalSupported).toBe(0);
     // Nothing was judged — there is no verdict, so no score and no fail.
-    expect(res.overallScore).toBeNull();
+    expect(res.overallScore).toBeNull();
     /*
      * The judge failed on every citation, so nothing was verified. That is
      * not a pass — a judge outage used to come back looking like a clean

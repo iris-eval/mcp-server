@@ -223,7 +223,9 @@ describe('every catalogue code can be provoked, and nothing else can', () => {
     expect(reference).toContain(
       'An argument the input schema rejects never reaches the handler: the protocol layer answers with plain text and no envelope. For an unknown argument the text names it, the valid arguments and `IRIS_INVALID_ARGUMENT`; for a wrong type, a required argument left out or a value a check refuses, it names the argument and what was expected, and carries no code.',
     );
-    expect(reference).toContain('`timeout_ms` on `evaluate_with_llm_judge` (default 60,000) bounds the wait for each reply to begin;');
+    expect(reference).toContain(
+      "`timeout_ms` on `evaluate_with_llm_judge` (default 50,000) is the whole call's deadline: every request to the provider, each reply's body, the wait after a rate limit and the second request after a reply that is not a judgment share it, so the call answers, with `IRIS_PROVIDER_ERROR` and `kind: \"timeout\"` when the time runs out, before that client gives up.",
+    );
   });
 
   it('the changelog marks the envelope as text BREAKING, and says a held database is one to retry', () => {

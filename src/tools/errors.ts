@@ -199,13 +199,14 @@ export function toIrisError(err: unknown): IrisError {
   }
 
   if (err instanceof LLMJudgeError) {
-    const retryable = err.kind === 'rate_limit' || err.kind === 'timeout' || err.kind === 'server_error';
+    const retryable = err.kind === 'rate_limit' || err.kind === 'timeout' || err.kind === 'server_error' || err.kind === 'unreachable';
     const recovery: Record<ProviderErrorKind, string[]> = {
-      auth: ['The provider refused the key. Check that the key in the env block of your MCP config is valid and live, then restart the session.'],
-      rate_limit: ['The provider rate-limited the call. Wait and retry; Iris already retried once.'],
+      auth: ['The key was refused: by the provider, or before any request where it holds a line break, or a character past one byte such as a curly quote or a zero-width space. Check that the key in the env block of your MCP config is valid, live and copied whole, then restart the session.'],
+      rate_limit: ["The provider rate-limited the call. Wait (retryAfterMs, where the provider named a wait) and retry. Iris asks once more itself only where the provider's wait ends before the call's deadline."],
       bad_request: ['The provider rejected the request. Check the model name and the template inputs.'],
       server_error: ['The provider failed on its side. Retry later.'],
-      timeout: ['The provider did not answer within timeout_ms. Retry, or raise timeout_ms.'],
+      timeout: ['The provider did not answer within timeout_ms, which every request, its reply and the wait after a rate limit share. Retry, or raise timeout_ms within your client\'s own request timeout.'],
+      unreachable: ['Iris could not reach the provider, or its reply was cut off before its end. Check that this server can reach it (its network, a proxy), then retry.'],
       malformed_response: ['The judge answered, and not with the JSON object it was asked for: the message shows what stood in its place, or the start of it. Retry; if it recurs, pick another model.'],
       unknown: ['Retry once; if it recurs, report the message with the provider and model.'],
     };
