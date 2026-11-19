@@ -79,16 +79,21 @@ you report.
 ## The 12 tools
 
 | Tool | What it does |
-|------|--------------|
-| `log_trace` | Record an agent execution — spans, tool calls, token usage, cost. Optional OTLP export via `IRIS_OTEL_ENDPOINT`. |
-| `evaluate_output` | Score output against the built-in rules. `eval_type` defaults to `all` — every bundle runs (completeness \| relevance \| safety \| cost \| custom); pass one bundle name to score only that bundle. Heuristic, deterministic, free. |
-| `get_traces` | Query stored traces with filters, pagination, time ranges. |
-| `list_rules` | Enumerate deployed custom eval rules, plus the built-in roster: the criticality this server applies, and each rule's kind of claim, what it needs, the question it answers and the failure classes it names. |
-| `deploy_rule` | Register a custom eval rule (Zod-validated) that fires on matching evaluations. |
-| `delete_rule` | Remove a deployed custom rule, or disable / re-enable it. |
-| `delete_trace` | Remove a single stored trace by ID. |
-| `evaluate_with_llm_judge` | Semantic eval via LLM (Anthropic or OpenAI). 7 templates: accuracy, helpfulness, safety, correctness, faithfulness, task_completed, relevance. Cost-capped, bring your own key — Iris never proxies. |
-| `verify_citations` | Extract citations, fetch sources behind an SSRF-guarded resolver, judge whether each source supports the claim. |
+|------|-------------|
+| `log_trace` | Store one agent execution (input, output, tool calls, spans, cost, tokens) and get the trace_id later calls key on. |
+| `evaluate_output` | Score an output with deterministic rules: a ship verdict with its basis, per-rule evidence, what was unjudged. |
+| `get_traces` | Query stored traces with filters, pagination and sorting; optionally with the dashboard summary. |
+| `compare_runs` | Did this change make the agent worse? Compares two runs: worse, better, equivalent, or too little evidence to tell. |
+| `compare_traces` | How reliably does the agent answer the same question? Per-case pass rates, flaky cases, and an interval that respects repeats. |
+| `evaluate_runs` | Re-score every trace in a run under the current rules into a new run, so a rules change is compared, not overwritten. |
+| `list_rules` | The rule inventory: every built-in rule with what it needs, its effective criticality and published accuracy, plus every deployed custom rule. |
+| `deploy_rule` | Deploy a custom rule that fires on every future evaluate_output call of its bundle — persisted, active immediately, audited. |
+| `delete_rule` | Remove a deployed custom rule — or, with enabled, disable or re-enable it without removing it — effective on the next evaluate_output call. |
+| `delete_trace` | Remove one stored trace by id; its spans go with it, and every evaluation linked to it keeps its verdict and loses its text. |
+| `evaluate_with_llm_judge` | Score an output with an LLM judge on your own key: a 0..1 score, a rationale, the spend. |
+| `verify_citations` | Is each citation in an output supported by its source? Extracts, fetches (opt-in, SSRF-guarded) and judges on your key. |
+
+`evaluate_output` runs every bundle by default (`eval_type: "all"`: completeness, relevance, safety, cost and custom); pass one bundle's name to score only that bundle. `evaluate_with_llm_judge` has 7 templates: accuracy, helpfulness, safety, correctness, faithfulness, task_completed, relevance. `log_trace` also exports to an OTLP collector when `IRIS_OTEL_ENDPOINT` is set.
 
 ## How to Read a Result
 
@@ -165,7 +170,7 @@ carry the judge's reasoning.
 | Cost | max_steps | A task must finish within a step budget — more tool calls than `max_steps` (default 50) fails. At the shipped default it ADVISES; set `max_steps` and it GATES, because only you know what your own agents do. Reads `tool_calls`; **skips** without them |
 | Cost | cost_anomaly | Cost against this agent's own recent history (modified z over its last 200 traces); a measurement that reports and never decides; skips below twenty prior costed traces |
 | Relevance | tool_choice | The right tool for the ask, from the `tools` catalogue: fires when an uncalled tool fits the ask's actionable terms at least 0.5 and beats the tools called by at least 0.34, naming both. Reads `input`, `tool_calls` and `tools`; **skips** without any of them. A heuristic detection: lowers the score, never vetoes |
-| Relevance | answers_the_ask | The output answers THIS ask: fails only when BOTH relevance measurements fail (keyword_overlap AND topic_consistency). A policy with no number of its own, so it **gates at the shipped defaults**; move the two measurements' thresholds to move it. Skips whenever either measurement skips and on an ask with fewer than two content terms, so a one-word right answer is never a fire |
+| Relevance | answers_the_ask | The output answers THIS ask: fires when BOTH relevance measurements fail (keyword_overlap AND topic_consistency), and on a bare refusal or the ask handed back. Read this way, from the words, it **advises at the shipped thresholds**: the failure is reported and does not decide the verdict. Set either measurement's threshold and it gates; configure a relevance judge (`IRIS_RELEVANCE_JUDGE_MODEL` and a provider key) and the judge decides, and the rule gates. Skips whenever either measurement skips and on an ask with fewer than two content terms, so a one-word right answer is never a fire |
 | Completeness | tool_sequence | The calls the caller expected against the calls made, in a mode (strict, unordered, subset, superset, ordered_subset — the default), matching by name and, when the expectation names arguments, by exact or subset input. Reads `tool_calls` and `expected_trajectory.tool_calls`; **skips** without either. A policy: gates because the caller stated the expectation |
 | Cost | step_budget | The tool-call count against THIS task's budget: `expected_trajectory.step_budget` (or the number of expected calls) × `tolerance` (default 1.5). Reads `tool_calls` and `expected_trajectory`; **skips** without either. A policy: gates because the caller stated the budget |
 | Completeness | no_unusual_action | A run against the same agent's earlier runs of its own case: fails when it called a tool known to act (the catalogue's `readOnlyHint: false` or `destructiveHint: true`, else a name whose first verb acts, or a shell's or interpreter's name) and none of the case's 20 most recent earlier runs called it. A look-up, and a tool neither the catalogue nor its name places, are named and not counted. An inference: from five earlier runs a fire is weighed in the verdict by what it was worth on agent runs labelled outside Iris; with three or four it reports and says why (`advisoryWhy`); `eval.advisoryRules` sets it to report only. Reads `tool_calls` and the case's stored history; **skips** without tool calls, below three earlier runs, and on a call with no `trace_id`, which has no history |

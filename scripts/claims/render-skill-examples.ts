@@ -35,6 +35,8 @@
  * tests/skill-examples-contract.test.ts calls renderSkillExamples() and
  * compares, so the check also runs in the suite.
  */
+// First, before any other module: the numbers these pages publish are measured under the runtime guard.
+import '../../src/apply-runtime-guard.js';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
