@@ -174,12 +174,12 @@ Set when `resolve_status` is `ok` and `judge` is absent. Until 0.20.0 these were
 | `cost_cap_reached`        | The next judge call would pass `max_cost_usd_total`; later citations are not attempted |
 | `daily_budget_reached`    | The next judge call does not fit in what is left of the day's `IRIS_LLM_JUDGE_DAILY_BUDGET_USD`; later citations are not attempted |
 | `malformed_judge_response`| The judge replied, but not with a readable verdict: the reply is not the JSON object it was asked for (asked for as structured output, the whole reply must be that object; from `o1-mini`, asked in text, it is read from the first brace to the last), or the object has no boolean under `supported`, or no number from 0 to 1 under `confidence`. The judge is asked once for each citation. The citation is not judged and takes no part in `passed`: the verdict rests on the citations that were judged. Until 0.22.0 a reply with no `supported`, or with `null` or `"true"` in quotes there, read as "not supported" and counted against the output, and a confidence of `null` read as 0 |
-| `auth`                    | The key was refused: by the provider, or before any request where it holds a character a request header cannot carry |
+| `auth`                    | The key was refused: by the provider, or before any request where it holds a line break, or a character past one byte such as a curly quote or a zero-width space |
 | `rate_limit`              | The provider rate-limited the call: asked again once where its wait ended before the call's deadline, else answered at once |
 | `bad_request`             | The provider refused the request (for example, a model it does not serve) |
 | `server_error`            | The provider returned a 5xx                                               |
 | `timeout`                 | The judge call did not answer within its deadline (50 seconds)            |
-| `unreachable`             | The provider could not be reached, or a reply with a success status was cut off before its end |
+| `unreachable`             | The provider could not be reached, or a reply with a success status was cut off before its end; so, too, a key holding another control character, which the runtime refuses to send (#1080), and a reply whose compressed body cannot be decoded (#1081) |
 | `malformed_response`      | The provider's reply was not of the shape its API documents, or held no answer: an OpenAI model declined (its `refusal`), or its reply reached its output limit before any answer (`finish_reason: "length"`). The message says which |
 | `unknown`, `llm_judge_error` | Any other failure of the judge call                                    |
 

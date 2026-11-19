@@ -94,12 +94,14 @@ describe('a judge call answers inside its deadline', () => {
     try {
       const cited = await settle(verifyCitations({ output: 'The sky is blue https://a.example/sky.', provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k', allowFetch: true }), 60_000);
       expect(cited.value?.citations[0].judgeError).toMatchObject({ kind: 'timeout', message: named });
+      expect(cited.at).toBe(50_000);
     } finally {
       __setDnsLookupForTests(null);
       __clearCitationCacheForTests();
     }
     const relevance = await settle(createRelevanceJudge({ model: 'claude-haiku-4-5', apiKey: 'k' }).judge({ input: 'What colour is the sky on a clear day?', output: 'The sky is blue on a clear day.' }), 60_000);
     expect(relevance.value?.error).toContain(named);
+    expect(relevance.at).toBe(50_000);
   });
 
   it('a reply that begins at once and whose body never ends is ended by the deadline, as a timeout', async () => {
@@ -163,6 +165,8 @@ describe('a judge call answers inside its deadline', () => {
     expect(await gapFor({ 'retry-after': '1.5' })).toBe(1_500);
     expect(await gapFor({ 'retry-after': ' 7 ' })).toBe(7_000);
     for (const none of ['-1', '1,5', 'soon', '+5', '5e0', '1.', '.5']) expect(await gapFor({ 'retry-after': none }), none).toBe(2_000);
+    // A date of the right shape that names no day there is: no wait.
+    expect(await gapFor({ 'retry-after': 'Mon, 99 Nov 2026 10:00:00 GMT' })).toBe(2_000);
     expect(await gapFor({ 'retry-after': new Date(Date.now() + 10_000).toUTCString() })).toBe(10_000);
     expect(await gapFor({ 'retry-after': new Date(Date.now() - 10_000).toUTCString() })).toBe(0);
   });
@@ -224,10 +228,12 @@ describe('a judge call answers inside its deadline', () => {
         expect(toIrisError(r.error).envelope).toMatchObject({ code: 'IRIS_PROVIDER_ERROR', kind: 'auth', retryable: false });
       }
     }
-    // A line break at the key's end is dropped by the runtime, as before: the request is made.
-    global.fetch = vi.fn(async () => new Response(JUDGMENT, { status: 200 })) as typeof fetch;
-    expect((await settle(callLLMJudge({ ...REQUEST, apiKey: 'sk-test\n' }), 10)).value?.content).toBe(VERDICT);
-    expect(global.fetch).toHaveBeenCalledTimes(1);
+    // A key the runtime carries is sent, as before: a line break at its end (the runtime drops it), a tab inside it, a character from 128 to 255.
+    for (const apiKey of ['sk-test\n', 'sk-te\tst', 'sk-tést', 'sk-testÿ']) {
+      global.fetch = vi.fn(async () => new Response(JUDGMENT, { status: 200 })) as typeof fetch;
+      expect((await settle(callLLMJudge({ ...REQUEST, apiKey }), 10)).value?.content, JSON.stringify(apiKey)).toBe(VERDICT);
+      expect(global.fetch, JSON.stringify(apiKey)).toHaveBeenCalledTimes(1);
+    }
   });
 
   it('a reply cut off before its end: with a success status the provider could not be reached; with an error status the status decides', async () => {
@@ -243,6 +249,19 @@ describe('a judge call answers inside its deadline', () => {
 
     global.fetch = vi.fn(async () => cutOff(503)) as typeof fetch;
     expect((await settle(callLLMJudge({ ...REQUEST }), 10)).error).toMatchObject({ kind: 'server_error', statusCode: 503 });
+
+    // Any success status, not 200 alone.
+    global.fetch = vi.fn(async () => cutOff(206)) as typeof fetch;
+    expect((await settle(callLLMJudge({ ...REQUEST }), 10)).error).toMatchObject({ kind: 'unreachable', message: 'Anthropic reply was cut off before its end: terminated (UND_ERR_SOCKET)' });
+
+    // An error status whose body the deadline ends: the deadline, since every request and its whole reply share it.
+    global.fetch = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const r = endless(init ?? {});
+      return new Response(r.body, { status: 401 });
+    }) as typeof fetch;
+    const late = await settle(callLLMJudge({ ...REQUEST, timeoutMs: 1_000 }), 2_000);
+    expect(late.error).toMatchObject({ kind: 'timeout', message: 'Anthropic did not answer within 1000 ms' });
+    expect(late.at).toBe(1_000);
 
     // A rate limit whose body is cut off is still a rate limit: its wait is read from its headers and waited out.
     let n = 0;
@@ -292,6 +311,8 @@ describe('a judge call answers inside its deadline', () => {
       expect(await replyTo('anthropic', JSON.stringify({ id: 'm', content })), JSON.stringify(content)).toMatchObject(notBlocks);
     }
     expect(await replyTo('anthropic', JSON.stringify({ id: 'm', content: [{ type: 'text', text: 5 }] }))).toMatchObject({ kind: 'malformed_response', message: 'Anthropic response had no text content block' });
+    expect(await replyTo('anthropic', JSON.stringify({ id: 'm', content: [{ type: 'text', text: '' }] }))).toMatchObject({ kind: 'malformed_response', message: 'Anthropic response had no text content block' });
+    expect(await replyTo('openai', JSON.stringify({ id: 'c', choices: [{ message: { content: '' } }] }))).toMatchObject({ kind: 'malformed_response', message: 'OpenAI response had no message content' });
     expect(await replyTo('anthropic', JSON.stringify({ id: 'm', content: [{ type: 'thinking' }, block] }))).toMatchObject({ content: VERDICT });
 
     const noContent = { kind: 'malformed_response', message: 'OpenAI response had no message content' };
@@ -302,7 +323,9 @@ describe('a judge call answers inside its deadline', () => {
   });
 
   it('a deadline already past, or one that is now, makes no request: the call is a timeout at once', async () => {
-    for (const deadline of [Date.now() - 1, Date.now()]) {
+    // Each deadline is taken when its call is made: the clock moves between the two calls.
+    for (const before of [1, 0]) {
+      const deadline = Date.now() - before;
       global.fetch = vi.fn(async () => new Response(JUDGMENT, { status: 200 })) as typeof fetch;
       const r = await settle(callLLMJudge({ ...REQUEST, timeoutMs: 1_000, deadline }), 10);
       expect(r.error).toMatchObject({ kind: 'timeout', message: 'Anthropic did not answer within 1000 ms' });
