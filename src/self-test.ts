@@ -461,7 +461,7 @@ export async function runSelfTest(write: WriteLine = stdoutLine, options: SelfTe
        */
       if (relevanceState.configured && !relevanceState.ready) {
         throw new Error(
-          `${judgeStateLine(state)}; relevance judge ${relevance}. answers_the_ask falls back to its lexical reading and only advises, so an off-topic answer passes: fix the variable named above, or unset IRIS_RELEVANCE_JUDGE_MODEL`,
+          `${judgeStateLine(state)}; relevance judge ${relevance}. answers_the_ask falls back to its lexical reading, which only advises, so an off-topic answer passes (and where the words alone cannot judge, the verdict is unknown wherever the rule has to answer, as shipped): fix the variable named above, or unset IRIS_RELEVANCE_JUDGE_MODEL`,
         );
       }
       return `${judgeStateLine(state)}; relevance judge ${relevance}; your MCP client passes only what its config env block lists — confirm with iris://capabilities from inside the client`;

@@ -244,7 +244,7 @@ export function registerLogTraceTool(server: McpServer, storage: IStorageAdapter
           'To score a stored trace (evaluate_output with its trace_id). To change one (delete_trace, then log again).',
         returns: logTraceOutputSchema,
         errors:
-          'IRIS_STORAGE_ERROR; IRIS_INVALID_ARGUMENT when evaluate is true without output. Unknown or malformed arguments are refused, naming the valid keys. ' + ERROR_ENVELOPE_SENTENCE,
+          'IRIS_STORAGE_ERROR; IRIS_INVALID_ARGUMENT when evaluate is true without output. Unknown arguments are refused naming the valid keys; malformed ones, saying why. ' + ERROR_ENVELOPE_SENTENCE,
         siblings: {
           evaluate_output: 'score the stored output',
           get_traces: 'query what was logged',

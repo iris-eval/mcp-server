@@ -193,8 +193,8 @@ export function roleOf(r: EvalRuleResult, cfg: ComposeConfig): Role {
  *   - a detection or an inference the estimate weighs is one voice among
  *     several. It counts when it THREW, which no natural run does and an
  *     input built for it can. Stopped at a limit of work, by a record that
- *     was cut or by a definition that is broken, it takes no part, as
- *     before (#1038 is where those are decided);
+ *     was cut, by an input it could not judge or by a definition that is
+ *     broken, it takes no part, as before (#1038 is where those are decided);
  *   - a rule that only reports and that nobody asked for takes no part by
  *     its fire, and none by its silence. Its row says that it reports, on
  *     an answer and on a silence alike (engine.ts).
@@ -205,6 +205,13 @@ function hadToAnswer(r: EvalRuleResult, cfg: ComposeConfig): boolean {
   if (r.asked !== undefined) return true;
   const role = roleOf(r, cfg);
   return role === 'gate' || role === 'veto' || (role === 'risk' && r.threw === true);
+}
+
+/** A row the third layer names, as a sentence names it: with why it had to answer, unless it is critical. */
+function whyItHadTo(r: EvalRuleResult): string {
+  if (isCritical(r)) return r.ruleName;
+  if (r.asked !== undefined) return `${r.ruleName}, which this ${r.asked === 'config' ? 'deployment' : 'call'} asked for`;
+  return r.threw === true ? `${r.ruleName}, which failed while it judged this run` : `${r.ruleName}, which gates here`;
 }
 
 /** The results the third layer names, in the order they stand in the evaluation. */
@@ -938,6 +945,8 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
     });
   }
   const unanswered = verdict.basis === 'critical_unknown' ? verdict : (verdict.also ?? []).find((l) => l.basis === 'critical_unknown');
+  // Whether the layer was composed from these rows (couldNot, in order); a verdict handed in with a layer these rows do not make is known only by its names.
+  const layerFromRows = unanswered !== undefined && couldNot.length === unanswered.by.length && couldNot.every((r, i) => r.ruleName === unanswered.by[i]);
   if (unanswered !== undefined) {
     /*
      * A rule that is not critical is here because somebody asked for it
@@ -946,14 +955,8 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
      * of the row the layer named. A verdict handed in with a layer these
      * rows do not make (it was not composed from them) is told by its names.
      */
-    const fromRows = couldNot.length === unanswered.by.length && couldNot.every((r, i) => r.ruleName === unanswered.by[i]);
-    const tells = fromRows
-      ? couldNot.map((r) => {
-          if (isCritical(r)) return r.ruleName;
-          if (r.asked !== undefined) return `${r.ruleName}, which this ${r.asked === 'config' ? 'deployment' : 'call'} asked for`;
-          return r.threw === true ? `${r.ruleName}, which failed while it judged this run` : `${r.ruleName}, which gates here`;
-        })
-      : unanswered.by;
+    const fromRows = layerFromRows;
+    const tells = fromRows ? couldNot.map(whyItHadTo) : unanswered.by;
     // Of critical rules alone the sentence is the one it always was, which is also what a verdict given under the earlier rules was told.
     const allCritical = !fromRows || !beyondCritical;
     const could = allCritical ? 'A critical check was asked and could not answer' : 'A check that had to answer could not';
@@ -1025,10 +1028,16 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
    * set `onCriticalSkipped: "pass"`. `critical_skipped` names it in the
    * fields; this is the sentence that used to ride in `suggestions`, and
    * without it a reader sees a clean verdict with no hint that a
-   * must-not-ship check never ran.
+   * must-not-ship check never ran. From composer rules 3 it is said of each
+   * such rule the third layer did not name, beside the layer's own
+   * sentence: a critical rule with nothing to judge was told nothing when
+   * the layer named another check.
    */
-  const skippedCritical = result.rule_results.filter((r) => isCritical(r) && r.skipped === true).map((r) => r.ruleName);
-  if (skippedCritical.length > 0 && unanswered === undefined) {
+  const rulesNow = (cfg.rules ?? COMPOSER_RULES) >= 3;
+  // The layer's own rows where it was composed from these rows, never a name looked up among them: a critical rule beside a check of its name is still told.
+  const namedByLayer = (r: EvalRuleResult): boolean => unanswered !== undefined && (layerFromRows ? couldNot.includes(r) : unanswered.by.includes(r.ruleName));
+  const skippedCritical = result.rule_results.filter((r) => isCritical(r) && r.skipped === true && !namedByLayer(r)).map((r) => r.ruleName);
+  if (skippedCritical.length > 0 && (unanswered === undefined || rulesNow)) {
     out.push({
       severity: 'warn',
       addressee: 'operator',
@@ -1036,6 +1045,23 @@ export function interpretations(result: Pick<EvalResult, 'rule_results' | 'cover
         verdict.state === 'pass'
           ? `Critical check(s) did not judge this output (${skippedCritical.join(', ')}), so they could not veto it. This verdict is clean on everything else, not on those; a gate that must fail closed should treat a skipped critical check as a failure.`
           : `Critical check(s) did not judge this output (${skippedCritical.join(', ')}), so they could not veto it. The verdict above says nothing about what they check.`,
+      configKey: 'eval.onCriticalSkipped',
+    });
+  }
+  /*
+   * Under `onCriticalSkipped: "pass"` the deployment accepts a check that
+   * could not answer, and the layer decides nothing. A critical one is told
+   * by the sentence above; one that had to answer for another reason (it
+   * gates here, somebody asked for it, or it failed while it judged) was
+   * named only by its row and the path. From composer rules 3 it is told in
+   * words as well.
+   */
+  const accepted = rulesNow && cfg.onCriticalSkipped === 'pass' ? couldNot.filter((r) => !isCritical(r)) : [];
+  if (accepted.length > 0) {
+    out.push({
+      severity: 'warn',
+      addressee: 'operator',
+      text: `A check that had to answer could not (${accepted.map(whyItHadTo).join('; ')}), and this deployment accepts that: eval.onCriticalSkipped is "pass". The verdict above says nothing about what ${accepted.length === 1 ? 'it checks' : 'they check'}.`,
       configKey: 'eval.onCriticalSkipped',
     });
   }

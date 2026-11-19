@@ -32,7 +32,7 @@ import { readFile } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
-import type { ClaimKind, EvalContext, EvalRule, EvalRuleResult, EvalType, FailureClass, Mechanism, Need, QuestionId } from '../types/eval.js';
+import type { ClaimKind, EvalContext, EvalRule, EvalRuleResult, EvalType, FailureClass, Mechanism, Need, QuestionId, RuleAnswer } from '../types/eval.js';
 import type { IrisConfig } from '../types/config.js';
 import { isBuiltInRuleName } from './built-in-names.js';
 import { irisHome } from '../utils/iris-home.js';
@@ -91,15 +91,16 @@ export function resolvePluginPath(path: string, home: string = irisHome()): stri
 }
 
 /** Wrap the plugin's evaluate so a throw or a wrong shape skips the evaluation as config_invalid, naming the plugin. */
-function guardedEvaluate(name: string, evaluate: (ctx: EvalContext) => EvalRuleResult): (ctx: EvalContext) => EvalRuleResult {
-  const skip = (why: string): EvalRuleResult => ({
+function guardedEvaluate(name: string, evaluate: (ctx: EvalContext) => EvalRuleResult): (ctx: EvalContext) => RuleAnswer {
+  const skip = (why: string): RuleAnswer => ({
     ruleName: name,
     passed: true,
     score: 0,
     message: `plugin "${name}" ${why}`,
     skipped: true,
+    skipClass: 'config_invalid',
     skipReason: `plugin "${name}" ${why}`,
-    // The stamp derives skipClass from this flag (stamp.ts skipClassOf).
+    // The stamp reads this flag before the class (stamp.ts skipClassOf).
     configInvalid: true,
   });
   return (ctx) => {
@@ -114,7 +115,8 @@ function guardedEvaluate(name: string, evaluate: (ctx: EvalContext) => EvalRuleR
     if (typeof r.passed !== 'boolean') return skip('returned a result without a boolean `passed`');
     if (typeof r.score !== 'number' || !Number.isFinite(r.score) || r.score < 0 || r.score > 1) return skip('returned a score outside 0..1');
     if (typeof r.message !== 'string') return skip('returned a result without a `message`');
-    return { ...(r as EvalRuleResult), ruleName: name };
+    // A skip the plugin returned without its class (`skipClass`) is read as one that could not judge (stamp.ts skipClassOf); no compiler checked it.
+    return { ...(r as EvalRuleResult), ruleName: name } as RuleAnswer;
   };
 }
 

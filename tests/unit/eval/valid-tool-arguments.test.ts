@@ -60,6 +60,8 @@ describe('valid_tool_arguments — the paths that skip', () => {
     });
     expect(r.skipped).toBe(true);
     expect(r.configInvalid).toBe(true);
+    // The rule says the kind itself, as every rule does: a broken definition, not a check that could not judge.
+    expect(r.skipClass).toBe('config_invalid');
     expect(r.skipReason).toContain('grep');
     expect(r.message).toMatch(/star height|backtrack/i);
   });

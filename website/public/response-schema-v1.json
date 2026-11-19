@@ -615,7 +615,7 @@
             }
           },
           "asked": {
-            "description": "on a rule that skipped for missing evidence, or that could not answer (it threw, was stopped at a limit, read a record that was cut, or its definition is broken), when somebody had asked for it: the deployment (a threshold it set, a promotion, a deployed gating rule, an installed judge) or the call itself. The verdict is read from that: unknown as shipped; where the rule could not answer, eval.onCriticalSkipped \"fail\" makes it a failure and \"pass\" accepts it; a layer that fails outranks either",
+            "description": "on a rule that skipped for missing evidence, or that could not answer (it threw, was stopped at a limit, read a record that was cut, could not judge what it was sent, or its definition is broken), when somebody had asked for it: the deployment (a threshold it set, a promotion, a deployed gating rule, an installed judge) or the call itself. The verdict is read from that: unknown as shipped; where the rule could not answer, eval.onCriticalSkipped \"fail\" makes it a failure and \"pass\" accepts it; a layer that fails outranks either",
             "type": "string",
             "enum": [
               "config",
