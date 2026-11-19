@@ -137,7 +137,7 @@ Same structure as `evaluate_with_llm_judge`:
 |----------------------------|-------------|-----------------------------------------------------------------|
 | `max_citations`            | 20          | Cap extraction count — protects against DoS-by-spam             |
 | `max_cost_usd_total`       | 1.00        | Hard cost ceiling; at most `IRIS_CITATION_MAX_COST_USD_TOTAL`   |
-| `per_source_timeout_ms`    | 10000       | Per-URL fetch timeout                                           |
+| `per_source_timeout_ms`    | 10000       | Per-URL fetch timeout, at most 2147483647                       |
 | `per_source_max_bytes`     | 5_242_880   | Per-URL body cap (5MB)                                          |
 | `allow_fetch`              | the server's | `false` skips fetching; `true` cannot turn it on               |
 | `domain_allowlist`         | null        | Narrows `IRIS_CITATION_DOMAINS`, never adds to it               |

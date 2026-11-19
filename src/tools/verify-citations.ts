@@ -8,6 +8,7 @@ import type { LLMProvider } from '../eval/llm-judge/client.js';
 import { generateEvalId } from '../utils/ids.js';
 import { JUDGE_KEY_VARS } from '../judge-enablement.js';
 import { DAILY_BUDGET_VAR } from '../eval/llm-judge/budget.js';
+import { MAX_TIMER_MS } from '../eval/llm-judge/deadline.js';
 import { strictInput } from './strict-input.js';
 import { assertTraceExists, insertLinkedEvalResult } from './trace-link.js';
 import { besideNote } from '../eval/of-record.js';
@@ -43,7 +44,7 @@ const inputSchema = {
     .optional()
     .describe('Cap TOTAL judge cost across all citations in this call, at most the operator\'s IRIS_CITATION_MAX_COST_USD_TOTAL (default 1.00 USD); the pipeline stops when the next call would exceed it'),
   max_citations: z.number().int().positive().max(50).optional().describe('Max citations to verify (extras skipped, not errored); default 20, at most 50'),
-  per_source_timeout_ms: z.number().int().positive().optional().describe('Per-URL fetch timeout; default 10_000'),
+  per_source_timeout_ms: z.number().int().positive().max(MAX_TIMER_MS).optional().describe(`Per-URL fetch timeout; default 10_000, at most ${MAX_TIMER_MS}`),
   per_source_max_bytes: z.number().int().positive().optional().describe('Per-URL body cap; default 5MB'),
   trace_id: z.string().optional().describe('Keep the verification result beside a stored trace (id from log_trace / get_traces). It is listed with the trace and never replaces its verdict; an unknown id is rejected before any fetch or judge call'),
 };
