@@ -32,6 +32,7 @@
  */
 import type { EvalContext } from '../types/eval.js';
 import type { Span, Step, StepSource, ToolCallRecord } from '../types/trace.js';
+import { jsonTextDepth, MAX_JSON_TEXT_DEPTH } from '../utils/element-count.js';
 
 /**
  * The ceiling on a derived trajectory.
@@ -109,6 +110,12 @@ function keywordArguments(value: unknown): unknown {
  * read as the object it encodes. OpenInference's `input.value` is JSON when
  * the span says so (`input.mime_type: application/json`, as its OpenAI Agents
  * SDK and LlamaIndex instrumentors write a tool's arguments).
+ *
+ * A string is no level to the doors that measure how deep a request nests,
+ * and read as JSON it becomes as deep a value as its text nests. So a text
+ * nested deeper than MAX_JSON_TEXT_DEPTH stays the text it is, as one that
+ * is not JSON does: the rules that write an input out give no answer on a
+ * value nested a few thousand levels deep (#1040).
  */
 function argumentsOf(span: Span): unknown {
   const bag = span.attributes;
@@ -120,6 +127,7 @@ function argumentsOf(span: Span): unknown {
     if (typeof value === 'string' && json) {
       const trimmed = value.trim();
       if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        if (jsonTextDepth(trimmed, MAX_JSON_TEXT_DEPTH) > MAX_JSON_TEXT_DEPTH) return value;
         try {
           return keywordArguments(JSON.parse(trimmed) as unknown);
         } catch {

@@ -4,6 +4,8 @@ import {
   StdioClientTransport,
   getDefaultEnvironment,
 } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { LATEST_PROTOCOL_VERSION } from '@modelcontextprotocol/sdk/types.js';
+import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -106,4 +108,65 @@ describe('Stdio Transport Integration', () => {
       }
     }
   }, 30000);
+
+  it('answers a tool call nested deeper than a message can be written out, with the limit named, and keeps serving', async () => {
+    /*
+     * The server as a client starts it, and each request written to its
+     * stdin as the line of text a client writes: a client's own
+     * JSON.stringify cannot write a value nested this deep, and the
+     * server's size check wrote every message out the same way. From about
+     * 4,800 levels that threw, and the request was never answered (#1040).
+     */
+    const serverPath = resolve(import.meta.dirname, '../../src/index.ts');
+    const home = mkdtempSync(join(tmpdir(), 'iris-stdio-depth-'));
+    const child = spawn(process.execPath, ['--import', 'tsx', serverPath], {
+      cwd: resolve(import.meta.dirname, '../..'),
+      env: { ...getDefaultEnvironment(), IRIS_HOME: home },
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+    type Answer = { id?: number; result?: { isError?: boolean; content?: Array<{ text?: string }> } };
+    const waiting = new Map<number, (answer: Answer) => void>();
+    let buffered = '';
+    child.stdout.on('data', (chunk: Buffer) => {
+      buffered += chunk.toString('utf8');
+      for (let end = buffered.indexOf('\n'); end >= 0; end = buffered.indexOf('\n')) {
+        const line = buffered.slice(0, end);
+        buffered = buffered.slice(end + 1);
+        if (line.trim() === '') continue;
+        const message = JSON.parse(line) as Answer;
+        if (typeof message.id === 'number') waiting.get(message.id)?.(message);
+      }
+    });
+    const ask = (id: number, method: string, paramsText: string): Promise<Answer | 'no answer'> => {
+      const answered = new Promise<Answer | 'no answer'>((done) => {
+        waiting.set(id, done);
+        setTimeout(() => done('no answer'), 20_000).unref();
+      });
+      child.stdin.write(`{"jsonrpc":"2.0","id":${id},"method":"${method}","params":${paramsText}}\n`);
+      return answered;
+    };
+    const call = (input: string): string => `{"name":"evaluate_output","arguments":{"output":"The file was read.","tool_calls":[{"tool_name":"read_file","input":${input}}]}}`;
+    try {
+      expect(await ask(1, 'initialize', JSON.stringify({ protocolVersion: LATEST_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: 'stdio-depth-test', version: '0.1.0' } }))).toHaveProperty('result');
+      child.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n');
+      for (const [id, levels] of [[2, 5_000], [3, 50_000]] as const) {
+        const answer = await ask(id, 'tools/call', call(`${'['.repeat(levels)}1${']'.repeat(levels)}`));
+        expect(answer, `${levels} arrays`).not.toBe('no answer');
+        const result = (answer as Answer).result;
+        expect(result?.isError, `${levels} arrays`).toBe(true);
+        expect(result?.content?.[0]?.text, `${levels} arrays`).toContain("This call's arguments nest more than 256 levels deep, the limit (security.maxInputDepth, or IRIS_MAX_INPUT_DEPTH)");
+      }
+      // The session survives the refusals.
+      const after = await ask(4, 'tools/call', call('{"path":"src/a.ts"}'));
+      expect(after).not.toBe('no answer');
+      expect((after as Answer).result?.isError ?? false).toBe(false);
+    } finally {
+      child.kill();
+      try {
+        rmSync(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+      } catch {
+        /* still held by the exiting child */
+      }
+    }
+  }, 60000);
 });

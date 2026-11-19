@@ -276,6 +276,11 @@ Environment variables (CLI flags take precedence):
                                        batch within the request size is not refused for its density. Also
                                        security.maxInputElements in config.json
   IRIS_MAX_TOOL_INPUT_ELEMENTS         Its name before 0.21.0, read when IRIS_MAX_INPUT_ELEMENTS is unset
+  IRIS_MAX_INPUT_DEPTH                 How many levels deep one input may nest (a whole number from 1 to 512; default: 256): a
+                                       tool call's arguments on every transport, a request body on the dashboard port, as JSON
+                                       or as protobuf, and a line of iris-eval ingest. An array or an object is one level more
+                                       than the deepest thing it holds. A tool call nested deeper gets an error result; a body,
+                                       413. Also security.maxInputDepth in config.json
   IRIS_NO_AUTO_LAUNCH                  Set to 1 to disable first-run dashboard auto-launch
   IRIS_ANTHROPIC_API_KEY               Required by evaluate_with_llm_judge + verify_citations (provider=anthropic)
   IRIS_OPENAI_API_KEY                  Required by evaluate_with_llm_judge + verify_citations (provider=openai)

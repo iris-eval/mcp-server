@@ -40,12 +40,27 @@ export class OtlpTooManyElementsError extends Error {
   }
 }
 
+/**
+ * A body holds a message nested inside more messages than the nesting limit
+ * allows (security.maxInputDepth). Each nested message decodes to at least
+ * one level of the JSON object, and the decoder calls itself once for each,
+ * so the decode stops there: it neither builds a tree the route would
+ * refuse nor runs the stack out on one built to do that.
+ */
+export class OtlpTooDeepError extends Error {
+  constructor(readonly limit: number) {
+    super(`a message nested more than ${limit} messages deep`);
+    this.name = 'OtlpTooDeepError';
+  }
+}
+
 type JsonObject = Record<string, unknown>;
 
-/** Nested messages one decode may still read; shared by every reader of one request. */
+/** Nested messages one decode may still read, and how deep one may stand inside another; shared by every reader of one request. */
 interface Budget {
   left: number;
   readonly limit: number;
+  readonly levels: number;
 }
 
 class Reader {
@@ -53,7 +68,9 @@ class Reader {
   constructor(
     readonly buf: Uint8Array,
     readonly end: number = buf.length,
-    readonly budget: Budget = { left: Infinity, limit: Infinity },
+    readonly budget: Budget = { left: Infinity, limit: Infinity, levels: Infinity },
+    /** How many messages this one stands inside. */
+    readonly level: number = 0,
   ) {}
 
   get done(): boolean {
@@ -128,8 +145,9 @@ class Reader {
 
   sub(): Reader {
     if (--this.budget.left < 0) throw new OtlpTooManyElementsError(this.budget.limit);
+    if (this.level >= this.budget.levels) throw new OtlpTooDeepError(this.budget.levels);
     const b = this.bytes();
-    return new Reader(b, b.length, this.budget);
+    return new Reader(b, b.length, this.budget, this.level + 1);
   }
 }
 
@@ -330,11 +348,12 @@ function resourceSpans(r: Reader): JsonObject {
  * OTLP/JSON object: `{ resourceSpans: [...] }`. Throws OtlpProtobufError on
  * a malformed buffer, and OtlpTooManyElementsError once it has read more
  * than `maxElements` nested messages (a body that decodes to more elements
- * than the limit allows; the route answers 413).
+ * than the limit allows; the route answers 413), and OtlpTooDeepError at a
+ * message that stands inside more than `maxDepth` others (the same answer).
  */
-export function decodeExportTraceServiceRequest(bytes: Uint8Array, options: { maxElements?: number } = {}): { resourceSpans: JsonObject[] } {
+export function decodeExportTraceServiceRequest(bytes: Uint8Array, options: { maxElements?: number; maxDepth?: number } = {}): { resourceSpans: JsonObject[] } {
   const limit = options.maxElements ?? Infinity;
-  const r = new Reader(bytes, bytes.length, { left: limit, limit });
+  const r = new Reader(bytes, bytes.length, { left: limit, limit, levels: options.maxDepth ?? Infinity });
   const out: { resourceSpans: JsonObject[] } = { resourceSpans: [] };
   while (!r.done) {
     const [field, wt] = r.tag();

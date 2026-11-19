@@ -63,6 +63,7 @@ import { canonicalCapture } from '../eval/evidence.js';
 import { AGGREGATED_INPUT_KEYS, AGGREGATED_OUTPUT_KEYS, CACHE_READ_KEYS, CACHE_WRITE_1H_KEYS, CACHE_WRITE_KEYS, INPUT_TOKEN_KEYS, OUTPUT_TOKEN_KEYS } from './usage-keys.js';
 import { resolveTraceCost } from '../cost/trace-cost.js';
 import { issuesText } from '../utils/validation-errors.js';
+import { jsonTextDepth, MAX_JSON_TEXT_DEPTH } from '../utils/element-count.js';
 
 /* ---- OTLP JSON, loosely typed (unknown fields pass; what we read is checked) ---- */
 
@@ -232,10 +233,17 @@ function messagesIn(value: unknown): unknown[] | undefined {
  * keeps the attribute as sent. Anything that is not messages, or has no
  * words for that side (an answer that is only tool calls), is returned as it
  * came.
+ *
+ * So is a text nested deeper than MAX_JSON_TEXT_DEPTH (#1040). A string is
+ * no level to the door that measures a body, and read as a value it is as
+ * deep as its text nests: a message's role was then written out by a
+ * function that calls itself once for each level, and one string of a few
+ * kilobytes ended the whole request in an error, with every trace in it.
  */
 export function wordsOf(text: string, side: Side): string {
   const trimmed = text.trimStart();
   if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return text;
+  if (jsonTextDepth(text, MAX_JSON_TEXT_DEPTH) > MAX_JSON_TEXT_DEPTH) return text;
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -618,6 +626,8 @@ function openInferenceTools(spans: readonly MappedSpan[]): string | undefined {
     if (entries.length === 0) continue;
     const tools: unknown[] = [];
     for (const [, value] of entries) {
+      // Each tool's text is held to the limit by itself (#1040): one nested deeper is one that cannot be read, and the others are kept.
+      if (jsonTextDepth(value, MAX_JSON_TEXT_DEPTH) > MAX_JSON_TEXT_DEPTH) continue;
       try {
         const parsed = JSON.parse(value) as Record<string, unknown>;
         const fn = parsed && typeof parsed === 'object' && parsed.function && typeof parsed.function === 'object' ? parsed.function : parsed;
@@ -631,8 +641,20 @@ function openInferenceTools(spans: readonly MappedSpan[]): string | undefined {
   return undefined;
 }
 
+/**
+ * The tools offered to the model, read from the string that carries them.
+ * A string is no level to the door that measures how deep a body nests, and
+ * parsed it is as deep as its text nests: so a text nested deeper than
+ * MAX_JSON_TEXT_DEPTH is not read, as one that is not JSON is not (#1040).
+ * What is measured is what was sent: the one attribute that carries the
+ * whole list, or each OpenInference tool's own text. The list put together
+ * here from those tools is one level deeper than the deepest of them, and
+ * is not measured again.
+ */
 function toolDefinitionsOf(spans: readonly MappedSpan[]): ToolDescriptor[] | undefined {
-  const raw = firstString(spans, TOOL_DEFINITION_KEYS) ?? openInferenceTools(spans);
+  const sent = firstString(spans, TOOL_DEFINITION_KEYS);
+  if (sent !== undefined && jsonTextDepth(sent, MAX_JSON_TEXT_DEPTH) > MAX_JSON_TEXT_DEPTH) return undefined;
+  const raw = sent ?? openInferenceTools(spans);
   if (raw === undefined) return undefined;
   try {
     const parsed: unknown = JSON.parse(raw);

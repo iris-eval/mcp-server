@@ -467,6 +467,13 @@ The guard ladder is in `src/eval/schema-validator.ts` and every rung has a test 
    probe cost once per process.
 6. A rung that trips rejects the WHOLE tool’s schema. A partially applied schema reporting a call valid
    is a false all-clear about a security-relevant class.
+7. A local `$ref` may refer to itself, and the validator generated for it calls itself: once for each
+   level of the value, or as many times a level as a ring of definitions is long, or without end under a
+   definition that is only itself. Neither the 64 KiB cap on the value nor the caps on the schema bound
+   that. A check that runs out of stack leaves the call unchecked, with the reason, as a value over
+   64 KiB is left; it is not thrown out of the rule, where it would leave the rule with no answer. A
+   custom `json_schema` rule checks an output against its schema only when the output nests no deeper
+   than 256 levels, and says so when it does not.
 
 **One tuning note, because it is a trap this repository has fallen into before.** The compile ceiling is
 wall-clock and therefore deliberately generous (1s). A tight one refuses honest schemas on a loaded

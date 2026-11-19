@@ -150,6 +150,26 @@ describe('iris-eval ingest', () => {
     await storage.close();
   }, 60_000);
 
+  it('rejects a line nested deeper than the limit by name, stores nothing for it, and goes on to the next (#1040)', async () => {
+    // A file is a door too: the same limit as a tool call's arguments and a request body (security.maxInputDepth).
+    const deep = { ...CLEAN, tool_calls: [{ tool_name: 'apply_patch', input: JSON.parse(`${'{"a":'.repeat(3_000)}1${'}'.repeat(3_000)}`) as unknown }] };
+    const { code, stdout, stderr } = await run(['ingest', '--evaluate'], `${JSON.stringify(deep)}\n${JSON.stringify(CLEAN)}\n`);
+    expect(code, stderr).toBe(0);
+    expect(stderr).toContain('rejected a trace — it nests more than 256 levels deep, the limit (security.maxInputDepth, or IRIS_MAX_INPUT_DEPTH); nothing was stored for it');
+    expect(stderr).toContain('1 stored, 1 rejected');
+    const out = lines(stdout);
+    expect(out).toHaveLength(1);
+    expect(out[0].passed).toBe(true);
+    const storage = new SqliteAdapter(join(home, 'iris.db'));
+    await storage.initialize();
+    expect((await storage.queryTraces(LOCAL_TENANT, {})).total).toBe(1);
+    await storage.close();
+    // The setting moves the limit here as at every other door.
+    const shallow = { ...CLEAN, tool_calls: [{ tool_name: 't', input: { a: { b: { c: 1 } } } }] };
+    const lowered = await run(['ingest'], JSON.stringify(shallow), { IRIS_MAX_INPUT_DEPTH: '5' });
+    expect(lowered.stderr).toContain('it nests more than 5 levels deep');
+  }, 60_000);
+
   it('refuses evaluate without an output before storing anything, and refuses an unknown command', async () => {
     const r = await run(['ingest', '--evaluate'], JSON.stringify({ agent_name: 'x', input: 'no output' }));
     expect(r.code).toBe(2);

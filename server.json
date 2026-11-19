@@ -238,6 +238,13 @@
           "name": "IRIS_MAX_TOOL_INPUT_ELEMENTS"
         },
         {
+          "description": "How many levels deep one input may nest (1 to 512, default 256): a tool call's arguments, and a dashboard or OTLP request body, JSON or protobuf. A tool call nested deeper gets an error result; a body, 413",
+          "isRequired": false,
+          "format": "number",
+          "isSecret": false,
+          "name": "IRIS_MAX_INPUT_DEPTH"
+        },
+        {
           "description": "Bind host for the dashboard (default 127.0.0.1); same as --dashboard-host",
           "isRequired": false,
           "format": "string",

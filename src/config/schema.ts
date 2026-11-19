@@ -24,6 +24,7 @@ import { z } from 'zod';
 import { WEBHOOK_EVENTS, WEBHOOK_FORMATS } from '../notify/event-names.js';
 import type { IrisConfig } from '../types/config.js';
 import { parseSizeLimit } from '../utils/size-limit.js';
+import { MAX_EVALUATED_DEPTH } from '../utils/element-count.js';
 
 /**
  * storage.searchBudgetMs and IRIS_SEARCH_BUDGET_MS, in milliseconds: long
@@ -34,6 +35,10 @@ export const SEARCH_BUDGET_RANGE_MS = [50, 60_000] as const;
 /** What security.maxInputElements and IRIS_MAX_INPUT_ELEMENTS accept, and their names before 0.21.0. */
 export const INPUT_ELEMENTS_RULE = 'a whole number of at least 1, e.g. 100000';
 const inputElements = z.number().int(INPUT_ELEMENTS_RULE).min(1, INPUT_ELEMENTS_RULE);
+/** What security.maxInputDepth and IRIS_MAX_INPUT_DEPTH accept: no deeper than the engine evaluates. */
+export const INPUT_DEPTH_RANGE = [1, MAX_EVALUATED_DEPTH] as const;
+export const INPUT_DEPTH_RULE = `a whole number from ${INPUT_DEPTH_RANGE[0]} to ${INPUT_DEPTH_RANGE[1]}, e.g. 256`;
+const inputDepth = z.number().int(INPUT_DEPTH_RULE).min(INPUT_DEPTH_RANGE[0], INPUT_DEPTH_RULE).max(INPUT_DEPTH_RANGE[1], INPUT_DEPTH_RULE);
 const port = z.number().int().min(1).max(65535);
 const nonNegativeInt = z.number().int().min(0);
 const nonNegative = z.number().min(0);
@@ -157,6 +162,7 @@ export const configFileSchema = z.strictObject({
       maxInputElements: inputElements.optional(),
       // Its name before 0.21.0, when it bounded tool calls only: still read, and loadConfig moves it to maxInputElements.
       maxToolInputElements: inputElements.optional(),
+      maxInputDepth: inputDepth.optional(),
     })
     .refine((s) => s.maxInputElements === undefined || s.maxToolInputElements === undefined, {
       message: 'set maxInputElements only: maxToolInputElements is its name before 0.21.0, and the two cannot both be set',

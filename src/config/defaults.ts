@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import type { IrisConfig } from '../types/index.js';
 import { irisHome } from '../utils/iris-home.js';
+import { MAX_EVALUATED_DEPTH } from '../utils/element-count.js';
 
 // Read version from package.json to avoid hardcoded drift
 let pkgVersion = '0.1.8';
@@ -69,6 +70,58 @@ export const DEFAULT_MAX_INPUT_ELEMENTS = 100_000;
  */
 export function maxInputElementsOf(security: { maxInputElements?: number; maxToolInputElements?: number } | undefined): number {
   return security?.maxInputElements ?? security?.maxToolInputElements ?? DEFAULT_MAX_INPUT_ELEMENTS;
+}
+
+/*
+ * How many levels deep one input may nest (security.maxInputDepth): a tool
+ * call's arguments on every transport, a request body on the dashboard
+ * port, as JSON or as protobuf, and a line the command line ingests. An
+ * array or an object is one level more than the deepest thing it holds, and
+ * the input is measured whole, with whatever wraps it
+ * (src/utils/element-count.ts).
+ *
+ * The bytes and the elements were bounded; the levels were not, and 3,000
+ * levels of `{"a":{"a":…}}` are 18 KB and 3,000 elements. Several rules
+ * write an input out with a function that calls itself once for each level,
+ * and when the stack runs out the rule gives no answer, so a run nested
+ * deep enough was judged by fewer rules than the caller asked for (#1040):
+ * as the first request a process answered, every rule judged a run that
+ * made one call six times with its input nested 1,750 levels deep, and at
+ * 2,000 two of them gave no answer. How deep that begins is not one
+ * number: it moves with the rule, the shape of the input and what the
+ * process has run before.
+ *
+ * Three numbers hold it, and this is the one an operator can set, from 1 to
+ * MAX_EVALUATED_DEPTH (512): the engine refuses an evaluation whose input
+ * nests deeper than that by whatever road it came, and a string that holds
+ * JSON is read as the value it encodes down to MAX_JSON_TEXT_DEPTH (256)
+ * and as text past it (both in src/utils/element-count.ts).
+ *
+ * They stand well clear on both sides. Of the 2,171 JSON files under
+ * tests, proof, src, examples, docs and website/public (the proof corpus,
+ * the OpenTelemetry exports of the agent frameworks, the published
+ * schemas), the deepest nests 13 levels.
+ * And as the first request of a process, where the stack holds least, every
+ * rule answers inputs, an output and an expected input nested 1,750 levels
+ * deep.
+ */
+export const DEFAULT_MAX_INPUT_DEPTH = 256;
+
+/**
+ * The nesting limit a config sets, else the default. A config built without
+ * the key (an embedder's) still gets the limit.
+ *
+ * A config file and the environment are held to the setting's range as
+ * they load (src/config). An embedder's own object does not pass through
+ * that, so it is held to the same range here: never more than the engine
+ * evaluates (a door must not let in what the engine then refuses, with a
+ * trace already stored), and the default for anything that is not a whole
+ * number of at least 1.
+ */
+export function maxInputDepthOf(security: { maxInputDepth?: number } | undefined): number {
+  const set: unknown = security?.maxInputDepth;
+  if (typeof set !== 'number' || !(set >= 1) || (Number.isFinite(set) && !Number.isInteger(set))) return DEFAULT_MAX_INPUT_DEPTH;
+  return Math.min(set, MAX_EVALUATED_DEPTH);
 }
 
 /*
@@ -224,5 +277,6 @@ export const defaultConfig: IrisConfig = {
     },
     requestSizeLimit: '1mb',
     maxInputElements: DEFAULT_MAX_INPUT_ELEMENTS,
+    maxInputDepth: DEFAULT_MAX_INPUT_DEPTH,
   },
 };
