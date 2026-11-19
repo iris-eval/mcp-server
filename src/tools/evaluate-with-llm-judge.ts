@@ -7,7 +7,7 @@ import { judgeEvalResult } from '../eval/llm-judge/persisted.js';
 import type { EvalEngine } from '../eval/engine.js';
 import { verdictSchema } from '../eval/response-schema.js';
 import { findPricing, MODEL_PRICING, supportedModelsSummary } from '../eval/llm-judge/pricing.js';
-import type { LLMProvider } from '../eval/llm-judge/client.js';
+import { takesTemperature, type LLMProvider } from '../eval/llm-judge/client.js';
 import { DEFAULT_JUDGE_DEADLINE_MS } from '../eval/llm-judge/deadline.js';
 import type { TemplateName } from '../eval/llm-judge/templates/index.js';
 import { generateEvalId } from '../utils/ids.js';
@@ -20,7 +20,7 @@ import { evidenceOf } from '../eval/evidence.js';
 import { agentModelOf, sameFamily, sameFamilyWarning } from '../eval/llm-judge/family.js';
 import { describeTool, ERROR_ENVELOPE_SENTENCE } from './describe.js';
 import { advertisedOutput } from './advertise.js';
-import { irisError } from './errors.js';
+import { irisError, type IrisWarningCode } from './errors.js';
 import { evaluationLinks, guarded, respond } from './respond.js';
 import { CAPABILITIES_RESOURCE_URI } from '../resources/uris.js';
 
@@ -52,7 +52,12 @@ const inputSchema = {
     .optional()
     .describe(`Cost cap in USD for this call, at most the operator's ${JUDGE_COST_CAP_VAR} (default ${JUDGE_DEFAULT_COST_CAP_USD}). The worst case (two attempts, full max_output_tokens) is computed before the call and refused if it exceeds the cap`),
   max_output_tokens: z.number().int().positive().max(4096).optional().describe('Judge output token cap; default 512'),
-  temperature: z.number().min(0).max(2).optional().describe('Sampling temperature; default 0 (deterministic)'),
+  temperature: z
+    .number()
+    .min(0)
+    .max(2)
+    .optional()
+    .describe('Sampling temperature, default 0, sent only to a model that takes one: Claude 4.7 and later and OpenAI\'s reasoning models are sent none and judge at their own default, with IRIS_ARGUMENT_NOT_SENT when one was set'),
   timeout_ms: z.number().int().positive().optional().describe(`The call's deadline in ms, which every request to the provider, its reply and the wait after a rate limit share; default ${DEFAULT_JUDGE_DEADLINE_MS}`),
 };
 
@@ -71,6 +76,19 @@ export function inferProvider(model: string): LLMProvider {
     });
   }
   return pricing.provider;
+}
+
+/**
+ * A temperature set for a model that takes none (client.ts, takesTemperature)
+ * is not sent: the call is still made, at the model's own default, and the
+ * response says so rather than spending a refused request.
+ */
+export function temperatureNotSent(model: string): { code: IrisWarningCode; message: string; field: string } {
+  return {
+    code: 'IRIS_ARGUMENT_NOT_SENT',
+    field: 'temperature',
+    message: `${model} takes no temperature but its default, so the one set was not sent: the model judged at its own default.`,
+  };
 }
 
 /**
@@ -114,7 +132,7 @@ export const judgeOutputSchema = z.looseObject({
   warnings: z
     .array(z.looseObject({ code: z.string(), message: z.string() }))
     .optional()
-    .describe('IRIS_JUDGE_SAME_FAMILY: the judge shares a model family with the agent; warned, never refused. IRIS_ARGUMENT_NARROWED: max_cost_usd asked for more than the operator\'s cap, and the cap applied'),
+    .describe('IRIS_JUDGE_SAME_FAMILY: the judge shares a model family with the agent; warned, never refused. IRIS_ARGUMENT_NARROWED: max_cost_usd asked for more than the operator\'s cap, and the cap applied. IRIS_ARGUMENT_NOT_SENT: temperature was set for a model that takes none, so none was sent'),
 });
 
 export function registerEvaluateWithLLMJudgeTool(
@@ -182,6 +200,7 @@ export function registerEvaluateWithLLMJudgeTool(
       const warnings: Array<{ code: string; message: string; field?: string }> = [
         ...(cost.warning ? [asWarning(cost.warning)] : []),
         ...(agentModel !== null && sameFamily(args.model, agentModel) ? [sameFamilyWarning(args.model, agentModel)] : []),
+        ...(args.temperature !== undefined && !takesTemperature(provider, args.model) ? [temperatureNotSent(args.model)] : []),
       ];
 
       const params = {

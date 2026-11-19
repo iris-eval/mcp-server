@@ -18,6 +18,9 @@
 //   - The answer asked for as structured output where the model offers it
 //     (answer.ts): Anthropic's output_config.format, OpenAI's strict
 //     json_schema response format; the reply is then the object alone
+//   - Each model asked in the form it takes (ANTHROPIC_MODELS,
+//     OPENAI_MODELS): a temperature only where it is taken, and a low effort
+//     where the model reasons or thinks inside the cap of its answer
 
 import type { JudgeAnswer } from './answer.js';
 import { DEFAULT_JUDGE_DEADLINE_MS } from './deadline.js';
@@ -76,6 +79,46 @@ export const OPENAI_MODELS: Readonly<Record<string, { reasoning: boolean; effort
   'o1-mini': { reasoning: true, structured: false },
 };
 const AS_GPT_4O = { reasoning: false, structured: true } as const;
+
+/**
+ * How each Claude model Iris prices (pricing.ts) is asked, from Anthropic's
+ * own pages.
+ *
+ * `temperature`: whether it takes one other than the default (1). The model
+ * deprecations page: a non-default `temperature` returns a 400 on Claude 4.7
+ * and later models, under API version 2023-06-01 as well, so those are sent
+ * none and sample at their default.
+ *
+ * `thinks`: whether it thinks when the request sets no `thinking`, as every
+ * Claude 5 model does (the thinking page). Its thinking counts against
+ * `max_tokens`, the same cap as its answer, so such a model is asked for a
+ * low effort (`output_config.effort`), at which it keeps its thinking short
+ * and skips it on a simple request. A model that does not think is sent no
+ * effort: Claude Sonnet 4.5 and Haiku 4.5 do not take one.
+ *
+ * A Claude model not listed is asked as the current ones are: no
+ * temperature, a low effort.
+ */
+export const ANTHROPIC_MODELS: Readonly<Record<string, { temperature: boolean; thinks: boolean }>> = {
+  'claude-fable-5-1': { temperature: false, thinks: true },
+  'claude-opus-5-5': { temperature: false, thinks: true },
+  'claude-sonnet-5': { temperature: false, thinks: true },
+  'claude-opus-5': { temperature: false, thinks: true },
+  'claude-opus-4-8': { temperature: false, thinks: false },
+  'claude-opus-4-7': { temperature: false, thinks: false },
+  'claude-opus-4-6': { temperature: true, thinks: false },
+  'claude-sonnet-4-6': { temperature: true, thinks: false },
+  'claude-opus-4-5': { temperature: true, thinks: false },
+  'claude-sonnet-4-5': { temperature: true, thinks: false },
+  'claude-haiku-4-5': { temperature: true, thinks: false },
+  'claude-haiku-4-5-20251001': { temperature: true, thinks: false },
+};
+const AS_CURRENT_CLAUDE = { temperature: false, thinks: true } as const;
+
+/** Whether a model is sent the call's `temperature`: a Claude model before 4.7, or an OpenAI model that does not reason. */
+export function takesTemperature(provider: LLMProvider, model: string): boolean {
+  return provider === 'anthropic' ? (ANTHROPIC_MODELS[model] ?? AS_CURRENT_CLAUDE).temperature : !(OPENAI_MODELS[model] ?? AS_GPT_4O).reasoning;
+}
 
 /**
  * An allowance, in tokens, for the instructions a provider adds to a request
@@ -236,6 +279,12 @@ function parseRetryAfter(headers: Headers): number | undefined {
 async function callAnthropic(req: LLMJudgeRequest, deadline: number, budgetMs: number): Promise<LLMJudgeResponse> {
   // Every Claude model Iris prices offers structured outputs; the answer comes back as the JSON object alone in a text block.
   const structured = req.answer !== undefined;
+  const how = ANTHROPIC_MODELS[req.model] ?? AS_CURRENT_CLAUDE;
+  const outputConfig = {
+    ...(req.answer !== undefined ? { format: { type: 'json_schema', schema: req.answer.schema } } : {}),
+    // A model that thinks unasked shares its output cap with its thinking: a low effort keeps the answer inside it.
+    ...(how.thinks ? { effort: 'low' } : {}),
+  };
   const { res, body, latencyMs } = await postBeforeDeadline(
     'Anthropic',
     'https://api.anthropic.com/v1/messages',
@@ -249,10 +298,10 @@ async function callAnthropic(req: LLMJudgeRequest, deadline: number, budgetMs: n
       body: JSON.stringify({
         model: req.model,
         max_tokens: req.maxOutputTokens,
-        temperature: req.temperature,
+        ...(how.temperature ? { temperature: req.temperature } : {}),
         system: req.systemPrompt,
         messages: [{ role: 'user', content: req.userPrompt }],
-        ...(req.answer !== undefined ? { output_config: { format: { type: 'json_schema', schema: req.answer.schema } } } : {}),
+        ...(Object.keys(outputConfig).length > 0 ? { output_config: outputConfig } : {}),
       }),
     },
     deadline,

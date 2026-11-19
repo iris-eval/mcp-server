@@ -816,6 +816,7 @@ Score output using an LLM as the judge (Anthropic or OpenAI). Seven templates. C
 | `max_cost_usd` | `number` | No | Cost cap for this call, at most the operator's `IRIS_LLM_JUDGE_MAX_COST_USD_PER_EVAL` (default $0.25). A larger value is lowered to the operator's cap, with an `IRIS_ARGUMENT_NARROWED` warning |
 | `trace_id` | `string` | No | Keep the judgment beside a stored trace: the response carries `reference_trace_id`, and a judgment is never the trace's verdict |
 | `agent_model` | `string` | No | The model that produced the output, when no linked trace records it (a trace carries it as `metadata.model` or a span's `gen_ai.request.model`). Used only for the same-family warning |
+| `temperature` | `number` | No | 0 to 2; default 0. Sent only to a model that takes one: Claude 4.7 and later and OpenAI's reasoning models are sent none and judge at their own default, and a value set for one of them is answered with an `IRIS_ARGUMENT_NOT_SENT` warning |
 
 #### Response (summary)
 

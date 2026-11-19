@@ -124,7 +124,8 @@ describe('the answer each provider is asked for', () => {
   it.each(pricedModels('anthropic'))('the Claude model %s, priced, is asked for its answer as structured output', async (model) => {
     const p = provider(anthropicReply(ANSWER));
     const res = await callLLMJudge(request({ model, answer }));
-    expect(p.bodies[0].output_config).toEqual({ format: { type: 'json_schema', schema: answer.schema } });
+    // Its effort, where it thinks unasked, rides beside the format (model-request-form.test.ts).
+    expect(p.bodies[0].output_config).toMatchObject({ format: { type: 'json_schema', schema: answer.schema } });
     expect(res).toMatchObject({ content: ANSWER, structured: true });
   });
 

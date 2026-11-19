@@ -57,6 +57,8 @@ export const WARNING_CODE_CATALOGUE = [
   'IRIS_JUDGE_SAME_FAMILY',
   /** An argument asked for more than the operator allows (fetching, domains, cost); the operator's setting applied (operator-ceilings.ts). */
   'IRIS_ARGUMENT_NARROWED',
+  /** An argument the model does not take (a temperature, for Claude 4.7 and later and OpenAI's reasoning models) was not sent; the model's own default applied. */
+  'IRIS_ARGUMENT_NOT_SENT',
 ] as const;
 export type IrisWarningCode = (typeof WARNING_CODE_CATALOGUE)[number];
 
