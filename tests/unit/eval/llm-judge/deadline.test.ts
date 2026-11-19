@@ -48,6 +48,17 @@ const cutOff = (status: number, headers: Record<string, string> = {}): Response 
     { status, headers },
   );
 
+/** A reply whose body arrived and could not be decoded, with the error Node's fetch gives (its decoder's code on the cause). */
+const undecodable = (status: number, code: string): Response =>
+  new Response(
+    new ReadableStream({
+      start(controller) {
+        controller.error(new TypeError('terminated', { cause: Object.assign(new Error('incorrect header check'), { code }) }));
+      },
+    }),
+    { status },
+  );
+
 /** The provider answers with `judge`; any other host (a cited source) with a page of text. */
 const routed = (judge: (init: RequestInit) => Response): typeof fetch =>
   vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
@@ -212,7 +223,9 @@ describe('a judge call answers inside its deadline', () => {
   });
 
   it("a key a request header cannot carry is refused before any request, as the key's fault, and is never shown", async () => {
-    for (const apiKey of ['sk-test​', '“sk-test”', 'sk-te\nst']) {
+    // What Headers refuses (a character past one byte, a line break inside), and what fetch's dispatcher refuses beside it (another control character but a tab, anywhere in the key).
+    const controls = [0x01, 0x08, 0x0b, 0x0c, 0x0e, 0x1b, 0x1f, 0x7f].flatMap((c) => [`sk-te${String.fromCharCode(c)}st`, `sk-test${String.fromCharCode(c)}`, `${String.fromCharCode(c)}sk-test`]);
+    for (const apiKey of ['sk-test​', '“sk-test”', 'sk-te\nst', ...controls]) {
       for (const [provider, model, name] of [
         ['anthropic', 'claude-haiku-4-5', 'Anthropic'],
         ['openai', 'gpt-4o-mini', 'OpenAI'],
@@ -221,15 +234,15 @@ describe('a judge call answers inside its deadline', () => {
         const r = await settle(callLLMJudge({ ...REQUEST, provider, model, apiKey }), 10);
         expect(r.error, `${provider} ${JSON.stringify(apiKey)}`).toMatchObject({
           kind: 'auth',
-          message: `${name} API key cannot be sent in a request header: it holds a line break, or a character such as a curly quote or a zero-width space copied with it. No request was made.`,
+          message: `${name} API key cannot be sent in a request header: it holds a line break or another control character, or a character such as a curly quote or a zero-width space copied with it. No request was made.`,
         });
         expect((r.error as Error).message).not.toContain('sk-te');
         expect(global.fetch).not.toHaveBeenCalled();
         expect(toIrisError(r.error).envelope).toMatchObject({ code: 'IRIS_PROVIDER_ERROR', kind: 'auth', retryable: false });
       }
     }
-    // A key the runtime carries is sent, as before: a line break at its end (the runtime drops it), a tab inside it, a character from 128 to 255.
-    for (const apiKey of ['sk-test\n', 'sk-te\tst', 'sk-tést', 'sk-testÿ']) {
+    // A key the runtime carries is sent, as before: a line break, a carriage return or a tab at its end (Headers drops it), a tab or a space inside it, a character from 128 to 255.
+    for (const apiKey of ['sk-test\n', 'sk-test\r', 'sk-test\t', '\tsk-test', 'sk-te\tst', 'sk-te st', 'sk-tést', 'sk-testÿ']) {
       global.fetch = vi.fn(async () => new Response(JUDGMENT, { status: 200 })) as typeof fetch;
       expect((await settle(callLLMJudge({ ...REQUEST, apiKey }), 10)).value?.content, JSON.stringify(apiKey)).toBe(VERDICT);
       expect(global.fetch, JSON.stringify(apiKey)).toHaveBeenCalledTimes(1);
@@ -253,6 +266,17 @@ describe('a judge call answers inside its deadline', () => {
     // Any success status, not 200 alone.
     global.fetch = vi.fn(async () => cutOff(206)) as typeof fetch;
     expect((await settle(callLLMJudge({ ...REQUEST }), 10)).error).toMatchObject({ kind: 'unreachable', message: 'Anthropic reply was cut off before its end: terminated (UND_ERR_SOCKET)' });
+
+    // A body that arrived and could not be decoded is a malformed reply, not one cut off: each decoder's own code, as Node's fetch gives it.
+    for (const code of ['Z_DATA_ERROR', 'Z_BUF_ERROR', 'ERR__ERROR_FORMAT_PADDING_2', 'ZSTD_error_prefix_unknown']) {
+      global.fetch = vi.fn(async () => undecodable(200, code)) as typeof fetch;
+      const r = await settle(callLLMJudge({ ...REQUEST }), 10);
+      expect(r.error, code).toMatchObject({ kind: 'malformed_response', message: `Anthropic reply could not be decoded: terminated (${code})` });
+      expect(toIrisError(r.error).envelope, code).toMatchObject({ kind: 'malformed_response', retryable: false });
+    }
+    // With an error status, the status decides, as for a body cut off.
+    global.fetch = vi.fn(async () => undecodable(503, 'Z_DATA_ERROR')) as typeof fetch;
+    expect((await settle(callLLMJudge({ ...REQUEST }), 10)).error).toMatchObject({ kind: 'server_error', statusCode: 503 });
 
     // An error status whose body the deadline ends: the deadline, since every request and its whole reply share it.
     global.fetch = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
