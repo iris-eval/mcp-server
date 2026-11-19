@@ -233,7 +233,8 @@ export class WebhookNotifier {
 
   private backoff(attempt: number): number {
     const base = WEBHOOK_BACKOFF_MS[Math.min(attempt - 1, WEBHOOK_BACKOFF_MS.length - 1)];
-    return Math.round(base * (0.75 + 0.5 * this.random()));
+    // `random` is an option of the class: held, so one that answers past [0, 1) cannot make a wait end at once.
+    return heldTimerMs(Math.round(base * (0.75 + 0.5 * this.random())));
   }
 
   private async deliver(moment: WebhookMoment, key: string): Promise<DeliveryRecord> {
@@ -270,7 +271,7 @@ export class WebhookNotifier {
         error = `HTTP ${status}`;
         if (!retryable(status)) break;
       } catch (err) {
-        error = err instanceof Error && err.name === 'AbortError' ? `timeout after ${this.config.timeoutMs} ms` : err instanceof Error ? err.message : String(err);
+        error = err instanceof Error && err.name === 'AbortError' ? `timeout after ${heldTimerMs(this.config.timeoutMs)} ms` : err instanceof Error ? err.message : String(err);
       } finally {
         clearTimeout(timer);
       }

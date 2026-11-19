@@ -242,7 +242,8 @@ export async function evaluateWithLLMJudge(
   }
 
   // One deadline for the whole call: both requests, their replies and any wait after a rate limit end before it.
-  const timeoutMs = params.timeoutMs ?? DEFAULT_JUDGE_DEADLINE_MS;
+  // Read as a number, as a timer reads it: a length given as text is the number it names, not text joined to the clock.
+  const timeoutMs = (params.timeoutMs ?? DEFAULT_JUDGE_DEADLINE_MS) * 1;
   const deadline = Date.now() + timeoutMs;
 
   // First attempt

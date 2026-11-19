@@ -155,7 +155,7 @@ export function storeGate(raw: IStorageAdapter, options: { waitMs?: number } = {
     try {
       if ((await Promise.race([ready.then(() => 'ready' as const), late])) === 'late') {
         throw new StoreNotReadyError(
-          `Iris is still ${describeReadiness(raw.readiness?.())} after an upgrade, and this request waited ${Math.round(waitMs / 1000)} s for it. Try again shortly: requests are answered as soon as it is done.`,
+          `Iris is still ${describeReadiness(raw.readiness?.())} after an upgrade, and this request waited ${Math.round(heldTimerMs(waitMs) / 1000)} s for it. Try again shortly: requests are answered as soon as it is done.`,
           true,
         );
       }

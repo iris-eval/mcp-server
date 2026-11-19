@@ -375,7 +375,7 @@ async function doFetch(url: string, opts: ResolveOptions, redirectsLeft: number)
     });
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
-      throw new CitationResolveError(`Fetch timed out after ${timeoutMs}ms`, 'timeout');
+      throw new CitationResolveError(`Fetch timed out after ${heldTimerMs(timeoutMs)}ms`, 'timeout');
     }
     throw err;
   } finally {
