@@ -16,6 +16,8 @@
  * on generated runs in every mode and on generated values, and counts what
  * the new one reads, asks and writes.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { compareSequence, isSubset, SEQUENCE_MODES, writtenAlike, type SequenceOutcome } from '../../../src/eval/rules/expected-trajectory.js';
 import { describeInput, normaliseInput, stableStringify } from '../../../src/eval/rules/trajectory.js';
@@ -954,5 +956,19 @@ describe('compareSequence — what a comparison reads and writes', () => {
     expect(was.writes).toBe(10_000);
     expect(now.value.passed).toBe(false);
     expect(now.value.why).toBe(was.value.why);
+  });
+});
+
+describe('the changelog says what the comparison does and what it costs', () => {
+  it('the whole entry and what an embedder sees, word for word, under Fixed in the release to come', () => {
+    const changelog = readFileSync(resolve(__dirname, '..', '..', '..', 'CHANGELOG.md'), 'utf8').replace(/\r\n/g, '\n');
+    const unreleased = changelog.split('\n## [Unreleased]\n')[1]?.split('\n## [')[0] ?? '';
+    const fixed = unreleased.split('\n### Fixed\n')[1]?.split('\n### ')[0] ?? '';
+    expect(fixed).toContain(
+      [
+        '- **`tool_sequence` compares inputs without writing them out under `args: "subset"`, the default.** Under `"subset"` it compared an expected input with a call\'s by writing out each array or scalar the expected object holds, beside the call\'s value under the same key, and an expected input that is not an object whole, beside the call\'s, at every question; each writing read every element of what it wrote and made a string of it, however early the two differed. It now asks the same question of the two values as they stand and stops at the first difference. The questions it puts, how it reads an object, and `"exact"` are as they were, and every answer is as it was. Measured with the code before this change and after it in one process, each alternated, held to one kind of core, on 3,000 drawn requests of at most 40 expected calls across every mode, both ways of matching arguments and keys of every kind, the CPU of the rule against before: half below 0.51, nine in ten below 1.01, in each of two runs; the requests that cost more, by at most about a tenth, each took under 3 microseconds. On 28 requests near the server\'s limits (up to 500 expected calls, 25,000 calls, 870 KB), none took longer than before by more than its own timing varied, and those that compare objects under `"subset"` took about a sixth to a half of the time.',
+        '  - What an embedder sees: where writing a value of its own out threw, the comparison may now answer as the writing would have had it finished, when two values differ before a BigInt in them, or a place where one holds itself, is reached, and when they are nested deeper than the writing could go. A value is read only as far as it takes to tell the two apart, where writing it out read all of it, so one that answers otherwise each time it is read may be compared by another of its answers. A request carries none of these.',
+      ].join('\n'),
+    );
   });
 });
