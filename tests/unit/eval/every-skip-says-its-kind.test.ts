@@ -187,6 +187,23 @@ describe('the type a rule answers with holds the kind (CI type-checks every test
   });
 });
 
+describe('the four places behind an expectation, which none of the calls above sends', () => {
+  it('tool_sequence and step_budget, with an expectation sent and no calls, or spans with no TOOL span, had nothing to judge', () => {
+    const rules = new Map(builtInRules().map((r) => [r.name, r]));
+    const expectedTrajectory = { tool_calls: [{ tool_name: 'read_file' }], step_budget: 3 };
+    const llmSpan = { span_id: 'a', trace_id: 't', name: 'llm', kind: 'LLM' as const, status_code: 'OK' as const, start_time: '2026-01-01T00:00:00Z' };
+    const contexts: Array<[string, EvalContext]> = [
+      ['no calls sent', { input: ASK, output: ANSWER, expectedTrajectory } as EvalContext],
+      ['spans with no TOOL span', { input: ASK, output: ANSWER, expectedTrajectory, spans: [llmSpan] } as unknown as EvalContext],
+    ];
+    for (const name of ['tool_sequence', 'step_budget']) {
+      for (const [label, context] of contexts) {
+        expect(rules.get(name)!.evaluate(context), `${name}, ${label}`).toMatchObject({ skipped: true, skipClass: 'not_applicable' });
+      }
+    }
+  });
+});
+
 describe('the places beside the rules Iris ships that had nothing to judge say so', () => {
   it('a custom cost rule with no cost sent, and a custom policy over a run that sent no calls or an empty list', () => {
     const cost = createCustomRule({ name: 'under_a_cent', type: 'cost_threshold', config: { max_cost: 0.01 } }, 'high');
@@ -319,6 +336,26 @@ describe('the other places that could not judge say so', () => {
           const answer = rule.evaluate({ input: ASK, output: ANSWER, toolCalls, caseHistory });
           expect(answer, `${rule.name}, ${caseHistory?.length ?? 'no'} earlier runs, ${toolCalls.length} calls`).toMatchObject({ skipped: true, skipClass: 'not_applicable' });
           expect(answer.skipReason).toMatch(/^insufficient_history: /);
+        }
+      }
+    }
+  });
+
+  it('the earlier runs counted are the recorded ones: runs whose calls were not recorded do not make up the number', async () => {
+    const unrecorded: CaseRun = { tools: null };
+    const histories: Array<[string, CaseRun[]]> = [
+      ['two recorded runs among two that were not', [SIX[0], unrecorded, SIX[1], unrecorded]],
+      ['twenty runs not recorded, then two recorded', [...Array.from({ length: 20 }, () => unrecorded), SIX[0], SIX[1]]],
+    ];
+    for (const [label, caseHistory] of histories) {
+      for (const toolCalls of [NAMELESS, PAST_THE_READ]) {
+        for (const rule of [noUnusualAction, noDroppedStep]) {
+          const answer = rule.evaluate({ input: ASK, output: ANSWER, toolCalls, caseHistory });
+          expect(answer, `${rule.name}, ${label}, ${toolCalls.length} calls`).toMatchObject({ skipped: true, skipClass: 'not_applicable' });
+          expect(answer.skipReason).toMatch(/^insufficient_history: /);
+          // Made critical, the verdict is as it was.
+          const result = await engine({ criticalRules: [rule.name] }).evaluateAll({ input: ASK, output: ANSWER, toolCalls, caseHistory });
+          expect(result.verdict?.by ?? [], `${rule.name}, ${label}`).not.toContain(rule.name);
         }
       }
     }

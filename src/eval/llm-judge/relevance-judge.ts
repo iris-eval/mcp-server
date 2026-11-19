@@ -286,7 +286,7 @@ export function relevanceJudgeStartupWarnings(judge: RelevanceJudge | null): str
   const lines: string[] = [];
   if (judge.problem !== null) {
     lines.push(
-      `Relevance judge is configured but cannot run: ${judge.problem}. answers_the_ask falls back to its lexical reading, which only advises, so an off-topic answer passes, and where the words alone cannot judge the verdict is unknown wherever the rule has to answer, until this is fixed.`,
+      `Relevance judge is configured but cannot run: ${judge.problem}. answers_the_ask falls back to its lexical reading, which only advises, so an off-topic answer passes, and where the words alone cannot judge the verdict is unknown wherever the rule has to answer (as shipped; eval.onCriticalSkipped can make that a failure, or accept it), until this is fixed.`,
     );
   }
   for (const note of judge.notes) lines.push(`Relevance judge: ${note}.`);
