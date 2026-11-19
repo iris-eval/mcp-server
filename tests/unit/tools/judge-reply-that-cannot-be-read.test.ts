@@ -47,6 +47,16 @@ const MODEL = 'claude-haiku-4-5';
 const ONE_CALL_USD = estimateCostUsd(MODEL, 100, 30)!;
 const judgeBody = (replyText: string): Response =>
   new Response(JSON.stringify({ id: 'm', content: [{ type: 'text', text: replyText }], stop_reason: 'end_turn', usage: { input_tokens: 100, output_tokens: 30 } }), { status: 200, headers: { 'content-type': 'application/json' } });
+/** A reply whose compressed body arrived and could not be decoded, with the error Node's fetch gives (zlib's code on the cause). */
+const undecodableReply = (): Response =>
+  new Response(
+    new ReadableStream({
+      start(controller) {
+        controller.error(new TypeError('terminated', { cause: Object.assign(new Error('incorrect header check'), { code: 'Z_DATA_ERROR' }) }));
+      },
+    }),
+    { status: 200, headers: { 'content-type': 'application/json' } },
+  );
 const serverError = (): Response => new Response(JSON.stringify({ type: 'error', error: { type: 'api_error', message: 'the provider is down' } }), { status: 500, headers: { 'content-type': 'application/json' } });
 
 /** The provider answers each judge call with the next reply (a text, or a response of its own making); every other address is a cited page. Returns how many judge calls were made. */
@@ -140,9 +150,27 @@ describe('what a caller is told when the judge\'s reply cannot be read', () => {
       expect(e.message).toContain(message);
       // It answered with JSON in two of the three: the advice does not say it did not.
       expect(e.recovery.join(' ')).not.toContain('valid JSON');
-      expect(e.recovery.join(' ')).toContain('not with the JSON object it was asked for');
-      expect(e.recovery.join(' ')).toContain('or the start of it');
+      expect(e.recovery.join(' ')).toContain("where the judge's text held no verdict, it shows what stood where the verdict belongs, or the start of it");
+      expect(e.recovery).toContain('Otherwise, retry; if it recurs, pick another model.');
       expect(calls.judgeCalls()).toBe(2);
+      expect((await running.storage.queryEvalResults(LOCAL_TENANT, {})).total).toBe(0);
+    });
+
+    it.each([
+      ['could not be decoded', undecodableReply, 'Anthropic reply could not be decoded: terminated (Z_DATA_ERROR)'],
+      ['is not JSON', () => new Response('<html>a gateway page</html>', { status: 200, headers: { 'content-type': 'text/html' } }), 'Anthropic response was not valid JSON'],
+    ])('a reply that %s, once: advice that sends it to what stands between this server and the provider', async (_what, reply, message) => {
+      const calls = provider(reply);
+      const e = envelope(await judge());
+      expect(e.code).toBe('IRIS_PROVIDER_ERROR');
+      expect(e.kind).toBe('malformed_response');
+      expect(e.retryable).toBe(false);
+      expect(e.message).toContain(message);
+      expect(e.recovery).toContain(
+        'Where the message says the reply could not be decoded, or the response was not JSON or not a JSON object, retry; if it recurs, check what stands between this server and the provider (a proxy can alter a reply).',
+      );
+      // The provider's reply is not asked again: only a judge's text that held no verdict is.
+      expect(calls.judgeCalls()).toBe(1);
       expect((await running.storage.queryEvalResults(LOCAL_TENANT, {})).total).toBe(0);
     });
 
@@ -197,6 +225,21 @@ describe('what a caller is told when the judge\'s reply cannot be read', () => {
       expect(e.recovery.join(' ')).toContain('When the kind is malformed_judge_response');
       expect(e.recovery.join(' ')).toContain('the error of that kind shows the start of what stood in its place');
       // The judge is asked once for a citation.
+      expect(calls.judgeCalls()).toBe(1);
+      expect((await running.storage.queryEvalResults(LOCAL_TENANT, {})).total).toBe(0);
+    });
+
+    it('one citation, and a reply that could not be decoded: an error, nothing stored, and advice that sends it to what stands between this server and the provider', async () => {
+      const calls = provider(undecodableReply);
+      const result = await cite(ONE);
+      const e = envelope(result);
+      expect(e.code).toBe('IRIS_JUDGE_FAILED');
+      expect(e.retryable).toBe(false);
+      expect(e.message).toContain('the judge failed on every one (malformed_response)');
+      expect(text(result)).toContain('Anthropic reply could not be decoded: terminated (Z_DATA_ERROR)');
+      expect(e.recovery).toContain(
+        "When the kind is malformed_response, the provider's reply could not be read, and the error of that kind says why. Retry; if it recurs, check what stands between this server and the provider (a proxy can alter a reply) where it says the reply could not be decoded or the response was not JSON or not a JSON object, and otherwise pick another model.",
+      );
       expect(calls.judgeCalls()).toBe(1);
       expect((await running.storage.queryEvalResults(LOCAL_TENANT, {})).total).toBe(0);
     });

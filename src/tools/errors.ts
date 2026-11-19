@@ -210,13 +210,18 @@ export function toIrisError(err: unknown): IrisError {
   if (err instanceof LLMJudgeError) {
     const retryable = err.kind === 'rate_limit' || err.kind === 'timeout' || err.kind === 'server_error' || err.kind === 'unreachable';
     const recovery: Record<ProviderErrorKind, string[]> = {
-      auth: ['The key was refused: by the provider, or before any request where it holds a line break or another control character, or a character past one byte such as a curly quote or a zero-width space. Check that the key in the env block of your MCP config is valid, live and copied whole, then restart the session.'],
+      auth: ['The key was refused: by the provider, or before any request where it holds an ASCII control character other than a tab inside it, such as a line break, or a character above U+00FF, such as a curly quote or a zero-width space. Check that the key in the env block of your MCP config is valid, live and copied whole, then restart the session.'],
       rate_limit: ["The provider rate-limited the call. Wait (retryAfterMs, where the provider named a wait) and retry. Iris asks once more itself only where the provider's wait ends before the call's deadline."],
       bad_request: ['The provider rejected the request. Check the model name and the template inputs.'],
       server_error: ['The provider failed on its side. Retry later.'],
       timeout: ['The provider did not answer within timeout_ms, which every request, its reply and the wait after a rate limit share. Retry, or raise timeout_ms within your client\'s own request timeout.'],
       unreachable: ['Iris could not reach the provider, or its reply was cut off before its end. Check that this server can reach it (its network, a proxy), then retry.'],
-      malformed_response: ['The judge answered, and not with the JSON object it was asked for: the message shows what stood in its place, or the start of it. Retry; if it recurs, pick another model.'],
+      malformed_response: [
+        "The provider answered, and its reply could not be read as a judgment: the message says why, and where the judge's text held no verdict, it shows what stood where the verdict belongs, or the start of it.",
+        'Where the message says the reply could not be decoded, or the response was not JSON or not a JSON object, retry; if it recurs, check what stands between this server and the provider (a proxy can alter a reply).',
+        'Where it says the reply ended at its output limit, raise max_output_tokens; where it says the model declined to answer, retry with another input or another model.',
+        'Otherwise, retry; if it recurs, pick another model.',
+      ],
       unknown: ['Retry once; if it recurs, report the message with the provider and model.'],
     };
     /*

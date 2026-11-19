@@ -192,7 +192,7 @@ async function postBeforeDeadline(
 ): Promise<{ res: Response; body: string; latencyMs: number }> {
   if (!headersCanBeSent(init.headers)) {
     throw new LLMJudgeError(
-      `${provider} API key cannot be sent in a request header: it holds a line break or another control character, or a character such as a curly quote or a zero-width space copied with it. No request was made.`,
+      `${provider} API key cannot be sent in a request header: it holds an ASCII control character other than a tab, such as a line break, or a character above U+00FF, such as a curly quote or a zero-width space copied with it. No request was made.`,
       'auth',
     );
   }
@@ -227,13 +227,14 @@ async function postBeforeDeadline(
 }
 
 /**
- * Whether fetch can send these headers. The runtime's `Headers` refuses a
- * value with a line break inside it or a character past one byte, and
- * fetch's dispatcher also refuses one holding another control character but
- * a tab (its own test of a header value, run here on the value `Headers`
- * keeps). The key is the one header that is not a constant, so a refusal is
- * the operator's key, to be fixed where it is set; it is never shown, and no
- * request is made.
+ * Whether fetch can send these headers. The runtime's `Headers` drops a tab,
+ * a line break, a carriage return or a space at either end of a value, and
+ * refuses one holding a NUL, a line break or a carriage return, or a
+ * character above U+00FF; fetch's dispatcher also refuses one holding any
+ * other ASCII control character but a tab (its own test of a header value,
+ * run here on the value `Headers` keeps). The key is the one header that is
+ * not a constant, so a refusal is the operator's key, to be fixed where it is
+ * set; it is never shown, and no request is made.
  */
 function headersCanBeSent(headers: RequestInit['headers']): boolean {
   try {
