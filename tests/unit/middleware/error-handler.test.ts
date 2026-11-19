@@ -118,16 +118,23 @@ describe('error handler middleware', () => {
       }
       return err;
     };
-    /** The answer to one failure, and the lines it put in the log. */
+    /** The answer to one failure, the lines it put in the log, and what each line carried beside it. */
     const answerTo = async (err: unknown) => {
       const lines: string[] = [];
-      const logger = { ...mockLogger, error: (line: string) => void lines.push(line) };
+      const metas: Array<Record<string, unknown>> = [];
+      const logger = {
+        ...mockLogger,
+        error: (line: string, meta?: Record<string, unknown>) => {
+          lines.push(line);
+          metas.push(meta ?? {});
+        },
+      };
       const app = express();
       app.get('/test', async () => {
         throw err;
       });
       app.use(createErrorHandler(logger));
-      return { ...(await testError(app, '/test')), lines };
+      return { ...(await testError(app, '/test')), lines, metas };
     };
 
     it('a status that cannot be read is a 500, answered as JSON, with one line in the log', async () => {
@@ -191,15 +198,17 @@ describe('error handler middleware', () => {
       const { status, body, lines } = await answerTo(err);
       expect(status).toBe(500);
       expect(body.error).toBe('Internal server error');
-      expect(lines).toHaveLength(1);
+      // The line names the failure's own message.
+      expect(lines).toEqual(['Request error: the message']);
     });
 
-    it('a status outside 400 to 599, or not a whole number, is a 500', async () => {
+    it('a status outside 400 to 599, or not a whole number, is a 500, and the line in the log says 500', async () => {
       for (const named of [302, 600, '404', 404.5, Number.NaN]) {
-        const { status, body, lines } = await answerTo(failure({ status: named }));
+        const { status, body, lines, metas } = await answerTo(failure({ status: named }));
         expect(status, String(named)).toBe(500);
         expect(body.error).toBe('Internal server error');
         expect(lines).toHaveLength(1);
+        expect(metas[0]?.status, String(named)).toBe(500);
       }
     });
 
@@ -219,16 +228,18 @@ describe('error handler middleware', () => {
       for (const [label, err, count] of cases) expect((await answerTo(err)).lines, label).toHaveLength(count);
     });
 
-    it('each field of a failure is read once', async () => {
+    it('the handler reads each field of a failure once, in every path', async () => {
+      const walked = Object.assign(new Error('Validation failed'), { name: 'ZodError' });
+      Object.defineProperty(walked, 'issues', { value: new Proxy([], { get: () => { throw new Error('not walked'); } }) });
       const cases = [
         Object.assign(new Error('not found here'), { status: 404 }),
         Object.assign(new Error('the audit log'), { name: 'AuditWriteError' }),
         Object.assign(new Error('no such file'), { code: 'ENOENT', syscall: 'stat', status: 404 }),
         Object.assign(new Error('Validation failed'), { name: 'ZodError', issues: [{ path: ['limit'], message: 'Expected number' }] }),
+        // Answered by the catch: its issues throw as they are walked.
+        walked,
       ];
       for (const target of cases) {
-        // The stack written out first, so that V8 does not read the name and message again to write it.
-        void target.stack;
         const reads = new Map<PropertyKey, number>();
         const counted = new Proxy(target, {
           get: (t, key, receiver) => {
@@ -239,6 +250,42 @@ describe('error handler middleware', () => {
         await answerTo(counted);
         expect([...reads].filter(([, n]) => n > 1).map(([key]) => String(key)), target.message).toEqual([]);
       }
+    });
+
+    it("V8, writing out an error's stack the first time it is read, reads its name and message again; once it is written, none of the three is read twice", async () => {
+      /** A real Error whose name and message count their reads, its stack written out first or not. */
+      const counted = (written: boolean): { err: Error; reads: Record<string, number> } => {
+        const err = new Error('the message');
+        if (written) void err.stack;
+        const reads: Record<string, number> = { name: 0, message: 0, stack: 0 };
+        for (const [key, value] of [['name', 'Error'], ['message', 'the message']] as const) {
+          Object.defineProperty(err, key, {
+            configurable: true,
+            get: () => {
+              reads[key] += 1;
+              return value;
+            },
+          });
+        }
+        if (written) {
+          const stack = err.stack;
+          Object.defineProperty(err, 'stack', {
+            configurable: true,
+            get: () => {
+              reads.stack += 1;
+              return stack;
+            },
+          });
+        }
+        return { err, reads };
+      };
+      const fresh = counted(false);
+      await answerTo(fresh.err);
+      expect(fresh.reads.name).toBe(2);
+      expect(fresh.reads.message).toBe(2);
+      const once = counted(true);
+      await answerTo(once.err);
+      expect(once.reads).toEqual({ name: 1, message: 1, stack: 1 });
     });
 
     it('a ZodError is known by its constructor\'s name as well, and its issues are read before its errors', async () => {
@@ -259,7 +306,10 @@ describe('error handler middleware', () => {
       process.env.NODE_ENV = 'development';
       try {
         expect(typeof (await answerTo(new Error('boom'))).body.stack).toBe('string');
-        expect((await answerTo(failure({ stack: ['frame one', 'frame two'] }))).body.stack).toBeUndefined();
+        const listed = await answerTo(failure({ stack: ['frame one', 'frame two'] }));
+        expect(listed.body.stack).toBeUndefined();
+        // Nor is it logged.
+        expect(listed.metas[0]?.stack).toBeUndefined();
         const walked = failure({ name: 'ZodError' });
         Object.defineProperty(walked, 'issues', { value: new Proxy([], { get: () => { throw new Error('not walked'); } }) });
         expect((await answerTo(walked)).body).toEqual({ error: 'Internal server error' });
@@ -268,46 +318,18 @@ describe('error handler middleware', () => {
       }
     });
 
-    it("a failure whose answer cannot be written at all ends its connection, with one line in the log, where Express's page went out", async () => {
-      const lines: string[] = [];
-      const logger = { ...mockLogger, error: (written: string) => void lines.push(written) };
-      const app = express();
-      app.get('/test', (_req, res) => {
-        res.setHeader('Content-Type', 'not a type');
-        throw new Error('the route failed');
-      });
-      app.use(createErrorHandler(logger));
-      const server = app.listen(0);
-      const { port } = server.address() as { port: number };
-      try {
-        const ending = await new Promise<string>((done) => {
-          const timer = setTimeout(() => done('still open after 2 s'), 2_000);
-          const request = get(`http://localhost:${port}/test`, (response) => {
-            response.resume();
-            response.on('close', () => {
-              clearTimeout(timer);
-              done(response.complete ? `answered ${response.statusCode}` : 'cut off');
-            });
-          });
-          request.on('error', () => {
-            clearTimeout(timer);
-            done('cut off');
-          });
-        });
-        expect(ending).toBe('cut off');
-        expect(lines).toEqual(['Request error: the route failed']);
-      } finally {
-        server.closeAllConnections();
-        server.close();
-      }
-    });
-
-    it("a failure after part of the response was written ends its connection, as Express's own handler does, with one line in the log", async () => {
+    it("a failure after part of the response is handed on to Express's own handler, which ends the connection once what was written has gone out, as before", async () => {
       const zod = Object.assign(new Error('Validation failed'), { name: 'ZodError', issues: [{ path: ['limit'], message: 'Expected number' }] });
-      for (const [thrown, line] of [[new Error('the stream failed'), 'Request error: the stream failed'], [zod, 'Request error: Validation failed']] as const) {
+      // An error puts its one line in the log; a validation error none, as one answered with its issues puts none.
+      const cases: Array<[unknown, string[]]> = [
+        [new Error('the stream failed'), ['Request error: the stream failed']],
+        [zod, []],
+      ];
+      for (const [thrown, logged] of cases) {
         const lines: string[] = [];
         const logger = { ...mockLogger, error: (written: string) => void lines.push(written) };
         const app = express();
+        // A route that writes the head and an event and fails in the same turn, before they have left the process.
         app.get('/test', (_req, res) => {
           res.writeHead(200, { 'content-type': 'text/event-stream' });
           res.write('data: one\n\n');
@@ -317,22 +339,28 @@ describe('error handler middleware', () => {
         const server = app.listen(0);
         const { port } = server.address() as { port: number };
         try {
-          const ending = await new Promise<string>((done) => {
-            const timer = setTimeout(() => done('still open after 2 s'), 2_000);
+          const seen = await new Promise<{ ending: string; status?: number; body: string }>((done) => {
+            let body = '';
+            let status: number | undefined;
+            const timer = setTimeout(() => done({ ending: 'still open after 2 s', status, body }), 2_000);
             const request = get(`http://localhost:${port}/test`, (response) => {
-              response.resume();
+              status = response.statusCode;
+              response.setEncoding('utf8');
+              response.on('data', (chunk: string) => {
+                body += chunk;
+              });
               response.on('close', () => {
                 clearTimeout(timer);
-                done(response.complete ? 'ended' : 'cut off');
+                done({ ending: response.complete ? 'ended' : 'cut off', status, body });
               });
             });
             request.on('error', () => {
               clearTimeout(timer);
-              done('cut off');
+              done({ ending: 'cut off before an answer', status, body });
             });
           });
-          expect(ending, line).toBe('cut off');
-          expect(lines).toEqual([line]);
+          expect(seen, logged.join()).toEqual({ ending: 'cut off', status: 200, body: 'data: one\n\n' });
+          expect(lines).toEqual(logged);
         } finally {
           server.closeAllConnections();
           server.close();
@@ -345,7 +373,7 @@ describe('error handler middleware', () => {
       const unreleased = changelog.split('\n## [Unreleased]\n')[1]?.split('\n## [')[0] ?? '';
       const fixed = unreleased.split('\n### Fixed\n')[1]?.split('\n### ')[0] ?? '';
       expect(fixed).toContain(
-        '- **The HTTP error handler answers a failure whose fields cannot be read.** It read a failure\'s `name`, `code`, `syscall`, `status` and `message` directly, so a value built in code whose field throws as it is read made the handler itself throw, and Express answered with its own error page, which outside production holds the stack and its file paths. Each field is now read once, and one that cannot be read is taken as absent, or, for `code` and `syscall`, as a sign the failure may be a system error, whose message is never echoed. A failure is answered as JSON whatever its fields hold, and puts one line in the server log unless it is a validation error answered with its issues; one that comes after part of the response was written cannot be answered, and its connection is ended, as Express\'s own handler ends it, and so is one whose answer cannot be written at all. A status is kept where it is a whole number from 400 to 599, and any other is answered as 500; a message that is not text is answered as "Unknown error"; a stack that is not text is neither logged nor, under `NODE_ENV=development`, answered; and a validation error whose issues cannot be read through is answered as 500.',
+        '- **The HTTP error handler answers a failure whose fields cannot be read.** It read a failure\'s `name`, `code`, `syscall`, `status` and `message` directly, so a value built in code whose field throws as it is read made the handler itself throw, and Express answered with its own error page, which outside production holds the stack and its file paths. The handler now reads each field once (V8, writing out an error\'s stack the first time it is read, reads its name and message again), and takes one that cannot be read as absent, or, for `code` and `syscall`, as a sign the failure may be a system error, whose message is never echoed. A failure is answered as JSON whatever its fields hold, and puts one line in the server log unless it is a validation error answered with its issues; one that comes after part of the response was written is handed on to Express\'s own handler, which ends the connection, as before. A status is kept where it is a whole number from 400 to 599, and any other is answered as 500; a message that is not text is answered as "Unknown error"; a stack that is not text is neither logged nor, under `NODE_ENV=development`, answered; and a validation error whose issues cannot be read through is answered as 500.',
       );
     });
 

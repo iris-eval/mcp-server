@@ -1,4 +1,4 @@
-import type { ErrorRequestHandler, Request } from 'express';
+import type { ErrorRequestHandler } from 'express';
 import type { Logger } from '../utils/logger.js';
 import { validationErrorBody } from '../utils/validation-errors.js';
 
@@ -39,7 +39,7 @@ function stackOf(err: unknown): string | undefined {
 type Log = (line: string, meta: Record<string, unknown>) => void;
 
 export function createErrorHandler(logger: Logger): ErrorRequestHandler {
-  return (err, req, res, _next) => {
+  return (err, _req, res, _next) => {
     let logged = false;
     const log: Log = (line, meta) => {
       logged = true;
@@ -47,35 +47,15 @@ export function createErrorHandler(logger: Logger): ErrorRequestHandler {
     };
     try {
       const { status, body } = replyTo(err, log);
-      if (res.headersSent) {
-        // A validation error is logged here too: it is not answered with its issues.
-        if (!logged) log(`Request error: ${messageOf(err)}`, { status, stack: stackOf(err) });
-        endTheResponse(req);
-        return;
-      }
       res.status(status).json(body);
-    } catch {
+    } catch (thrown) {
+      // After part of the response was written there is no answer to give: Express's own handler ends the connection, as it always did.
+      if (res.headersSent) throw thrown;
       // A failure the steps above could not answer (a list of issues that throws as it is walked, say): answered as any other.
       if (!logged) log(`Request error: ${messageOf(err)}`, { status: 500, stack: stackOf(err) });
-      try {
-        if (res.headersSent) endTheResponse(req);
-        else res.status(500).json({ error: 'Internal server error' });
-      } catch {
-        // Not even that can be written (a Content-Type a route set that cannot be read, say): the connection is ended.
-        endTheResponse(req);
-      }
+      res.status(500).json({ error: 'Internal server error' });
     }
   };
-}
-
-/*
- * A failure after part of the response was written cannot be answered: its
- * status and head are gone. The connection is ended, as Express's own
- * handler ends it, so the client sees the response fail rather than wait
- * for the rest of it.
- */
-function endTheResponse(req: Request): void {
-  req.socket?.destroy();
 }
 
 /** The status and body that answer `err`, with its line in the log. */
