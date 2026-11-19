@@ -60,12 +60,18 @@ describe('relevance judge proof set', () => {
     expect(worst.anthropic).toBeLessThan(JUDGE_DEFAULT_COST_CAP_USD);
     expect(worst.openai).toBeLessThan(JUDGE_DEFAULT_COST_CAP_USD);
     // The figures docs/llm-as-judge.md quotes, to four decimal places.
-    expect(worst.anthropic.toFixed(4)).toBe('0.0083');
-    expect(worst.openai.toFixed(4)).toBe('0.0011');
+    expect(worst.anthropic.toFixed(4)).toBe('0.0096');
+    expect(worst.openai.toFixed(4)).toBe('0.0013');
     // What the default day's budget admits at that worst case, as the judge doc and the budget's own comment say it.
     const admits = Math.floor(DEFAULT_DAILY_BUDGET_USD / worst.anthropic);
-    expect(admits).toBe(120);
+    expect(admits).toBe(104);
+    // And the changelog, at the figures measured here.
+    expect(readFileSync(resolve(repoRoot, 'CHANGELOG.md'), 'utf8')).toContain(
+      `the worst case of one judgment is now $${worst.anthropic.toFixed(4)} on \`claude-haiku-4-5-20251001\` and $${worst.openai.toFixed(4)} on \`gpt-4o-mini\`, and the default day's budget of $1 admits at least ${admits} relevance judgments on the first, where it admitted 165 in 0.21.0.`,
+    );
     expect(readFileSync(resolve(repoRoot, 'docs/llm-as-judge.md'), 'utf8')).toContain(`At the $${worst.anthropic.toFixed(4)} worst case above, the default admits at least ${admits} judgments a day`);
+    // The guide's figures for both models, as measured here.
+    expect(readFileSync(resolve(repoRoot, 'docs/llm-as-judge.md'), 'utf8')).toContain(`is $${worst.anthropic.toFixed(4)} on \`claude-haiku-4-5-20251001\` and $${worst.openai.toFixed(4)} on \`gpt-4o-mini\`, measured by`);
     // The comment's lines joined, whatever their ends and their wrapping.
     const comment = readFileSync(resolve(repoRoot, 'src/eval/llm-judge/budget.ts'), 'utf8').replace(/\r?\n\s*\*\s*/g, ' ');
     expect(comment).toContain(`is $${worst.anthropic.toFixed(4)} on the proof cases (tests/unit/proof/relevance-judge-proof.test.ts), so a dollar admits at least ${admits} judgments a day`);

@@ -13,14 +13,16 @@
 //   - Structured error types (LLMJudgeError) — callers distinguish a
 //     transient rate-limit from a permanent auth failure, and a provider
 //     that could not be reached from one that answered
-//   - Usage fields (input_tokens / output_tokens) surfaced so the
+//   - Usage fields (input_tokens / output_tokens, and the cached and written
+//     part of the input where the reply gives them) surfaced so the
 //     evaluator can compute cost without a second API call
 //   - The answer asked for as structured output where the model offers it
 //     (answer.ts): Anthropic's output_config.format, OpenAI's strict
 //     json_schema response format; the reply is then the object alone
 //   - Each model asked in the form it takes (ANTHROPIC_MODELS,
-//     OPENAI_MODELS): a temperature only where it is taken, and a low effort
-//     where the model reasons or thinks inside the cap of its answer
+//     OPENAI_MODELS): a temperature only where it is taken, a low effort
+//     where the model reasons or thinks inside the cap of its answer, and
+//     no prompt caching where a cache write is charged
 
 import type { JudgeAnswer } from './answer.js';
 import { DEFAULT_JUDGE_DEADLINE_MS } from './deadline.js';
@@ -56,6 +58,10 @@ export interface LLMJudgeResponse {
   rawProviderResponseId?: string;
   /** True when the answer was asked for as structured output, so the reply's text is the answer object alone. */
   structured?: boolean;
+  /** Of inputTokens, those the reply says the provider read from its prompt cache (OpenAI's `prompt_tokens_details.cached_tokens`). */
+  cacheReadTokens?: number;
+  /** Of inputTokens, those the reply says the provider wrote to its prompt cache (OpenAI's `prompt_tokens_details.cache_write_tokens`). */
+  cacheWriteTokens?: number;
 }
 
 /**
@@ -63,16 +69,45 @@ export interface LLMJudgeResponse {
  * `max_completion_tokens`: OpenAI's reference calls `max_tokens` deprecated
  * and not compatible with the o-series. A reasoning model takes no
  * `temperature`, and is asked for a low reasoning effort, since its reasoning
- * counts against the same cap as its answer. Structured output (a strict
- * `json_schema` response format) is asked of every model that offers it,
- * GPT-4o and later. A model not listed is asked as `gpt-4o` is.
+ * counts against the same cap as its answer: `low`, which every reasoning
+ * model priced takes (GPT-6 Astra, GPT-6.1 Sol, GPT-6.2 Astra and GPT-6.2
+ * Sol refuse `none`). Structured output (a strict `json_schema` response
+ * format) is asked of every model that offers it, GPT-4o and later. A model
+ * not listed is asked as `gpt-4o` is.
+ *
+ * `uncached`: GPT-5.6 and later write a request's prompt to the cache unasked
+ * and charge 1.25 times the input for the write. A judge request is never
+ * read back, since each prompt differs after its instructions, so such a
+ * model is sent `prompt_cache_options: { mode: "explicit" }` with no
+ * breakpoint: OpenAI's Chat Completions reference gives the option for
+ * GPT-5.6 and later, and says such a request does not use prompt caching.
+ * Its input is then billed at the input rate, the rate the cost cap prices.
  */
-export const OPENAI_MODELS: Readonly<Record<string, { reasoning: boolean; effort?: 'low'; structured: boolean }>> = {
+export const OPENAI_MODELS: Readonly<Record<string, { reasoning: boolean; effort?: 'low'; structured: boolean; uncached?: true }>> = {
+  'gpt-6.2-astra': { reasoning: true, effort: 'low', structured: true, uncached: true },
+  'gpt-6.2-sol': { reasoning: true, effort: 'low', structured: true, uncached: true },
+  'gpt-6.1-terra': { reasoning: true, effort: 'low', structured: true, uncached: true },
+  'gpt-6-luna': { reasoning: true, effort: 'low', structured: true, uncached: true },
+  'gpt-6.1-sol': { reasoning: true, effort: 'low', structured: true, uncached: true },
+  'gpt-6-astra': { reasoning: true, effort: 'low', structured: true, uncached: true },
+  'gpt-6-sol': { reasoning: true, effort: 'low', structured: true, uncached: true },
+  'gpt-5.6-terra': { reasoning: true, effort: 'low', structured: true, uncached: true },
+  'gpt-5.6-luna': { reasoning: true, effort: 'low', structured: true, uncached: true },
+  'gpt-5.5': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5.4': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5.4-mini': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5.4-nano': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5.2': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5.1': { reasoning: true, effort: 'low', structured: true },
   'gpt-5': { reasoning: true, effort: 'low', structured: true },
   'gpt-5-mini': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5-nano': { reasoning: true, effort: 'low', structured: true },
+  'gpt-4.1': { reasoning: false, structured: true },
   'gpt-4.1-mini': { reasoning: false, structured: true },
   'gpt-4o': { reasoning: false, structured: true },
   'gpt-4o-mini': { reasoning: false, structured: true },
+  'o3': { reasoning: true, effort: 'low', structured: true },
+  // Shut down by OpenAI, which refuses a request to either; asked as their pages gave it.
   'o4-mini': { reasoning: true, effort: 'low', structured: true },
   'o3-mini': { reasoning: true, effort: 'low', structured: true },
   // Retired by OpenAI; it offers neither structured output nor a reasoning effort, and is asked in text.
@@ -100,8 +135,12 @@ const AS_GPT_4O = { reasoning: false, structured: true } as const;
  * temperature, a low effort.
  */
 export const ANTHROPIC_MODELS: Readonly<Record<string, { temperature: boolean; thinks: boolean }>> = {
-  'claude-fable-5-1': { temperature: false, thinks: true },
+  'claude-fable-5-2': { temperature: false, thinks: true },
   'claude-opus-5-5': { temperature: false, thinks: true },
+  'claude-sonnet-5-5': { temperature: false, thinks: true },
+  'claude-haiku-5-5': { temperature: false, thinks: true },
+  'claude-fable-5-1': { temperature: false, thinks: true },
+  'claude-fable-5': { temperature: false, thinks: true },
   'claude-sonnet-5': { temperature: false, thinks: true },
   'claude-opus-5': { temperature: false, thinks: true },
   'claude-opus-4-8': { temperature: false, thinks: false },
@@ -386,6 +425,7 @@ async function callOpenAI(req: LLMJudgeRequest, deadline: number, budgetMs: numb
         model: req.model,
         max_completion_tokens: req.maxOutputTokens,
         ...(how.reasoning ? (how.effort !== undefined ? { reasoning_effort: how.effort } : {}) : { temperature: req.temperature }),
+        ...(how.uncached ? { prompt_cache_options: { mode: 'explicit' } } : {}),
         messages: [
           { role: 'system', content: req.systemPrompt },
           { role: 'user', content: req.userPrompt },
@@ -421,7 +461,7 @@ async function callOpenAI(req: LLMJudgeRequest, deadline: number, budgetMs: numb
   const json = replyObject('OpenAI', body) as {
     id?: string;
     choices?: Array<{ message?: { content?: string | null; refusal?: string | null }; finish_reason?: string }>;
-    usage?: { prompt_tokens?: number; completion_tokens?: number };
+    usage?: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number } };
   };
 
   // The documented shape: `choices` is a list. An object keyed "0" in its place is a malformed reply, and no verdict
@@ -443,6 +483,10 @@ async function callOpenAI(req: LLMJudgeRequest, deadline: number, budgetMs: numb
     throw new LLMJudgeError('OpenAI response had no message content', 'malformed_response');
   }
 
+  // What the reply says was read from the cache or written to it, counted within prompt_tokens: each priced at its own rate.
+  const details = json.usage?.prompt_tokens_details;
+  const cacheReadTokens = tokenCount(details?.cached_tokens);
+  const cacheWriteTokens = tokenCount(details?.cache_write_tokens);
   return {
     content: firstText,
     inputTokens: json.usage?.prompt_tokens ?? 0,
@@ -451,7 +495,14 @@ async function callOpenAI(req: LLMJudgeRequest, deadline: number, budgetMs: numb
     latencyMs,
     rawProviderResponseId: json.id,
     structured,
+    ...(cacheReadTokens > 0 ? { cacheReadTokens } : {}),
+    ...(cacheWriteTokens > 0 ? { cacheWriteTokens } : {}),
   };
+}
+
+/** A token count a reply gives, or 0 for anything that is not a finite count of at least 0. */
+function tokenCount(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0;
 }
 
 // Single-retry-on-429 wrapper. Reads Retry-After/RateLimit-Reset header

@@ -131,6 +131,25 @@ describe('the answer each provider is asked for', () => {
 
   /** How each OpenAI model Iris prices is asked, as its page at OpenAI gives it: a reasoning model takes no temperature, and structured output where the page lists it. */
   const OPENAI_FORMS: Record<string, { reasoning: boolean; effort?: 'low'; structured: boolean }> = {
+    // Read 2026-11-18: each page lists reasoning tokens, Chat Completions and structured_outputs; none refuses `low`.
+    'gpt-6.2-astra': { reasoning: true, effort: 'low', structured: true },
+    'gpt-6.2-sol': { reasoning: true, effort: 'low', structured: true },
+    'gpt-6.1-terra': { reasoning: true, effort: 'low', structured: true },
+    'gpt-6-luna': { reasoning: true, effort: 'low', structured: true },
+    'gpt-6.1-sol': { reasoning: true, effort: 'low', structured: true },
+    'gpt-6-astra': { reasoning: true, effort: 'low', structured: true },
+    'gpt-6-sol': { reasoning: true, effort: 'low', structured: true },
+    'gpt-5.6-terra': { reasoning: true, effort: 'low', structured: true },
+    'gpt-5.6-luna': { reasoning: true, effort: 'low', structured: true },
+    'gpt-5.5': { reasoning: true, effort: 'low', structured: true },
+    'gpt-5.4': { reasoning: true, effort: 'low', structured: true },
+    'gpt-5.4-mini': { reasoning: true, effort: 'low', structured: true },
+    'gpt-5.4-nano': { reasoning: true, effort: 'low', structured: true },
+    'gpt-5.2': { reasoning: true, effort: 'low', structured: true },
+    'gpt-5.1': { reasoning: true, effort: 'low', structured: true },
+    'gpt-5-nano': { reasoning: true, effort: 'low', structured: true },
+    'gpt-4.1': { reasoning: false, structured: true },
+    'o3': { reasoning: true, effort: 'low', structured: true },
     'gpt-5': { reasoning: true, effort: 'low', structured: true },
     'gpt-5-mini': { reasoning: true, effort: 'low', structured: true },
     'o4-mini': { reasoning: true, effort: 'low', structured: true },

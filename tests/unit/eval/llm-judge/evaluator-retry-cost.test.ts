@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { evaluateWithLLMJudge } from '../../../../src/eval/llm-judge/evaluator.js';
+import { evaluateWithLLMJudge, worstCaseJudgeCostUsd } from '../../../../src/eval/llm-judge/evaluator.js';
 import { verdictAnswer } from '../../../../src/eval/llm-judge/answer.js';
 import { estimateInputTokens } from '../../../../src/eval/llm-judge/client.js';
 import { estimateCostUsd } from '../../../../src/eval/llm-judge/pricing.js';
@@ -77,6 +77,66 @@ describe('malformed-response retry — token and cost accounting', () => {
     expect(res.inputTokens).toBe(100);
     expect(res.outputTokens).toBe(30);
     expect(res.costUsd).toBe(0.00025);
+  });
+
+  function openaiReply(text: string, usage: Record<string, unknown>): Response {
+    return new Response(JSON.stringify({ id: 'c', choices: [{ message: { content: text }, finish_reason: 'stop' }], usage }), { status: 200, headers: { 'content-type': 'application/json' } });
+  }
+
+  it.each([
+    // Each request under the line, their sum over it: each is billed at the base rates.
+    ['anthropic', 'claude-haiku-5-5', 60_000, 60_012],
+    ['openai', 'gpt-5.4', 150_000, 150_012],
+    ['openai', 'gpt-6-luna', 200_000, 200_012],
+  ] as const)('%s %s: the two requests are priced one by one and added, never as one request of their summed size', async (provider, model, first, second) => {
+    let calls = 0;
+    global.fetch = vi.fn(async () => {
+      calls++;
+      const text = calls === 1 ? 'Not JSON at all, just prose' : '{"score":0.6,"passed":false,"rationale":"ok","dimensions":{}}';
+      const tokens = calls === 1 ? { input: first, output: 300 } : { input: second, output: 200 };
+      return provider === 'anthropic' ? anthropicReply(text, tokens) : openaiReply(text, { prompt_tokens: tokens.input, completion_tokens: tokens.output });
+    }) as typeof fetch;
+    const res = await evaluateWithLLMJudge({ output: 'x', template: 'accuracy', provider, model, apiKey: 'k', maxCostUsdPerEval: 1_000 });
+    expect(calls).toBe(2);
+    expect(res.inputTokens).toBe(first + second);
+    const each = estimateCostUsd(model, first, 300)! + estimateCostUsd(model, second, 200)!;
+    expect(res.costUsd).toBe(Math.round(each * 1_000_000) / 1_000_000);
+    // Priced as one request, the sum would have taken the higher rates.
+    expect(estimateCostUsd(model, first + second, 500)!).toBeGreaterThan(res.costUsd! * 1.9);
+  });
+
+  it("a reply's input read from the cache or written to it is priced at those rates", async () => {
+    global.fetch = vi.fn(async () =>
+      openaiReply('{"score":0.9,"passed":true,"rationale":"","dimensions":{}}', { prompt_tokens: 50_000, completion_tokens: 100, prompt_tokens_details: { cached_tokens: 10_000, cache_write_tokens: 20_000 } }),
+    ) as typeof fetch;
+    const res = await evaluateWithLLMJudge({ output: 'x', template: 'accuracy', provider: 'openai', model: 'gpt-6.2-astra', apiKey: 'k', maxCostUsdPerEval: 1_000 });
+    // 20,000 plain × 8 + 10,000 read × 0.40 + 20,000 written × 10, and 100 out × 40 = $0.368
+    expect(res.costUsd).toBe(0.368);
+    expect(res.inputTokens).toBe(50_000);
+  });
+});
+
+describe('pre-flight cap — near a line, the higher rates', () => {
+  it("refuses a cap that the base rates fit but the higher ones do not, where the estimate raised by the margin is over the line", async () => {
+    let called = false;
+    global.fetch = vi.fn(async () => {
+      called = true;
+      return new Response();
+    }) as typeof fetch;
+    // About 80,000 tokens by the four-characters estimate: under 100,000, and over it raised by 30%.
+    const output = 'word '.repeat(64_000);
+    const worst = worstCaseJudgeCostUsd({ template: 'accuracy', model: 'claude-haiku-5-5', output })!;
+    const template = getTemplate('accuracy');
+    const answer = verdictAnswer(template.dimensions);
+    const estimate = estimateInputTokens(template.buildSystem(), template.buildUser({ output }), answer);
+    expect(estimate).toBeLessThan(100_000);
+    expect(estimate * 1.3).toBeGreaterThan(100_000);
+    const atBaseRates = estimateCostUsd('claude-haiku-5-5', estimate, 512)! * 2;
+    expect(worst).toBeGreaterThan(atBaseRates * 4);
+    await expect(
+      evaluateWithLLMJudge({ output, template: 'accuracy', provider: 'anthropic', model: 'claude-haiku-5-5', apiKey: 'k', maxCostUsdPerEval: atBaseRates * 2 }),
+    ).rejects.toThrow(/exceeds cap/);
+    expect(called).toBe(false);
   });
 });
 

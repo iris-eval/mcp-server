@@ -32,11 +32,12 @@ import { defaultConfig } from '../../src/config/defaults.js';
 import { LOCAL_TENANT } from '../../src/types/tenant.js';
 import { momentsOf } from '../../src/notify/events.js';
 import { COST_ANOMALY_MIN_HISTORY } from '../../src/eval/cost-anomaly.js';
+import { PRICING_SOURCED_ON } from '../../src/eval/llm-judge/pricing.js';
 
 const COST = 0.0285;
 const TOKENS = { prompt_tokens: 150_000, completion_tokens: 10_000, total_tokens: 160_000 };
 const OUTPUT = 'The quarterly report is attached. Revenue grew in every region, and the outlook remains stable for next year.';
-const ESTIMATED_NOTE = /\(estimated by Iris: 150,000 input and 10,000 output tokens at gpt-4o-mini list price as of 2026-09-28; the trace reported no cost\)$/;
+const ESTIMATED_NOTE = new RegExp(`\\(estimated by Iris: 150,000 input and 10,000 output tokens at gpt-4o-mini list price as of ${PRICING_SOURCED_ON}; the trace reported no cost\\)$`);
 
 const cleanups: Array<() => Promise<void> | void> = [];
 afterEach(async () => {
@@ -83,7 +84,7 @@ describe('log_trace (MCP)', () => {
   it('stores the estimate, answers with it, and the cost rule scores it and says it was estimated', async () => {
     const { client, storage } = await mcp();
     const res = parse(await client.callTool({ name: 'log_trace', arguments: { agent_name: 'mcp-bot', output: OUTPUT, token_usage: TOKENS, metadata: { model: 'gpt-4o-mini' }, evaluate: true, eval_type: 'cost' } }));
-    expect(res).toMatchObject({ status: 'stored', cost_usd: COST, cost_source: 'estimated', cost_estimate: { status: 'estimated', basis: 'token_usage', calls: [{ priced_as: 'gpt-4o-mini', price_as_of: '2026-09-28' }] } });
+    expect(res).toMatchObject({ status: 'stored', cost_usd: COST, cost_source: 'estimated', cost_estimate: { status: 'estimated', basis: 'token_usage', calls: [{ priced_as: 'gpt-4o-mini', price_as_of: PRICING_SOURCED_ON }] } });
     const rule = ruleOf(res.evaluation, 'cost_under_threshold');
     expect(rule.skipped).toBeFalsy();
     expect(rule.passed).toBe(true);
@@ -289,7 +290,7 @@ describe('iris-eval ingest', () => {
     const { code, stdout, stderr } = await ingest(lines);
     expect(code, stderr).toBe(0);
     const out = stdout.trim().split('\n').map((l) => JSON.parse(l) as Record<string, unknown>);
-    expect(out[0]).toMatchObject({ cost_usd: COST, cost_source: 'estimated', cost_estimate: { calls: [{ price_source: 'iris', price_as_of: '2026-09-28' }] } });
+    expect(out[0]).toMatchObject({ cost_usd: COST, cost_source: 'estimated', cost_estimate: { calls: [{ price_source: 'iris', price_as_of: PRICING_SOURCED_ON }] } });
     expect(out[1]).toMatchObject({ cost_usd: 0.385, cost_source: 'estimated', cost_estimate: { calls: [{ priced_as: 'prod-gpt4o', price_source: 'config', price_as_of: '2026-09-01' }] } });
 
     const store = new SqliteAdapter(join(home, 'iris.db'));

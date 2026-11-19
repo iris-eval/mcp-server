@@ -43,9 +43,9 @@ export const MAX_CALLS_PER_REQUEST_VAR = 'IRIS_RELEVANCE_JUDGE_MAX_CALLS_PER_REQ
  * for a handful of evaluations must not find a surprise on their bill
  * because an SDK started sending every call, and an agent steered into
  * calling a judge tool in a loop must not leave one either. The worst case
- * of one relevance judgment on claude-haiku-4-5-20251001 is $0.0083 on the
+ * of one relevance judgment on claude-haiku-4-5-20251001 is $0.0096 on the
  * proof cases (tests/unit/proof/relevance-judge-proof.test.ts), so a dollar
- * admits at least 120 judgments a day before any reservation is settled
+ * admits at least 104 judgments a day before any reservation is settled
  * down to its actual cost; a deployment that wants more raises it.
  */
 export const DEFAULT_DAILY_BUDGET_USD = 1;

@@ -21,8 +21,12 @@
  *     call's model is the one its span names (response model first, then
  *     the request model), else its nearest ancestor's, else the trace's.
  *     If they all price as one model, the trace's own token_usage is priced
- *     at it — the numbers the trace shows are the numbers priced. If they
- *     price as several, each call is priced at its own model and summed.
+ *     at it — the numbers the trace shows are the numbers priced — unless a
+ *     call is over the size its provider prices higher (pricing.ts,
+ *     longContext): a total cannot carry a call's size, so each call is then
+ *     priced by its own, and what token_usage records beyond the calls is
+ *     priced as one more total, at the base rates. If they price as several,
+ *     each call is priced at its own model and summed.
  *   - Otherwise the trace's token_usage is priced at the model its metadata
  *     names (`metadata.model`, the key the OTLP door writes).
  *   - A model no table prices, or no model, or no token counts: the cost
@@ -31,7 +35,8 @@
  *     that is too low passes a budget it should fail.
  *
  * What an estimate is: the provider's list price for the tokens the trace
- * recorded. Reasoning tokens are counted in the output tokens by both
+ * recorded, each call at the rates its own size picks where its provider
+ * prices a long request higher. Reasoning tokens are counted in the output tokens by both
  * providers and are priced at the output rate, which is how they are
  * billed. Cached input is priced as the provider bills it when the trace
  * says how much there was (`gen_ai.usage.cache_read.input_tokens` /
@@ -79,6 +84,14 @@ interface Tokens {
 interface ModelCall extends Tokens {
   /** The ids the call's span (or its nearest ancestor that names one) records, in SPAN_MODEL_KEYS order. */
   models: string[];
+  /** True for one call to a model; false for a whole run's aggregate, a sum over calls that cannot say how large each was. */
+  oneRequest: boolean;
+}
+
+/** A call's size as its provider counts it: every input token, the cached ones added where they were counted beside the input. */
+function sizeOf(t: Tokens): number {
+  const cached = t.cacheRead + t.cacheWrite;
+  return cached > t.prompt ? t.prompt + cached : t.prompt;
 }
 
 function numberAt(attrs: Record<string, unknown> | undefined, keys: readonly string[]): number | undefined {
@@ -152,6 +165,7 @@ function modelCallsOf(spans: readonly Span[] | undefined): ModelCall[] {
       cacheWrite: numberAt(s.attributes, CACHE_WRITE_KEYS) ?? 0,
       cacheWrite1h: numberAt(s.attributes, CACHE_WRITE_1H_KEYS),
       models: modelsOf(s),
+      oneRequest: true,
     }));
   }
   const aggregate = spans.find((s) => numberAt(s.attributes, AGGREGATED_INPUT_KEYS) !== undefined || numberAt(s.attributes, AGGREGATED_OUTPUT_KEYS) !== undefined);
@@ -163,6 +177,7 @@ function modelCallsOf(spans: readonly Span[] | undefined): ModelCall[] {
         cacheWrite: numberAt(aggregate.attributes, CACHE_WRITE_KEYS) ?? 0,
         cacheWrite1h: numberAt(aggregate.attributes, CACHE_WRITE_1H_KEYS),
         models: modelsOf(aggregate),
+        oneRequest: false,
       }]
     : [];
 }
@@ -175,25 +190,44 @@ function usd(n: number): number {
 const fmt = (n: number): string => n.toLocaleString('en-US');
 
 /**
- * One call at its model's prices. Pushes onto `notes` anything priced other
- * than as the provider bills it: cached counts reported beside the input
- * count, or a cache price the table does not have.
+ * One call at its model's prices. `scope` says what the counts are: `one`, a
+ * single request; `within`, a total over requests each known to be within
+ * the size its provider prices higher; `total`, a total that cannot say how
+ * large each request was. Pushes onto `notes` anything priced other than as
+ * the provider bills it: cached counts reported beside the input count, a
+ * cache price the table does not have, or such a total over that size.
  */
-function priced(match: PriceMatch, t: Tokens, notes: string[]): CostEstimateCall {
+function priced(match: PriceMatch, t: Tokens, notes: string[], scope: 'one' | 'within' | 'total'): CostEstimateCall {
   const cached = t.cacheRead + t.cacheWrite;
   // A part is never larger than its whole: more cached tokens than input tokens were counted beside the input (Anthropic's API shape).
   const beside = cached > t.prompt;
   if (beside) {
     notes.push(`${match.model}: the cached counts (${fmt(cached)}) are more than the input count (${fmt(t.prompt)}), so they were counted beside it, as Anthropic's API reports them, and added to it.`);
   }
-  const prompt = beside ? t.prompt + cached : t.prompt;
+  const prompt = sizeOf(t);
   const uncached = prompt - cached;
-  const readPrice = match.cacheReadUsdPer1M ?? match.inputUsdPer1M;
-  const writePrice = match.cacheWriteUsdPer1M ?? match.inputUsdPer1M;
-  if (t.cacheRead > 0 && match.cacheReadUsdPer1M === null) {
+  /*
+   * A request over the size its provider prices higher (pricing.ts,
+   * longContext) is priced at those rates, every token of it. A total over
+   * several requests cannot say which of them was over it: it is priced at
+   * the row's own rates, and says so when the total is over the line.
+   */
+  const long = match.longContext;
+  const over = long !== null && prompt > long.aboveInputTokens;
+  if (over && scope === 'one') {
+    notes.push(`${match.model}: a call over ${fmt(long.aboveInputTokens)} input tokens is priced at the provider's rates for such a request, every token of it.`);
+  } else if (over && scope === 'total') {
+    notes.push(`${match.model}: priced at the rates of a request of up to ${fmt(long.aboveInputTokens)} input tokens. The ${fmt(prompt)} counted are a total over calls, which cannot say whether a call was over that size; such a call costs more, so the estimate may be low.`);
+  }
+  const rates = over && scope === 'one'
+    ? { input: long.inputUsdPer1M, output: long.outputUsdPer1M, cacheRead: long.cacheReadUsdPer1M, cacheWrite: long.cacheWriteUsdPer1M, cacheWrite1h: long.cacheWrite1hUsdPer1M ?? null }
+    : { input: match.inputUsdPer1M, output: match.outputUsdPer1M, cacheRead: match.cacheReadUsdPer1M, cacheWrite: match.cacheWriteUsdPer1M, cacheWrite1h: match.cacheWrite1hUsdPer1M };
+  const readPrice = rates.cacheRead ?? rates.input;
+  const writePrice = rates.cacheWrite ?? rates.input;
+  if (t.cacheRead > 0 && rates.cacheRead === null) {
     notes.push(`${match.model}: ${fmt(t.cacheRead)} cache-read tokens are priced at the input price, because pricing.models in config.json names no cacheReadUsdPer1M for ${match.pricedAs}.`);
   }
-  if (t.cacheWrite > 0 && match.cacheWriteUsdPer1M === null) {
+  if (t.cacheWrite > 0 && rates.cacheWrite === null) {
     notes.push(`${match.model}: ${fmt(t.cacheWrite)} cache-write tokens are priced at the input price, because pricing.models in config.json names no cacheWriteUsdPer1M for ${match.pricedAs}.`);
   }
   /*
@@ -205,11 +239,11 @@ function priced(match: PriceMatch, t: Tokens, notes: string[]): CostEstimateCall
    */
   const write1h = t.cacheWrite1h === undefined ? undefined : Math.min(t.cacheWrite1h, t.cacheWrite);
   const write5m = t.cacheWrite - (write1h ?? 0);
-  const write1hPrice = match.cacheWrite1hUsdPer1M ?? writePrice;
-  if (write1h !== undefined && write1h > 0 && match.cacheWrite1hUsdPer1M === null) {
+  const write1hPrice = rates.cacheWrite1h ?? writePrice;
+  if (write1h !== undefined && write1h > 0 && rates.cacheWrite1h === null) {
     notes.push(`${match.model}: ${fmt(write1h)} 1-hour cache-write tokens are priced at the cache-write price, because no 1-hour write price is known for ${match.pricedAs}.`);
   }
-  if (t.cacheWrite > 0 && t.cacheWrite1h === undefined && match.cacheWrite1hUsdPer1M !== null) {
+  if (t.cacheWrite > 0 && t.cacheWrite1h === undefined && rates.cacheWrite1h !== null) {
     notes.push(`${match.model}: ${fmt(t.cacheWrite)} cache-write tokens are priced as 5-minute writes; the trace does not say how many had a 1-hour lifetime, which costs more.`);
   }
   const perM = (n: number, price: number) => (n / 1_000_000) * price;
@@ -218,8 +252,8 @@ function priced(match: PriceMatch, t: Tokens, notes: string[]): CostEstimateCall
     priced_as: match.pricedAs,
     prompt_tokens: prompt,
     completion_tokens: t.completion,
-    input_usd_per_1m: match.inputUsdPer1M,
-    output_usd_per_1m: match.outputUsdPer1M,
+    input_usd_per_1m: rates.input,
+    output_usd_per_1m: rates.output,
     ...(cached > 0
       ? {
           cache_read_tokens: t.cacheRead,
@@ -230,7 +264,7 @@ function priced(match: PriceMatch, t: Tokens, notes: string[]): CostEstimateCall
         }
       : {}),
     cost_usd: usd(
-      perM(uncached, match.inputUsdPer1M) + perM(t.cacheRead, readPrice) + perM(write5m, writePrice) + perM(write1h ?? 0, write1hPrice) + perM(t.completion, match.outputUsdPer1M),
+      perM(uncached, rates.input) + perM(t.cacheRead, readPrice) + perM(write5m, writePrice) + perM(write1h ?? 0, write1hPrice) + perM(t.completion, rates.output),
     ),
     price_source: match.source,
     price_as_of: match.asOf,
@@ -247,6 +281,22 @@ function cachedOf(usage: TokenUsage | undefined): { cacheRead: number; cacheWrit
     cacheWrite: count(usage?.cache_creation_tokens) ?? 0,
     ...(write1h !== undefined ? { cacheWrite1h: write1h } : {}),
   };
+}
+
+/**
+ * What a total records beyond the calls listed: each of its counts less
+ * the calls' sum, never below 0, the cached part no larger than the input
+ * left. Undefined when nothing is left beyond them.
+ */
+function remainderOf(total: Tokens, calls: readonly Tokens[]): Tokens | undefined {
+  const sum = (pick: (t: Tokens) => number): number => calls.reduce((s, c) => s + pick(c), 0);
+  const prompt = Math.max(0, sizeOf(total) - sum(sizeOf));
+  const completion = Math.max(0, total.completion - sum((c) => c.completion));
+  if (prompt === 0 && completion === 0) return undefined;
+  const cacheRead = Math.min(prompt, Math.max(0, total.cacheRead - sum((c) => c.cacheRead)));
+  const cacheWrite = Math.min(prompt - cacheRead, Math.max(0, total.cacheWrite - sum((c) => c.cacheWrite)));
+  const cacheWrite1h = total.cacheWrite1h === undefined ? undefined : Math.min(cacheWrite, Math.max(0, total.cacheWrite1h - sum((c) => c.cacheWrite1h ?? 0)));
+  return { prompt, completion, cacheRead, cacheWrite, ...(cacheWrite1h !== undefined ? { cacheWrite1h } : {}) };
 }
 
 function estimated(basis: 'token_usage' | 'calls', calls: CostEstimateCall[], notes: string[]): { cost_usd: number; estimate: CostEstimate } {
@@ -296,11 +346,23 @@ export function estimateTraceCost(trace: Trace, using: PricingSettings = pricing
     const oneModel = new Set(found.map((m) => `${m.source}:${m.pricedAs}`)).size === 1;
     const usage = trace.token_usage;
     const notes: string[] = [];
-    if (oneModel && count(usage?.prompt_tokens) !== undefined && count(usage?.completion_tokens) !== undefined) {
-      const call = priced(found[0], { prompt: usage!.prompt_tokens!, completion: usage!.completion_tokens!, ...cachedOf(usage) }, notes);
-      return estimated('token_usage', [call], notes);
+    // A call over the size its provider prices higher is priced by its own size, which the run's total cannot carry: the calls are then priced one by one.
+    const sized = found.some((m, i) => m.longContext !== null && calls[i].oneRequest && sizeOf(calls[i]) > m.longContext.aboveInputTokens);
+    const total: Tokens | undefined =
+      count(usage?.prompt_tokens) !== undefined && count(usage?.completion_tokens) !== undefined ? { prompt: usage!.prompt_tokens!, completion: usage!.completion_tokens!, ...cachedOf(usage) } : undefined;
+    if (oneModel && !sized && total !== undefined) {
+      // Calls that account for the whole total, none over the line, price it as exactly as they would one by one.
+      const covered = calls.every((c) => c.oneRequest) && calls.reduce((sum, c) => sum + sizeOf(c), 0) >= sizeOf(total);
+      return estimated('token_usage', [priced(found[0], total, notes, covered ? 'within' : 'total')], notes);
     }
-    return estimated('calls', found.map((m, i) => priced(m, calls[i], notes)), notes);
+    const perCall = found.map((m, i) => priced(m, calls[i], notes, calls[i].oneRequest ? 'one' : 'total'));
+    // Of one model, the trace's token_usage is its whole: what it records beyond the calls on its spans is priced too, as one more total.
+    const rest = oneModel && total !== undefined ? remainderOf(total, calls) : undefined;
+    if (rest !== undefined) {
+      notes.push(`${found[0].model}: token_usage records ${fmt(rest.prompt)} input and ${fmt(rest.completion)} output tokens beyond the calls on the spans; they are priced as one more total.`);
+      perCall.push(priced(found[0], rest, notes, 'total'));
+    }
+    return estimated('calls', perCall, notes);
   }
 
   const usage = trace.token_usage;
@@ -324,7 +386,7 @@ export function estimateTraceCost(trace: Trace, using: PricingSettings = pricing
   const match = priceModel(traceModel, using);
   if (!match) return { estimate: unknownModel([traceModel]) };
   const notes: string[] = [];
-  return estimated('token_usage', [priced(match, { prompt, completion, ...cachedOf(usage) }, notes)], notes);
+  return estimated('token_usage', [priced(match, { prompt, completion, ...cachedOf(usage) }, notes, 'total')], notes);
 }
 
 /**

@@ -808,7 +808,7 @@ Score output using an LLM as the judge (Anthropic or OpenAI). Seven templates. C
 |-----------|------|----------|-------------|
 | `output` | `string` | Yes | Text to evaluate |
 | `template` | `enum` | Yes | `accuracy` / `helpfulness` / `safety` / `correctness` / `faithfulness` / `task_completed` / `relevance` |
-| `model` | `string` | Yes | Any model in the pricing table (`docs/llm-as-judge.md`, read from both providers on 2026-09-20); an unknown id is refused with the full list |
+| `model` | `string` | Yes | Any model in the pricing table (`docs/llm-as-judge.md`, read from both providers on 2026-11-18); an unknown id is refused with the full list |
 | `provider` | `enum` | No | `anthropic` / `openai` — auto-inferred from model if omitted |
 | `input` | `string` | Required for `relevance` template | Original user question (improves helpfulness/safety templates). `relevance` without it is refused with `IRIS_INVALID_ARGUMENT` before any spend |
 | `expected` | `string` | Required for `correctness` template | Reference answer |

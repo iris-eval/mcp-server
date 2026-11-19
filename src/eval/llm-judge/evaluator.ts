@@ -1,7 +1,7 @@
 import { verdictAnswer, type JudgeAnswer } from './answer.js';
-import { callLLMJudge, estimateInputTokens, LLMJudgeError, type LLMProvider } from './client.js';
+import { callLLMJudge, estimateInputTokens, LLMJudgeError, type LLMJudgeResponse, type LLMProvider } from './client.js';
 import { DEFAULT_JUDGE_DEADLINE_MS } from './deadline.js';
-import { estimateCostUsd, findPricing } from './pricing.js';
+import { estimateCostUsd, findPricing, worstCaseRequestUsd } from './pricing.js';
 import { answerObject, shownReply, shownValue, unitNumber } from './reply.js';
 import { getTemplate, type TemplateName } from './templates/index.js';
 
@@ -182,19 +182,21 @@ function planJudgeCall(params: PlanParams): JudgePlan {
 
   /*
    * Estimate worst-case cost and reject before the network call if it
-   * would exceed the cap. Intentionally pessimistic — every input
-   * character billed, the full output cap billed, AND the malformed-JSON
-   * retry billed on top — because the cap is meant to be a hard ceiling,
-   * not a soft hope. The estimate used to price a single call, so an eval
-   * that fit just under the cap could bill nearly twice the cap whenever
-   * the judge misformatted its first reply.
+   * would exceed the cap. Intentionally pessimistic — the input counted at
+   * INPUT_ESTIMATE_MARGIN (pricing.ts) times its estimate, the full output cap billed,
+   * AND the malformed-JSON retry billed on top — because the cap is meant
+   * to be a ceiling, not a soft hope, for any text within that margin. The
+   * estimate used to price a single call, so an eval that fit just under
+   * the cap could bill nearly twice the cap whenever the judge misformatted
+   * its first reply. Each request is priced on its own
+   * (worstCaseRequestUsd), at the rates for its size.
    */
-  const firstAttemptCost = estimateCostUsd(
+  const firstAttemptCost = worstCaseRequestUsd(
     params.model,
     estimateInputTokens(systemPrompt, userPrompt, answer),
     maxOutputTokens,
   );
-  const retryCost = estimateCostUsd(
+  const retryCost = worstCaseRequestUsd(
     params.model,
     estimateInputTokens(strictSystem, userPrompt, answer),
     retryMaxOutputTokens,
@@ -212,6 +214,11 @@ function planJudgeCall(params: PlanParams): JudgePlan {
  */
 export function worstCaseJudgeCostUsd(params: PlanParams): number | null {
   return planJudgeCall(params).estimatedCost;
+}
+
+/** What one request cost, by its own size, with the input its reply says was read from or written to a cache priced at those rates. */
+function requestCostUsd(model: string, raw: LLMJudgeResponse): number | null {
+  return estimateCostUsd(model, raw.inputTokens, raw.outputTokens, { readTokens: raw.cacheReadTokens, writeTokens: raw.cacheWriteTokens });
 }
 
 export async function evaluateWithLLMJudge(
@@ -258,11 +265,15 @@ export async function evaluateWithLLMJudge(
    * to parse still completed at the provider and was billed; the retry's
    * usage used to overwrite it, so `cost_usd` (surfaced by
    * evaluate_with_llm_judge and stored on the eval result) understated the
-   * real charge by roughly half whenever a retry ran.
+   * real charge by roughly half whenever a retry ran. The cost is the sum of
+   * each request priced on its own, as the provider bills them: priced as
+   * one request of their summed size, two requests each under a long
+   * request's line were billed at its higher rates.
    */
   let inputTokens = raw.inputTokens;
   let outputTokens = raw.outputTokens;
   let latencyMs = raw.latencyMs;
+  let costUsd = requestCostUsd(params.model, raw);
 
   let parsed;
   try {
@@ -286,6 +297,8 @@ export async function evaluateWithLLMJudge(
     inputTokens += raw.inputTokens;
     outputTokens += raw.outputTokens;
     latencyMs += raw.latencyMs;
+    const retryCostUsd = requestCostUsd(params.model, raw);
+    costUsd = costUsd === null || retryCostUsd === null ? null : Math.round((costUsd + retryCostUsd) * 1_000_000) / 1_000_000;
     parsed = parseJudgeResponse(raw.content, raw.structured);
   }
 
@@ -296,7 +309,6 @@ export async function evaluateWithLLMJudge(
    */
   const passed = parsed.score >= template.passThreshold;
   const disagreement = parsed.passed !== undefined && parsed.passed !== passed;
-  const costUsd = estimateCostUsd(params.model, inputTokens, outputTokens);
 
   return {
     passed,
