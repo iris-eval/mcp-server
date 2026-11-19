@@ -15,6 +15,7 @@ import { DuplicateRuleNameError, replacedRulesWarning, retireSameNamedRules } fr
 import { strictBody } from '../validation.js';
 import { costContextOf } from '../../eval/cost-basis.js';
 import { validationErrorBody } from '../../utils/validation-errors.js';
+import { nestsDeeperThanEvaluated } from '../../utils/element-count.js';
 
 const SeveritySchema = z.enum(['low', 'medium', 'high', 'critical']);
 const EvalTypeSchema = z.enum(['completeness', 'relevance', 'safety', 'cost', 'custom']);
@@ -371,7 +372,7 @@ async function previewRule(
     }
     // A trace that arrived over OTLP stores its calls as TOOL spans and no tool_calls, and a page of traces does not carry spans: one indexed read for such a trace, and only for a rule that reads the calls.
     const spans = readsCalls && (trace.tool_calls === undefined || trace.tool_calls.length === 0) ? (trace.spans ?? (await storage.getSpansByTraceId(tenantId, trace.trace_id))) : trace.spans;
-    const result = rule.evaluate({
+    const context = {
       output: trace.output,
       input: trace.input,
       /*
@@ -386,7 +387,22 @@ async function previewRule(
       ...costContextOf(trace),
       tokenUsage: trace.token_usage,
       regexBudget,
-    });
+    };
+    /*
+     * The rule is called here without an evaluation, so the measure the
+     * engine takes before its first rule is taken here, of what the rule is
+     * handed (#1040): a trace whose output, input, calls, spans or catalogue
+     * nest deeper than an evaluation reads is counted as one the rule would
+     * not judge, and is not handed to it. A stored trace's metadata is not
+     * handed to the rule, so it is not measured: a trace nested that deep
+     * only there is previewed as the rule would judge it, though an
+     * evaluation of it is refused.
+     */
+    if (nestsDeeperThanEvaluated(context)) {
+      wouldSkip++;
+      continue;
+    }
+    const result = rule.evaluate(context);
     if (result.skipped) {
       wouldSkip++;
     } else if (result.passed) {

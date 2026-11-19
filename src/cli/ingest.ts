@@ -35,6 +35,8 @@ import { resolveCaseKey } from '../eval/case-key.js';
 import { registerPlugins } from '../eval/plugins.js';
 import { costFieldsOf, resolveTraceCost } from '../cost/trace-cost.js';
 import { canonicalCapture } from '../eval/evidence.js';
+import { maxInputDepthOf } from '../config/defaults.js';
+import { nestingDepth } from '../utils/element-count.js';
 
 export const FAIL_ON = ['policy_gate', 'detector_veto', 'critical_unknown', 'required_evidence_missing', 'risk_over_loss', 'fail', 'unknown', 'any'] as const;
 export type FailOn = (typeof FAIL_ON)[number];
@@ -205,8 +207,15 @@ export async function runIngest(o: IngestOptions): Promise<number> {
     }
     gateLabel = gate?.label ?? null;
     const input = o.file ? createReadStream(o.file, 'utf8') : o.stdin;
+    // The nesting limit every other door holds a trace to (security.maxInputDepth, #1040): a line nested deeper is rejected by name before anything reads it.
+    const maxDepth = maxInputDepthOf(config.security);
 
     for await (const raw of readTraces(input)) {
+      if (nestingDepth(raw, maxDepth) > maxDepth) {
+        rejected++;
+        o.stderr.write(`${COMMAND} ingest: rejected a trace — it nests more than ${maxDepth} levels deep, the limit (security.maxInputDepth, or IRIS_MAX_INPUT_DEPTH); nothing was stored for it\n`);
+        continue;
+      }
       const parsed = ingestTraceSchema.safeParse(raw);
       if (!parsed.success) {
         rejected++;
