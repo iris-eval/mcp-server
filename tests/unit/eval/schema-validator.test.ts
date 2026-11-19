@@ -16,6 +16,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { setFlagsFromString } from 'node:v8';
+import { runInNewContext } from 'node:vm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import type { ValidateFunction } from 'ajv';
@@ -25,7 +27,9 @@ import {
   MAX_TOOL_SCHEMA_DEPTH,
   checkArguments,
   compileToolSchema,
+  lastInstanceForTests,
   resetSchemaCache,
+  sharedInstanceHolds,
 } from '../../../src/eval/schema-validator.js';
 import { createCustomRule } from '../../../src/eval/rules/custom.js';
 import { validToolArguments } from '../../../src/eval/rules/completeness.js';
@@ -188,14 +192,14 @@ describe('the schema guard ladder', () => {
     // And the changelog and the security record say so.
     const flat = (rel: string): string => readFileSync(resolve(root, rel), 'utf-8').replace(/\r?\n\s*/g, ' ');
     expect(flat('CHANGELOG.md')).toContain(
-      "- **The schema checker keeps no more of the schemas it compiles than its cache holds, and no schema reaches another through ajv.** ajv keeps every schema an instance compiles, and the validator made from it, for as long as the instance lives, and the checker compiled every tool's schema and every custom `json_schema` rule's schema on one instance for the life of the process: the memory it held grew with every schema compiled past its cache, the same schemas sent again included, and one schema's references could be resolved through what another had left. Each schema is now compiled on an instance of its own, after one shared instance, which compiles nothing a caller sends, checks it against its meta-schema; what ajv keeps of a schema goes when the checker's cache of 256 lets its validator go. Over 20,000 compiles of schemas the cache did not hold, the heap grew by 65 MB before and by about 3 MB now.",
+      "- **The schema checker keeps no more of the schemas it compiles than its cache holds, and one schema can no longer answer for another.** ajv keeps every schema an instance compiles, and the validator made from it, for as long as the instance lives, and the checker compiled every tool's schema and every custom `json_schema` rule's schema on one instance for the life of the process: the memory it held grew with every schema compiled past its cache, the same schemas sent again included, and one schema's references could be resolved through what another had left. Each schema is now compiled on an instance of its own, after one shared instance, which compiles nothing a caller sends, checks it against its meta-schema; what ajv keeps of a schema goes when the checker's cache of 256 lets its validator go. Over 20,000 compiles of schemas the cache did not hold, the heap grew by 65 MB before and by about 3 MB now. And what is checked and compiled is the schema as its JSON text reads, the text the cache files it under: two schemas filed under one text answer alike, whichever was compiled first and whoever sent it, where the first could answer for the second; and a schema built in code is read once, so a field that answers otherwise when read again, or one it only inherits, changes nothing.",
     );
     expect(flat('SECURITY-EXPOSURE.md')).toContain(
-      'Each schema is compiled on an ajv instance of its own, after one shared instance that compiles nothing a caller sends checks it against its meta-schema: an instance keeps every schema it compiles for as long as it lives, so what ajv keeps of a schema goes when the cache of 256 lets its validator go, and nothing one schema leaves in ajv reaches another.',
+      'Each schema is compiled on an ajv instance of its own, after one shared instance that compiles nothing a caller sends checks it against its meta-schema: an instance keeps every schema it compiles for as long as it lives, so what ajv keeps of a schema goes when the cache of 256 lets its validator go, and nothing one schema leaves in ajv reaches another. What is checked and compiled is the schema the cache key describes, its JSON text read back, so two schemas filed under one key answer alike whoever sent them, and an object built in code is read once.',
     );
   });
 
-  it('a $schema that does not name the draft-07 meta-schema is refused before ajv reads it, where a pointer compiled a part of the schema outside every rung and left its promise rejected', async () => {
+  it('a $schema that does not name the draft-07 meta-schema is refused before ajv reads it, where a pointer had ajv compile a part of the schema in its check and leave its promise rejected', async () => {
     const unhandled: unknown[] = [];
     const listen = (reason: unknown): void => {
       unhandled.push(reason);
@@ -217,9 +221,11 @@ describe('the schema guard ladder', () => {
         expect(compiled, schema.$schema).toEqual({ ok: false, reason: refused(schema.$schema) });
         expect(checkArguments(compiled, { q: 1 })).toMatchObject({ state: 'unchecked' });
       }
-      // Read as ajv reads it: a $schema an embedder's object only inherits counts as its own.
+      // An object is checked as its text reads: a $schema it only inherits is no part of it, and its own $async is.
       const inherits = Object.assign(Object.create({ $schema: '#' }) as Record<string, unknown>, { $async: true, ...shape });
-      expect(compileToolSchema(inherits)).toEqual({ ok: false, reason: refused('#') });
+      expect(compileToolSchema(inherits)).toEqual({ ok: false, reason: 'the inputSchema is marked $async, which makes its check answer later; Iris checks arguments at once, so it is not compiled' });
+      // The rung stands before the pattern probes: a pointer beside an exponential pattern is refused for the pointer.
+      expect(compileToolSchema({ $schema: '#', ...shape, properties: { q: { type: 'string', pattern: '(a+)+$' } } })).toEqual({ ok: false, reason: refused('#') });
       // Any other value: a pointer into the schema or into the meta-schema, another draft, an address ajv does not carry.
       for (const value of ['#/properties', 'http://json-schema.org/draft-07/schema#/properties/default', 'https://json-schema.org/draft/2020-12/schema', 'HTTP://JSON-SCHEMA.ORG/draft-07/schema#']) {
         expect(compileToolSchema({ $schema: value, ...shape }), value).toEqual({ ok: false, reason: refused(value) });
@@ -260,6 +266,72 @@ describe('the schema guard ladder', () => {
     expect(checkArguments(honest, { q: 'x' })).toEqual({ state: 'valid' });
   });
 
+  it('an object built in code is read once, as its text: a $schema or $async that answers otherwise when read again changes nothing, and leaves no promise', async () => {
+    const unhandled: unknown[] = [];
+    const listen = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on('unhandledRejection', listen);
+    try {
+      const shape = { type: 'object', properties: { q: { type: 'string' } }, required: ['q'], definitions: { x: { $async: true, type: 'string' } } };
+      /** A field that answers `first` when it is first read and `then` after. */
+      const turning = (field: string, first: unknown, then: unknown): Record<string, unknown> => {
+        let reads = 0;
+        return Object.defineProperty({ ...shape }, field, { enumerable: true, get: () => (reads++ === 0 ? first : then) });
+      };
+      // The draft-07 id to the first read, a pointer to an asynchronous part after: compiled as the text reads, and nothing answers later.
+      const pointer = compileToolSchema(turning('$schema', 'http://json-schema.org/draft-07/schema#', '#/definitions/x'));
+      expect(checkArguments(pointer, { q: 1 })).toEqual({ state: 'invalid', instancePath: '/q', keyword: 'type' });
+      // Marked $async to the first read and not after: refused, as the text is, by the validator ajv made from it.
+      expect(compileToolSchema(turning('$async', true, false))).toEqual({ ok: false, reason: 'the inputSchema is marked $async, which makes its check answer later; Iris checks arguments at once, so it is not compiled' });
+      // An object whose toJSON answers nothing has no text; one whose text is not an object is no schema.
+      expect(compileToolSchema({ toJSON: () => undefined })).toEqual({ ok: false, reason: 'the inputSchema is not serialisable (a cycle, or a value JSON cannot carry)' });
+      expect(compileToolSchema({ toJSON: () => 'object' })).toEqual({ ok: false, reason: 'the inputSchema is not a JSON Schema object' });
+      await new Promise((r) => setTimeout(r, 50));
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', listen);
+    }
+  });
+
+  it('two schemas filed under one text answer alike, whichever was compiled first: a schema is compiled as its text reads', () => {
+    // A number past a double's range reads as Infinity, which JSON writes as null: the two schemas share their text.
+    const past = JSON.parse('{"type":"object","properties":{"q":{"const":1e400}},"required":["q"]}') as Record<string, unknown>;
+    const nulled = { type: 'object', properties: { q: { const: null } }, required: ['q'] };
+    for (const order of [[past, nulled], [nulled, past]]) {
+      resetSchemaCache();
+      const first = compileToolSchema(order[0]);
+      const second = compileToolSchema(order[1]);
+      expect(checkArguments(first, { q: null })).toEqual({ state: 'valid' });
+      expect(checkArguments(second, { q: null })).toEqual({ state: 'valid' });
+      expect(checkArguments(second, { q: 1 })).toMatchObject({ state: 'invalid', keyword: 'const' });
+    }
+  });
+
+  it('a schema with two faults is refused for the one ajv names first: an anchor before the meta-schema', () => {
+    expect(compileToolSchema({ type: 'object', required: 'q', properties: { a: { $anchor: '1bad', type: 'string' } } })).toEqual({ ok: false, reason: 'the inputSchema did not compile: invalid anchor "1bad"' });
+    expect(compileToolSchema({ type: 'object', required: 'q', properties: { a: { $anchor: 'x', type: 'string' }, b: { $anchor: 'x', type: 'number' } } })).toEqual({ ok: false, reason: 'the inputSchema did not compile: reference "#x" resolves to more than one schema' });
+  });
+
+  it('the instance that checks every schema keeps nothing of them, and the instance a schema is compiled on goes once its compile returns', async () => {
+    resetSchemaCache();
+    compileToolSchema({ type: 'object', properties: { warm: { type: 'string' } } });
+    const before = sharedInstanceHolds();
+    for (let i = 0; i < 50; i += 1) compileToolSchema({ type: 'object', properties: { [`p${i}`]: { type: 'string' } }, required: [`p${i}`] });
+    expect(sharedInstanceHolds()).toEqual(before);
+    // The validator ajv makes does not hold its instance: with the validator in the cache, the instance is free to go.
+    const compiled = compileToolSchema({ type: 'object', properties: { last: { type: 'integer' } } });
+    const instance = lastInstanceForTests();
+    expect(instance?.deref()).toBeDefined();
+    setFlagsFromString('--expose_gc');
+    const gc = runInNewContext('gc') as () => void;
+    await new Promise((r) => setTimeout(r, 0));
+    gc();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(instance?.deref()).toBeUndefined();
+    expect(checkArguments(compiled, { last: 'x' })).toMatchObject({ state: 'invalid', keyword: 'type' });
+  });
+
   it('a refusal for $async or for $schema is remembered: the same schema sent again is answered from the cache', () => {
     for (const schema of [{ $async: true, type: 'object' }, { $schema: '#', type: 'object' }]) {
       const first = compileToolSchema(schema);
@@ -271,10 +343,10 @@ describe('the schema guard ladder', () => {
   it('the changelog, the security record and the guide say which schemas are refused for $async and $schema, and why', () => {
     const flat = (rel: string): string => readFileSync(resolve(root, rel), 'utf-8').replace(/\r?\n\s*/g, ' ');
     expect(flat('CHANGELOG.md')).toContain(
-      "- **A tool schema marked `$async`, or whose `$schema` is anything but the draft-07 meta-schema, is refused: such a schema could pass calls it should fail, and stop the server.** ajv compiles a schema whose root carries `$async` with a value that reads as true (in JSON, anything but `false`, `0`, `\"\"` and `null`) into a validator that answers later, with a promise, and `valid_tool_arguments` and a custom `json_schema` rule read that answer as a pass whatever the value held; an invalid value could end the process. ajv also reads a schema's `$schema` as a reference before it compiles the schema, and a pointer (`#`, `#/definitions/x`) named the schema itself or a part of it: compiled on its own, outside the checks Iris makes on a schema, that part could answer with a promise in the same way, and it was kept where a later schema's `$ref` to the same pointer, sent by any caller, found it in place of that schema's own definition. Such a schema is now refused with the reason, as any schema Iris will not compile is: a call is not checked against it, a `json_schema` rule that carries one is refused at deploy, and one deployed before is kept on disk and not run (`list_rules` lists it among the quarantined entries). A `$schema` of `http://json-schema.org/draft-07/schema#` or `http://json-schema.org/schema#`, with or without the `#`, or empty, compiles as before. Below the root, ajv refuses `$async` wherever it would compile it into the check.",
+      "- **A tool schema marked `$async`, or whose `$schema` is anything but the draft-07 meta-schema, is refused: such a schema could pass calls it should fail, and stop the server.** ajv compiles a schema whose root carries `$async` with a value that reads as true (in JSON, anything but `false`, `0`, `\"\"` and `null`) into a validator that answers later, with a promise, and `valid_tool_arguments` and a custom `json_schema` rule read that answer as a pass whatever the value held; an invalid value could end the process. ajv also reads a schema's `$schema` as a reference before it compiles the schema, and a pointer (`#`, `#/definitions/x`) named the schema itself or a part of it: ajv compiled that part in its check of the schema, past the one check Iris makes of a compiled validator, so it could answer with a promise in the same way, and it was kept where a later schema's `$ref` to the same pointer, sent by any caller, found it in place of that schema's own definition. Such a schema is now refused with the reason, as any schema Iris will not compile is: a call is not checked against it, a `json_schema` rule that carries one is refused at deploy, and one deployed before is kept on disk and not run (`list_rules` lists it among the quarantined entries). A `$schema` of `http://json-schema.org/draft-07/schema` or `http://json-schema.org/schema`, with `#`, `#/` or neither after it, or empty, compiles as before. Below the root, ajv refuses `$async` wherever it would compile it into the check.",
     );
     expect(flat('SECURITY-EXPOSURE.md')).toContain(
-      'A root `$schema` other than `http://json-schema.org/draft-07/schema#` or `http://json-schema.org/schema#` (with or without the `#`) or empty is refused before ajv sees it: ajv reads `$schema` as a reference, and a pointer names the schema itself or a part of it, which ajv compiles outside this ladder and keeps in the instance every caller shares. A schema whose root carries `$async` with a value that reads as true is refused once compiled: its validator answers with a promise, which a check that answers at once would read as a pass, and whose rejection nothing would catch. Below the root, ajv refuses `$async` wherever it would compile it into the check.',
+      'A root `$schema` other than `http://json-schema.org/draft-07/schema` or `http://json-schema.org/schema` (with `#`, `#/` or neither after it) or empty is refused before ajv sees it: ajv reads `$schema` as a reference; a pointer names the schema itself or a part of it, which ajv would compile in its check of the schema, past the rung that reads a compiled validator; and the instance that checks every schema keeps whatever a reference resolves to, of which ajv resolves an endless family of spellings into the meta-schema. A schema whose root carries `$async` with a value that reads as true is refused once compiled: its validator answers with a promise, which a check that answers at once would read as a pass, and whose rejection nothing would catch. Below the root, ajv refuses `$async` wherever it would compile it into the check.',
     );
     expect(flat('docs/custom-rules.md')).toContain(
       'Schemas go through the same guard ladder a tools catalogue does: size, depth and node caps, local `$ref` only, a `$schema` only where it names the draft-07 meta-schema, star height and a backtracking probe on every `pattern`, and no `$async` at the root that reads as true, since a check here answers at once.',
