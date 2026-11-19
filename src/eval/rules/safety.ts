@@ -2758,7 +2758,7 @@ export const noSilentToolFailure: EvalRule = {
 
     const acknowledgement = acknowledgesFailure(context.output);
     const said = (kind: 'failed' | 'reported'): string => (kind === 'failed' ? 'failed' : 'reported failure');
-    // The first failures of the run, wherever they stand in it. Until 0.22.0 a failure was kept only when it was among the run's first calls, so one at the 30th call had no evidence.
+    // The first failures the answer has to own, wherever they stand in the run. Until 0.22.0 one was kept only when it was among the run's first calls, so one at the 30th call had no evidence.
     const evidence: Evidence[] = failed
       .slice(0, MAX_EVIDENCE_ITEMS)
       .map((f) => ({ type: 'toolCall' as const, index: f.index, toolName: f.step.name, label: `${said(f.kind)}: ${f.reason}${acknowledgement !== null ? ' (acknowledged)' : ' (unacknowledged)'}` }));

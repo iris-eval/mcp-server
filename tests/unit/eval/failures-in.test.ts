@@ -180,7 +180,7 @@ describe('failuresIn — the same answers as the definition, read once', () => {
     expect(indices(failuresIn(toSteps({ toolCalls: [bare('ping'), bare('ping', 'timeout'), bare('pong')] })))).toEqual({ open: ['1:failed'], recovered: [] });
   }, 30_000);
 
-  it('reads each call once, however many failures stand before it', () => {
+  it('reads each call a fixed number of times, however many failures stand before it', () => {
     /** A run whose steps count each time their output or their input is read. */
     const counted = (calls: ToolCallRecord[]): { steps: Step[]; outputs: number[]; inputs: number[] } => {
       const steps = toSteps({ toolCalls: calls });
@@ -240,6 +240,57 @@ describe('failuresIn — the same answers as the definition, read once', () => {
     const asked = counted(bare);
     expect(indices(byDefinition(asked.steps))).toEqual(indices(none));
     expect(Math.min(...asked.inputs.slice(40))).toBeGreaterThanOrEqual(40);
+
+    // A command's own failing verdict: forty test runs that report failures, then forty commands that report nothing. Each later
+    // command is read for a passing verdict once, where the definition read it once for every failing run before it.
+    const failingRun = 'Test Files  1 failed | 3 passed (4)\n     Tests  2 failed | 40 passed (42)';
+    const reported: ToolCallRecord[] = [
+      ...Array.from({ length: 40 }, (_, i): ToolCallRecord => ({ tool_name: 'bash', input: { command: `npm test -- part${i}` }, output: failingRun })),
+      ...Array.from({ length: 40 }, (_, i): ToolCallRecord => ({ tool_name: 'bash', input: { command: `ls dir${i}` }, output: `file${i}.ts` })),
+    ];
+    const verdicts = counted(reported);
+    const owned = failuresIn(verdicts.steps);
+    expect([owned.open.length, owned.recovered.length]).toEqual([40, 0]);
+    expect(Math.max(...verdicts.outputs.slice(40))).toBe(Math.min(...verdicts.outputs.slice(40)));
+    expect(Math.max(...verdicts.outputs.slice(40))).toBeLessThanOrEqual(6);
+    const definition = counted(reported);
+    expect(indices(byDefinition(definition.steps))).toEqual(indices(owned));
+    expect(Math.min(...definition.outputs.slice(40))).toBeGreaterThanOrEqual(40);
+    // And a step before every failing verdict is not read for a passing one: forty commands, then a test run that reports
+    // failures, read each of the forty as often as the same forty with nothing after them.
+    const quiet = Array.from({ length: 40 }, (_, i): ToolCallRecord => ({ tool_name: 'bash', input: { command: `ls dir${i}` }, output: `file${i}.ts` }));
+    const endsRed = counted([...quiet, { tool_name: 'bash', input: { command: 'npm test' }, output: failingRun }]);
+    expect(failuresIn(endsRed.steps).open).toHaveLength(1);
+    const alone = counted(quiet);
+    failuresIn(alone.steps);
+    expect(endsRed.outputs.slice(0, 40)).toEqual(alone.outputs);
+    expect(endsRed.inputs.slice(0, 40)).toEqual(alone.inputs);
+    // The same for a failure that named no target, after forty calls of its tool that went right: its values are looked for
+    // only past it, so the forty are read as often as with no failure after them.
+    const given = { ref: 'r1', tag: 't1', lane: 'l1' };
+    const before = Array.from({ length: 40 }, (_, i): ToolCallRecord => ({ tool_name: 'run_step', input: { ...given, n: `n${i}` }, output: 'ok' }));
+    const endsFailed = counted([...before, { tool_name: 'run_step', input: given, error: 'boom' }]);
+    expect(failuresIn(endsFailed.steps).open).toHaveLength(1);
+    const beforeAlone = counted(before);
+    failuresIn(beforeAlone.steps);
+    expect(endsFailed.inputs.slice(0, 40)).toEqual(beforeAlone.inputs);
+  });
+
+  it('a target that is only spaces is a target (an empty one), and a name is the name as written', () => {
+    const steps = (calls: ToolCallRecord[]) => toSteps({ toolCalls: calls });
+    // A read of "   " that failed is not recovered by a read of another file.
+    const blank = steps([{ tool_name: 'read_file', input: { path: '   ' }, output: 'x', error: 'ENOENT: no such file or directory' }, { tool_name: 'read_file', input: { path: 'src/b.ts' }, output: 'ok' }]);
+    expect(indices(failuresIn(blank))).toEqual({ open: ['0:failed'], recovered: [] });
+    expect(indices(failuresIn(blank))).toEqual(indices(byDefinition(blank)));
+    // A target is trimmed and folded to lower case, so a later read of " " is about the same empty target, and recovers it.
+    const same = steps([{ tool_name: 'read_file', input: { path: '   ' }, output: 'x', error: 'ENOENT: no such file or directory' }, { tool_name: 'read_file', input: { path: ' ' }, output: 'ok' }]);
+    expect(indices(failuresIn(same))).toEqual({ open: [], recovered: ['0:failed'] });
+    expect(indices(failuresIn(same))).toEqual(indices(byDefinition(same)));
+    // A tool whose name begins with a space is recovered by a later call of that name, as written.
+    const spaced = steps([{ tool_name: ' ping', input: {}, error: 'timeout' }, { tool_name: ' ping', input: {}, output: 'ok' }]);
+    expect(indices(failuresIn(spaced))).toEqual({ open: [], recovered: ['0:failed'] });
+    const unspaced = steps([{ tool_name: ' ping', input: {}, error: 'timeout' }, { tool_name: 'ping', input: {}, output: 'ok' }]);
+    expect(indices(failuresIn(unspaced))).toEqual({ open: ['0:failed'], recovered: [] });
   });
 });
 
@@ -264,7 +315,17 @@ describe('no_silent_tool_failure — the evidence and the names', () => {
     expect(owned.evidence).toEqual([{ type: 'toolCall', index: 30, toolName: 'read_file', label: 'failed: ENOENT: no such file or directory (acknowledged)' }]);
   });
 
-  it('the first twenty-five failures are the evidence, wherever they stand in the run', () => {
+  it('the first twenty-five failures the answer has to own are the evidence, wherever they stand in the run; one it recovered from is not among them', () => {
+    // Three reads that failed and were retried at once, thirty-three that went right, then thirty that failed from the 40th call on.
+    const retried = judge(
+      [...[0, 1, 2].flatMap((i) => [failed(i), { tool_name: 'read_file', input: { path: `src/missing_${i}.ts` }, output: 'ok' }]), ...Array.from({ length: 33 }, (_, i) => ok(10 + i)), ...Array.from({ length: 30 }, (_, i) => failed(100 + i))],
+      'Everything was read and the summary is complete.',
+    );
+    expect(retried.value).toMatchObject({ value: 30 });
+    expect(retried.evidence?.map((e) => (e.type === 'toolCall' ? e.index : -1))).toEqual(Array.from({ length: 25 }, (_, i) => 39 + i));
+    // One recovered and one open: only the open one is an item.
+    const mixed = judge([failed(0), { tool_name: 'read_file', input: { path: 'src/missing_0.ts' }, output: 'ok' }, failed(1)], 'Everything was read and the summary is complete.');
+    expect(mixed.evidence?.map((e) => (e.type === 'toolCall' ? e.index : -1))).toEqual([2]);
     // Forty failures from the 50th call on: none of them stood among the run's first twenty-five calls.
     const toolCalls = [...Array.from({ length: 50 }, (_, i) => ok(i)), ...Array.from({ length: 40 }, (_, i) => failed(50 + i))];
     const result = judge(toolCalls, 'Everything was read and the summary is complete.');
@@ -286,15 +347,29 @@ describe('no_silent_tool_failure — the evidence and the names', () => {
     // Five or fewer are named as they were.
     const few = judge(tools.slice(0, 5).map((tool, i) => failed(i, tool)), 'Several calls failed with errors, so nothing could be verified.');
     expect(few.message).toContain('5 tool calls went wrong (read_file, stat_file, list_dir, search_code, http_get) and the output acknowledges it');
+    // A tool is named as often as it went wrong, and every call that went wrong is counted, past the evidence's twenty-five too.
+    const repeated = judge(['read_file', 'read_file', 'read_file', 'stat_file', 'stat_file', 'read_file'].map((tool, i) => failed(i, tool)), 'Several calls failed with errors, so nothing could be verified.');
+    expect(repeated.message).toContain('6 tool calls went wrong (read_file, read_file, read_file, stat_file, stat_file and 1 more) and the output acknowledges it');
+    const forty = judge(Array.from({ length: 40 }, (_, i) => failed(i)), 'Several calls failed with errors, so nothing could be verified.');
+    expect(forty.message).toContain('40 tool calls went wrong (read_file, read_file, read_file, read_file, read_file and 35 more) and the output acknowledges it');
   });
 
-  it('the changelog says what the rule reads and what a caller sees, word for word', () => {
-    const changelog = readFileSync(resolve(__dirname, '..', '..', '..', 'CHANGELOG.md'), 'utf8');
-    expect(changelog).toContain(
-      "- **`no_silent_tool_failure` reads a run once to find its failures, and gives evidence for a failed call wherever it stands.** It asked, for each failed call, every call after it whether it recovered the failure, reading each later call's output and input again every time, so a large run with many failures held the rule, and the server with it, for seconds: about 7 s for the dearest request found that the server accepts. It now reads each call once, and which failures are open and which were recovered is as it was, on 4,000 generated runs and on the dearest requests found, which now take under 50 ms.",
-    );
-    expect(changelog).toContain(
-      "  - What a caller sees after upgrading: the evidence lists the run's first 25 failures wherever they stand, where a failure past the 25th call had none; and where the answer owns more than five calls that went wrong, the message names the first five tools and says how many more, where it named every one.",
-    );
+  it('the changelog says what the rule reads and what a caller sees, word for word, under Security in the release to come', () => {
+    const changelog = readFileSync(resolve(__dirname, '..', '..', '..', 'CHANGELOG.md'), 'utf8').replace(/\r\n/g, '\n');
+    const entry =
+      "- **`no_silent_tool_failure` finds a run's failures without reading the calls after each one again, and gives evidence for each failure the answer has to own, wherever it stands.** It asked, for each failed call, every call after it whether it recovered the failure, reading each later call's output and input again every time, so a large run with many failures held the rule, and the server with it, for seconds: up to about 14 s for the dearest requests found that the server accepts. It now reads each call a fixed number of times, however many failures stand before it, and which failures are open and which were recovered is as it was, on 4,000 generated runs and on the dearest requests found, which now take at most about 150 ms; a run with no failure, or with its failures at its end, costs what it did.";
+    const sees =
+      "  - What a caller sees after upgrading: the evidence lists the first 25 failures the answer has to own, wherever they stand, where one past the 25th call had none, and in `GET /issues` a failing result whose first such failure stands past the 25th call is grouped by that failure's tool and reason, as one with an earlier failure always was, where it was grouped by its message; and where the answer owns more than five calls that went wrong, the message names the first five tools and says how many more, where it named every one.";
+    // The two lines together, the entry first, under the release to come's Security heading.
+    const at = changelog.indexOf(`${entry}\n${sees}\n`);
+    expect(at).toBeGreaterThan(-1);
+    const unreleased = changelog.indexOf('## [Unreleased]');
+    const nextRelease = changelog.indexOf('\n## [', unreleased + 1);
+    const security = changelog.indexOf('\n### Security\n', unreleased);
+    expect(unreleased).toBeGreaterThan(-1);
+    expect(security).toBeGreaterThan(unreleased);
+    expect(at).toBeGreaterThan(security);
+    expect(at).toBeLessThan(nextRelease);
+    expect(changelog.slice(security + 1, at)).not.toMatch(/\n### /);
   });
 });
