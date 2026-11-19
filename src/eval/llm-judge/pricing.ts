@@ -32,10 +32,11 @@ export interface ModelPricing {
   /**
    * USD per 1M input tokens written to the prompt cache. Anthropic charges
    * 1.25x the input price for a 5-minute write (the default lifetime; a
-   * 1-hour write is cacheWrite1hUsdPer1M). The
-   * OpenAI models below charge no write premium — OpenAI's prompt-caching
-   * guide adds one only from GPT-5.6 — so a written token is an input token
-   * and this is their input price.
+   * 1-hour write is cacheWrite1hUsdPer1M). OpenAI charges for a write from
+   * GPT-5.6: 1.25x the input for a 30-minute write, the price here, and 2.5x
+   * for a 12-hour write, which is not priced, since nothing a trace carries
+   * that Iris reads splits the two. For its earlier models a written token is
+   * an input token, and this is their input price.
    */
   cacheWriteUsdPer1M: number;
   /**
@@ -48,10 +49,28 @@ export interface ModelPricing {
   cacheWrite1hUsdPer1M?: number;
   /** ISO date the provider's pricing page was found to no longer list this model; the price is the last one it did list. */
   retired?: string;
+  /**
+   * The rates of a request over a number of input tokens, where the
+   * provider prices such a request higher as a whole: Anthropic for
+   * Claude Haiku 5.5 over 100,000 prompt tokens, OpenAI from GPT-5.4 over
+   * 272,000 input tokens. A request's size counts every input token, its
+   * cache reads and writes included, and each request is priced on its own.
+   */
+  longContext?: LongContextPricing;
+}
+
+/** The rates a request over `aboveInputTokens` input tokens is priced at, every token of it. */
+export interface LongContextPricing {
+  aboveInputTokens: number;
+  inputUsdPer1M: number;
+  outputUsdPer1M: number;
+  cacheReadUsdPer1M: number;
+  cacheWriteUsdPer1M: number;
+  cacheWrite1hUsdPer1M?: number;
 }
 
 /** The date the table was last read from PRICING_SOURCES. */
-export const PRICING_SOURCED_ON = '2026-09-28';
+export const PRICING_SOURCED_ON = '2026-11-18';
 
 export const PRICING_SOURCES: Readonly<Record<PricingProvider, string>> = {
   anthropic: 'https://claude.com/pricing',
@@ -69,37 +88,99 @@ export const CACHE_PRICING_SOURCES: Readonly<Record<PricingProvider, readonly st
 };
 
 export const MODEL_PRICING: readonly ModelPricing[] = [
-  // Anthropic — current
-  { provider: 'anthropic', model: 'claude-fable-5-1', inputUsdPer1M: 10, outputUsdPer1M: 50, cacheReadUsdPer1M: 0.25, cacheWriteUsdPer1M: 12.5, cacheWrite1hUsdPer1M: 20 },
+  // Anthropic — current, in the order its models page lists them
+  { provider: 'anthropic', model: 'claude-fable-5-2', inputUsdPer1M: 8, outputUsdPer1M: 40, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 10, cacheWrite1hUsdPer1M: 16 },
   { provider: 'anthropic', model: 'claude-opus-5-5', inputUsdPer1M: 4, outputUsdPer1M: 20, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 5, cacheWrite1hUsdPer1M: 8 },
+  { provider: 'anthropic', model: 'claude-sonnet-5-5', inputUsdPer1M: 2, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 2.5, cacheWrite1hUsdPer1M: 4 },
+  {
+    provider: 'anthropic', model: 'claude-haiku-5-5', inputUsdPer1M: 0.1, outputUsdPer1M: 0.5, cacheReadUsdPer1M: 0.01, cacheWriteUsdPer1M: 0.125, cacheWrite1hUsdPer1M: 0.2,
+    longContext: { aboveInputTokens: 100_000, inputUsdPer1M: 0.5, outputUsdPer1M: 2.5, cacheReadUsdPer1M: 0.05, cacheWriteUsdPer1M: 0.625, cacheWrite1hUsdPer1M: 1 },
+  },
+  // Anthropic — earlier, still served and priced
+  { provider: 'anthropic', model: 'claude-fable-5-1', inputUsdPer1M: 10, outputUsdPer1M: 50, cacheReadUsdPer1M: 0.25, cacheWriteUsdPer1M: 12.5, cacheWrite1hUsdPer1M: 20 },
+  { provider: 'anthropic', model: 'claude-fable-5', inputUsdPer1M: 10, outputUsdPer1M: 50, cacheReadUsdPer1M: 1, cacheWriteUsdPer1M: 12.5, cacheWrite1hUsdPer1M: 20 },
+  { provider: 'anthropic', model: 'claude-opus-5', inputUsdPer1M: 5, outputUsdPer1M: 25, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 6.25, cacheWrite1hUsdPer1M: 10 },
   { provider: 'anthropic', model: 'claude-sonnet-5', inputUsdPer1M: 2, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 2.5, cacheWrite1hUsdPer1M: 4 },
   { provider: 'anthropic', model: 'claude-haiku-4-5', inputUsdPer1M: 1, outputUsdPer1M: 5, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 1.25, cacheWrite1hUsdPer1M: 2 },
   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', inputUsdPer1M: 1, outputUsdPer1M: 5, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 1.25, cacheWrite1hUsdPer1M: 2 },
-  // Anthropic — legacy on the provider's page, still priced
-  { provider: 'anthropic', model: 'claude-opus-5', inputUsdPer1M: 5, outputUsdPer1M: 25, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 6.25, cacheWrite1hUsdPer1M: 10 },
   // Anthropic — the 4.x line, still priced
   { provider: 'anthropic', model: 'claude-opus-4-8', inputUsdPer1M: 5, outputUsdPer1M: 25, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 6.25, cacheWrite1hUsdPer1M: 10 },
   { provider: 'anthropic', model: 'claude-opus-4-7', inputUsdPer1M: 5, outputUsdPer1M: 25, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 6.25, cacheWrite1hUsdPer1M: 10 },
   { provider: 'anthropic', model: 'claude-opus-4-6', inputUsdPer1M: 5, outputUsdPer1M: 25, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 6.25, cacheWrite1hUsdPer1M: 10 },
   { provider: 'anthropic', model: 'claude-sonnet-4-6', inputUsdPer1M: 3, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.3, cacheWriteUsdPer1M: 3.75, cacheWrite1hUsdPer1M: 6 },
   { provider: 'anthropic', model: 'claude-opus-4-5', inputUsdPer1M: 5, outputUsdPer1M: 25, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 6.25, cacheWrite1hUsdPer1M: 10 },
+  // Retires on the Claude API on 2026-11-30 (the provider's model deprecations page).
   { provider: 'anthropic', model: 'claude-sonnet-4-5', inputUsdPer1M: 3, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.3, cacheWriteUsdPer1M: 3.75, cacheWrite1hUsdPer1M: 6 },
 
-  // OpenAI — current
+  // OpenAI — current: the four its models page features, then the rest of GPT-6 and GPT-5.6
+  {
+    provider: 'openai', model: 'gpt-6.2-astra', inputUsdPer1M: 8, outputUsdPer1M: 40, cacheReadUsdPer1M: 0.4, cacheWriteUsdPer1M: 10,
+    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 16, outputUsdPer1M: 60, cacheReadUsdPer1M: 0.8, cacheWriteUsdPer1M: 20 },
+  },
+  {
+    provider: 'openai', model: 'gpt-6.2-sol', inputUsdPer1M: 2, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 2.5,
+    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 4, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 5 },
+  },
+  {
+    provider: 'openai', model: 'gpt-6.1-terra', inputUsdPer1M: 1, outputUsdPer1M: 5, cacheReadUsdPer1M: 0.05, cacheWriteUsdPer1M: 1.25,
+    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 2, outputUsdPer1M: 7.5, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 2.5 },
+  },
+  {
+    provider: 'openai', model: 'gpt-6-luna', inputUsdPer1M: 0.1, outputUsdPer1M: 0.5, cacheReadUsdPer1M: 0.01, cacheWriteUsdPer1M: 0.125,
+    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 0.2, outputUsdPer1M: 0.75, cacheReadUsdPer1M: 0.02, cacheWriteUsdPer1M: 0.25 },
+  },
+  {
+    provider: 'openai', model: 'gpt-6.1-sol', inputUsdPer1M: 2, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 2.5,
+    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 4, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 5 },
+  },
+  {
+    provider: 'openai', model: 'gpt-6-astra', inputUsdPer1M: 10, outputUsdPer1M: 50, cacheReadUsdPer1M: 1, cacheWriteUsdPer1M: 12.5,
+    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 20, outputUsdPer1M: 75, cacheReadUsdPer1M: 2, cacheWriteUsdPer1M: 25 },
+  },
+  {
+    provider: 'openai', model: 'gpt-6-sol', inputUsdPer1M: 2, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 2.5,
+    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 4, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.4, cacheWriteUsdPer1M: 5 },
+  },
+  {
+    provider: 'openai', model: 'gpt-5.6-terra', inputUsdPer1M: 2, outputUsdPer1M: 12, cacheReadUsdPer1M: 0.2, cacheWriteUsdPer1M: 2.5,
+    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 4, outputUsdPer1M: 18, cacheReadUsdPer1M: 0.4, cacheWriteUsdPer1M: 5 },
+  },
+  {
+    provider: 'openai', model: 'gpt-5.6-luna', inputUsdPer1M: 0.2, outputUsdPer1M: 1.2, cacheReadUsdPer1M: 0.02, cacheWriteUsdPer1M: 0.25,
+    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 0.4, outputUsdPer1M: 1.8, cacheReadUsdPer1M: 0.04, cacheWriteUsdPer1M: 0.5 },
+  },
+  // OpenAI — earlier, still on its pricing page (some marked deprecated on their model pages)
+  {
+    provider: 'openai', model: 'gpt-5.5', inputUsdPer1M: 5, outputUsdPer1M: 30, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 5,
+    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 10, outputUsdPer1M: 45, cacheReadUsdPer1M: 1, cacheWriteUsdPer1M: 10 },
+  },
+  {
+    provider: 'openai', model: 'gpt-5.4', inputUsdPer1M: 2.5, outputUsdPer1M: 15, cacheReadUsdPer1M: 0.25, cacheWriteUsdPer1M: 2.5,
+    longContext: { aboveInputTokens: 272_000, inputUsdPer1M: 5, outputUsdPer1M: 22.5, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 5 },
+  },
+  { provider: 'openai', model: 'gpt-5.4-mini', inputUsdPer1M: 0.75, outputUsdPer1M: 4.5, cacheReadUsdPer1M: 0.075, cacheWriteUsdPer1M: 0.75 },
+  { provider: 'openai', model: 'gpt-5.4-nano', inputUsdPer1M: 0.2, outputUsdPer1M: 1.25, cacheReadUsdPer1M: 0.02, cacheWriteUsdPer1M: 0.2 },
+  { provider: 'openai', model: 'gpt-5.2', inputUsdPer1M: 1.75, outputUsdPer1M: 14, cacheReadUsdPer1M: 0.175, cacheWriteUsdPer1M: 1.75 },
+  { provider: 'openai', model: 'gpt-5.1', inputUsdPer1M: 1.25, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.125, cacheWriteUsdPer1M: 1.25 },
   { provider: 'openai', model: 'gpt-5', inputUsdPer1M: 1.25, outputUsdPer1M: 10, cacheReadUsdPer1M: 0.125, cacheWriteUsdPer1M: 1.25 },
   { provider: 'openai', model: 'gpt-5-mini', inputUsdPer1M: 0.25, outputUsdPer1M: 2, cacheReadUsdPer1M: 0.025, cacheWriteUsdPer1M: 0.25 },
+  { provider: 'openai', model: 'gpt-5-nano', inputUsdPer1M: 0.05, outputUsdPer1M: 0.4, cacheReadUsdPer1M: 0.005, cacheWriteUsdPer1M: 0.05 },
+  { provider: 'openai', model: 'gpt-4.1', inputUsdPer1M: 2, outputUsdPer1M: 8, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 2 },
   { provider: 'openai', model: 'gpt-4.1-mini', inputUsdPer1M: 0.4, outputUsdPer1M: 1.6, cacheReadUsdPer1M: 0.1, cacheWriteUsdPer1M: 0.4 },
   { provider: 'openai', model: 'gpt-4o', inputUsdPer1M: 2.5, outputUsdPer1M: 10, cacheReadUsdPer1M: 1.25, cacheWriteUsdPer1M: 2.5 },
   { provider: 'openai', model: 'gpt-4o-mini', inputUsdPer1M: 0.15, outputUsdPer1M: 0.6, cacheReadUsdPer1M: 0.075, cacheWriteUsdPer1M: 0.15 },
-  { provider: 'openai', model: 'o4-mini', inputUsdPer1M: 1.1, outputUsdPer1M: 4.4, cacheReadUsdPer1M: 0.275, cacheWriteUsdPer1M: 1.1 },
-  { provider: 'openai', model: 'o3-mini', inputUsdPer1M: 1.1, outputUsdPer1M: 4.4, cacheReadUsdPer1M: 0.55, cacheWriteUsdPer1M: 1.1 },
+  { provider: 'openai', model: 'o3', inputUsdPer1M: 2, outputUsdPer1M: 8, cacheReadUsdPer1M: 0.5, cacheWriteUsdPer1M: 2 },
   /*
    * OpenAI — retired from the provider's pricing page; kept so a configuration naming it still works.
    * o1-mini was carried at $3 / $12, its launch price. OpenAI's own model
    * page (https://developers.openai.com/api/docs/models/o1-mini, read
    * 2026-09-28) lists $1.10 / $4.40 and $0.55 cached, the same as
-   * o3-mini; the pricing page no longer lists the model at all.
+   * o3-mini; the pricing page no longer lists the model at all. o4-mini
+   * and o3-mini were gone from it on 2026-11-18, and their model pages
+   * say they are shut down.
    */
+  { provider: 'openai', model: 'o4-mini', inputUsdPer1M: 1.1, outputUsdPer1M: 4.4, cacheReadUsdPer1M: 0.275, cacheWriteUsdPer1M: 1.1, retired: '2026-11-18' },
+  { provider: 'openai', model: 'o3-mini', inputUsdPer1M: 1.1, outputUsdPer1M: 4.4, cacheReadUsdPer1M: 0.55, cacheWriteUsdPer1M: 1.1, retired: '2026-11-18' },
   { provider: 'openai', model: 'o1-mini', inputUsdPer1M: 1.1, outputUsdPer1M: 4.4, cacheReadUsdPer1M: 0.55, cacheWriteUsdPer1M: 1.1, retired: '2026-09-20' },
 ] as const;
 
@@ -114,19 +195,29 @@ export const MODEL_PRICING: readonly ModelPricing[] = [
  * a rule that dropped the date would have priced it at half. A snapshot not
  * listed is reported as an unknown model, never guessed. Each pair was read
  * from the model's own page (its snapshot list and price) on the provider's
- * docs on 2026-09-28. From the 4.6 generation on, Anthropic's ids carry no
- * date, so they need no entry. A fine-tuned id (`ft:gpt-4o-mini-2024-07-18:...`)
- * is priced differently and matches nothing here.
+ * docs, on 2026-09-28 or, for the models added then, 2026-11-18; the pages of
+ * GPT-5.6 and GPT-6 list no dated snapshot. From the 4.6 generation on,
+ * Anthropic's ids carry no date, so they need no entry. A fine-tuned id
+ * (`ft:gpt-4o-mini-2024-07-18:...`) is priced differently and matches nothing here.
  */
 export const MODEL_SNAPSHOTS: Readonly<Record<string, string>> = {
   // OpenAI
+  'gpt-5.5-2026-04-23': 'gpt-5.5',
+  'gpt-5.4-2026-03-05': 'gpt-5.4',
+  'gpt-5.4-mini-2026-03-17': 'gpt-5.4-mini',
+  'gpt-5.4-nano-2026-03-17': 'gpt-5.4-nano',
+  'gpt-5.2-2025-12-11': 'gpt-5.2',
+  'gpt-5.1-2025-11-13': 'gpt-5.1',
   'gpt-5-2025-08-07': 'gpt-5',
   'gpt-5-mini-2025-08-07': 'gpt-5-mini',
+  'gpt-5-nano-2025-08-07': 'gpt-5-nano',
+  'gpt-4.1-2025-04-14': 'gpt-4.1',
   'gpt-4.1-mini-2025-04-14': 'gpt-4.1-mini',
   'gpt-4o-2024-08-06': 'gpt-4o',
   'gpt-4o-2024-11-20': 'gpt-4o',
   'gpt-4o-mini-2024-07-18': 'gpt-4o-mini',
   'o4-mini-2025-04-16': 'o4-mini',
+  'o3-2025-04-16': 'o3',
   'o3-mini-2025-01-31': 'o3-mini',
   'o1-mini-2024-09-12': 'o1-mini',
   // Anthropic
@@ -155,7 +246,15 @@ export function supportedModelsSummary(): string {
       .slice(0, 3)
       .map((p) => p.model)
       .join(' | ');
-  return `anthropic = ${lead('anthropic')} (and the priced 4.x line); openai = ${lead('openai')} (and the priced 4o, o3/o4 and retired o1 ids)`;
+  return `anthropic = ${lead('anthropic')} (and earlier Claude models); openai = ${lead('openai')} (and earlier GPT models, o3, and retired o-series ids)`;
+}
+
+/** The rates one request is priced at: the row's own, or its long-context rates when its input tokens are over the line. */
+export type RequestRates = Pick<ModelPricing, 'inputUsdPer1M' | 'outputUsdPer1M' | 'cacheReadUsdPer1M' | 'cacheWriteUsdPer1M' | 'cacheWrite1hUsdPer1M'>;
+
+export function ratesFor(pricing: ModelPricing, inputTokens: number): RequestRates {
+  const long = pricing.longContext;
+  return long !== undefined && inputTokens > long.aboveInputTokens ? long : pricing;
 }
 
 export function estimateCostUsd(
@@ -165,8 +264,10 @@ export function estimateCostUsd(
 ): number | null {
   const pricing = findPricing(model);
   if (!pricing) return null;
-  const inputCost = (inputTokens / 1_000_000) * pricing.inputUsdPer1M;
-  const outputCost = (outputTokens / 1_000_000) * pricing.outputUsdPer1M;
+  // One request: its size picks the rates every token of it is priced at.
+  const rates = ratesFor(pricing, inputTokens);
+  const inputCost = (inputTokens / 1_000_000) * rates.inputUsdPer1M;
+  const outputCost = (outputTokens / 1_000_000) * rates.outputUsdPer1M;
   // Round to 6 decimal places — sub-cent precision, avoids float drift.
   return Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000;
 }

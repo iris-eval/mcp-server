@@ -63,16 +63,37 @@ export interface LLMJudgeResponse {
  * `max_completion_tokens`: OpenAI's reference calls `max_tokens` deprecated
  * and not compatible with the o-series. A reasoning model takes no
  * `temperature`, and is asked for a low reasoning effort, since its reasoning
- * counts against the same cap as its answer. Structured output (a strict
+ * counts against the same cap as its answer: `low`, which every reasoning
+ * model priced takes (GPT-6 Astra, GPT-6.1 Sol, GPT-6.2 Astra and GPT-6.2
+ * Sol refuse `none`, and GPT-6.1 Sol `minimal`). Structured output (a strict
  * `json_schema` response format) is asked of every model that offers it,
  * GPT-4o and later. A model not listed is asked as `gpt-4o` is.
  */
 export const OPENAI_MODELS: Readonly<Record<string, { reasoning: boolean; effort?: 'low'; structured: boolean }>> = {
+  'gpt-6.2-astra': { reasoning: true, effort: 'low', structured: true },
+  'gpt-6.2-sol': { reasoning: true, effort: 'low', structured: true },
+  'gpt-6.1-terra': { reasoning: true, effort: 'low', structured: true },
+  'gpt-6-luna': { reasoning: true, effort: 'low', structured: true },
+  'gpt-6.1-sol': { reasoning: true, effort: 'low', structured: true },
+  'gpt-6-astra': { reasoning: true, effort: 'low', structured: true },
+  'gpt-6-sol': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5.6-terra': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5.6-luna': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5.5': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5.4': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5.4-mini': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5.4-nano': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5.2': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5.1': { reasoning: true, effort: 'low', structured: true },
   'gpt-5': { reasoning: true, effort: 'low', structured: true },
   'gpt-5-mini': { reasoning: true, effort: 'low', structured: true },
+  'gpt-5-nano': { reasoning: true, effort: 'low', structured: true },
+  'gpt-4.1': { reasoning: false, structured: true },
   'gpt-4.1-mini': { reasoning: false, structured: true },
   'gpt-4o': { reasoning: false, structured: true },
   'gpt-4o-mini': { reasoning: false, structured: true },
+  'o3': { reasoning: true, effort: 'low', structured: true },
+  // Shut down by OpenAI; asked as their pages gave it, so a configuration naming one still sends what it sent.
   'o4-mini': { reasoning: true, effort: 'low', structured: true },
   'o3-mini': { reasoning: true, effort: 'low', structured: true },
   // Retired by OpenAI; it offers neither structured output nor a reasoning effort, and is asked in text.

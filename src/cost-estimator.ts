@@ -7,7 +7,7 @@
  * v0.3.1 — first public surface.
  */
 
-import { MODEL_PRICING } from './eval/llm-judge/pricing.js';
+import { MODEL_PRICING, findPricing, ratesFor } from './eval/llm-judge/pricing.js';
 
 export type Provider = 'anthropic' | 'openai';
 
@@ -68,11 +68,12 @@ export function estimateCost(input: EstimateInput): CostEstimate | null {
   const providerTable = PRICING[input.provider];
   if (!providerTable) return null;
 
-  const pricing = providerTable[input.model];
-  if (!pricing) return null;
+  if (!providerTable[input.model]) return null;
 
-  const inputUsd = (input.tokensIn / 1_000_000) * pricing.inputPerMillion;
-  const outputUsd = (input.tokensOut / 1_000_000) * pricing.outputPerMillion;
+  // One call: its size picks its rates, where the provider prices a long request higher (pricing.ts, ratesFor).
+  const rates = ratesFor(findPricing(input.model)!, input.tokensIn);
+  const inputUsd = (input.tokensIn / 1_000_000) * rates.inputUsdPer1M;
+  const outputUsd = (input.tokensOut / 1_000_000) * rates.outputUsdPer1M;
   return {
     totalUsd: inputUsd + outputUsd,
     inputUsd,

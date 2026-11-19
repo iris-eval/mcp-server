@@ -21,7 +21,7 @@
  * act on it. An id that matches none of these is an unknown model, and the
  * trace says so rather than carrying a guess.
  */
-import { MODEL_PRICING, MODEL_SNAPSHOTS, PRICING_SOURCED_ON, type PricingProvider } from '../eval/llm-judge/pricing.js';
+import { MODEL_PRICING, MODEL_SNAPSHOTS, PRICING_SOURCED_ON, type LongContextPricing, type PricingProvider } from '../eval/llm-judge/pricing.js';
 import type { ConfiguredModelPrice } from '../types/config.js';
 
 export interface PricingSettings {
@@ -42,6 +42,8 @@ export interface PriceMatch {
   cacheWriteUsdPer1M: number | null;
   /** Null when the table has no 1-hour write price for the model. */
   cacheWrite1hUsdPer1M: number | null;
+  /** The rates of a request over a number of input tokens (pricing.ts); null for a price from config.json, which is one rate at every size. */
+  longContext: LongContextPricing | null;
   source: 'iris' | 'config';
   asOf: string | null;
 }
@@ -102,6 +104,7 @@ export function priceModel(model: string, using: PricingSettings = settings): Pr
         cacheReadUsdPer1M: configured.cacheReadUsdPer1M ?? null,
         cacheWriteUsdPer1M: configured.cacheWriteUsdPer1M ?? null,
         cacheWrite1hUsdPer1M: configured.cacheWrite1hUsdPer1M ?? null,
+        longContext: null,
         source: 'config',
         asOf: using.asOf ?? null,
       };
@@ -118,6 +121,7 @@ export function priceModel(model: string, using: PricingSettings = settings): Pr
     cacheReadUsdPer1M: row.cacheReadUsdPer1M,
     cacheWriteUsdPer1M: row.cacheWriteUsdPer1M,
     cacheWrite1hUsdPer1M: row.cacheWrite1hUsdPer1M ?? null,
+    longContext: row.longContext ?? null,
     source: 'iris',
     asOf: PRICING_SOURCED_ON,
   };
