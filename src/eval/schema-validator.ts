@@ -169,12 +169,6 @@ export function sharedInstanceHolds(): { refs: number; schemas: number; compiled
   return { refs: Object.keys(shared.refs).length, schemas: Object.keys(shared.schemas).length, compiled: (shared as unknown as { _cache: Map<unknown, unknown> })._cache.size };
 }
 
-let lastInstance: WeakRef<Ajv> | undefined;
-/** Test seam: the instance the last schema was compiled on, held weakly, so a test can see it go. */
-export function lastInstanceForTests(): WeakRef<Ajv> | undefined {
-  return lastInstance;
-}
-
 interface Walked {
   depth: number;
   nodes: number;
@@ -366,7 +360,6 @@ export function compileToolSchema(schema: unknown): CompiledSchema {
      * compiled.
      */
     const own = makeAjv(false);
-    lastInstance = new WeakRef(own);
     own.addSchema(plain as Record<string, unknown>);
     const checked = metaInstance().validateSchema(plain as Record<string, unknown>, true);
     if (checked !== true) {

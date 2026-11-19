@@ -27,7 +27,6 @@ import {
   MAX_TOOL_SCHEMA_DEPTH,
   checkArguments,
   compileToolSchema,
-  lastInstanceForTests,
   resetSchemaCache,
   sharedInstanceHolds,
 } from '../../../src/eval/schema-validator.js';
@@ -313,24 +312,30 @@ describe('the schema guard ladder', () => {
     expect(compileToolSchema({ type: 'object', required: 'q', properties: { a: { $anchor: 'x', type: 'string' }, b: { $anchor: 'x', type: 'number' } } })).toEqual({ ok: false, reason: 'the inputSchema did not compile: reference "#x" resolves to more than one schema' });
   });
 
-  it('the instance that checks every schema keeps nothing of them, and the instance a schema is compiled on goes once its compile returns', async () => {
+  it('the instance that checks every schema keeps nothing of them, and what ajv keeps of a schema goes with its validator: the heap does not grow past the cache', async () => {
     resetSchemaCache();
     compileToolSchema({ type: 'object', properties: { warm: { type: 'string' } } });
     const before = sharedInstanceHolds();
     for (let i = 0; i < 50; i += 1) compileToolSchema({ type: 'object', properties: { [`p${i}`]: { type: 'string' } }, required: [`p${i}`] });
     expect(sharedInstanceHolds()).toEqual(before);
-    // The validator ajv makes does not hold its instance: with the validator in the cache, the instance is free to go.
-    const compiled = compileToolSchema({ type: 'object', properties: { last: { type: 'integer' } } });
-    const instance = lastInstanceForTests();
-    expect(instance?.deref()).toBeDefined();
+    // A thousand schemas the cache of 256 cannot hold: kept by ajv, each would hold about 20 KB; let go, the heap stays where it was.
     setFlagsFromString('--expose_gc');
     const gc = runInNewContext('gc') as () => void;
-    await new Promise((r) => setTimeout(r, 0));
+    const settled = async (): Promise<number> => {
+      await new Promise((r) => setTimeout(r, 0));
+      gc();
+      await new Promise((r) => setTimeout(r, 0));
+      gc();
+      return process.memoryUsage().heapUsed;
+    };
+    for (let i = 0; i < 300; i += 1) compileToolSchema({ type: 'object', properties: { [`w${i}`]: { type: 'string', maxLength: i + 1 } }, required: [`w${i}`] });
+    const start = await settled();
+    for (let i = 0; i < 3_000; i += 1) compileToolSchema({ type: 'object', properties: { [`g${i}`]: { type: 'string', maxLength: i + 1 }, [`h${i}`]: { type: 'integer', minimum: i } }, required: [`g${i}`] });
+    // Measured in the same job: what a list, or a WeakRef to the end of a job, would keep is still there to be counted.
     gc();
-    await new Promise((r) => setTimeout(r, 0));
-    expect(instance?.deref()).toBeUndefined();
-    expect(checkArguments(compiled, { last: 'x' })).toMatchObject({ state: 'invalid', keyword: 'type' });
-  });
+    const grown = process.memoryUsage().heapUsed - start;
+    expect(grown).toBeLessThan(6 * 1024 * 1024);
+  }, 30_000);
 
   it('a refusal for $async or for $schema is remembered: the same schema sent again is answered from the cache', () => {
     for (const schema of [{ $async: true, type: 'object' }, { $schema: '#', type: 'object' }]) {
