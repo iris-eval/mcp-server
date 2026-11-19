@@ -71,11 +71,19 @@ export type SchemaAcceptance = { ok: true; validate: ValidateFunction };
 export type CompiledSchema = SchemaAcceptance | SchemaRejection;
 
 /**
- * One ajv instance, ours, never the SDK's.
+ * Our ajv instances, never the SDK's: one that checks a schema against its
+ * meta-schema and compiles nothing a caller sends, and one for each schema
+ * compiled.
  *
  * The SDK keeps its own for protocol messages, and a deployment `$id` could
- * collide with the protocol schemas registered there. Every option below is
- * a decision:
+ * collide with the protocol schemas registered there. An instance keeps
+ * every schema it compiles, and the validator made from it, for as long as
+ * the instance lives (its own cache, and the code scope its validators
+ * share), and it resolves a schema's references through what earlier
+ * schemas left in it. So each schema is compiled on an instance of its own:
+ * what is kept is what this module's cache keeps, 256 at most, and nothing
+ * one schema leaves in ajv reaches another. A schema in the cache costs
+ * nothing more for it. Every option below is a decision:
  *
  * - `allErrors: false` — ajv's own documentation names `allErrors` as a
  *   denial-of-service vector on untrusted schemas. One error per call across
@@ -91,12 +99,14 @@ export type CompiledSchema = SchemaAcceptance | SchemaRejection;
  *   that rewrote the instance would change what `callKey` and the repeat
  *   detector hash. A validator must never mutate the thing it validates.
  * - `$data: false` — `$data` lets a schema read the instance it is checking.
- * - `validateSchema: true` — ajv refuses a malformed schema before compiling
- *   it, which is a free rung.
+ * - `validateSchema` — ajv refuses a malformed schema before compiling it,
+ *   which is a free rung. The shared instance does it (its meta-schema
+ *   compiled once), and the instance a schema is compiled on does not do it
+ *   again.
  * - `loadSchema` is never configured, so a remote reference cannot be
  *   fetched even if rung 3 were somehow bypassed.
  */
-function makeAjv(): Ajv {
+function makeAjv(validateSchema: boolean): Ajv {
   return new Ajv({
     strictSchema: false,
     strictTypes: false,
@@ -105,7 +115,7 @@ function makeAjv(): Ajv {
     allowUnionTypes: true,
     allErrors: false,
     validateFormats: false,
-    validateSchema: true,
+    validateSchema,
     $data: false,
     coerceTypes: false,
     useDefaults: false,
@@ -118,10 +128,11 @@ function makeAjv(): Ajv {
   });
 }
 
-let ajv: Ajv | null = null;
-function instance(): Ajv {
-  ajv ??= makeAjv();
-  return ajv;
+let meta: Ajv | null = null;
+/** The shared instance: it checks a schema against its meta-schema, and compiles nothing a caller sends. */
+function metaInstance(): Ajv {
+  meta ??= makeAjv(true);
+  return meta;
 }
 
 /*
@@ -131,7 +142,9 @@ function instance(): Ajv {
  * every time; with it, once. It is process-global and tenant-agnostic, which
  * is safe by construction rather than by trust: the key is a hash of the
  * content and the value is a pure function of it, so there is no channel
- * between tenants.
+ * between tenants. Each schema is compiled on an ajv instance of its own, so
+ * there is none through ajv either, and what ajv keeps of a schema goes when
+ * this cache lets its validator go.
  */
 const cache = new Map<string, CompiledSchema>();
 
@@ -147,7 +160,7 @@ function remember(key: string, value: CompiledSchema): CompiledSchema {
 /** Test seam: the cache is process-global, so a test that fills it must clear it. */
 export function resetSchemaCache(): void {
   cache.clear();
-  ajv = null;
+  meta = null;
 }
 
 interface Walked {
@@ -159,19 +172,19 @@ interface Walked {
 }
 
 /**
- * The meta-schemas this instance carries, by the id ajv files each under; a
+ * The meta-schemas an ajv instance carries, by the id ajv files each under; a
  * `#` or `#/` after it names the same one.
  */
 const META_SCHEMA_IDS: ReadonlySet<string> = new Set(['http://json-schema.org/draft-07/schema', 'http://json-schema.org/schema']);
 
 /**
- * Whether a schema's `$schema` names a meta-schema this instance carries, or
- * nothing. ajv reads `$schema` as a reference, before it compiles the schema,
- * and checks the schema against what the reference names. A pointer (`#`,
- * `#/definitions/x`) names the schema itself or a part of it, which ajv then
- * compiles on its own, outside every rung here, and keeps in the instance
- * every caller shares, where a later schema's `$ref` to the same pointer finds
- * it in place of its own definition.
+ * Whether a schema's `$schema` names a meta-schema an ajv instance carries,
+ * or nothing. ajv reads `$schema` as a reference, before it compiles the
+ * schema, and checks the schema against what the reference names. A pointer
+ * (`#`, `#/definitions/x`) names the schema itself or a part of it, which ajv
+ * would compile on its own, outside every rung here, to check the schema
+ * with; and an instance keeps what a reference named, for the next schema it
+ * compiles to find.
  */
 function namesMetaSchema(value: string): boolean {
   return value === '' || META_SCHEMA_IDS.has(value.replace(/#\/?$/, ''));
@@ -197,10 +210,11 @@ function walk(node: unknown, depth: number, acc: Walked): void {
     }
     if (key === '$ref' && typeof value === 'string') acc.refs.push(value);
     /*
-     * Rejected outright. $id can collide with another schema in the shared
-     * ajv; the dynamic and recursive keywords produce validation whose depth
-     * cannot be bounded from the schema alone; $vocabulary changes what the
-     * dialect means underneath the guards above.
+     * Rejected outright. $id gives a schema, or a part of it, an address its
+     * references resolve against, which no schema compiled here needs (a
+     * remote reference is refused below); the dynamic and recursive keywords
+     * produce validation whose depth cannot be bounded from the schema alone;
+     * $vocabulary changes what the dialect means underneath the guards above.
      */
     if (key === '$id' || key === '$dynamicRef' || key === '$dynamicAnchor' || key === '$recursiveRef' || key === '$recursiveAnchor' || key === '$vocabulary') {
       acc.forbidden.push(key);
@@ -315,7 +329,14 @@ export function compileToolSchema(schema: unknown): CompiledSchema {
   const started = Date.now();
   let validate: ValidateFunction;
   try {
-    validate = instance().compile(schema as Record<string, unknown>);
+    // Checked against its meta-schema by the shared instance, with the words ajv's own compile gives, then compiled on an instance of its own.
+    const checked = metaInstance().validateSchema(schema as Record<string, unknown>, true);
+    if (checked !== true) {
+      // ajv answers at once for every meta-schema a schema may name here (above); an answer that comes later is no answer.
+      if (checked instanceof Promise) checked.catch(() => undefined);
+      return remember(key, { ok: false, reason: 'the inputSchema was not checked against its meta-schema at once, so it is not compiled' });
+    }
+    validate = makeAjv(false).compile(schema as Record<string, unknown>);
   } catch (err) {
     return remember(key, { ok: false, reason: `the inputSchema did not compile: ${err instanceof Error ? err.message : String(err)}` });
   }

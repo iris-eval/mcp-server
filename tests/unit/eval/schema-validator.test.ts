@@ -172,6 +172,29 @@ describe('the schema guard ladder', () => {
     expect(checkArguments(second, { q: 1 }).state).not.toBe('valid');
   });
 
+  it('each schema is compiled on an ajv instance of its own: an object changed after its first compile is compiled as it then reads', () => {
+    const shape = { type: 'object', properties: { q: { type: 'string' } }, required: ['q'] };
+    // An instance hands back what it compiled from an object it has seen; one of its own sees the object as it is now.
+    const x: Record<string, unknown> = { ...shape };
+    expect(checkArguments(compileToolSchema(x), { q: 1 })).toEqual({ state: 'invalid', instancePath: '/q', keyword: 'type' });
+    x.$async = true;
+    expect(compileToolSchema(x)).toEqual({ ok: false, reason: 'the inputSchema is marked $async, which makes its check answer later; Iris checks arguments at once, so it is not compiled' });
+    const y: Record<string, unknown> = { ...shape };
+    expect(compileToolSchema(y).ok).toBe(true);
+    (y.properties as Record<string, unknown>).q = { type: 'integer' };
+    expect(checkArguments(compileToolSchema(y), { q: 'x' })).toEqual({ state: 'invalid', instancePath: '/q', keyword: 'type' });
+    // A malformed schema is refused with the words ajv's own compile gave, by the shared instance's check.
+    expect(compileToolSchema({ type: 'object', required: 'q' })).toEqual({ ok: false, reason: 'the inputSchema did not compile: schema is invalid: data/required must be array' });
+    // And the changelog and the security record say so.
+    const flat = (rel: string): string => readFileSync(resolve(root, rel), 'utf-8').replace(/\r?\n\s*/g, ' ');
+    expect(flat('CHANGELOG.md')).toContain(
+      "- **The schema checker keeps no more of the schemas it compiles than its cache holds, and no schema reaches another through ajv.** ajv keeps every schema an instance compiles, and the validator made from it, for as long as the instance lives, and the checker compiled every tool's schema and every custom `json_schema` rule's schema on one instance for the life of the process: the memory it held grew with every schema compiled past its cache, the same schemas sent again included, and one schema's references could be resolved through what another had left. Each schema is now compiled on an instance of its own, after one shared instance, which compiles nothing a caller sends, checks it against its meta-schema; what ajv keeps of a schema goes when the checker's cache of 256 lets its validator go. Over 20,000 compiles of schemas the cache did not hold, the heap grew by 65 MB before and by about 3 MB now.",
+    );
+    expect(flat('SECURITY-EXPOSURE.md')).toContain(
+      'Each schema is compiled on an ajv instance of its own, after one shared instance that compiles nothing a caller sends checks it against its meta-schema: an instance keeps every schema it compiles for as long as it lives, so what ajv keeps of a schema goes when the cache of 256 lets its validator go, and nothing one schema leaves in ajv reaches another.',
+    );
+  });
+
   it('a $schema that does not name the draft-07 meta-schema is refused before ajv reads it, where a pointer compiled a part of the schema outside every rung and left its promise rejected', async () => {
     const unhandled: unknown[] = [];
     const listen = (reason: unknown): void => {

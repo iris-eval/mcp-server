@@ -470,7 +470,10 @@ The guard ladder is in `src/eval/schema-validator.ts` and every rung has a test 
    false`, `$data: false`, and `coerceTypes` / `useDefaults` / `removeAdditional` all false — a validator
    that mutated the instance would change what the repeat detector hashes.
 5. Rejections are cached alongside acceptances, so a hostile catalogue resent a thousand times pays its
-   probe cost once per process.
+   probe cost once per process. Each schema is compiled on an ajv instance of its own, after one shared
+   instance that compiles nothing a caller sends checks it against its meta-schema: an instance keeps
+   every schema it compiles for as long as it lives, so what ajv keeps of a schema goes when the cache of
+   256 lets its validator go, and nothing one schema leaves in ajv reaches another.
 6. A rung that trips rejects the WHOLE tool’s schema. A partially applied schema reporting a call valid
    is a false all-clear about a security-relevant class.
 7. A local `$ref` may refer to itself, and the validator generated for it calls itself: once for each
