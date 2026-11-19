@@ -128,6 +128,14 @@ describe('the request each Claude model is sent', () => {
     await callLLMJudge(request(p, model, 0.3));
     expect('temperature' in bodies[0]).toBe(takesTemperature(p, model));
   });
+
+  it('a temperature of exactly 1, the default, is sent only to a model that takes one, as any other value is', async () => {
+    for (const [p, model] of [...pricedModels('anthropic').map((m) => ['anthropic', m] as const), ...pricedModels('openai').map((m) => ['openai', m] as const)]) {
+      const bodies = provider(VERDICT);
+      await callLLMJudge(request(p, model, 1));
+      expect('temperature' in bodies[0], `${p} ${model}`).toBe(takesTemperature(p, model));
+    }
+  });
 });
 
 describe('the callers that set a temperature themselves', () => {
@@ -202,6 +210,24 @@ describe('evaluate_with_llm_judge: a temperature set for a model that takes none
     expect(out.warnings).toBeUndefined();
   });
 
+  it('a temperature of exactly 1, the default, set for a model that takes none: none is sent, and the response says so', async () => {
+    const none = await judge({ model: 'claude-opus-5-5', temperature: 1 });
+    expect(none.bodies[0]).not.toHaveProperty('temperature');
+    expect(none.out.warnings?.map((w) => w.code)).toEqual(['IRIS_ARGUMENT_NOT_SENT']);
+    const takes = await judge({ model: 'claude-haiku-4-5', temperature: 1 });
+    expect(takes.bodies[0].temperature).toBe(1);
+    expect(takes.out.warnings).toBeUndefined();
+  });
+
+  it('beside a cost over the cap and a judge of the agent\'s own family, the warning joins the other two and takes neither\'s place', async () => {
+    const { out } = await judge({ model: 'claude-opus-5-5', temperature: 0.3, agent_model: 'claude-opus-5', max_cost_usd: 100 });
+    expect(out.warnings?.map((w) => [w.code, w.field])).toEqual([
+      ['IRIS_ARGUMENT_NARROWED', 'max_cost_usd'],
+      ['IRIS_JUDGE_SAME_FAMILY', undefined],
+      ['IRIS_ARGUMENT_NOT_SENT', 'temperature'],
+    ]);
+  });
+
   it('with no temperature set, a model that takes none is sent none and nothing is said; one that takes one is sent 0', async () => {
     const none = await judge({ model: 'claude-opus-5-5' });
     expect(none.bodies[0]).not.toHaveProperty('temperature');
@@ -236,11 +262,26 @@ describe('what the documents say', () => {
   it('the warning is in the catalogue, and the tool, the guide, the reference and the changelog name it where they speak of temperature', () => {
     expect(WARNING_CODE_CATALOGUE).toContain('IRIS_ARGUMENT_NOT_SENT');
     const collapse = (s: string): string => s.replace(/\s+/g, ' ');
-    expect(read('src/tools/evaluate-with-llm-judge.ts')).toContain("sent only to a model that takes one: Claude 4.7 and later and OpenAI\\'s reasoning models are sent none and judge at their own default, with IRIS_ARGUMENT_NOT_SENT when one was set");
+    expect(read('src/tools/evaluate-with-llm-judge.ts')).toContain("'Sampling temperature, default 0, sent only to a model that takes one: Claude 4.7 and later and OpenAI\\'s reasoning models are sent none and judge at their own default, with IRIS_ARGUMENT_NOT_SENT when one was set'");
     expect(read('src/tools/evaluate-with-llm-judge.ts')).toContain('IRIS_ARGUMENT_NOT_SENT: temperature was set for a model that takes none, so none was sent');
     expect(collapse(read('src/tools/guide.ts'))).toContain("temperature (default 0) is sent only to a model that takes one: Claude 4.7 and later and OpenAI\\'s reasoning models judge at their own default, with an IRIS_ARGUMENT_NOT_SENT warning when one was set.");
     expect(read('docs/api-reference.md')).toContain("| `temperature` | `number` | No | 0 to 2; default 0. Sent only to a model that takes one: Claude 4.7 and later and OpenAI's reasoning models are sent none and judge at their own default, and a value set for one of them is answered with an `IRIS_ARGUMENT_NOT_SENT` warning |");
     expect(read('CHANGELOG.md')).toContain('- **A Claude model that takes no temperature is sent none (#1078).**');
+    expect(read('CHANGELOG.md')).toContain('is made at the model\'s own default, and its response carries the new warning `IRIS_ARGUMENT_NOT_SENT`.');
     expect(read('CHANGELOG.md')).toContain('- **A Claude model that thinks unasked is asked for a low effort (#1079).**');
+  });
+
+  it('the two changelog entries say, word for word, which models failed and how, the caps, the efforts, and what the steering page says', () => {
+    const changelog = read('CHANGELOG.md');
+    // #1078: the line at 4.7, the default, and the six priced models that failed, by the kind they failed with.
+    expect(changelog).toContain('Anthropic answers a `temperature` other than the default (1) with a 400 on Claude 4.7 and later models');
+    expect(changelog).toContain('So a judge call on `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5`, `claude-opus-5`, `claude-opus-4-8` or `claude-opus-4-7` failed with `bad_request`');
+    expect(changelog).toContain('A temperature is now sent only to a model that takes one: a Claude model before 4.7, or an OpenAI model that does not reason.');
+    // #1079: the default efforts, the caps, the page's sentence whole, the four priced models, the kind, and the line at Claude 5.
+    expect(changelog).toContain('Every Claude 5 model thinks when the request sets no `thinking`, at its default effort (`high` on most, `medium` on Claude Opus 5.5 and Claude Haiku 5.5)');
+    expect(changelog).toContain('512 for a judgment (256 for its second request) and 256 for each citation of `verify_citations`.');
+    expect(changelog).toContain("Anthropic's page on steering thinking says a `max_tokens` sized for a response with no thinking is often too small once Claude starts thinking on hard requests.");
+    expect(changelog).toContain('So on `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5` and `claude-opus-5`, a judgment could reach its cap while thinking, before any answer, and fail as a reply cut at its cap (`malformed_response`).');
+    expect(changelog).toContain('Each is now asked for `output_config.effort: "low"`, at which Claude minimizes its thinking and skips it for a simple task, beside its answer\'s format; a model before Claude 5, which thinks only when asked, is sent no effort.');
   });
 });
