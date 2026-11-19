@@ -158,6 +158,25 @@ interface Walked {
   forbidden: string[];
 }
 
+/**
+ * The meta-schemas this instance carries, by the id ajv files each under; a
+ * `#` or `#/` after it names the same one.
+ */
+const META_SCHEMA_IDS: ReadonlySet<string> = new Set(['http://json-schema.org/draft-07/schema', 'http://json-schema.org/schema']);
+
+/**
+ * Whether a schema's `$schema` names a meta-schema this instance carries, or
+ * nothing. ajv reads `$schema` as a reference, before it compiles the schema,
+ * and checks the schema against what the reference names. A pointer (`#`,
+ * `#/definitions/x`) names the schema itself or a part of it, which ajv then
+ * compiles on its own, outside every rung here, and keeps in the instance
+ * every caller shares, where a later schema's `$ref` to the same pointer finds
+ * it in place of its own definition.
+ */
+function namesMetaSchema(value: string): boolean {
+  return value === '' || META_SCHEMA_IDS.has(value.replace(/#\/?$/, ''));
+}
+
 /** Rung 2 and 3 in one pass: bound the shape, and collect what rung 5 must lint. */
 function walk(node: unknown, depth: number, acc: Walked): void {
   if (depth > acc.depth) acc.depth = depth;
@@ -226,6 +245,11 @@ export function compileToolSchema(schema: unknown): CompiledSchema {
   }
   if (acc.forbidden.length > 0) {
     return remember(key, { ok: false, reason: `the inputSchema uses ${[...new Set(acc.forbidden)].join(', ')}, which Iris does not compile (a recursive or dynamic schema cannot be validated under a bounded depth)` });
+  }
+  // Read as ajv reads it, at the root only: ajv reads no other `$schema`. A value that is not text, ajv refuses itself.
+  const dialect = (schema as { $schema?: unknown }).$schema;
+  if (typeof dialect === 'string' && !namesMetaSchema(dialect)) {
+    return remember(key, { ok: false, reason: `the inputSchema's $schema is "${truncatePattern(dialect)}"; only the draft-07 meta-schema (http://json-schema.org/draft-07/schema#) is compiled, since ajv reads any other value as a reference` });
   }
 
   // Rung 3: a remote reference is impossible by construction, not by option.
@@ -308,12 +332,16 @@ export function compileToolSchema(schema: unknown): CompiledSchema {
     return remember(key, { ok: false, reason: `the inputSchema took ${took}ms to compile; the ceiling is ${SCHEMA_COMPILE_BUDGET_MS}ms` });
   }
   /*
-   * A schema whose root carries `$async` (any value but false) compiles to a
-   * validator that answers with a promise. Every value would read as valid,
-   * since a promise is truthy, and the promise an invalid value rejects would
-   * have nobody to catch it, which ends the process. A check here answers at
-   * once, so such a schema is refused. Below the root, ajv refuses `$async`
-   * itself ("async schema in sync schema").
+   * A schema whose root carries `$async` with a value that reads as true (in
+   * JSON, anything but false, 0, "" and null) compiles to a validator that
+   * answers with a promise. Every value would read as valid, since a promise
+   * is truthy, and the promise an invalid value rejects would have nobody to
+   * catch it, which ends the process. A check here answers at once, so such a
+   * schema is refused. What is read is the validator ajv made, not the
+   * schema's field. Below the root, ajv refuses `$async` wherever it would
+   * compile it into the check ("async schema in sync schema"); a definition
+   * nothing references is never compiled, and the one way it was compiled on
+   * its own, a `$schema` naming it, is refused above.
    */
   if ((validate as { $async?: unknown }).$async === true) {
     return remember(key, { ok: false, reason: 'the inputSchema is marked $async, which makes its check answer later; Iris checks arguments at once, so it is not compiled' });

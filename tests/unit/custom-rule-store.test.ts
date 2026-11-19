@@ -37,6 +37,7 @@ describe('createCustomRuleStore (single-tenant / OSS)', () => {
       ['regex_match', { pattern: '(' }, /Invalid regex syntax/],
       ['regex_match', { pattern: '(a+)+$' }, /catastrophic backtracking/],
       ['json_schema', { schema: { $async: true, type: 'object' } }, /config\.schema was not compiled: the inputSchema is marked \$async/],
+      ['json_schema', { schema: { $schema: '#/definitions/x', definitions: { x: { $async: true, type: 'string' } }, type: 'object' } }, /config\.schema was not compiled: the inputSchema's \$schema is \\"#\/definitions\/x\\"/],
     ];
 
     for (const [type, config, expected] of cases) {
@@ -279,12 +280,14 @@ describe('lenient load — one bad rule must not destroy the file', () => {
     expect(listed.map((r) => r.id)).toEqual(['rule-keepme']);
   });
 
-  it('a json_schema rule stored with a schema marked $async is quarantined: kept on disk, never run', () => {
-    const asyncRule = { ...validRule, id: 'rule-async', name: 'async-shape', definition: { name: 'async-shape', type: 'json_schema', config: { schema: { $async: true, type: 'object' } } } };
-    writeFileSync(rulesPath, JSON.stringify({ version: 1, rules: [validRule, asyncRule] }));
-    const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
-    expect(store.list(LOCAL_TENANT).map((r) => r.id)).toEqual(['rule-keepme']);
-    expect(store.quarantined(LOCAL_TENANT)).toEqual([asyncRule]);
+  it('a json_schema rule stored with a schema marked $async, or whose $schema points into it, is quarantined: kept on disk, never run', () => {
+    for (const schema of [{ $async: true, type: 'object' }, { $schema: '#/definitions/x', definitions: { x: { $async: true, type: 'string' } }, type: 'object' }]) {
+      const asyncRule = { ...validRule, id: 'rule-async', name: 'async-shape', definition: { name: 'async-shape', type: 'json_schema', config: { schema } } };
+      writeFileSync(rulesPath, JSON.stringify({ version: 1, rules: [validRule, asyncRule] }));
+      const store = createCustomRuleStore({ pathFor: () => rulesPath, auditPath });
+      expect(store.list(LOCAL_TENANT).map((r) => r.id), JSON.stringify(schema)).toEqual(['rule-keepme']);
+      expect(store.quarantined(LOCAL_TENANT)).toEqual([asyncRule]);
+    }
   });
 
   it('a later deploy does NOT delete the valid rule or the quarantined one', () => {
