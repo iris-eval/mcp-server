@@ -10,7 +10,5 @@ export const MAX_TIMER_MS = 2_147_483_647;
  * timer waits: a value past it waits that long (about 24.8 days), never 1 ms.
  */
 export function heldTimerMs(ms: number): number {
-  // Read once, as setTimeout reads a length: text or an object with valueOf is the number it names.
-  const length = ms * 1;
-  return length > MAX_TIMER_MS ? MAX_TIMER_MS : length;
+  return ms > MAX_TIMER_MS ? MAX_TIMER_MS : ms;
 }

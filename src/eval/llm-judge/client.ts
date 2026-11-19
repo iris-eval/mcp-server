@@ -237,7 +237,7 @@ async function postBeforeDeadline(
     );
   }
   const started = Date.now();
-  const timedOut = (): LLMJudgeError => new LLMJudgeError(`${provider} did not answer within ${heldTimerMs(budgetMs)} ms`, 'timeout');
+  const timedOut = (): LLMJudgeError => new LLMJudgeError(`${provider} did not answer within ${budgetMs} ms`, 'timeout');
   if (deadline - started <= 0) throw timedOut();
   const controller = new AbortController();
   // A deadline an embedder sets far off is held at the longest a timer waits, where past it the request would end at once.
@@ -525,8 +525,7 @@ export async function callLLMJudge(req: LLMJudgeRequest): Promise<LLMJudgeRespon
   }
 
   const call = req.provider === 'anthropic' ? callAnthropic : callOpenAI;
-  // Read as a number, as a timer reads it: a length given as text is the number it names, not text joined to the clock.
-  const budgetMs = (req.timeoutMs ?? DEFAULT_JUDGE_DEADLINE_MS) * 1;
+  const budgetMs = req.timeoutMs ?? DEFAULT_JUDGE_DEADLINE_MS;
   const deadline = req.deadline ?? Date.now() + budgetMs;
 
   try {

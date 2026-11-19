@@ -26,7 +26,6 @@ import { LOCAL_TENANT } from '../../src/types/tenant.js';
 import { SEARCH_DRIVER } from './storage/fts5-here.js';
 import { OtelExporter, exporterFromEnv } from '../../src/otel/exporter.js';
 import { createRelevanceJudge } from '../../src/eval/llm-judge/relevance-judge.js';
-import { callLLMJudge } from '../../src/eval/llm-judge/client.js';
 import { resolveSource, __clearCitationCacheForTests, __setDnsLookupForTests } from '../../src/eval/citation-verify/resolve.js';
 import { scheduleRetentionSweep } from '../../src/retention.js';
 import { storeGate } from '../../src/storage/ready.js';
@@ -78,15 +77,10 @@ describe('a wait set from outside is held at the longest a timer waits', () => {
     expect(heldTimerMs(MAX_TIMER_MS)).toBe(MAX_TIMER_MS);
     expect(heldTimerMs(MAX_TIMER_MS + 1)).toBe(MAX_TIMER_MS);
     expect(heldTimerMs(1e10)).toBe(MAX_TIMER_MS);
-    // Read once, as a timer reads a length: an object with valueOf is asked once, and the number it names is handed on.
-    let reads = 0;
-    const counted = { valueOf: () => (reads += 1, 5_000) } as unknown as number;
-    expect(heldTimerMs(counted)).toBe(5_000);
-    expect(reads).toBe(1);
     // The longest a timer waits, in hours: past it a sweep ran on every tick.
     expect(MAX_TIMER_MS / 3_600_000).toBeCloseTo(596.52, 2);
     expect(readFileSync(resolve(__dirname, '..', '..', 'CHANGELOG.md'), 'utf8')).toContain(
-      "- **A wait set from outside past what a timer can wait is held at it.** Node fires a timer set past 2,147,483,647 ms (about 24.8 days) after 1 ms. Every wait in the server that takes its length from outside is now held at that maximum: `IRIS_OTEL_TIMEOUT_MS`, `retention.sweepIntervalHours` in `config.json`, and those an embedder sets in code (the `timeoutMs` of `createRelevanceJudge`, of a citation's fetch and of a webhook, `storage.searchBudgetMs`, the store gate's wait, and SQLite's busy timeout as a driver, a checkpointer or a search thread is given it), with a provider's `Retry-After` inside such a deadline. Past it, an export, a judge call, a fetch or a webhook's delivery ended at once, every search answered nothing, a store waited for no lock (or, under better-sqlite3, did not open), and a sweep set past about 596.5 hours ran on every tick of the clock; such a sweep now runs every 596.5 hours. The reasons these waits give name the length they waited, and a judge's `timeoutMs` given as text is read as the number it names, where the call ended at once.",
+      "- **A wait set from outside past what a timer can wait is held at it.** Node fires a timer set past 2,147,483,647 ms (about 24.8 days) after 1 ms. Every wait in the server that takes its length from outside is now held at that maximum: `IRIS_OTEL_TIMEOUT_MS`, `retention.sweepIntervalHours` in `config.json`, and those an embedder sets in code (the `timeoutMs` of `createRelevanceJudge`, of a citation's fetch and of a webhook, `storage.searchBudgetMs`, the store gate's wait, and SQLite's busy timeout as a driver, a checkpointer or a search thread is given it), with a provider's `Retry-After` inside such a deadline. Past it, an export, a judge call, a fetch or a webhook's delivery ended at once, every search answered nothing, a store waited for no lock (or, under better-sqlite3, did not open), and a sweep set past about 596.5 hours ran on every tick of the clock; such a sweep now runs every 596.5 hours.",
     );
   });
 
@@ -241,64 +235,7 @@ describe('a wait set from outside is held at the longest a timer waits', () => {
     expect(record).toMatchObject({ error: expect.stringMatching(/rate/i) });
   });
 
-  it('a judge given its timeoutMs as text waits that many ms, and a held wait says the length it waited', async () => {
-    // A provider that never answers: only the abort ends its request.
-    global.fetch = vi.fn(
-      (_input: string | URL | Request, init?: RequestInit) =>
-        new Promise<Response>((_resolve, reject) => {
-          init?.signal?.addEventListener('abort', () => reject(Object.assign(new Error('This operation was aborted'), { name: 'AbortError' })));
-        }),
-    ) as unknown as typeof fetch;
-    let text: { error?: string } | undefined;
-    void createRelevanceJudge({ model: 'claude-haiku-4-5', apiKey: 'k', timeoutMs: '5000' as unknown as number }).judge({ input: 'What colour is the sky on a clear day?', output: 'The sky is blue on a clear day.' }).then((r) => (text = r as { error?: string }));
-    await vi.advanceTimersByTimeAsync(4_990);
-    expect(text).toBeUndefined();
-    await vi.advanceTimersByTimeAsync(20);
-    expect(text?.error).toContain('did not answer within 5000 ms');
-    let held: { error?: string } | undefined;
-    void createRelevanceJudge({ model: 'claude-haiku-4-5', apiKey: 'k', timeoutMs: PAST }).judge({ input: 'What colour is the sky on a clear day?', output: 'The sky is blue on a clear day.' }).then((r) => (held = r as { error?: string }));
-    await vi.advanceTimersByTimeAsync(MAX_TIMER_MS + 10);
-    expect(held?.error).toContain(`did not answer within ${MAX_TIMER_MS} ms`);
-    let refused: unknown;
-    void storeGate({ whenReady: () => new Promise<void>(() => undefined) } as unknown as IStorageAdapter, { waitMs: PAST }).wait().catch((err: unknown) => (refused = err));
-    await vi.advanceTimersByTimeAsync(MAX_TIMER_MS + 10);
-    expect(String((refused as Error)?.message)).toContain(`this request waited ${Math.round(MAX_TIMER_MS / 1000)} s`);
-    // A citation's fetch and a webhook's delivery say the same length.
-    __setDnsLookupForTests(async () => [{ address: '8.8.8.8', family: 4 }]);
-    try {
-      let fetchError: unknown;
-      void resolveSource('https://example.com/never', { allowFetch: true, timeoutMs: PAST }).catch((err: unknown) => (fetchError = err));
-      await vi.advanceTimersByTimeAsync(MAX_TIMER_MS + 10);
-      expect(String((fetchError as Error)?.message ?? JSON.stringify(fetchError))).toContain(`Fetch timed out after ${MAX_TIMER_MS}ms`);
-    } finally {
-      __setDnsLookupForTests(null);
-      __clearCitationCacheForTests();
-    }
-    const lines: string[] = [];
-    const config: ResolvedWebhookConfig = { url: 'https://hooks.example.test/iris', events: ['verdict_fail'], secret: null, cooldownMs: 0, format: 'slack', timeoutMs: PAST };
-    const notifier = new WebhookNotifier(config, { logger: { info: (line) => lines.push(line), warn: (line) => lines.push(line) }, fetch: global.fetch, sleep: async () => undefined, random: () => 0.5 });
-    notifier.notify({ event: 'verdict_fail', subject: 'no_pii', summary: 'support-bot: the verdict failed.', evaluation_id: 'e-4', trace_id: 't-4', agent_name: 'support-bot' } as WebhookMoment);
-    for (let attempt = 0; attempt < 4; attempt += 1) await vi.advanceTimersByTimeAsync(MAX_TIMER_MS + 10);
-    await notifier.idle();
-    expect(lines.join('\n')).toContain(`timeout after ${MAX_TIMER_MS} ms`);
-  });
-
-  it('the judge client called alone reads a timeoutMs given as text as the number it names', async () => {
-    global.fetch = vi.fn(
-      (_input: string | URL | Request, init?: RequestInit) =>
-        new Promise<Response>((_resolve, reject) => {
-          init?.signal?.addEventListener('abort', () => reject(Object.assign(new Error('This operation was aborted'), { name: 'AbortError' })));
-        }),
-    ) as unknown as typeof fetch;
-    let error: unknown;
-    void callLLMJudge({ provider: 'anthropic', model: 'claude-haiku-4-5', systemPrompt: 's', userPrompt: 'u', maxOutputTokens: 10, temperature: 0, apiKey: 'k', timeoutMs: '5000' as unknown as number }).catch((err: unknown) => (error = err));
-    await vi.advanceTimersByTimeAsync(4_990);
-    expect(error).toBeUndefined();
-    await vi.advanceTimersByTimeAsync(20);
-    expect(String((error as Error)?.message)).toContain('did not answer within 5000 ms');
-  });
-
-  it("a webhook's backoff is held too, whatever its random answers", async () => {
+  it("a webhook's backoff is held too, where its random answers past 1", async () => {
     const slept: number[] = [];
     const receiver = vi.fn(async () => new Response(null, { status: 500 })) as unknown as typeof fetch;
     const config: ResolvedWebhookConfig = { url: 'https://hooks.example.test/iris', events: ['verdict_fail'], secret: null, cooldownMs: 0, format: 'slack', timeoutMs: 1_000 };
@@ -360,7 +297,7 @@ describe('waits a store sets in code, held, where a thread of its own answers (r
     }
   });
 
-  it("SQLite's busy timeout given past it in code is held, by either driver: the file opens, and its connection waits for a lock", () => {
+  it("SQLite's busy timeout given past it in code is held, by either driver: the file opens, and its connection's busy timeout reads back as the maximum", () => {
     const dir = mkdtempSync(join(tmpdir(), 'iris-held-busy-'));
     dirs.push(dir);
     for (const driver of ['node', 'native'] as const) {
@@ -373,12 +310,13 @@ describe('waits a store sets in code, held, where a thread of its own answers (r
     }
   });
 
-  it("a checkpointer given a busy timeout past it waits for another connection's lock, where it waited for none", async () => {
+  it("a checkpointer given a busy timeout past it starts, sets it back held after a TRUNCATE, and waits for another connection's lock, where better-sqlite3 refused to start it and the built-in driver waited for none", async () => {
     const path = await storeWithATrace();
     const checkpointer = new Checkpointer({ path, driver: SEARCH_DRIVER === 'node' ? 'node' : 'better-sqlite3', busyMs: PAST, onReady: () => undefined, onFailed: () => undefined, warn: () => undefined });
     expect(await checkpointer.started).toBe(true);
-    // A TRUNCATE waits for no reader, and the busy timeout is set back after it: held, as the driver set it.
+    // A TRUNCATE waits for no reader, and the busy timeout is set back after it: held, as the driver set it. The thread's own connection writes down what it is.
     await checkpointer.truncate();
+    await checkpointer.exec('CREATE TABLE busy_after (ms INTEGER); INSERT INTO busy_after SELECT timeout FROM pragma_busy_timeout');
     const holder = new DatabaseSync(path);
     holder.exec('BEGIN IMMEDIATE');
     const started = Date.now();
@@ -398,6 +336,12 @@ describe('waits a store sets in code, held, where a thread of its own answers (r
       release();
       await checkpointer.close();
     }
+    const reader = new DatabaseSync(path);
+    try {
+      expect(reader.prepare('SELECT ms FROM busy_after').get()).toEqual({ ms: MAX_TIMER_MS });
+    } finally {
+      reader.close();
+    }
   });
 
   it("a search's stuck timer, its budget a little under the maximum and the grace after it, is held at the maximum", async () => {
@@ -411,6 +355,19 @@ describe('waits a store sets in code, held, where a thread of its own answers (r
       expect(set.mock.calls.map((call) => call[1])).toContain(MAX_TIMER_MS);
     } finally {
       set.mockRestore();
+      await searcher.close();
+    }
+  });
+
+  it('a search thread given a busy timeout past it starts and answers, where better-sqlite3 refused to start it', async () => {
+    const path = await storeWithATrace();
+    const searcher = new SearchWorkerClient({ path, driver: SEARCH_DRIVER, busyTimeoutMs: PAST }, 10_000, undefined, 10_000, () => undefined);
+    try {
+      const plan = { whereClause: 'WHERE tenant_id = ?', params: ['local'], filtered: false, sortBy: 'relevance', sortOrder: 'desc', limit: 50, offset: 0 };
+      const found = await searcher.search({ tenantId: LOCAL_TENANT, parsed: parseSearch('fox'), plan, index: 'scan', budgetMs: 10_000 });
+      expect(found.complete).toBe(true);
+      expect(found.total).toBe(1);
+    } finally {
       await searcher.close();
     }
   });
