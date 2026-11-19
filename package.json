@@ -64,6 +64,8 @@
     "proof:review": "tsx proof/human-review.ts",
     "llms:render": "tsx scripts/claims/render-llms.mjs",
     "llms:check": "tsx scripts/claims/render-llms.mjs --check",
+    "skill-examples:render": "tsx scripts/claims/render-skill-examples.ts",
+    "skill-examples:check": "tsx scripts/claims/render-skill-examples.ts --check",
     "changelog:render": "node website/scripts/render-changelog.mjs",
     "changelog:check": "node website/scripts/render-changelog.mjs --check",
     "mcp-json:render": "tsx scripts/claims/render-mcp-json.ts",

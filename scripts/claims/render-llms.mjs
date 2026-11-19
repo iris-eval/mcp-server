@@ -442,6 +442,18 @@ export function toolReference(tools, guides) {
     .join('\n');
 }
 
+/**
+ * The skill's table of tools, one row per tool in the manifest with the
+ * summary tools/list sends, so its rows and the count above it are one
+ * source. The table was written by hand under "The 12 tools" and listed
+ * nine (#1021).
+ */
+export function toolTable(tools) {
+  // A backslash is escaped before a pipe is, so a description's own backslash cannot leave the pipe after it bare.
+  const cell = (s) => String(s).replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ');
+  return ['| Tool | What it does |', '|------|-------------|', ...tools.map((t) => `| \`${t.name}\` | ${cell(t.description)} |`)].join('\n');
+}
+
 /** Slots read from the site and the built server rather than from .claims.json. */
 export async function sourceSlots(rootDir = root, claims) {
   const site = String(claims.brand.websiteUrl).replace(/\/+$/, '');
@@ -460,6 +472,7 @@ export async function sourceSlots(rootDir = root, claims) {
     compareLinksList: compare.map((c) => `- [Iris vs ${c.name}](${site}/compare/${c.slug})`).join('\n'),
     compareNamesProse: compare.map((c) => c.name).join(', '),
     mcpToolsList: toolReference(tools, await toolGuides(rootDir)),
+    mcpToolsTable: toolTable(tools),
   };
 }
 
