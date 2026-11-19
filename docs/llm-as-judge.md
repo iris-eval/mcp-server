@@ -250,6 +250,8 @@ Every OpenAI model is sent `max_completion_tokens` for the output cap. A reasoni
 
 A Claude model before 4.7 (`claude-opus-4-6`, `claude-sonnet-4-6`, `claude-opus-4-5`, `claude-sonnet-4-5` and `claude-haiku-4-5`) is sent the call's `temperature`, 0 unless the call sets one. Claude 4.7 and later models take no `temperature` but the default, and Anthropic answers any other value with a 400, so they are sent none and judge at their own default. A call that sets `temperature` for a model that takes none, of either provider, is still made, and its response carries the warning `IRIS_ARGUMENT_NOT_SENT`.
 
+Every Claude 5 model Iris prices (`claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5` and `claude-opus-5`) thinks when the request sets no `thinking`, and its thinking counts against `max_tokens`, the same cap as its answer. So it is asked for `output_config.effort: "low"`, at which Claude minimizes its thinking and skips it for a simple task. A model before Claude 5 thinks only when asked, and is sent no effort.
+
 **What counts as malformed?**
 Two things.
 

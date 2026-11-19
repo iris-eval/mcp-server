@@ -1,20 +1,24 @@
 /*
- * A temperature is sent only to a model that takes one (#1078).
+ * Each model is asked in the form it takes (#1078, #1079).
  *
  * Anthropic answers a `temperature` other than the default with a 400 on
  * Claude 4.7 and later models, under the API version Iris sends as well (its
- * model deprecations page), and OpenAI's reasoning models take none. The
+ * model deprecations page), and OpenAI's reasoning models take none: the
  * judge sent every Claude model the call's temperature, 0 unless set, so a
- * call on any Claude model since 4.7 failed. No provider is called here: each
- * request is read as the provider would read it, and each reply is a
- * stand-in in the provider's own shape.
+ * call on any Claude model since 4.7 failed. And every Claude 5 model thinks
+ * when the request sets no `thinking` (Anthropic's thinking page), at its
+ * default effort, inside the same `max_tokens` as its answer: such a model is
+ * asked for a low effort. No provider is called here: each request is read
+ * as the provider would read it, and each reply is a stand-in in the
+ * provider's own shape.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { ANTHROPIC_TEMPERATURE_MODELS, callLLMJudge, takesTemperature, type LLMJudgeRequest, type LLMProvider } from '../../../../src/eval/llm-judge/client.js';
+import { ANTHROPIC_MODELS, callLLMJudge, takesTemperature, type LLMJudgeRequest, type LLMProvider } from '../../../../src/eval/llm-judge/client.js';
+import { verdictAnswer } from '../../../../src/eval/llm-judge/answer.js';
 import { pricedModels } from '../../../../src/eval/llm-judge/pricing.js';
 import { createRelevanceJudge } from '../../../../src/eval/llm-judge/relevance-judge.js';
 import { EvalEngine } from '../../../../src/eval/engine.js';
@@ -56,7 +60,7 @@ function provider(text: string): Array<Record<string, unknown>> {
   return bodies;
 }
 
-const request = (provider: LLMProvider, model: string, temperature: number): LLMJudgeRequest => ({
+const request = (provider: LLMProvider, model: string, temperature: number, over: Partial<LLMJudgeRequest> = {}): LLMJudgeRequest => ({
   provider,
   model,
   systemPrompt: 'system',
@@ -64,6 +68,7 @@ const request = (provider: LLMProvider, model: string, temperature: number): LLM
   maxOutputTokens: 512,
   temperature,
   apiKey: 'k',
+  ...over,
 });
 
 /** The generation in a Claude model's id: claude-opus-4-8 is 4.8, claude-sonnet-5 is 5, and a dated id is its model's. */
@@ -73,28 +78,43 @@ function generation(model: string): number {
   return Number(m[1]) + Number(m[2] ?? 0) / 10;
 }
 
-describe('the request each model is sent', () => {
-  it.each(pricedModels('anthropic'))('the Claude model %s, priced, is sent the temperature only when it is a model before 4.7', async (model) => {
+const effortOf = (body: Record<string, unknown>): unknown => (body.output_config as { effort?: unknown } | undefined)?.effort;
+
+describe('the request each Claude model is sent', () => {
+  it.each(pricedModels('anthropic'))('the Claude model %s, priced: a temperature only before 4.7, a low effort only from Claude 5', async (model) => {
     const bodies = provider(VERDICT);
     await callLLMJudge(request('anthropic', model, 0.3));
     expect(bodies).toHaveLength(1);
     if (generation(model) < 4.7) expect(bodies[0].temperature).toBe(0.3);
     else expect(bodies[0]).not.toHaveProperty('temperature');
+    if (generation(model) >= 5) expect(bodies[0].output_config).toEqual({ effort: 'low' });
+    else expect(bodies[0]).not.toHaveProperty('output_config');
   });
 
-  it('the Claude models listed as taking a temperature are models Iris prices, each before 4.7', () => {
-    expect(ANTHROPIC_TEMPERATURE_MODELS.size).toBeGreaterThan(0);
-    for (const model of ANTHROPIC_TEMPERATURE_MODELS) {
-      expect(pricedModels('anthropic'), model).toContain(model);
-      expect(generation(model), model).toBeLessThan(4.7);
-    }
+  it('every Claude model Iris prices is listed with how it is asked, and nothing else is', () => {
+    expect(Object.keys(ANTHROPIC_MODELS).sort()).toEqual([...pricedModels('anthropic')].sort());
   });
 
-  it('a Claude model not listed is sent none, the default of every Claude model since 4.7', async () => {
+  it.each(Object.entries(ANTHROPIC_MODELS))('%s is listed in the form its generation gives', (model, form) => {
+    // Anthropic: a non-default temperature is refused from 4.7; with no thinking field, a Claude 5 model thinks.
+    expect(form).toEqual({ temperature: generation(model) < 4.7, thinks: generation(model) >= 5 });
+  });
+
+  it('a Claude model not listed is asked as the current ones are: no temperature, a low effort', async () => {
     const bodies = provider(VERDICT);
     await callLLMJudge(request('anthropic', 'claude-opus-6', 0));
     expect(bodies[0]).not.toHaveProperty('temperature');
+    expect(effortOf(bodies[0])).toBe('low');
     expect(takesTemperature('anthropic', 'claude-opus-6')).toBe(false);
+  });
+
+  it('with an answer asked for, its format and the effort go together in output_config; a model that does not think gets the format alone', async () => {
+    const answer = verdictAnswer(['factual_claims', 'citations', 'internal_consistency']);
+    const bodies = provider(VERDICT);
+    await callLLMJudge(request('anthropic', 'claude-opus-5-5', 0, { answer }));
+    await callLLMJudge(request('anthropic', 'claude-opus-4-8', 0, { answer }));
+    expect(bodies[0].output_config).toEqual({ format: { type: 'json_schema', schema: answer.schema }, effort: 'low' });
+    expect(bodies[1].output_config).toEqual({ format: { type: 'json_schema', schema: answer.schema } });
   });
 
   it.each([
@@ -103,18 +123,15 @@ describe('the request each model is sent', () => {
     // Not listed: a Claude model is sent none, and an OpenAI model is asked as gpt-4o is.
     ['anthropic', 'claude-opus-6'] as const,
     ['openai', 'gpt-unlisted'] as const,
-  ])(
-    '%s %s: what takesTemperature says is what the request carries',
-    async (p, model) => {
-      const bodies = provider(VERDICT);
-      await callLLMJudge(request(p, model, 0.3));
-      expect('temperature' in bodies[0]).toBe(takesTemperature(p, model));
-    },
-  );
+  ])('%s %s: what takesTemperature says is what the request carries', async (p, model) => {
+    const bodies = provider(VERDICT);
+    await callLLMJudge(request(p, model, 0.3));
+    expect('temperature' in bodies[0]).toBe(takesTemperature(p, model));
+  });
 });
 
 describe('the callers that set a temperature themselves', () => {
-  it('the relevance judge on a Claude model since 4.7 is sent none, and its judgment stands', async () => {
+  it('the relevance judge on a Claude 5 model is sent no temperature and a low effort, and its judgment stands', async () => {
     const bodies = provider('{"score":0.9,"passed":true,"rationale":"r","dimensions":{"addresses_request":0.9,"on_subject":0.9,"specific_to_request":0.9}}');
     const engine = new EvalEngine();
     engine.setRelevanceJudge(createRelevanceJudge({ model: 'claude-sonnet-5', apiKey: 'sk-ant-test' }));
@@ -122,15 +139,17 @@ describe('the callers that set a temperature themselves', () => {
     expect(r.rule_results.find((x) => x.ruleName === 'answers_the_ask')?.judge).toMatchObject({ model: 'claude-sonnet-5', score: 0.9 });
     expect(bodies).toHaveLength(1);
     expect(bodies[0]).not.toHaveProperty('temperature');
+    expect(effortOf(bodies[0])).toBe('low');
   });
 
-  it("verify_citations's judge on a Claude model since 4.7 is sent none, and the citation is judged", async () => {
+  it("verify_citations's judge on a Claude 5 model is sent no temperature and a low effort, and the citation is judged", async () => {
     __setDnsLookupForTests(async () => [{ address: '8.8.8.8', family: 4 }]);
     const bodies = provider('{"supported":true,"confidence":0.9,"rationale":"It says five."}');
     const result = await verifyCitations({ output: 'The retry limit is five attempts https://a.com/retry.', provider: 'anthropic', model: 'claude-opus-5-5', apiKey: 'k', allowFetch: true });
     expect(result.totalJudged).toBe(1);
     expect(bodies).toHaveLength(1);
     expect(bodies[0]).not.toHaveProperty('temperature');
+    expect(effortOf(bodies[0])).toBe('low');
   });
 });
 
@@ -147,7 +166,7 @@ describe('evaluate_with_llm_judge: a temperature set for a model that takes none
     const server = createIrisServer(defaultConfig, storage);
     const [c, s] = InMemoryTransport.createLinkedPair();
     await server.mcpServer.connect(s);
-    client = new Client({ name: 'judge-temperature', version: '0.1.0' });
+    client = new Client({ name: 'model-request-form', version: '0.1.0' });
     await client.connect(c);
   });
 
@@ -169,11 +188,7 @@ describe('evaluate_with_llm_judge: a temperature set for a model that takes none
     return { out: JSON.parse(text) as Out, bodies };
   }
 
-  it.each([
-    ['claude-opus-5-5', 'anthropic'],
-    ['claude-sonnet-5', 'anthropic'],
-    ['gpt-5', 'openai'],
-  ])('%s: the call is made at its own default, and the response says the temperature was not sent', async (model) => {
+  it.each(['claude-opus-5-5', 'claude-sonnet-5', 'gpt-5'])('%s: the call is made at its own default, and the response says the temperature was not sent', async (model) => {
     const { out, bodies } = await judge({ model, temperature: 0.3 });
     expect(out.score).toBe(0.8);
     expect(bodies).toHaveLength(1);
@@ -190,20 +205,32 @@ describe('evaluate_with_llm_judge: a temperature set for a model that takes none
   it('with no temperature set, a model that takes none is sent none and nothing is said; one that takes one is sent 0', async () => {
     const none = await judge({ model: 'claude-opus-5-5' });
     expect(none.bodies[0]).not.toHaveProperty('temperature');
+    expect(effortOf(none.bodies[0])).toBe('low');
     expect(none.out.warnings).toBeUndefined();
     const zero = await judge({ model: 'claude-haiku-4-5' });
     expect(zero.bodies[0].temperature).toBe(0);
+    expect(effortOf(zero.bodies[0])).toBeUndefined();
     expect(zero.out.warnings).toBeUndefined();
   });
 });
 
 describe('what the documents say', () => {
+  const listed = (pick: (form: { temperature: boolean; thinks: boolean }) => boolean): string[] =>
+    Object.entries(ANTHROPIC_MODELS).filter(([id, form]) => pick(form) && !/-\d{8}$/.test(id)).map(([id]) => id).sort();
+  const named = (list: string): string[] => list.split(/, | and /).map((m) => m.replace(/`/g, '')).sort();
+
   it('the guide to the judge names the Claude models sent a temperature, and they are the ones listed', () => {
     const doc = read('docs/llm-as-judge.md');
     const sentence = /^A Claude model before 4\.7 \(([^)]+)\) is sent the call's `temperature`, 0 unless the call sets one\. Claude 4\.7 and later models take no `temperature` but the default, and Anthropic answers any other value with a 400, so they are sent none and judge at their own default\. A call that sets `temperature` for a model that takes none, of either provider, is still made, and its response carries the warning `IRIS_ARGUMENT_NOT_SENT`\.$/m.exec(doc);
-    expect(sentence, 'the sentence in docs/llm-as-judge.md').not.toBeNull();
-    const named = sentence![1].split(/, | and /).map((m) => m.replace(/`/g, ''));
-    expect(named.sort()).toEqual([...ANTHROPIC_TEMPERATURE_MODELS].filter((m) => !/-\d{8}$/.test(m)).sort());
+    expect(sentence, 'the temperature sentence in docs/llm-as-judge.md').not.toBeNull();
+    expect(named(sentence![1])).toEqual(listed((f) => f.temperature));
+  });
+
+  it('the guide to the judge names the Claude models asked for a low effort, and they are the ones that think unasked', () => {
+    const doc = read('docs/llm-as-judge.md');
+    const sentence = /^Every Claude 5 model Iris prices \(([^)]+)\) thinks when the request sets no `thinking`, and its thinking counts against `max_tokens`, the same cap as its answer\. So it is asked for `output_config\.effort: "low"`, at which Claude minimizes its thinking and skips it for a simple task\. A model before Claude 5 thinks only when asked, and is sent no effort\.$/m.exec(doc);
+    expect(sentence, 'the effort sentence in docs/llm-as-judge.md').not.toBeNull();
+    expect(named(sentence![1])).toEqual(listed((f) => f.thinks));
   });
 
   it('the warning is in the catalogue, and the tool, the guide, the reference and the changelog name it where they speak of temperature', () => {
@@ -214,5 +241,6 @@ describe('what the documents say', () => {
     expect(collapse(read('src/tools/guide.ts'))).toContain("temperature (default 0) is sent only to a model that takes one: Claude 4.7 and later and OpenAI\\'s reasoning models judge at their own default, with an IRIS_ARGUMENT_NOT_SENT warning when one was set.");
     expect(read('docs/api-reference.md')).toContain("| `temperature` | `number` | No | 0 to 2; default 0. Sent only to a model that takes one: Claude 4.7 and later and OpenAI's reasoning models are sent none and judge at their own default, and a value set for one of them is answered with an `IRIS_ARGUMENT_NOT_SENT` warning |");
     expect(read('CHANGELOG.md')).toContain('- **A Claude model that takes no temperature is sent none (#1078).**');
+    expect(read('CHANGELOG.md')).toContain('- **A Claude model that thinks unasked is asked for a low effort (#1079).**');
   });
 });
