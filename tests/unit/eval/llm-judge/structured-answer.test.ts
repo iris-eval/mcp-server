@@ -12,6 +12,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CITATION_ANSWER, verdictAnswer } from '../../../../src/eval/llm-judge/answer.js';
 import { callLLMJudge, estimateInputTokens, OPENAI_MODELS, STRUCTURED_ANSWER_ALLOWANCE_TOKENS, type LLMJudgeRequest } from '../../../../src/eval/llm-judge/client.js';
 import { evaluateWithLLMJudge } from '../../../../src/eval/llm-judge/evaluator.js';
+import { answerObject } from '../../../../src/eval/llm-judge/reply.js';
 import { estimateCostUsd, pricedModels } from '../../../../src/eval/llm-judge/pricing.js';
 import { ALL_TEMPLATES } from '../../../../src/eval/llm-judge/templates/index.js';
 import { buildCitationJudgePrompts, verifyCitations } from '../../../../src/eval/citation-verify/verifier.js';
@@ -117,6 +118,41 @@ describe('the answer each provider is asked for', () => {
     expect(pricedModels('openai').filter((m) => !(m in OPENAI_MODELS))).toEqual([]);
     expect(Object.keys(OPENAI_MODELS).filter((m) => !pricedModels('openai').includes(m))).toEqual([]);
   });
+
+  it.each(pricedModels('anthropic'))('the Claude model %s, priced, is asked for its answer as structured output', async (model) => {
+    const p = provider(anthropicReply(ANSWER));
+    const res = await callLLMJudge(request({ model, answer }));
+    expect(p.bodies[0].output_config).toEqual({ format: { type: 'json_schema', schema: answer.schema } });
+    expect(res).toMatchObject({ content: ANSWER, structured: true });
+  });
+
+  /** How each OpenAI model Iris prices is asked, as its page at OpenAI gives it: a reasoning model takes no temperature, and structured output where the page lists it. */
+  const OPENAI_FORMS: Record<string, { reasoning: boolean; effort?: 'low'; structured: boolean }> = {
+    'gpt-5': { reasoning: true, effort: 'low', structured: true },
+    'gpt-5-mini': { reasoning: true, effort: 'low', structured: true },
+    'o4-mini': { reasoning: true, effort: 'low', structured: true },
+    'o3-mini': { reasoning: true, effort: 'low', structured: true },
+    'o1-mini': { reasoning: true, structured: false },
+    'gpt-4.1-mini': { reasoning: false, structured: true },
+    'gpt-4o': { reasoning: false, structured: true },
+    'gpt-4o-mini': { reasoning: false, structured: true },
+  };
+
+  it('the forms below name every OpenAI model Iris prices', () => {
+    expect(Object.keys(OPENAI_FORMS).sort()).toEqual([...pricedModels('openai')].sort());
+  });
+
+  it.each(Object.entries(OPENAI_FORMS))('the OpenAI model %s is asked in the form its page gives', async (model, form) => {
+    const p = provider(openAIReply({ content: ANSWER }));
+    const res = await callLLMJudge(request({ provider: 'openai', model, answer }));
+    const body = p.bodies[0];
+    expect(body.max_completion_tokens).toBe(512);
+    expect(body).not.toHaveProperty('max_tokens');
+    expect('temperature' in body).toBe(!form.reasoning);
+    expect(body.reasoning_effort).toBe(form.effort);
+    expect(body.response_format).toEqual(form.structured ? { type: 'json_schema', json_schema: { name: 'verdict', schema: answer.schema, strict: true } } : undefined);
+    expect(res).toMatchObject({ content: ANSWER, structured: form.structured });
+  });
 });
 
 describe('an OpenAI reply with no answer says why', () => {
@@ -140,6 +176,24 @@ describe('an OpenAI reply with no answer says why', () => {
     });
     provider(openAIReply({ content: null }));
     await expect(callLLMJudge(request({ provider: 'openai', model: 'gpt-4o-mini', answer }))).rejects.toMatchObject({ message: 'OpenAI response had no message content' });
+  });
+
+  it('an empty refusal says nothing, and a long one is shown to its first 200 characters', async () => {
+    provider(openAIReply({ content: null, refusal: '' }));
+    await expect(callLLMJudge(request({ provider: 'openai', model: 'gpt-4o-mini', answer }))).rejects.toMatchObject({ kind: 'malformed_response', message: 'OpenAI response had no message content' });
+    provider(openAIReply({ content: null, refusal: `${'x'.repeat(200)}${'y'.repeat(100)}` }));
+    await expect(callLLMJudge(request({ provider: 'openai', model: 'gpt-4o-mini', answer }))).rejects.toMatchObject({ kind: 'malformed_response', message: `OpenAI's model declined to answer: ${'x'.repeat(200)}` });
+  });
+});
+
+describe('a reply asked for as structured output is read whole', () => {
+  it('JSON white space around the object is read; any other character beside it is not; asked in text, the object is read as before', () => {
+    expect(answerObject(` \n${ANSWER}\n\t `, true)).toMatchObject({ score: 0.8 });
+    for (const beside of ['﻿', ' ', ' ', '\u0000']) {
+      expect(answerObject(`${beside}${ANSWER}`, true), JSON.stringify(beside)).toBeNull();
+      expect(answerObject(`${ANSWER}${beside}`, true), JSON.stringify(beside)).toBeNull();
+    }
+    expect(answerObject(`﻿Here it is: ${ANSWER}`, false)).toMatchObject({ score: 0.8 });
   });
 });
 
@@ -171,6 +225,23 @@ describe('the schema both providers take', () => {
     }
     // Only the types the answer uses.
     expect([...text.matchAll(/"type":"([a-z]+)"/g)].map((m) => m[1]).filter((t) => !['object', 'number', 'boolean', 'string'].includes(t))).toEqual([]);
+  });
+
+  it('the verdict and the citation answer, field by field: each field of its type, and nothing else in either schema', () => {
+    const closed = (properties: Record<string, unknown>) => ({ type: 'object', properties, required: Object.keys(properties), additionalProperties: false });
+    expect(verdictAnswer(['a', 'b', 'c'])).toEqual({
+      name: 'verdict',
+      schema: closed({
+        score: { type: 'number' },
+        passed: { type: 'boolean' },
+        rationale: { type: 'string' },
+        dimensions: closed({ a: { type: 'number' }, b: { type: 'number' }, c: { type: 'number' } }),
+      }),
+    });
+    expect(CITATION_ANSWER).toEqual({
+      name: 'citation_verdict',
+      schema: closed({ supported: { type: 'boolean' }, confidence: { type: 'number' }, rationale: { type: 'string' } }),
+    });
   });
 
   it('the verdict asks for the score first, then the pass, the rationale and the dimensions, as the prompt does', () => {

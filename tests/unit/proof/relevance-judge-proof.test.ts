@@ -18,10 +18,12 @@
  *      test's.
  */
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readJudgeCaseFile, materialiseCases } from '../../../proof/judge/lib/cases.js';
 import { RELEVANCE_TEMPLATE } from '../../../src/eval/llm-judge/templates/index.js';
+import { DEFAULT_DAILY_BUDGET_USD } from '../../../src/eval/llm-judge/budget.js';
 import { worstCaseJudgeCostUsd } from '../../../src/eval/llm-judge/evaluator.js';
 import { answersTheAsk } from '../../../src/eval/rules/relevance.js';
 import { JUDGE_DEFAULT_COST_CAP_USD } from '../../../src/judge-enablement.js';
@@ -60,6 +62,13 @@ describe('relevance judge proof set', () => {
     // The figures docs/llm-as-judge.md quotes, to four decimal places.
     expect(worst.anthropic.toFixed(4)).toBe('0.0083');
     expect(worst.openai.toFixed(4)).toBe('0.0011');
+    // What the default day's budget admits at that worst case, as the judge doc and the budget's own comment say it.
+    const admits = Math.floor(DEFAULT_DAILY_BUDGET_USD / worst.anthropic);
+    expect(admits).toBe(120);
+    expect(readFileSync(resolve(repoRoot, 'docs/llm-as-judge.md'), 'utf8')).toContain(`At the $${worst.anthropic.toFixed(4)} worst case above, the default admits at least ${admits} judgments a day`);
+    // The comment's lines joined, whatever their ends and their wrapping.
+    const comment = readFileSync(resolve(repoRoot, 'src/eval/llm-judge/budget.ts'), 'utf8').replace(/\r?\n\s*\*\s*/g, ' ');
+    expect(comment).toContain(`is $${worst.anthropic.toFixed(4)} on the proof cases (tests/unit/proof/relevance-judge-proof.test.ts), so a dollar admits at least ${admits} judgments a day`);
   });
 
   it('the lexical answers_the_ask on the same cases: the gap the judge exists to close', async () => {
