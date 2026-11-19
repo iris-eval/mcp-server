@@ -20,6 +20,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { EXAMPLES, renderSkillExamples, textBlock } from '../scripts/claims/render-skill-examples.js';
+import { __resetExporterForTests } from '../src/otel/lazy.js';
 
 const root = resolve(__dirname, '..');
 const read = (path: string): string => readFileSync(resolve(root, path), 'utf-8').replace(/\r\n/g, '\n');
@@ -83,11 +84,14 @@ describe('the skill\'s examples are the server\'s answers', () => {
     const saved = process.env.IRIS_OTEL_ENDPOINT;
     process.env.IRIS_OTEL_ENDPOINT = 'http://127.0.0.1:9/v1/traces';
     const sent = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('{}', { status: 200 }));
+    // The exporter is read from the environment once a process, at the first trace logged: read it again in this render.
+    __resetExporterForTests();
     try {
       await renderSkillExamples(root);
       expect(sent).not.toHaveBeenCalled();
       expect(process.env.IRIS_OTEL_ENDPOINT).toBe('http://127.0.0.1:9/v1/traces');
     } finally {
+      __resetExporterForTests();
       sent.mockRestore();
       if (saved === undefined) delete process.env.IRIS_OTEL_ENDPOINT;
       else process.env.IRIS_OTEL_ENDPOINT = saved;
