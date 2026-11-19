@@ -90,6 +90,12 @@ describe('ruleResultText', () => {
     expect(roleText({})).toBe('');
   });
 
+  it('the sentence for a rule that could not answer names its causes, judging what it was sent among them', () => {
+    expect(SKIP_CLASS_TEXT.defeated).toBe(
+      'Defeated: the rule was asked and could not answer on this input. What it reads was cut or longer than it reads, its pattern ran past the time budget, the rule failed while it judged, or it could not judge what it was sent (its reason says what).',
+    );
+  });
+
   it('a row is pre-stamp only when none of the composer fields is present', () => {
     expect(isPreStamp({ ruleName: 'a', passed: true, score: 1, message: '' })).toBe(true);
     expect(isPreStamp({ ruleName: 'a', passed: true, score: 1, message: '', kind: 'policy' })).toBe(false);

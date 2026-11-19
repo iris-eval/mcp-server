@@ -29,15 +29,19 @@ import { publishedProvenance } from './accuracy.js';
 
 /**
  * Why the defeated rules among `rows` could not judge, in the words a
- * coverage line carries. A row stored before these flags were kept says
- * only that it was defeated, and reads as the one cause there was then.
+ * coverage line carries. A row stored before the throw and the cut were
+ * flagged says only that it was defeated, and carries the one flag there
+ * was then: the sandbox budget's. A row with no flag at all is a rule that
+ * said it could not judge (0.22.0), and its skip reason says why.
  */
 function defeatedBy(rows: readonly EvalRuleResult[]): string {
   const defeated = rows.filter((r) => r.skipClass === 'defeated');
+  const flagged = (r: EvalRuleResult): boolean => r.threw === true || r.evidenceIncomplete === true || r.budgetExceeded === true;
   const causes = [
     ...(defeated.some((r) => r.threw === true) ? ['the rule threw'] : []),
     ...(defeated.some((r) => r.evidenceIncomplete === true) ? ['the evidence it reads was cut'] : []),
-    ...(defeated.some((r) => r.threw !== true && r.evidenceIncomplete !== true) ? ['sandbox budget'] : []),
+    ...(defeated.some((r) => r.budgetExceeded === true && r.threw !== true && r.evidenceIncomplete !== true) ? ['sandbox budget'] : []),
+    ...(defeated.some((r) => !flagged(r)) ? ['the rule could not judge this input'] : []),
   ];
   return causes.join('; ');
 }

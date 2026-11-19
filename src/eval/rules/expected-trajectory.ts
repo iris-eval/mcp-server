@@ -18,7 +18,7 @@
  * expected key be present with the same value, so an expectation can name the
  * one argument that matters and leave the rest to the agent.
  */
-import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type EvalRuleResult, type Evidence, type ExpectedArgsMode, type ExpectedToolCall, type ExpectedTrajectoryMode } from '../../types/eval.js';
+import { MAX_EVIDENCE_ITEMS, type EvalContext, type EvalRule, type RuleAnswer, type Evidence, type ExpectedArgsMode, type ExpectedToolCall, type ExpectedTrajectoryMode } from '../../types/eval.js';
 import type { Step } from '../../types/trace.js';
 import { stepScopeNote, stepsOf, trajectoryAbsence } from '../steps.js';
 import { describeInput, normaliseInput, skipWithoutTrajectory, stableStringify } from './trajectory.js';
@@ -140,12 +140,13 @@ export function compareSequence(expected: readonly ExpectedToolCall[], steps: re
 const modeOf = (raw: unknown): ExpectedTrajectoryMode => (typeof raw === 'string' && (SEQUENCE_MODES as readonly string[]).includes(raw) ? (raw as ExpectedTrajectoryMode) : DEFAULT_SEQUENCE_MODE);
 const argsOf = (raw: unknown): ExpectedArgsMode => (raw === 'exact' ? 'exact' : DEFAULT_ARGS_MODE);
 
-function skipWithoutExpectation(ruleName: string, what: string): EvalRuleResult {
+function skipWithoutExpectation(ruleName: string, what: string): RuleAnswer {
   return {
     ruleName,
     passed: false,
     score: 0,
     skipped: true,
+    skipClass: 'not_applicable',
     skipReason: `context.expectedTrajectory.${what} not provided — pass expected_trajectory on evaluate_output to say what the agent was expected to do`,
     message: 'No expected trajectory provided',
   };
@@ -165,7 +166,7 @@ export const toolSequence: EvalRule = {
   classes: ['wrong_trajectory'],
   // 2 (0.20.0): an explicit empty list of tool calls is judged against the expectation instead of skipped.
   version: 2,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     const expected = context.expectedTrajectory?.tool_calls;
     if (expected === undefined || expected.length === 0) return skipWithoutExpectation('tool_sequence', 'tool_calls');
     /*
@@ -215,7 +216,7 @@ export const stepBudget: EvalRule = {
   classes: ['over_budget'],
   // 2 (0.20.0): an explicit empty list of tool calls is judged as zero calls instead of skipped.
   version: 2,
-  evaluate(context: EvalContext): EvalRuleResult {
+  evaluate(context: EvalContext): RuleAnswer {
     const et = context.expectedTrajectory;
     const declared = typeof et?.step_budget === 'number' && Number.isFinite(et.step_budget) && et.step_budget >= 1 ? Math.floor(et.step_budget) : undefined;
     const budget = declared ?? (et?.tool_calls !== undefined && et.tool_calls.length > 0 ? et.tool_calls.length : undefined);

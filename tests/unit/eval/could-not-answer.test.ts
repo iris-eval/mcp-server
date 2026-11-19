@@ -24,7 +24,7 @@ import { noUnusualAction } from '../../../src/eval/rules/case-history.js';
 import { noToolLoop } from '../../../src/eval/rules/cost.js';
 import { rulesByType } from '../../../src/eval/rules/index.js';
 import { defaultConfig } from '../../../src/config/defaults.js';
-import type { CaseRun, EvalContext, EvalResult, EvalRule, EvalRuleResult } from '../../../src/types/eval.js';
+import type { CaseRun, EvalContext, EvalResult, EvalRule, EvalRuleResult, RuleAnswer } from '../../../src/types/eval.js';
 import type { ToolCallRecord, ToolDescriptor } from '../../../src/types/trace.js';
 
 afterEach(() => {
@@ -422,7 +422,7 @@ describe('a rule the deployment set to report says so however it came to give no
 
   it('stopped at a limit of work, which no built-in detection meets by itself: the mark is there for it too', async () => {
     // The fourth way, forced: a detection's regex killed at the sandbox budget. Custom rules meet it, and they are policies; this stands a built-in detection in that place for one evaluation.
-    vi.spyOn(noToolLoop, 'evaluate').mockReturnValue({ ruleName: 'no_tool_loop', passed: false, score: 0, message: 'Not judged: the matching budget ran out on this output', skipped: true, skipReason: 'regex budget exceeded', budgetExceeded: true });
+    vi.spyOn(noToolLoop, 'evaluate').mockReturnValue({ ruleName: 'no_tool_loop', passed: false, score: 0, message: 'Not judged: the matching budget ran out on this output', skipped: true, skipClass: 'defeated', skipReason: 'regex budget exceeded', budgetExceeded: true });
     const shipped = await engine().evaluateAll({ input: ASK, output: ANSWER, toolCalls: [READ] });
     expect(row(shipped, 'no_tool_loop')).toMatchObject({ skipped: true, budgetExceeded: true, skipClass: 'defeated', role: 'risk' });
     expect(row(shipped, 'no_tool_loop').advisory).toBeUndefined();
@@ -515,7 +515,7 @@ describe('whose number a rule stood at is written on a row that could not answer
     mechanism: 'pattern',
     needs: ['output'],
     version: 1,
-    evaluate(ctx: EvalContext): EvalRuleResult {
+    evaluate(ctx: EvalContext): RuleAnswer {
       // It reads a field of the embedder's own metadata without checking that it is there.
       const ticket = String((ctx.metadata as { ticket: string }).ticket).toUpperCase();
       const passed = ctx.output.toUpperCase().includes(ticket);
@@ -545,7 +545,7 @@ describe('whose number a rule stood at is written on a row that could not answer
       'custom',
       {
         ...namesItsTicket('names_its_ticket'),
-        evaluate: (): EvalRuleResult => ({ ruleName: 'names_its_ticket', passed: false, score: 0, message: 'Not judged', skipped: true, skipReason: 'broken', configInvalid: true, thresholdSource: 'default' }),
+        evaluate: (): RuleAnswer => ({ ruleName: 'names_its_ticket', passed: false, score: 0, message: 'Not judged', skipped: true, skipClass: 'config_invalid', skipReason: 'broken', configInvalid: true, thresholdSource: 'default' }),
       },
       'embedder:names_its_ticket',
     );
@@ -673,10 +673,10 @@ describe('a rule a request sends under the name of a rule Iris ships is read as 
       mechanism: 'formula',
       needs: ['output', 'cost'],
       version: 1,
-      evaluate: (ctx): EvalRuleResult =>
+      evaluate: (ctx): RuleAnswer =>
         typeof ctx.costUsd === 'number'
           ? { ruleName: 'answers_the_ask', passed: true, score: 1, message: 'Measured' }
-          : { ruleName: 'answers_the_ask', passed: true, score: 1, message: 'No cost to measure', skipped: true, skipReason: 'no cost provided' },
+          : { ruleName: 'answers_the_ask', passed: true, score: 1, message: 'No cost to measure', skipped: true, skipClass: 'not_applicable', skipReason: 'no cost provided' },
     };
     const e = judged();
     e.registerRule('custom', own, 'embedder:answers_the_ask');
@@ -722,7 +722,7 @@ describe('a rule a request sends under the name of a rule Iris ships is read as 
       mechanism: 'pattern',
       needs: ['output'],
       version: 1,
-      evaluate: (): EvalRuleResult => ({ ruleName: 'limit_scan', passed: false, score: 0, message: 'Stopped at its limit', skipped: true, skipReason: 'stopped at its limit', budgetExceeded: true, ...said }),
+      evaluate: (): RuleAnswer => ({ ruleName: 'limit_scan', passed: false, score: 0, message: 'Stopped at its limit', skipped: true, skipClass: 'defeated', skipReason: 'stopped at its limit', budgetExceeded: true, ...said }),
     });
     for (const said of [{}, { asked: 'config' as const }, { asked: 'call' as const }, { lacked: ['cost' as const] }, { asked: 'config' as const, lacked: ['cost' as const] }]) {
       const e = engine();
@@ -768,7 +768,7 @@ describe('what a call carried is recorded before any rule runs: a rule that writ
     mechanism: 'formula',
     needs: ['output'],
     version: 1,
-    evaluate: (ctx): EvalRuleResult => {
+    evaluate: (ctx): RuleAnswer => {
       write(ctx);
       return { ruleName: 'acme_note', passed: true, score: 1, message: 'Measured' };
     },
