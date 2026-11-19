@@ -23,6 +23,8 @@ import { EXAMPLES, renderSkillExamples, textBlock } from '../scripts/claims/rend
 
 const root = resolve(__dirname, '..');
 const read = (path: string): string => readFileSync(resolve(root, path), 'utf-8').replace(/\r\n/g, '\n');
+/** The store's path as this file found it, before any test here rendered a page. */
+const dbPathAtLoad = process.env.IRIS_DB_PATH;
 
 describe('the skill\'s examples are the server\'s answers', () => {
   it('each page holds the requests as sent and the responses as they came back, and every sentence a page relies on holds', async () => {
@@ -59,7 +61,6 @@ describe('the skill\'s examples are the server\'s answers', () => {
   it('rendering leaves the caller\'s Iris home as it found it: one that is not there is not made', async () => {
     const absent = join(tmpdir(), `iris-skill-examples-caller-${process.pid}-${Date.now()}`);
     const saved = process.env.IRIS_HOME;
-    const savedDbPath = process.env.IRIS_DB_PATH;
     process.env.IRIS_HOME = absent;
     // The configuration takes its default store path from the home when it is first imported: import it again, here.
     vi.resetModules();
@@ -67,9 +68,9 @@ describe('the skill\'s examples are the server\'s answers', () => {
       const fresh = (await import('../scripts/claims/render-skill-examples.js')) as typeof import('../scripts/claims/render-skill-examples.js');
       await fresh.renderSkillExamples(root);
       expect(existsSync(absent)).toBe(false);
-      // And the environment is put back as it was.
+      // And the environment is put back as it was, by this render and by every render before it in this file.
       expect(process.env.IRIS_HOME).toBe(absent);
-      expect(process.env.IRIS_DB_PATH).toBe(savedDbPath);
+      expect(process.env.IRIS_DB_PATH).toBe(dbPathAtLoad);
     } finally {
       if (saved === undefined) delete process.env.IRIS_HOME;
       else process.env.IRIS_HOME = saved;
@@ -78,7 +79,22 @@ describe('the skill\'s examples are the server\'s answers', () => {
     }
   }, 120_000);
 
-  it('every call a page lists has its blocks in the page, and no block is left without a call', () => {
+  it('rendering builds the page\'s server, not the caller\'s: a collector set in the caller\'s environment is sent nothing', async () => {
+    const saved = process.env.IRIS_OTEL_ENDPOINT;
+    process.env.IRIS_OTEL_ENDPOINT = 'http://127.0.0.1:9/v1/traces';
+    const sent = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('{}', { status: 200 }));
+    try {
+      await renderSkillExamples(root);
+      expect(sent).not.toHaveBeenCalled();
+      expect(process.env.IRIS_OTEL_ENDPOINT).toBe('http://127.0.0.1:9/v1/traces');
+    } finally {
+      sent.mockRestore();
+      if (saved === undefined) delete process.env.IRIS_OTEL_ENDPOINT;
+      else process.env.IRIS_OTEL_ENDPOINT = saved;
+    }
+  }, 120_000);
+
+  it('every call a page lists has its blocks in the page, each once, and no block is left without a call', () => {
     for (const example of EXAMPLES) {
       const text = read(example.file);
       const expected = new Set<string>(example.texts.map((t) => t.block));
@@ -86,8 +102,8 @@ describe('the skill\'s examples are the server\'s answers', () => {
         if (deployment.config !== undefined) expected.add(deployment.config.block);
         for (const call of deployment.calls) for (const kind of call.blocks) expected.add(`${call.name}-${kind}`);
       }
-      const present = new Set([...text.matchAll(/<!-- iris:([a-z0-9-]+):start -->/g)].map((m) => m[1]));
-      expect([...present].sort(), example.file).toEqual([...expected].sort());
+      const starts = [...text.matchAll(/<!-- iris:([a-z0-9-]+):start -->/g)].map((m) => m[1]);
+      expect([...starts].sort(), example.file).toEqual([...expected].sort());
     }
   });
 

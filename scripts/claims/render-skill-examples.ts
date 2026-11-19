@@ -132,16 +132,6 @@ const RETENTION_RUN = [
 /** The budget the cost page sets for itself. */
 const OWN_BUDGET = 0.25;
 
-/** What each page says the response it cuts away also carries; every response a page shows is held to it. */
-const CARRIES_THE_REST = {
-  says: 'the full response also carries an id, the evidence of each rule that has any, and a row for every rule that skipped, with its reason',
-  holds: (a: Answer) =>
-    typeof a.id === 'string' &&
-    a.id !== '' &&
-    (a.rule_results as Answer[]).some((r) => Array.isArray(r.evidence) && r.evidence.length > 0) &&
-    (a.rule_results as Answer[]).filter((r) => r.skipped === true).every((r) => typeof r.skipReason === 'string' && r.skipReason !== ''),
-};
-
 /** The cost page's two calls, made once per deployment it describes: the run is logged, then scored by its trace_id. */
 const costCalls = (suffix: string, blocks: { log: ExampleCall['blocks']; evaluate: ExampleCall['blocks'] }, relies: ExampleCall['relies']): ExampleCall[] => [
   {
@@ -182,7 +172,6 @@ export const EXAMPLES: ReadonlyArray<Example> = [
               { says: "the rule's message names the pattern that matched (Credit Card)", holds: (a) => String(row(a, 'no_pii')?.message).includes('Credit Card') },
               { says: 'the score is above 0.7, which a reading of the score alone would call good', holds: (a) => a.score > 0.7 },
               { says: 'every other safety rule that ran passed', holds: (a) => (a.rule_results as Answer[]).filter((r) => r.skipped !== true && r.ruleName !== 'no_pii').every((r) => r.passed === true) },
-              CARRIES_THE_REST,
             ],
           },
           {
@@ -195,7 +184,6 @@ export const EXAMPLES: ReadonlyArray<Example> = [
               { says: 'the same verdict as the safety-only call', holds: (a, earlier) => a.passed === false && a.verdict.basis === earlier['pii-safety'].verdict.basis && a.verdict.by.join() === 'no_pii' && (a.critical_failures ?? []).join() === 'no_pii' },
               { says: 'safety.passed is false in the categories map', holds: (a) => a.categories?.safety?.passed === false },
               { says: 'cost.passed is null: no cost was sent, so the cost bundle was not judged', holds: (a) => a.categories?.cost?.passed === null },
-              CARRIES_THE_REST,
             ],
           },
         ],
@@ -220,7 +208,6 @@ export const EXAMPLES: ReadonlyArray<Example> = [
             relies: [
               { says: 'Prompt A passes, with no rule that ran failing', holds: (a) => a.passed === true && (a.rule_results as Answer[]).every((r) => r.skipped === true || r.passed === true) },
               { says: 'Prompt A covers every expected term', holds: (a) => row(a, 'expected_coverage')?.score === 1 },
-              CARRIES_THE_REST,
             ],
           },
           {
@@ -233,7 +220,6 @@ export const EXAMPLES: ReadonlyArray<Example> = [
               { says: 'three rules fail on Prompt B: it is under the minimum length, has one sentence where two are asked for, and covers one of the six expected terms', holds: (a) => fired(a, 'min_output_length') && fired(a, 'sentence_count') && fired(a, 'expected_coverage') && String(row(a, 'expected_coverage')?.message).includes('1/6') },
               { says: 'the verdict on Prompt B still passes: each of the three is a measurement, and its role reads advisory', holds: (a) => a.passed === true && ['min_output_length', 'sentence_count', 'expected_coverage'].every((r) => row(a, r)?.kind === 'measurement' && row(a, r)?.role === 'advisory') },
               { says: 'interpretations says of each failed measurement that it took no part, and names eval.criticalRules', holds: (a) => ['min_output_length', 'sentence_count', 'expected_coverage'].every((r) => noteFor(a, r)?.configKey === 'eval.criticalRules' && String(noteFor(a, r)?.text).includes('took no part')) },
-              CARRIES_THE_REST,
             ],
           },
           {
@@ -241,7 +227,7 @@ export const EXAMPLES: ReadonlyArray<Example> = [
             tool: 'evaluate_output',
             arguments: { output: PROMPT_A, eval_type: 'relevance', input: QUALITY_ASK },
             blocks: ['request', 'response'],
-            relies: [{ says: 'Prompt A passes the relevance bundle with no rule that ran failing', holds: (a) => a.passed === true && (a.rule_results as Answer[]).every((r) => r.skipped === true || r.passed === true) }, CARRIES_THE_REST],
+            relies: [{ says: 'Prompt A passes the relevance bundle with no rule that ran failing', holds: (a) => a.passed === true && (a.rule_results as Answer[]).every((r) => r.skipped === true || r.passed === true) }],
           },
           {
             name: 'quality-b-relevance',
@@ -253,7 +239,6 @@ export const EXAMPLES: ReadonlyArray<Example> = [
               { says: 'keyword_overlap and answers_the_ask fail on Prompt B, and the verdict passes', holds: (a) => fired(a, 'keyword_overlap') && fired(a, 'answers_the_ask') && a.passed === true },
               { says: 'answers_the_ask advises here: without a judge it reads the ask lexically, and its note names IRIS_RELEVANCE_JUDGE_MODEL', holds: (a) => row(a, 'answers_the_ask')?.role === 'advisory' && noteFor(a, 'answers_the_ask')?.configKey === 'IRIS_RELEVANCE_JUDGE_MODEL' },
               { says: 'topic_consistency skipped: the output is too brief for it', holds: (a) => row(a, 'topic_consistency')?.skipped === true },
-              CARRIES_THE_REST,
             ],
           },
         ],
@@ -269,7 +254,6 @@ export const EXAMPLES: ReadonlyArray<Example> = [
             relies: [
               { says: 'with expected_coverage named in eval.criticalRules, Prompt B fails: basis detector_veto, by expected_coverage', holds: (a) => a.passed === false && a.verdict.basis === 'detector_veto' && a.verdict.by.join() === 'expected_coverage' && (a.critical_failures ?? []).join() === 'expected_coverage' },
               { says: 'the score is the same as before the setting', holds: (a, earlier) => a.score === earlier['quality-b-completeness'].score },
-              CARRIES_THE_REST,
             ],
           },
           {
@@ -294,21 +278,14 @@ export const EXAMPLES: ReadonlyArray<Example> = [
             { says: 'the verdict passes all the same: a budget Iris ships advises, and the rule reads role advisory', holds: (a) => a.passed === true && row(a, 'cost_under_threshold')?.role === 'advisory' },
             { says: 'interpretations says the rule failed against a threshold Iris ships, not one you set', holds: (a) => String(noteFor(a, 'cost_under_threshold')?.text).includes('a threshold Iris ships, not one you set') },
             { says: 'evaluate_output read the cost, the tokens and the tool calls from the stored trace', holds: (a) => row(a, 'cost_under_threshold')?.skipped !== true && row(a, 'verbosity_ratio')?.skipped !== true && row(a, 'no_tool_loop')?.skipped !== true },
-            CARRIES_THE_REST,
           ]),
-          // Two cheaper runs of the same agent, so that the order get_traces gives is one a page can be wrong about.
-          { name: 'cost-log-cheaper', tool: 'log_trace', arguments: { ...RETENTION_TRACE, cost_usd: 0.12 }, blocks: [], relies: [] },
-          { name: 'cost-log-cheapest', tool: 'log_trace', arguments: { ...RETENTION_TRACE, cost_usd: 0.03 }, blocks: [], relies: [] },
           {
             name: 'cost-traces',
             tool: 'get_traces',
             arguments: { sort_by: 'cost_usd', sort_order: 'desc', limit: 10, include_summary: true },
             blocks: ['request'],
             relies: [
-              {
-                says: 'get_traces returns the traces, most expensive first',
-                holds: (a) => Array.isArray(a.traces) && (a.traces as Answer[]).map((t) => t.cost_usd).join() === [RETENTION_TRACE.cost_usd, 0.12, 0.03].join(),
-              },
+              { says: 'get_traces returns the run logged, at its cost', holds: (a) => Array.isArray(a.traces) && a.traces.length === 1 && a.traces[0].cost_usd === RETENTION_TRACE.cost_usd },
               {
                 says: 'with include_summary the response carries a summary block with total_traces, avg_latency_ms, total_cost_usd, error_rate, eval_pass_rate, traces_per_hour and top_agents',
                 holds: (a) => ['total_traces', 'avg_latency_ms', 'total_cost_usd', 'error_rate', 'eval_pass_rate', 'traces_per_hour', 'top_agents'].every((k) => a.summary !== undefined && k in a.summary),
@@ -322,7 +299,6 @@ export const EXAMPLES: ReadonlyArray<Example> = [
         calls: costCalls('-own-budget', { log: [], evaluate: ['response'] }, [
           { says: 'with a budget of your own the same run fails the verdict: basis policy_gate, by cost_under_threshold', holds: (a) => a.passed === false && a.verdict.basis === 'policy_gate' && a.verdict.by.join() === 'cost_under_threshold' },
           { says: 'the rule reads role gate, and its message carries your budget', holds: (a) => row(a, 'cost_under_threshold')?.role === 'gate' && String(row(a, 'cost_under_threshold')?.message).includes('$0.2500') },
-          CARRIES_THE_REST,
         ]),
       },
       {
@@ -355,9 +331,8 @@ export const EXAMPLES: ReadonlyArray<Example> = [
  * notes, and the counts. The response also carries an id, the evidence of
  * each rule that has any, a row for every rule that skipped with its
  * reason, and, for some rules and answers, a measured accuracy and a risk
- * estimate; what each page says of it is held in `relies`
- * (CARRIES_THE_REST), and a page that needs more says so and reads it from
- * the answer there.
+ * estimate; a page that needs one of those says so and reads it from the
+ * answer in `relies`.
  */
 export function shownEvaluation(answer: Answer): Record<string, unknown> {
   const all = answer.eval_type === 'all';

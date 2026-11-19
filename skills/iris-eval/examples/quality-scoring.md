@@ -48,7 +48,7 @@ Request for Prompt A, completeness bundle (Prompt B's is the same with its own `
 
 ## Results
 
-Each block below is the server's answer to the request on this page, cut to the verdict, the rules that ran, the notes and the counts. The full response also carries an `id`, the evidence of each rule that has any, and a row for every rule that skipped, with its reason. The blocks are written by `npm run skill-examples:render` from the server in this repository and checked on every change, so they are what that server answers.
+Each block below is the server's answer to the request on this page, cut to the verdict, the rules that ran, the notes and the counts. The blocks are written by `npm run skill-examples:render` from the server in this repository and checked on every change, so they are what that server answers.
 
 ### Prompt A — `completeness`
 

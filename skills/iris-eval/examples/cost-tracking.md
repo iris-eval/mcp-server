@@ -103,7 +103,7 @@ The response. A `trace_id` is minted on every call, so yours will differ:
 ```
 <!-- iris:cost-evaluate-request:end -->
 
-The server's answer, cut to the verdict, the rules that ran, the notes and the counts. The full response also carries an `id`, the evidence of each rule that has any, and a row for every rule that skipped, with its reason. The blocks on this page are written by `npm run skill-examples:render` from the server in this repository and checked on every change, so they are what that server answers.
+The server's answer, cut to the verdict, the rules that ran, the notes and the counts. The blocks on this page are written by `npm run skill-examples:render` from the server in this repository and checked on every change, so they are what that server answers.
 
 <!-- iris:cost-evaluate-response:start -->
 ```json
@@ -288,4 +288,4 @@ Call `get_traces` to find the most expensive recent runs (`sort_by` and `sort_or
 ```
 <!-- iris:cost-traces-request:end -->
 
-This returns the most expensive recent traces, which shows you where to optimize first. With `include_summary: true` the response also carries a `summary` block — `total_traces`, `avg_latency_ms`, `total_cost_usd`, `error_rate`, `eval_pass_rate`, `traces_per_hour`, `top_agents` — so you can read the aggregate spend in the same call.
+The request asks for the recent traces, most expensive first, which shows you where to optimize first. With `include_summary: true` the response also carries a `summary` block — `total_traces`, `avg_latency_ms`, `total_cost_usd`, `error_rate`, `eval_pass_rate`, `traces_per_hour`, `top_agents` — so you can read the aggregate spend in the same call.

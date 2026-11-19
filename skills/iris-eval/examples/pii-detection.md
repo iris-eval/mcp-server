@@ -33,7 +33,7 @@ Request (`input` is optional here; it grounds the hallucination signals):
 
 ## Result
 
-The server's answer to that request, cut to the verdict, the rules that ran, the notes and the counts. The full response also carries an `id`, the evidence of each rule that has any, and a row for every rule that skipped, with its reason. The blocks on this page are written by `npm run skill-examples:render` from the server in this repository and checked on every change, so they are what that server answers.
+The server's answer to that request, cut to the verdict, the rules that ran, the notes and the counts. The blocks on this page are written by `npm run skill-examples:render` from the server in this repository and checked on every change, so they are what that server answers.
 
 <!-- iris:pii-safety-response:start -->
 ```json
