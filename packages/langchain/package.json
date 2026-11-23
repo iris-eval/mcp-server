@@ -72,7 +72,7 @@
     "@iris-eval/sdk": "file:../sdk",
     "@langchain/core": "^1.3.1",
     "@langchain/langgraph": "^1.5.3",
-    "@types/node": "^22.19.0",
+    "@types/node": "^26.6.6",
     "typescript": "^6.0.3",
     "zod": "^4.6.7"
   }
